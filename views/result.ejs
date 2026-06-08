@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ผลการส่ง - Multi Post System</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-inner">
+    <div class="navbar-brand">
+      <div class="fb-logo"><i class="fa-brands fa-facebook"></i></div>
+      <span>Multi Post System</span>
+    </div>
+    <div class="navbar-right">
+      <a href="/history" class="btn-back"><i class="fa-solid fa-clock-rotate-left"></i> ประวัติ</a>
+      <a href="/" class="btn-back" style="margin-left:.5rem"><i class="fa-solid fa-plus"></i> โพสต์ใหม่</a>
+    </div>
+  </div>
+</nav>
+
+<div class="page-wrap">
+
+  <aside class="sidebar">
+    <a href="/" class="sidebar-item"><i class="fa-solid fa-house"></i><span>หน้าหลัก</span></a>
+    <a href="/history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพสต์</span></a>
+    <div class="sidebar-item active"><i class="fa-solid fa-circle-check"></i><span>ผลการส่ง</span></div>
+  </aside>
+
+  <main class="feed">
+
+    <%
+      const sc = post.successCount;
+      const fc = post.failCount;
+      const total = post.results.length;
+      const allOk = fc === 0;
+    %>
+
+    <!-- Summary banner -->
+    <div class="card summary-banner <%= allOk ? 'all-success' : 'has-fail' %>">
+      <div class="summary-icon">
+        <% if (allOk) { %><i class="fa-solid fa-circle-check"></i><% } else { %><i class="fa-solid fa-triangle-exclamation"></i><% } %>
+      </div>
+      <div class="summary-text">
+        <h2><%= allOk ? 'โพสต์สำเร็จทุกเพจ! 🎉' : `สำเร็จ ${sc} จาก ${total} เพจ` %></h2>
+        <p><%= new Date(post.createdAt).toLocaleString('th-TH') %></p>
+      </div>
+      <div class="summary-pills">
+        <span class="pill pill-success"><i class="fa-solid fa-check"></i> <%= sc %></span>
+        <% if (fc > 0) { %><span class="pill pill-fail"><i class="fa-solid fa-xmark"></i> <%= fc %></span><% } %>
+      </div>
+    </div>
+
+    <!-- FB-style post preview -->
+    <div class="card fb-post-card">
+      <div class="fb-post-header">
+        <div class="avatar avatar-blue"><i class="fa-solid fa-building"></i></div>
+        <div>
+          <div class="fb-post-author">
+            Admin
+            <% if (post.feeling) { %>
+              <span class="inline-feeling">รู้สึก <%= post.feeling.emoji %> <%= post.feeling.label %></span>
+            <% } %>
+          </div>
+          <div class="fb-post-time">
+            <i class="fa-solid fa-earth-asia"></i>
+            <%= new Date(post.createdAt).toLocaleString('th-TH') %>
+            <% if (post.location) { %>
+              &nbsp;·&nbsp;<i class="fa-solid fa-location-dot" style="color:#f5533d"></i> <%= post.location %>
+            <% } %>
+          </div>
+        </div>
+      </div>
+
+      <div class="fb-post-body"><%= post.message %></div>
+
+      <!-- Images -->
+      <% if (post.images && post.images.length > 0) { %>
+      <div class="post-img-grid post-img-<%= Math.min(post.images.length, 4) %>">
+        <% post.images.slice(0, 4).forEach((img, i) => { %>
+        <div class="post-img-item <%= (i === 3 && post.images.length > 4) ? 'has-more' : '' %>"
+             onclick="viewImage('/uploads/<%= img %>')">
+          <img src="/uploads/<%= img %>" alt="รูปภาพ">
+          <% if (i === 3 && post.images.length > 4) { %>
+          <div class="img-more-overlay">+<%= post.images.length - 4 %></div>
+          <% } %>
+        </div>
+        <% }); %>
+      </div>
+      <% } %>
+
+      <div class="fb-post-footer">
+        <span><i class="fa-solid fa-thumbs-up" style="color:#1877f2"></i> <i class="fa-solid fa-heart" style="color:#f5533d"></i> <%= Math.floor(Math.random()*50)+10 %></span>
+        <span><%= total %> เพจได้รับโพสต์</span>
+      </div>
+    </div>
+
+    <!-- Per-page results -->
+    <div class="card">
+      <div class="card-title" style="margin-bottom:1rem">
+        <i class="fa-solid fa-layer-group"></i> ผลลัพธ์แต่ละเพจ
+        <span style="margin-left:auto;font-size:.8rem;font-weight:400;color:#65676b"><%= post.results.length %> เพจ</span>
+      </div>
+      <% const colors = ['purple','green','orange','blue','red']; %>
+      <% const SHOW = 5; %>
+      <% post.results.forEach((r, i) => { %>
+      <div class="result-row<%= i >= SHOW ? ' result-row-hidden' : '' %>" style="<%= i >= SHOW ? 'display:none' : '' %>">
+        <div class="avatar avatar-<%= colors[i % colors.length] %> avatar-sm"><%= r.pageName.slice(-1) %></div>
+        <div class="result-info">
+          <div class="result-page-name"><%= r.pageName %></div>
+          <div class="result-time"><i class="fa-regular fa-clock"></i> <%= new Date(r.timestamp).toLocaleString('th-TH') %></div>
+        </div>
+        <span class="status-badge <%= r.status %>">
+          <% if (r.status === 'success') { %>
+            <i class="fa-solid fa-circle-check"></i> สำเร็จ
+          <% } else { %>
+            <i class="fa-solid fa-circle-xmark"></i> ล้มเหลว
+          <% } %>
+        </span>
+      </div>
+      <% }); %>
+
+      <% if (post.results.length > SHOW) { %>
+      <button id="showMoreResults" class="show-more-btn" onclick="toggleResultRows(this)">
+        <i class="fa-solid fa-chevron-down"></i>
+        ดูเพิ่มเติม <%= post.results.length - SHOW %> เพจ
+      </button>
+      <% } %>
+    </div>
+
+    <div style="text-align:center;margin-top:1rem;display:flex;gap:.75rem;justify-content:center">
+      <a href="/" class="btn-post" style="text-decoration:none">
+        <i class="fa-solid fa-paper-plane"></i> โพสต์อีกครั้ง
+      </a>
+      <a href="/history" class="btn-post" style="text-decoration:none;background:#65676b">
+        <i class="fa-solid fa-clock-rotate-left"></i> ดูประวัติ
+      </a>
+    </div>
+
+  </main>
+
+  <aside class="right-panel">
+    <div class="card stats-card">
+      <div class="stats-title"><i class="fa-solid fa-chart-simple"></i> สรุปผล</div>
+      <div class="stats-row"><span>สำเร็จ</span><span class="stats-val green"><%= sc %></span></div>
+      <div class="stats-row"><span>ล้มเหลว</span><span class="stats-val red"><%= fc %></span></div>
+      <div class="stats-row"><span>ทั้งหมด</span><span class="stats-val blue"><%= total %></span></div>
+    </div>
+  </aside>
+
+</div>
+
+<script>
+  const successCount = <%- sc %>;
+  const failCount = <%- fc %>;
+  const total = <%- total %>;
+
+  function viewImage(src) {
+    Swal.fire({ imageUrl: src, imageAlt: 'รูปภาพ', showConfirmButton: false, showCloseButton: true, width: 'auto' });
+  }
+</script>
+<script src="/js/app.js"></script>
+</body>
+</html>

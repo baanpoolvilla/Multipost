@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(New-Item -ItemType Directory -Force \"d:\\\\Oneclick\\\\multi-post-system\\\\logs\")",
+      "PowerShell(New-Item -ItemType File -Force \"d:\\\\Oneclick\\\\multi-post-system\\\\logs\\\\post.log\")",
+      "PowerShell(Stop-Process -Name \"node\" -Force -Confirm:$false -ErrorAction SilentlyContinue)"
+    ]
+  }
+}

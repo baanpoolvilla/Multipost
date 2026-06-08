@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ภาพรวม - Multi Post System</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-inner">
+    <div class="navbar-brand">
+      <div class="fb-logo"><i class="fa-brands fa-facebook"></i></div>
+      <span>Multi Post System</span>
+    </div>
+    <div class="navbar-right">
+      <a href="/" class="btn-back"><i class="fa-solid fa-plus"></i> โพสต์ใหม่</a>
+    </div>
+  </div>
+</nav>
+
+<div class="page-wrap">
+
+  <aside class="sidebar">
+    <a href="/" class="sidebar-item"><i class="fa-solid fa-house"></i><span>หน้าหลัก</span></a>
+    <a href="/overview" class="sidebar-item active"><i class="fa-solid fa-chart-line"></i><span>ภาพรวม</span></a>
+    <a href="/history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพสต์</span></a>
+  </aside>
+
+  <main class="feed">
+
+    <!-- Page title -->
+    <div class="card" style="padding:.8rem 1.25rem">
+      <div class="card-title" style="font-size:1.05rem">
+        <i class="fa-solid fa-chart-line" style="color:#1877f2"></i>
+        ภาพรวมทั้งหมด
+        <span style="font-size:.8rem;font-weight:400;color:#65676b;margin-left:.4rem">ข้อมูลจำลองจาก Facebook</span>
+      </div>
+    </div>
+
+    <!-- Summary metric cards -->
+    <div class="overview-grid">
+      <div class="metric-card blue">
+        <div class="metric-icon"><i class="fa-solid fa-paper-plane"></i></div>
+        <div class="metric-body">
+          <div class="metric-val"><%= totalPosts %></div>
+          <div class="metric-label">โพสต์ทั้งหมด</div>
+        </div>
+      </div>
+      <div class="metric-card green">
+        <div class="metric-icon"><i class="fa-solid fa-circle-check"></i></div>
+        <div class="metric-body">
+          <div class="metric-val"><%= totalSuccess %></div>
+          <div class="metric-label">ส่งสำเร็จ</div>
+        </div>
+      </div>
+      <div class="metric-card purple">
+        <div class="metric-icon"><i class="fa-solid fa-thumbs-up"></i></div>
+        <div class="metric-body">
+          <div class="metric-val"><%= totalLikes.toLocaleString() %></div>
+          <div class="metric-label">ไลค์ทั้งหมด</div>
+        </div>
+      </div>
+      <div class="metric-card orange">
+        <div class="metric-icon"><i class="fa-solid fa-comment"></i></div>
+        <div class="metric-body">
+          <div class="metric-val"><%= totalComments.toLocaleString() %></div>
+          <div class="metric-label">ความคิดเห็น</div>
+        </div>
+      </div>
+      <div class="metric-card teal">
+        <div class="metric-icon"><i class="fa-solid fa-share-nodes"></i></div>
+        <div class="metric-body">
+          <div class="metric-val"><%= totalShares.toLocaleString() %></div>
+          <div class="metric-label">แชร์</div>
+        </div>
+      </div>
+      <div class="metric-card red">
+        <div class="metric-icon"><i class="fa-solid fa-eye"></i></div>
+        <div class="metric-body">
+          <div class="metric-val"><%= totalReach.toLocaleString() %></div>
+          <div class="metric-label">การเข้าถึง</div>
+        </div>
+      </div>
+      <div class="metric-card blue" style="border: 2px solid #1877f2; background: #f0f5ff;">
+        <div class="metric-icon" style="background: #1877f2;"><i class="fa-solid fa-user-plus"></i></div>
+        <div class="metric-body">
+          <div class="metric-val" style="color: #1877f2;"><%= totalFollowersGained.toLocaleString() %></div>
+          <div class="metric-label">ผู้ติดตามที่เพิ่มขึ้น</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="card">
+      <div class="card-title" style="margin-bottom:1rem">
+        <i class="fa-solid fa-chart-bar"></i> โพสต์ 7 วันที่ผ่านมา
+      </div>
+      <canvas id="postsChart" height="90"></canvas>
+    </div>
+
+    <!-- Per-page breakdown -->
+    <% if (pageStats.length > 0) { %>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:1rem">
+        <i class="fa-solid fa-layer-group"></i> สถิติแต่ละเพจ
+      </div>
+      <div class="overview-table-wrap">
+        <table class="overview-table">
+          <thead>
+            <tr>
+              <th>เพจ</th>
+              <th><i class="fa-solid fa-user-plus"></i> เพิ่มขึ้น</th>
+              <th><i class="fa-solid fa-paper-plane"></i> โพสต์</th>
+              <th><i class="fa-solid fa-thumbs-up"></i> ไลค์</th>
+              <th><i class="fa-solid fa-comment"></i> คอมเมนต์</th>
+              <th><i class="fa-solid fa-share-nodes"></i> แชร์</th>
+              <th><i class="fa-solid fa-eye"></i> Reach</th>
+              <th>อัตราสำเร็จ</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% pageStats.forEach((p, i) => { %>
+            <% const rate = p.posts > 0 ? Math.round(p.success/p.posts*100) : 0; %>
+            <% const colors = ['purple','green','orange','blue','red']; %>
+            <tr>
+              <td>
+                <div style="display:flex;align-items:center;gap:.5rem">
+                  <div class="avatar avatar-<%= colors[i%5] %> avatar-sm"><%= p.pageName.slice(-1) %></div>
+                  <span style="font-weight:600"><%= p.pageName %></span>
+                </div>
+              </td>
+              <td class="num" style="color: #1877f2;"><%= p.followersGained ? p.followersGained.toLocaleString() : '—' %></td>
+              <td class="num"><%= p.posts %></td>
+              <td class="num blue-text"><%= p.likes.toLocaleString() %></td>
+              <td class="num orange-text"><%= p.comments.toLocaleString() %></td>
+              <td class="num teal-text"><%= p.shares.toLocaleString() %></td>
+              <td class="num purple-text"><%= p.reach.toLocaleString() %></td>
+              <td>
+                <div class="rate-bar-wrap">
+                  <div class="rate-bar" style="width:<%= rate %>%"></div>
+                  <span class="rate-text"><%= rate %>%</span>
+                </div>
+              </td>
+            </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <% } %>
+
+    <!-- Recent posts with analytics -->
+    <% if (recentPosts.length > 0) { %>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:1rem">
+        <i class="fa-solid fa-clock-rotate-left"></i> โพสต์ล่าสุด
+      </div>
+      <% recentPosts.forEach(post => { %>
+      <div class="overview-post-row">
+        <div class="overview-post-msg">
+          <a href="/result/<%= post.id %>" style="color:#1877f2;text-decoration:none;font-weight:600;font-size:.88rem">
+            <%= post.message.length > 80 ? post.message.slice(0,80)+'…' : post.message %>
+          </a>
+          <div style="font-size:.75rem;color:#8a8d91;margin-top:.2rem">
+            <i class="fa-regular fa-clock"></i> <%= new Date(post.createdAt).toLocaleString('th-TH') %>
+            &nbsp;·&nbsp; <%= post.results.length %> เพจ
+          </div>
+        </div>
+        <div class="overview-post-stats">
+          <%
+            const totLikes    = post.results.reduce((s,r) => s + (r.analytics?.likes    || 0), 0);
+            const totComments = post.results.reduce((s,r) => s + (r.analytics?.comments || 0), 0);
+            const totReach    = post.results.reduce((s,r) => s + (r.analytics?.reach    || 0), 0);
+            const totFollowers = post.results.reduce((s,r) => s + (r.analytics?.followersGained || 0), 0);
+          %>
+          <span><i class="fa-solid fa-user-plus" style="color:#1877f2"></i> <%= totFollowers %></span>
+          <span><i class="fa-solid fa-thumbs-up" style="color:#f7b928"></i> <%= totLikes %></span>
+          <span><i class="fa-solid fa-comment" style="color:#f5533d"></i> <%= totComments %></span>
+          <span><i class="fa-solid fa-eye" style="color:#45bd62"></i> <%= totReach %></span>
+          <span class="pill pill-<%= post.failCount===0?'success':'fail' %>" style="font-size:.72rem;padding:.15rem .5rem">
+            <%= post.successCount %>/<%= post.results.length %>
+          </span>
+        </div>
+      </div>
+      <% }); %>
+    </div>
+    <% } %>
+
+    <% if (totalPosts === 0) { %>
+    <div class="card empty-state">
+      <i class="fa-solid fa-chart-line"></i>
+      <h3>ยังไม่มีข้อมูล</h3>
+      <p>เริ่มโพสต์แล้วดูสถิติที่นี่ได้เลย</p>
+      <a href="/" class="btn-post" style="text-decoration:none;margin-top:1rem">
+        <i class="fa-solid fa-paper-plane"></i> เริ่มโพสต์
+      </a>
+    </div>
+    <% } %>
+
+  </main>
+
+  <aside class="right-panel">
+    <div class="card stats-card">
+      <div class="stats-title"><i class="fa-solid fa-trophy" style="color:#f7b928"></i> Top เพจ</div>
+      <% const sorted = [...pageStats].sort((a,b) => b.reach - a.reach).slice(0,3); %>
+      <% if (sorted.length === 0) { %>
+        <p style="font-size:.82rem;color:#8a8d91;margin-top:.4rem">ยังไม่มีข้อมูล</p>
+      <% } %>
+      <% sorted.forEach((p, i) => { %>
+      <div class="stats-row">
+        <div style="display:flex;align-items:center;gap:.4rem">
+          <span style="font-size:.85rem"><%= ['🥇','🥈','🥉'][i] %></span>
+          <span style="font-size:.85rem"><%= p.pageName %></span>
+        </div>
+        <span class="stats-val purple-text" style="font-size:.82rem"><%= p.reach.toLocaleString() %></span>
+      </div>
+      <% }); %>
+    </div>
+  </aside>
+
+</div>
+
+<script>
+const ctx = document.getElementById('postsChart');
+if (ctx) {
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: <%- chartLabels %>,
+      datasets: [{
+        label: 'จำนวนโพสต์',
+        data: <%- chartData %>,
+        backgroundColor: 'rgba(24,119,242,.7)',
+        borderColor: '#1877f2',
+        borderWidth: 1,
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: '#f0f2f5' } },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+}
+</script>
+</body>
+</html>

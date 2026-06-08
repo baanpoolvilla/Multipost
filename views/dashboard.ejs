@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Multi Post System</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-inner">
+    <div class="navbar-brand">
+      <div class="fb-logo"><i class="fa-brands fa-facebook"></i></div>
+      <span>Multi Post System</span>
+    </div>
+    <div class="navbar-right">
+      <div class="nav-avatar"><i class="fa-solid fa-user"></i></div>
+    </div>
+  </div>
+</nav>
+
+<div class="page-wrap">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <a href="/" class="sidebar-item active"><i class="fa-solid fa-house"></i><span>หน้าหลัก</span></a>
+    <a href="/overview" class="sidebar-item"><i class="fa-solid fa-chart-line"></i><span>ภาพรวม</span></a>
+    <a href="/history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพสต์</span></a>
+    <a href="/pages" class="sidebar-item"><i class="fa-brands fa-facebook"></i><span>จัดการเพจ</span></a>
+
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-label">เพจของคุณ</div>
+
+    <% const colors = ['purple','green','orange','blue','red']; %>
+    <% pages.slice(0, 5).forEach((p, i) => { %>
+    <div class="sidebar-item">
+      <div class="avatar avatar-<%= colors[i%5] %> avatar-xs"><%= p.pageName.slice(-1) %></div>
+      <span><%= p.pageName %></span>
+    </div>
+    <% }); %>
+
+    <% if (pages.length > 5) { %>
+    <div class="sidebar-item" id="showMoreBtn" onclick="toggleMorePages()" style="color:#65676b">
+      <i class="fa-solid fa-chevron-down" id="moreChevron"></i>
+      <span>เพิ่มเติม <%= pages.length - 5 %> เพจ</span>
+    </div>
+    <div id="morePagesList" style="display:none">
+      <% pages.slice(5).forEach((p, i) => { %>
+      <div class="sidebar-item">
+        <div class="avatar avatar-<%= colors[(i+5)%5] %> avatar-xs"><%= p.pageName.slice(-1) %></div>
+        <span><%= p.pageName %></span>
+      </div>
+      <% }); %>
+    </div>
+    <% } %>
+  </aside>
+
+  <!-- Feed -->
+  <main class="feed">
+
+    <!-- Composer card -->
+    <div class="card post-composer">
+      <div class="composer-header">
+        <div class="avatar avatar-blue"><i class="fa-solid fa-building"></i></div>
+        <div class="composer-meta">
+          <span class="composer-name">Admin</span>
+          <div class="audience-badge">
+            <i class="fa-solid fa-earth-asia"></i>
+            <span>สาธารณะ</span>
+            <i class="fa-solid fa-caret-down"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tags bar -->
+      <div id="tagsBar" class="tags-bar" style="display:none"></div>
+
+      <!-- Hidden inputs -->
+      <input type="hidden" id="feelingEmoji">
+      <input type="hidden" id="feelingLabel">
+      <input type="hidden" id="locationVal">
+      <input type="file" id="fileInput" multiple accept="image/jpeg,image/png,image/gif,image/webp" style="display:none">
+
+      <!-- Textarea area -->
+      <div class="composer-textarea-wrap">
+        <textarea id="message" placeholder="คุณกำลังคิดอะไรอยู่?" rows="4"></textarea>
+        <div class="emoji-strip">
+          <% ['😊','🔥','❤️','👍','🎉','✨','📣','💎','🏖️','🌟'].forEach(e => { %>
+          <button type="button" class="emoji-btn" onclick="insertEmoji('<%= e %>')"><%= e %></button>
+          <% }); %>
+        </div>
+      </div>
+
+      <!-- Image preview -->
+      <div id="imagePreview" class="image-preview-grid" style="display:none"></div>
+      <div class="char-bar"><span id="charCount">0</span> ตัวอักษร</div>
+
+      <!-- Page selector -->
+      <div class="page-selector">
+        <span class="page-selector-label"><i class="fa-solid fa-layer-group" style="color:#1877f2"></i> เพจ:</span>
+        <button class="page-sel-chip all-chip active" onclick="toggleAllPages(this)">
+          <i class="fa-solid fa-check"></i> ทั้งหมด
+        </button>
+        <% pages.slice(0, 8).forEach((p, i) => { %>
+        <button class="page-sel-chip active" data-page-id="<%= p.pageId %>" onclick="togglePage(this)">
+          <div class="avatar avatar-<%= colors[i%5] %>" style="width:16px;height:16px;font-size:.55rem;flex-shrink:0"><%= p.pageName.slice(-1) %></div>
+          <%= p.pageName %>
+        </button>
+        <% }); %>
+        <% if (pages.length > 8) { %>
+        <button class="page-sel-chip more-pages-chip" id="morePageChip" onclick="openPagePopup()">
+          <i class="fa-solid fa-ellipsis"></i>
+          <span id="morePageChipLabel">+ <%= pages.length - 8 %> เพจ</span>
+        </button>
+        <% } %>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="composer-actions-row">
+        <button type="button" class="action-chip" onclick="triggerImage()">
+          <i class="fa-solid fa-image" style="color:#45bd62"></i><span>รูปภาพ/วิดีโอ</span>
+        </button>
+        <button type="button" class="action-chip" onclick="openFeelingPicker()">
+          <i class="fa-solid fa-face-smile" style="color:#f7b928"></i><span>ความรู้สึก</span>
+        </button>
+        <button type="button" class="action-chip" onclick="openMapModal()">
+          <i class="fa-solid fa-location-dot" style="color:#f5533d"></i><span>เช็คอิน</span>
+        </button>
+      </div>
+
+      <div class="composer-submit-row">
+        <div class="pages-badge">
+          <i class="fa-solid fa-layer-group"></i>
+          <span id="pageCountLabel">โพสต์ไปยัง <%= pages.length %> เพจ</span>
+        </div>
+        <button type="button" id="submitBtn" class="btn-post" onclick="submitPost()">
+          <i class="fa-solid fa-paper-plane"></i> โพสต์ทุกเพจ
+        </button>
+      </div>
+    </div>
+
+    <!-- Recent posts card -->
+    <div class="card">
+      <div class="card-title" style="margin-bottom:.65rem">
+        <i class="fa-solid fa-clock-rotate-left"></i> โพสต์ล่าสุด
+        <a href="/pages" class="manage-pages-link" style="margin-left:auto">
+          <i class="fa-brands fa-facebook"></i> จัดการเพจ
+        </a>
+      </div>
+
+      <% if (recentPosts.length === 0) { %>
+      <div style="text-align:center;padding:1.2rem 0;color:#8a8d91;font-size:.88rem">
+        <i class="fa-regular fa-face-meh-blank" style="font-size:1.8rem;display:block;margin-bottom:.4rem"></i>
+        ยังไม่มีโพสต์
+      </div>
+      <% } else { %>
+      <% recentPosts.forEach(post => { %>
+      <%
+        const dt  = new Date(post.createdAt);
+        const hm  = dt.toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit', hour12:false});
+        const allOk = post.failCount === 0;
+        const total = post.results.length;
+      %>
+      <a href="/result/<%= post.id %>" class="recent-post-row">
+        <div class="recent-post-time">
+          <i class="fa-regular fa-clock"></i> <%= hm %>
+        </div>
+        <div class="recent-post-msg" title="<%= post.message %>">
+          <%= post.message.length > 28 ? post.message.slice(0,28)+'…' : post.message %>
+        </div>
+        <div class="recent-post-stat <%= allOk ? 'ok' : 'partial' %>">
+          <%= allOk ? 'สำเร็จ' : 'บางส่วน' %> <%= post.successCount %>/<%= total %>
+        </div>
+      </a>
+      <% }); %>
+      <% } %>
+
+      <a href="/history" class="recent-see-all">
+        ดูทั้งหมด <i class="fa-solid fa-arrow-right"></i>
+      </a>
+    </div>
+
+  </main>
+
+  <!-- Right panel -->
+  <aside class="right-panel">
+    <div class="card stats-card">
+      <div class="stats-title"><i class="fa-solid fa-chart-line"></i> ภาพรวม</div>
+      <div class="stats-row"><span>เพจที่เชื่อมต่อ</span><span class="stats-val blue"><%= pages.length %></span></div>
+      <div class="stats-row"><span>พร้อมโพสต์</span><span class="stats-val green"><%= pages.length %></span></div>
+      <a href="/overview" class="overview-btn-link">
+        <i class="fa-solid fa-chart-line"></i> ดูภาพรวมทั้งหมด
+      </a>
+    </div>
+  </aside>
+
+</div>
+
+<!-- ── Map Modal ── -->
+<div id="mapModal" class="map-modal-overlay" style="display:none" onclick="closeMapOnBg(event)">
+  <div class="map-modal-box">
+    <div class="map-modal-header">
+      <span><i class="fa-solid fa-location-dot" style="color:#f5533d"></i> เช็คอินสถานที่</span>
+      <button class="map-close-btn" onclick="closeMapModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="map-modal-body">
+      <div style="display:flex;gap:.5rem;align-items:center">
+        <div class="map-search-wrap" style="flex:1">
+          <i class="fa-solid fa-magnifying-glass map-search-icon"></i>
+          <input id="mapSearchInput" type="text" class="map-search-input"
+                 placeholder="ค้นหาสถานที่... เช่น ภูเก็ต, สุวรรณภูมิ"
+                 oninput="debounceSearch()" autocomplete="off">
+          <div id="mapResults" class="map-results"></div>
+        </div>
+        <button class="my-location-btn" onclick="goToMyLocation()" title="ตำแหน่งของฉัน" id="myLocBtn">
+          <i class="fa-solid fa-location-crosshairs"></i>
+          <span>ของฉัน</span>
+        </button>
+      </div>
+      <div id="leafletMap"></div>
+    </div>
+    <div class="map-modal-footer">
+      <div id="selectedLocLabel" class="selected-loc-label">
+        <i class="fa-solid fa-circle-dot" style="color:#bcc0c4"></i>
+        <span>คลิกบนแผนที่หรือค้นหาสถานที่</span>
+      </div>
+      <button id="confirmLocBtn" class="btn-post" onclick="confirmMapLocation()" disabled>
+        <i class="fa-solid fa-check"></i> ยืนยัน
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const ALL_PAGES = <%- JSON.stringify(pages) %>;
+</script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>

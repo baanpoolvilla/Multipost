@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ประวัติโพสต์ - Multi Post System</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-inner">
+    <div class="navbar-brand">
+      <div class="fb-logo"><i class="fa-brands fa-facebook"></i></div>
+      <span>Multi Post System</span>
+    </div>
+    <div class="navbar-right">
+      <a href="/" class="btn-back"><i class="fa-solid fa-plus"></i> โพสต์ใหม่</a>
+    </div>
+  </div>
+</nav>
+
+<div class="page-wrap">
+
+  <aside class="sidebar">
+    <a href="/" class="sidebar-item"><i class="fa-solid fa-house"></i><span>หน้าหลัก</span></a>
+    <a href="/history" class="sidebar-item active"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพสต์</span></a>
+  </aside>
+
+  <main class="feed">
+
+    <div class="card" style="padding:.85rem 1.25rem;display:flex;align-items:center;justify-content:space-between">
+      <div class="card-title">
+        <i class="fa-solid fa-clock-rotate-left"></i>
+        ประวัติการโพสต์
+        <span style="background:#e4e6ea;padding:.15rem .55rem;border-radius:999px;font-size:.8rem;margin-left:.4rem"><%= posts.length %></span>
+      </div>
+      <% if (posts.length > 0) { %>
+      <button class="btn-danger-sm" onclick="confirmClearAll()">
+        <i class="fa-solid fa-trash"></i> ล้างทั้งหมด
+      </button>
+      <% } %>
+    </div>
+
+    <% if (posts.length === 0) { %>
+    <div class="card empty-state">
+      <i class="fa-regular fa-face-meh-blank"></i>
+      <h3>ยังไม่มีประวัติการโพสต์</h3>
+      <p>เริ่มโพสต์ครั้งแรกได้เลย!</p>
+      <a href="/" class="btn-post" style="text-decoration:none;margin-top:1rem">
+        <i class="fa-solid fa-paper-plane"></i> เริ่มโพสต์
+      </a>
+    </div>
+    <% } %>
+
+    <% const colors = ['purple','green','orange','blue','red']; %>
+    <% posts.forEach(post => { %>
+    <div class="card history-card" id="card-<%= post.id %>">
+
+      <!-- Card header -->
+      <div class="fb-post-header">
+        <div class="avatar avatar-blue"><i class="fa-solid fa-building"></i></div>
+        <div style="flex:1">
+          <div class="fb-post-author">
+            Admin
+            <% if (post.feeling) { %>
+            <span class="inline-feeling">รู้สึก <%= post.feeling.emoji %> <%= post.feeling.label %></span>
+            <% } %>
+          </div>
+          <div class="fb-post-time">
+            <i class="fa-solid fa-earth-asia"></i>
+            <%= new Date(post.createdAt).toLocaleString('th-TH') %>
+            <% if (post.location) { %>
+            &nbsp;·&nbsp;<i class="fa-solid fa-location-dot" style="color:#f5533d"></i> <%= post.location %>
+            <% } %>
+          </div>
+        </div>
+        <div class="history-actions">
+          <a href="/result/<%= post.id %>" class="icon-btn" title="ดูรายละเอียด">
+            <i class="fa-solid fa-eye"></i>
+          </a>
+          <button class="icon-btn danger" title="ลบ" onclick="deletePost('<%= post.id %>', this)">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Message -->
+      <div class="history-message">
+        <% const msg = post.message; %>
+        <% if (msg.length > 200) { %>
+          <span class="msg-short"><%= msg.slice(0, 200) %>...<button class="read-more-btn" onclick="toggleMsg(this)"> อ่านเพิ่มเติม</button></span>
+          <span class="msg-full" style="display:none"><%= msg %><button class="read-more-btn" onclick="toggleMsg(this)"> ย่อ</button></span>
+        <% } else { %>
+          <%= msg %>
+        <% } %>
+      </div>
+
+      <!-- Images -->
+      <% if (post.images && post.images.length > 0) { %>
+      <div class="post-img-grid post-img-<%= Math.min(post.images.length, 4) %>">
+        <% post.images.slice(0, 4).forEach((img, i) => { %>
+        <div class="post-img-item <%= (i === 3 && post.images.length > 4) ? 'has-more' : '' %>"
+             onclick="viewImage('/uploads/<%= img %>')">
+          <img src="/uploads/<%= img %>" alt="รูปภาพ">
+          <% if (i === 3 && post.images.length > 4) { %>
+          <div class="img-more-overlay">+<%= post.images.length - 4 %></div>
+          <% } %>
+        </div>
+        <% }); %>
+      </div>
+      <% } %>
+
+      <!-- Footer stats -->
+      <div class="history-footer">
+        <div class="history-pages" style="flex:1">
+          <% const MAX_B = 8; %>
+          <% post.results.slice(0, MAX_B).forEach((r, i) => { %>
+          <span class="mini-page-badge <%= r.status %>">
+            <div class="avatar avatar-<%= colors[i%5] %>" style="width:18px;height:18px;font-size:.6rem"><%= r.pageName.slice(-1) %></div>
+            <%= r.pageName %>
+            <i class="fa-solid fa-<%= r.status === 'success' ? 'check' : 'xmark' %>"></i>
+          </span>
+          <% }); %>
+          <% if (post.results.length > MAX_B) { %>
+          <button class="mini-more-btn" onclick="toggleMoreBadges(this, '<%= post.id %>')">
+            + <%= post.results.length - MAX_B %> เพจ
+          </button>
+          <span class="mini-more-group" id="mb-<%= post.id %>" style="display:none;flex-wrap:wrap;gap:.25rem">
+            <% post.results.slice(MAX_B).forEach((r, i) => { %>
+            <span class="mini-page-badge <%= r.status %>">
+              <div class="avatar avatar-<%= colors[(i+MAX_B)%5] %>" style="width:18px;height:18px;font-size:.6rem"><%= r.pageName.slice(-1) %></div>
+              <%= r.pageName %>
+              <i class="fa-solid fa-<%= r.status === 'success' ? 'check' : 'xmark' %>"></i>
+            </span>
+            <% }); %>
+          </span>
+          <% } %>
+        </div>
+        <div class="history-summary">
+          <span class="pill pill-success" style="font-size:.75rem;padding:.2rem .6rem">
+            <i class="fa-solid fa-check"></i> <%= post.successCount %>
+          </span>
+          <% if (post.failCount > 0) { %>
+          <span class="pill pill-fail" style="font-size:.75rem;padding:.2rem .6rem">
+            <i class="fa-solid fa-xmark"></i> <%= post.failCount %>
+          </span>
+          <% } %>
+        </div>
+      </div>
+
+    </div>
+    <% }); %>
+
+  </main>
+
+  <aside class="right-panel">
+    <div class="card stats-card">
+      <div class="stats-title"><i class="fa-solid fa-chart-simple"></i> สถิติรวม</div>
+      <%
+        const totalPosts = posts.length;
+        const totalSuccess = posts.reduce((s, p) => s + p.successCount, 0);
+        const totalFail = posts.reduce((s, p) => s + p.failCount, 0);
+      %>
+      <div class="stats-row"><span>โพสต์ทั้งหมด</span><span class="stats-val blue"><%= totalPosts %></span></div>
+      <div class="stats-row"><span>ส่งสำเร็จ</span><span class="stats-val green"><%= totalSuccess %></span></div>
+      <div class="stats-row"><span>ล้มเหลว</span><span class="stats-val red"><%= totalFail %></span></div>
+    </div>
+  </aside>
+
+</div>
+
+<script>
+  function viewImage(src) {
+    Swal.fire({ imageUrl: src, imageAlt: 'รูปภาพ', showConfirmButton: false, showCloseButton: true, width: 'auto' });
+  }
+
+  function toggleMoreBadges(btn, postId) {
+    const group = document.getElementById('mb-' + postId);
+    const open  = group.style.display !== 'none';
+    group.style.display = open ? 'none' : 'inline-flex';
+    btn.textContent = open
+      ? '+ ' + group.querySelectorAll('.mini-page-badge').length + ' เพจ'
+      : 'ซ่อน';
+  }
+
+  function toggleMsg(btn) {
+    const card = btn.closest('.history-message');
+    card.querySelector('.msg-short').style.display =
+      card.querySelector('.msg-short').style.display === 'none' ? '' : 'none';
+    card.querySelector('.msg-full').style.display =
+      card.querySelector('.msg-full').style.display === 'none' ? '' : 'none';
+  }
+
+  async function deletePost(id, btn) {
+    const result = await Swal.fire({
+      title: 'ลบโพสต์นี้?',
+      text: 'ข้อมูลและรูปภาพจะถูกลบถาวร',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#c62828',
+      cancelButtonColor: '#65676b',
+      confirmButtonText: '<i class="fa-solid fa-trash"></i> ลบเลย',
+      cancelButtonText: 'ยกเลิก',
+    });
+    if (!result.isConfirmed) return;
+
+    const res = await fetch(`/history/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.success) {
+      const card = document.getElementById(`card-${id}`);
+      card.style.transition = 'opacity .3s, transform .3s';
+      card.style.opacity = '0';
+      card.style.transform = 'translateX(30px)';
+      setTimeout(() => { card.remove(); updateCount(); }, 320);
+      Swal.fire({ icon: 'success', title: 'ลบแล้ว', timer: 1200, showConfirmButton: false });
+    }
+  }
+
+  function updateCount() {
+    const cards = document.querySelectorAll('.history-card');
+    const badge = document.querySelector('.card-title span');
+    if (badge) badge.textContent = cards.length;
+    if (cards.length === 0) location.reload();
+  }
+
+  async function confirmClearAll() {
+    const result = await Swal.fire({
+      title: 'ล้างประวัติทั้งหมด?',
+      text: 'จะลบโพสต์ทั้งหมดและรูปภาพออกจากระบบ',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#c62828',
+      cancelButtonColor: '#65676b',
+      confirmButtonText: 'ล้างเลย',
+      cancelButtonText: 'ยกเลิก',
+    });
+    if (!result.isConfirmed) return;
+
+    const cards = [...document.querySelectorAll('.history-card')];
+    for (const card of cards) {
+      const id = card.id.replace('card-', '');
+      await fetch(`/history/${id}`, { method: 'DELETE' });
+    }
+    location.reload();
+  }
+</script>
+</body>
+</html>
