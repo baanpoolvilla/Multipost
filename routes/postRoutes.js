@@ -4,8 +4,13 @@ const multer  = require('multer');
 const path    = require('path');
 const ctrl    = require('../controllers/postController');
 
+const UPLOADS_DIR = process.env.VERCEL ? '/tmp/uploads' : path.join(__dirname, '../public/uploads');
+
 const storage = multer.diskStorage({
-    destination: path.join(__dirname, '../public/uploads'),
+    destination: (req, file, cb) => {
+        try { require('fs').mkdirSync(UPLOADS_DIR, { recursive: true }); } catch {}
+        cb(null, UPLOADS_DIR);
+    },
     filename: (req, file, cb) => {
         const ext = path.extname(file.originalname).toLowerCase();
         cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);

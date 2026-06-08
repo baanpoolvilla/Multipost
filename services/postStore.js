@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const FILE = path.join(__dirname, '../data/posts.json');
+const FILE = process.env.VERCEL ? '/tmp/posts.json' : path.join(__dirname, '../data/posts.json');
 
 function load() {
     try { return JSON.parse(fs.readFileSync(FILE, 'utf-8')); }

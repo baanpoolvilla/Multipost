@@ -48,8 +48,9 @@ exports.showHistory = (req, res) =>
 exports.deletePost = (req, res) => {
     const post = postStore.remove(req.params.id);
     if (post?.images) {
+        const uploadsDir = process.env.VERCEL ? '/tmp/uploads' : path.join(__dirname, '../public/uploads');
         post.images.forEach(img => {
-            try { fs.unlinkSync(path.join(__dirname, '../public/uploads', img)); } catch {}
+            try { fs.unlinkSync(path.join(uploadsDir, img)); } catch {}
         });
     }
     res.json({ success: !!post });

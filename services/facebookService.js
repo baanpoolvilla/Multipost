@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const PAGES_PATH = path.join(__dirname, '../data/pages.json');
-const LOG_PATH   = path.join(__dirname, '../logs/post.log');
+const LOG_PATH   = process.env.VERCEL ? '/tmp/post.log' : path.join(__dirname, '../logs/post.log');
 
 function loadPages() {
     return JSON.parse(fs.readFileSync(PAGES_PATH, 'utf-8'));

@@ -1,9 +1,14 @@
 const fs   = require('fs');
 const path = require('path');
 
-const FILE = path.join(__dirname, '../data/pages.json');
+const SOURCE = path.join(__dirname, '../data/pages.json'); // bundled read-only copy
+const FILE   = process.env.VERCEL ? '/tmp/pages.json' : SOURCE;
 
 function load() {
+    // On Vercel, seed /tmp/pages.json from bundled file on first access
+    if (process.env.VERCEL && !fs.existsSync(FILE)) {
+        try { fs.copyFileSync(SOURCE, FILE); } catch {}
+    }
     try { return JSON.parse(fs.readFileSync(FILE, 'utf-8')); }
     catch { return []; }
 }
