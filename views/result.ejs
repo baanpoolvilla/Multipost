@@ -40,6 +40,12 @@
       const fc = post.failCount;
       const total = post.results.length;
       const allOk = fc === 0;
+      const pageResults  = post.results.filter(r => r.type !== 'group');
+      const groupResults = post.results.filter(r => r.type === 'group');
+      const isGroupOnly  = pageResults.length === 0 && groupResults.length > 0;
+      const successPagePosts = pageResults.filter(r => r.status === 'success');
+      const failedGroups     = groupResults.filter(r => r.status === 'failed');
+      const unit = isGroupOnly ? 'กลุ่ม' : 'เพจ';
     %>
 
     <!-- Summary banner -->
@@ -48,7 +54,7 @@
         <% if (allOk) { %><i class="fa-solid fa-circle-check"></i><% } else { %><i class="fa-solid fa-triangle-exclamation"></i><% } %>
       </div>
       <div class="summary-text">
-        <h2><%= allOk ? 'โพสต์สำเร็จทุกเพจ! 🎉' : `สำเร็จ ${sc} จาก ${total} เพจ` %></h2>
+        <h2><%= allOk ? `โพสต์สำเร็จทุก${unit}! 🎉` : `สำเร็จ ${sc} จาก ${total} ${unit}` %></h2>
         <p><%= new Date(post.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) %></p>
       </div>
       <div class="summary-pills">
@@ -96,28 +102,27 @@
       <% } %>
 
       <div class="fb-post-footer">
+        <% if (isGroupOnly) { %>
+        <span><i class="fa-solid fa-people-group" style="color:#42b72a"></i> <%= total %> กลุ่มได้รับโพสต์</span>
+        <% } else { %>
         <span><i class="fa-solid fa-layer-group" style="color:#1877f2"></i> <%= total %> เพจได้รับโพสต์</span>
+        <% } %>
         <span class="pill pill-<%= allOk ? 'success' : 'fail' %>" style="font-size:.8rem">
           <%= allOk ? 'สำเร็จทั้งหมด' : `สำเร็จ ${sc}/${total}` %>
         </span>
       </div>
     </div>
 
-    <%
-      const pageResults  = post.results.filter(r => r.type !== 'group');
-      const groupResults = post.results.filter(r => r.type === 'group');
-      const successPagePosts = pageResults.filter(r => r.status === 'success');
-      const failedGroups     = groupResults.filter(r => r.status === 'failed');
-    %>
+    <% const colors = ['purple','green','orange','blue','red']; %>
+    <% const SHOW = 5; %>
 
-    <!-- Per-page results -->
+    <!-- Per-page results (hide when group-only post) -->
+    <% if (!isGroupOnly) { %>
     <div class="card">
       <div class="card-title" style="margin-bottom:1rem">
         <i class="fa-solid fa-layer-group"></i> ผลลัพธ์แต่ละเพจ
         <span style="margin-left:auto;font-size:.8rem;font-weight:400;color:#65676b"><%= pageResults.length %> เพจ</span>
       </div>
-      <% const colors = ['purple','green','orange','blue','red']; %>
-      <% const SHOW = 5; %>
       <% pageResults.forEach((r, i) => { %>
       <div class="result-row<%= i >= SHOW ? ' result-row-hidden' : '' %>" style="<%= i >= SHOW ? 'display:none' : '' %>">
         <div class="avatar avatar-<%= colors[i % colors.length] %> avatar-sm"><%= r.pageName.slice(-1) %></div>
@@ -125,9 +130,7 @@
           <div class="result-page-name"><%= r.pageName %></div>
           <div class="result-time">
             <i class="fa-regular fa-clock"></i> <%= new Date(r.timestamp).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) %>
-            <% if (r.error) { %>
-              &nbsp;·&nbsp;<span style="color:#c62828;font-size:.78rem"><%= r.error %></span>
-            <% } %>
+            <% if (r.error) { %>&nbsp;·&nbsp;<span style="color:#c62828;font-size:.78rem"><%= r.error %></span><% } %>
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:.5rem">
@@ -138,68 +141,72 @@
           </a>
           <% } %>
           <span class="status-badge <%= r.status %>">
-            <% if (r.status === 'success') { %>
-              <i class="fa-solid fa-circle-check"></i> สำเร็จ
-            <% } else { %>
-              <i class="fa-solid fa-circle-xmark"></i> ล้มเหลว
-            <% } %>
+            <% if (r.status === 'success') { %><i class="fa-solid fa-circle-check"></i> สำเร็จ
+            <% } else { %><i class="fa-solid fa-circle-xmark"></i> ล้มเหลว<% } %>
           </span>
         </div>
       </div>
       <% }); %>
-
       <% if (pageResults.length > SHOW) { %>
       <button id="showMoreResults" class="show-more-btn" onclick="toggleResultRows(this)">
-        <i class="fa-solid fa-chevron-down"></i>
-        ดูเพิ่มเติม <%= pageResults.length - SHOW %> เพจ
+        <i class="fa-solid fa-chevron-down"></i> ดูเพิ่มเติม <%= pageResults.length - SHOW %> เพจ
       </button>
       <% } %>
     </div>
+    <% } %>
 
-    <!-- Group results (success) -->
-    <% if (groupResults.filter(r => r.status==='success').length > 0) { %>
+    <!-- Group results (all — success + failed with errors) -->
+    <% if (groupResults.length > 0) { %>
     <div class="card">
-      <div class="card-title" style="margin-bottom:.8rem">
-        <i class="fa-solid fa-people-group" style="color:#42b72a"></i> ผลกลุ่มที่โพสต์สำเร็จ
+      <div class="card-title" style="margin-bottom:1rem">
+        <i class="fa-solid fa-people-group" style="color:#42b72a"></i> ผลลัพธ์แต่ละกลุ่ม
+        <span style="margin-left:auto;font-size:.8rem;font-weight:400;color:#65676b"><%= groupResults.length %> กลุ่ม</span>
       </div>
-      <% groupResults.filter(r => r.status==='success').forEach((r, i) => { %>
-      <div class="result-row">
+      <% groupResults.forEach((r, i) => { %>
+      <div class="result-row<%= i >= SHOW ? ' result-row-hidden' : '' %>" style="<%= i >= SHOW ? 'display:none' : '' %>">
         <div class="avatar avatar-green avatar-sm"><i class="fa-solid fa-people-group" style="font-size:.65rem"></i></div>
         <div class="result-info">
           <div class="result-page-name"><%= r.pageName %></div>
           <div class="result-time">
             <i class="fa-regular fa-clock"></i> <%= new Date(r.timestamp).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) %>
+            <% if (r.error) { %>&nbsp;·&nbsp;<span style="color:#c62828;font-size:.78rem"><%= r.error %></span><% } %>
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:.5rem">
+          <% if (r.status === 'success') { %>
           <a href="<%= r.postUrl %>" target="_blank" rel="noopener"
              style="font-size:.8rem;color:#1877f2;text-decoration:none;display:flex;align-items:center;gap:.25rem">
             <i class="fa-solid fa-people-group"></i> ดูกลุ่ม
           </a>
-          <span class="status-badge success"><i class="fa-solid fa-circle-check"></i> สำเร็จ</span>
+          <% } %>
+          <span class="status-badge <%= r.status %>">
+            <% if (r.status === 'success') { %><i class="fa-solid fa-circle-check"></i> สำเร็จ
+            <% } else { %><i class="fa-solid fa-circle-xmark"></i> ล้มเหลว<% } %>
+          </span>
         </div>
       </div>
       <% }); %>
+      <% if (groupResults.length > SHOW) { %>
+      <button class="show-more-btn" onclick="toggleResultRows(this)">
+        <i class="fa-solid fa-chevron-down"></i> ดูเพิ่มเติม <%= groupResults.length - SHOW %> กลุ่ม
+      </button>
+      <% } %>
     </div>
     <% } %>
 
-    <!-- ── Share to Groups (YADEEP-style) ── -->
-    <% if (failedGroups.length > 0) { %>
+    <!-- ── Share to Groups — only shown when page posts succeeded but group API failed ── -->
+    <% if (failedGroups.length > 0 && successPagePosts.length > 0) { %>
     <div class="card" style="border-top:3px solid #1877f2">
       <div class="card-title" style="margin-bottom:.85rem">
         <i class="fa-brands fa-facebook" style="color:#1877f2"></i> แชร์โพสต์ไปยังกลุ่ม
         <span style="font-size:.75rem;color:#8a8d91;font-weight:400;margin-left:.4rem">(<%= failedGroups.length %> กลุ่ม)</span>
       </div>
 
-      <% if (successPagePosts.length > 0) { %>
-
-      <!-- Source post selector (if multiple page posts succeeded) -->
       <% if (successPagePosts.length > 1) { %>
       <div style="display:flex;gap:.35rem;flex-wrap:wrap;align-items:center;margin-bottom:.65rem">
         <span style="font-size:.78rem;color:#65676b;flex-shrink:0">โพสต์จากเพจ:</span>
         <% successPagePosts.forEach((r, i) => { %>
-        <button onclick="switchSourcePost('<%= r.postUrl %>',this)"
-          data-url="<%= r.postUrl %>"
+        <button onclick="switchSourcePost('<%= r.postUrl %>',this)" data-url="<%= r.postUrl %>"
           style="border:1.5px solid <%= i===0 ? '#1877f2' : '#e4e6eb' %>;background:<%= i===0 ? '#e7f3ff' : '#fff' %>;color:<%= i===0 ? '#1877f2' : '#65676b' %>;border-radius:999px;padding:.22rem .65rem;font-size:.76rem;cursor:pointer;font-family:inherit">
           <%= r.pageName %>
         </button>
@@ -207,14 +214,12 @@
       </div>
       <% } %>
 
-      <!-- Big primary action: share via Facebook dialog -->
       <button onclick="fbShareAll()"
         style="width:100%;background:#1877f2;color:#fff;border:none;border-radius:10px;padding:.7rem;font-size:.92rem;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:.5rem;margin-bottom:.75rem">
         <i class="fa-brands fa-facebook"></i> แชร์โพสต์บน Facebook
         <span style="font-size:.75rem;font-weight:400;opacity:.85">(เปิด dialog แชร์)</span>
       </button>
 
-      <!-- Copy URL row -->
       <div style="display:flex;align-items:center;gap:.5rem;background:#f8f9fa;border-radius:8px;padding:.5rem .75rem;margin-bottom:.8rem;flex-wrap:wrap">
         <i class="fa-solid fa-link" style="color:#8a8d91;font-size:.8rem;flex-shrink:0"></i>
         <span id="srcUrlDisplay" style="font-size:.76rem;color:#65676b;flex:1;word-break:break-all;min-width:0"><%= successPagePosts[0].postUrl %></span>
@@ -224,7 +229,6 @@
         </button>
       </div>
 
-      <!-- Group rows -->
       <% failedGroups.forEach((g, i) => { %>
       <div style="display:flex;align-items:center;gap:.6rem;padding:.5rem 0;<%= i < failedGroups.length-1 ? 'border-bottom:1px solid #f0f2f5' : '' %>">
         <div style="width:32px;height:32px;background:#e8f5e9;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0">
@@ -234,25 +238,16 @@
           <div style="font-weight:600;font-size:.86rem;color:#1c1e21"><%= g.pageName %></div>
           <div style="font-size:.7rem;color:#8a8d91">ID: <%= g.groupId %></div>
         </div>
-        <!-- Share popup button -->
         <button onclick="fbShareOne()"
           style="background:#1877f2;color:#fff;border:none;border-radius:7px;padding:.38rem .75rem;font-size:.78rem;cursor:pointer;font-family:inherit;font-weight:600;display:flex;align-items:center;gap:.3rem;flex-shrink:0">
           <i class="fa-brands fa-facebook"></i> แชร์
         </button>
-        <!-- Open group tab + copy -->
         <button onclick="openGroupTab('https://www.facebook.com/groups/<%= g.groupId %>')"
           style="background:#42b72a;color:#fff;border:none;border-radius:7px;padding:.38rem .75rem;font-size:.78rem;cursor:pointer;font-family:inherit;font-weight:600;display:flex;align-items:center;gap:.3rem;flex-shrink:0">
           <i class="fa-solid fa-arrow-up-right-from-square"></i> เปิดกลุ่ม
         </button>
       </div>
       <% }); %>
-
-      <% } else { %>
-      <div style="background:#fff3e0;border-radius:8px;padding:.6rem .85rem;font-size:.83rem;color:#e65100">
-        <i class="fa-solid fa-triangle-exclamation"></i>
-        ยังไม่มีเพจที่โพสต์สำเร็จ กรุณาโพสต์ไปยังเพจก่อน
-      </div>
-      <% } %>
 
       <div style="margin-top:.75rem;border-top:1px solid #f0f2f5;padding-top:.65rem;font-size:.77rem;color:#8a8d91;line-height:1.65">
         <strong style="color:#1c1e21">วิธีที่ 1 (แนะนำ):</strong>
