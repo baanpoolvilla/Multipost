@@ -30,12 +30,13 @@ exports.sendPost = async (req, res) => {
     const results = await sendToPages(message.trim(), pageIds || null, images);
 
     if (groupIds && groupIds.length > 0 && groupPageId) {
-        const pages = await pageStore.load();
+        const [pages, cfg] = await Promise.all([pageStore.load(), settingsStore.load()]);
         const page  = pages.find(p => p.pageId === groupPageId);
-        if (page?.accessToken) {
+        const token = cfg.groupToken || page?.accessToken;
+        if (page && token) {
             const groupMap = groupIds.map(gId => {
                 const group = (page.groups || []).find(g => g.groupId === gId);
-                return { groupId: gId, groupName: group?.groupName || gId, pageId: page.pageId, accessToken: page.accessToken };
+                return { groupId: gId, groupName: group?.groupName || gId, pageId: page.pageId, accessToken: token };
             });
             const gResults = await sendToGroups(message.trim(), groupMap, images);
             results.push(...gResults);

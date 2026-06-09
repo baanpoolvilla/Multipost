@@ -85,6 +85,24 @@
             </div>
           </div>
         </div>
+        <div style="margin-top:.75rem;padding-top:.75rem;border-top:1px dashed #e4e6eb">
+          <label style="font-size:.78rem;color:#65676b;display:block;margin-bottom:.25rem">
+            <i class="fa-solid fa-people-group" style="color:#42b72a"></i>
+            User Access Token สำหรับโพสต์กลุ่ม
+            <span style="background:#fff3e0;color:#e65100;padding:.1rem .4rem;border-radius:4px;font-size:.7rem;margin-left:.3rem">ต้องมี publish_to_groups</span>
+          </label>
+          <div style="position:relative">
+            <input id="cfg-group-token" type="password" placeholder="วาง User Access Token ที่มี publish_to_groups permission"
+              style="width:100%;padding:.5rem 2rem .5rem .7rem;border:1.5px solid #dbe0e6;border-radius:8px;font-family:inherit;font-size:.84rem;outline:none;box-sizing:border-box">
+            <button onclick="toggleGroupToken()" title="แสดง/ซ่อน"
+              style="position:absolute;right:.5rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#8a8d91;font-size:.85rem;padding:0">
+              <i class="fa-solid fa-eye" id="groupTokenEyeIcon"></i>
+            </button>
+          </div>
+          <p style="font-size:.74rem;color:#8a8d91;margin:.35rem 0 0">
+            ไปที่ Graph API Explorer → เลือก "โทเค็นการเข้าถึงของผู้ใช้" → เพิ่ม <code>publish_to_groups</code> → Generate Token
+          </p>
+        </div>
         <div style="display:flex;justify-content:flex-end;margin-top:.75rem">
           <button onclick="saveSettings()"
             style="background:#1877f2;color:#fff;border:none;border-radius:8px;padding:.45rem 1.1rem;font-size:.84rem;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:.4rem">
@@ -238,9 +256,17 @@ async function loadSettings() {
   const data = await res.json();
   if (data.fbAppId)     document.getElementById('cfg-app-id').value     = data.fbAppId;
   if (data.fbAppSecret) document.getElementById('cfg-app-secret').value = data.fbAppSecret;
-  if (data.fbAppId || data.fbAppSecret) {
+  if (data.groupToken)  document.getElementById('cfg-group-token').value = data.groupToken;
+  if (data.fbAppId || data.fbAppSecret || data.groupToken) {
     document.getElementById('settingsSavedBadge').style.display = '';
   }
+}
+
+function toggleGroupToken() {
+  const inp  = document.getElementById('cfg-group-token');
+  const icon = document.getElementById('groupTokenEyeIcon');
+  if (inp.type === 'password') { inp.type = 'text';     icon.className = 'fa-solid fa-eye-slash'; }
+  else                         { inp.type = 'password'; icon.className = 'fa-solid fa-eye'; }
 }
 
 function toggleSettings() {
@@ -262,6 +288,7 @@ function toggleSecret() {
 async function saveSettings() {
   const fbAppId     = document.getElementById('cfg-app-id').value.trim();
   const fbAppSecret = document.getElementById('cfg-app-secret').value.trim();
+  const groupToken  = document.getElementById('cfg-group-token').value.trim();
   if (!fbAppId || !fbAppSecret) {
     Swal.fire({ icon:'warning', title:'กรุณากรอกให้ครบ', text:'ต้องมีทั้ง App ID และ App Secret', confirmButtonColor:'#1877f2' });
     return;
@@ -269,7 +296,7 @@ async function saveSettings() {
   await fetch('/api/settings', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fbAppId, fbAppSecret }),
+    body: JSON.stringify({ fbAppId, fbAppSecret, groupToken }),
   });
   document.getElementById('settingsSavedBadge').style.display = '';
   Swal.fire({ icon:'success', title:'บันทึกสำเร็จ', timer:1200, showConfirmButton:false });
