@@ -100,19 +100,22 @@ async function refreshPostAnalytics(fbPostId, accessToken) {
     const base    = await baseRes.json();
     if (base.error) throw new Error(base.error.message);
 
-    // Reach — requires read_insights or pages_read_engagement
-    // period=lifetime is required for post-level insights
+    // Reach — try multiple metrics, use first non-zero value
     let reach = 0;
-    try {
-        const r = await fetch(`${FB_API}/${fbPostId}/insights?metric=post_impressions_unique&period=lifetime&access_token=${encodeURIComponent(accessToken)}`);
-        const d = await r.json();
-        if (d.error) {
-            console.log('[Analytics] reach error:', d.error.code, d.error.message);
-        } else {
+    const reachMetrics = ['post_impressions_unique', 'post_impressions', 'post_impressions_organic_unique', 'post_impressions_organic'];
+    for (const metric of reachMetrics) {
+        if (reach > 0) break;
+        try {
+            const r = await fetch(`${FB_API}/${fbPostId}/insights?metric=${metric}&period=lifetime&access_token=${encodeURIComponent(accessToken)}`);
+            const d = await r.json();
+            if (d.error) {
+                console.log(`[Analytics] ${metric} error:`, d.error.code, d.error.message);
+                continue;
+            }
             const val = d.data?.[0]?.values?.[0]?.value ?? d.data?.[0]?.values?.at(-1)?.value;
-            if (typeof val === 'number') reach = val;
-        }
-    } catch (e) { console.log('[Analytics] reach fetch error:', e.message); }
+            if (typeof val === 'number' && val > 0) reach = val;
+        } catch (e) { console.log(`[Analytics] ${metric} fetch error:`, e.message); }
+    }
 
     return {
         likes:    base.likes?.summary?.total_count    || 0,
