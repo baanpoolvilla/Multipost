@@ -562,10 +562,15 @@ async function syncGroups(pageId, btn) {
     const data = await res.json();
     if (!data.ok) throw new Error(data.error);
     renderGroups(pageId, data.groups);
-    const msg = data.fromFacebook > 0
-      ? `ซิงค์สำเร็จ พบ ${data.fromFacebook} กลุ่มจาก Facebook`
-      : 'ไม่พบกลุ่มใหม่จาก Facebook (เพจต้องเป็น Admin ของกลุ่ม)';
-    Swal.fire({ icon: data.fromFacebook > 0 ? 'success' : 'info', title: msg, timer: 2000, showConfirmButton: false });
+    let msg, icon;
+    if (data.notSupported) {
+      icon = 'info'; msg = 'Token ไม่มีสิทธิ์ดึงกลุ่มอัตโนมัติ\nกรุณาใช้ "เพิ่มเอง" แล้วกรอก Group ID';
+    } else if (data.fromFacebook > 0) {
+      icon = 'success'; msg = `พบ ${data.fromFacebook} กลุ่มจาก Facebook`;
+    } else {
+      icon = 'info'; msg = 'ไม่พบกลุ่มใหม่จาก Facebook';
+    }
+    Swal.fire({ icon, title: msg, timer: 2500, showConfirmButton: false });
   } catch (err) {
     Swal.fire({ icon: 'error', title: 'ซิงค์ไม่สำเร็จ', text: err.message });
   } finally {

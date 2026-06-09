@@ -289,9 +289,9 @@ exports.syncGroups = async (req, res) => {
     if (!page)             return res.status(404).json({ error: 'ไม่พบเพจ' });
     if (!page.accessToken) return res.status(400).json({ error: 'ไม่มี Token' });
     try {
-        const fbGroups = await fetchPageGroups(pageId, page.accessToken);
-        const updated  = await pageStore.syncGroups(pageId, fbGroups);
-        res.json({ ok: true, groups: updated.groups || [], fromFacebook: fbGroups.length });
+        const result   = await fetchPageGroups(pageId, page.accessToken);
+        const updated  = await pageStore.syncGroups(pageId, result.groups);
+        res.json({ ok: true, groups: updated.groups || [], fromFacebook: result.groups.length, notSupported: result.notSupported });
     } catch (err) {
         res.status(400).json({ error: err.message });
     }

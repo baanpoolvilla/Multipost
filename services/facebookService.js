@@ -123,11 +123,18 @@ async function refreshPostAnalytics(fbPostId, accessToken) {
 }
 
 async function fetchPageGroups(pageId, accessToken) {
-    const url  = `${FB_API}/${pageId}/groups?fields=id,name&access_token=${encodeURIComponent(accessToken)}`;
+    // Try /me/groups with the page token (works if token has groups_access_member_info)
+    const url  = `${FB_API}/me/groups?fields=id,name&access_token=${encodeURIComponent(accessToken)}`;
     const res  = await fetch(url);
     const data = await res.json();
-    if (data.error) throw new Error(data.error.message);
-    return (data.data || []).map(g => ({ groupId: g.id, groupName: g.name }));
+    // error code 100 or 200 = permission not available → return empty gracefully
+    if (data.error) {
+        if (data.error.code === 100 || data.error.code === 200 || data.error.code === 10) {
+            return { groups: [], notSupported: true };
+        }
+        throw new Error(data.error.message);
+    }
+    return { groups: (data.data || []).map(g => ({ groupId: g.id, groupName: g.name })), notSupported: false };
 }
 
 module.exports = { sendToPages, fetchPagesFromToken, refreshPostAnalytics, fetchPageGroups };
