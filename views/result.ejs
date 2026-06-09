@@ -182,73 +182,82 @@
     </div>
     <% } %>
 
-    <!-- ── Share to Groups helper (YADEEP-style) ── -->
+    <!-- ── Share to Groups (YADEEP-style) ── -->
     <% if (failedGroups.length > 0) { %>
-    <div class="card" style="border-top:3px solid #42b72a">
-      <div class="card-title" style="margin-bottom:.75rem">
-        <i class="fa-solid fa-share-nodes" style="color:#42b72a"></i> แชร์ไปยังกลุ่ม
-        <span style="font-size:.76rem;color:#8a8d91;font-weight:400;margin-left:.4rem">คัดลอกลิ้งค์ → เปิดกลุ่ม → วาง</span>
+    <div class="card" style="border-top:3px solid #1877f2">
+      <div class="card-title" style="margin-bottom:.85rem">
+        <i class="fa-brands fa-facebook" style="color:#1877f2"></i> แชร์โพสต์ไปยังกลุ่ม
+        <span style="font-size:.75rem;color:#8a8d91;font-weight:400;margin-left:.4rem">(<%= failedGroups.length %> กลุ่ม)</span>
       </div>
 
       <% if (successPagePosts.length > 0) { %>
-      <!-- Copy link bar -->
-      <div id="copyBar" style="background:#f0f7ff;border:1.5px solid #cfe2ff;border-radius:9px;padding:.6rem .85rem;margin-bottom:.8rem;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
-        <i class="fa-brands fa-facebook" style="color:#1877f2;flex-shrink:0;font-size:1.1rem"></i>
-        <span id="copyUrl" style="font-size:.79rem;color:#1c1e21;flex:1;word-break:break-all;min-width:0"><%= successPagePosts[0].postUrl %></span>
-        <button onclick="copyLink('<%= successPagePosts[0].postUrl %>')"
-          id="copyBtn"
-          style="background:#1877f2;color:#fff;border:none;border-radius:7px;padding:.38rem .85rem;font-size:.8rem;cursor:pointer;font-family:inherit;flex-shrink:0;font-weight:700;display:flex;align-items:center;gap:.35rem">
-          <i class="fa-solid fa-copy"></i> คัดลอกลิ้งค์โพสต์
-        </button>
-      </div>
+
+      <!-- Source post selector (if multiple page posts succeeded) -->
       <% if (successPagePosts.length > 1) { %>
-      <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.75rem">
-        <span style="font-size:.75rem;color:#65676b;align-self:center">เลือกเพจ:</span>
+      <div style="display:flex;gap:.35rem;flex-wrap:wrap;align-items:center;margin-bottom:.65rem">
+        <span style="font-size:.78rem;color:#65676b;flex-shrink:0">โพสต์จากเพจ:</span>
         <% successPagePosts.forEach((r, i) => { %>
-        <button onclick="switchCopyUrl('<%= r.postUrl %>','<%= r.pageName %>',this)"
-          class="copy-page-pill<%= i===0 ? ' active' : '' %>"
-          style="border:1.5px solid <%= i===0 ? '#1877f2' : '#e4e6eb' %>;background:<%= i===0 ? '#e7f3ff' : '#fff' %>;color:<%= i===0 ? '#1877f2' : '#65676b' %>;border-radius:999px;padding:.2rem .65rem;font-size:.76rem;cursor:pointer;font-family:inherit">
+        <button onclick="switchSourcePost('<%= r.postUrl %>',this)"
+          data-url="<%= r.postUrl %>"
+          style="border:1.5px solid <%= i===0 ? '#1877f2' : '#e4e6eb' %>;background:<%= i===0 ? '#e7f3ff' : '#fff' %>;color:<%= i===0 ? '#1877f2' : '#65676b' %>;border-radius:999px;padding:.22rem .65rem;font-size:.76rem;cursor:pointer;font-family:inherit">
           <%= r.pageName %>
         </button>
         <% }); %>
       </div>
       <% } %>
-      <% } else { %>
-      <div style="background:#fff3e0;border-radius:8px;padding:.6rem .85rem;margin-bottom:.75rem;font-size:.82rem;color:#e65100">
-        <i class="fa-solid fa-triangle-exclamation"></i>
-        ไม่มีเพจที่โพสต์สำเร็จ ไม่สามารถแชร์ลิ้งค์ได้
-      </div>
-      <% } %>
 
-      <!-- Group list -->
+      <!-- Big primary action: share via Facebook dialog -->
+      <button onclick="fbShareAll()"
+        style="width:100%;background:#1877f2;color:#fff;border:none;border-radius:10px;padding:.7rem;font-size:.92rem;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:.5rem;margin-bottom:.75rem">
+        <i class="fa-brands fa-facebook"></i> แชร์โพสต์บน Facebook
+        <span style="font-size:.75rem;font-weight:400;opacity:.85">(เปิด dialog แชร์)</span>
+      </button>
+
+      <!-- Copy URL row -->
+      <div style="display:flex;align-items:center;gap:.5rem;background:#f8f9fa;border-radius:8px;padding:.5rem .75rem;margin-bottom:.8rem;flex-wrap:wrap">
+        <i class="fa-solid fa-link" style="color:#8a8d91;font-size:.8rem;flex-shrink:0"></i>
+        <span id="srcUrlDisplay" style="font-size:.76rem;color:#65676b;flex:1;word-break:break-all;min-width:0"><%= successPagePosts[0].postUrl %></span>
+        <button onclick="copyLink()" id="copyBtn"
+          style="background:#e4e6eb;color:#1c1e21;border:none;border-radius:6px;padding:.3rem .7rem;font-size:.76rem;cursor:pointer;font-family:inherit;font-weight:600;flex-shrink:0;display:flex;align-items:center;gap:.3rem">
+          <i class="fa-solid fa-copy"></i> คัดลอก URL
+        </button>
+      </div>
+
+      <!-- Group rows -->
       <% failedGroups.forEach((g, i) => { %>
-      <div style="display:flex;align-items:center;gap:.65rem;padding:.55rem 0;<%= i < failedGroups.length-1 ? 'border-bottom:1px solid #f0f2f5' : '' %>">
-        <div style="width:34px;height:34px;background:#e8f5e9;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-          <i class="fa-solid fa-people-group" style="color:#2e7d32;font-size:.8rem"></i>
+      <div style="display:flex;align-items:center;gap:.6rem;padding:.5rem 0;<%= i < failedGroups.length-1 ? 'border-bottom:1px solid #f0f2f5' : '' %>">
+        <div style="width:32px;height:32px;background:#e8f5e9;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <i class="fa-solid fa-people-group" style="color:#2e7d32;font-size:.75rem"></i>
         </div>
         <div style="flex:1;min-width:0">
-          <div style="font-weight:600;font-size:.88rem;color:#1c1e21"><%= g.pageName %></div>
-          <div style="font-size:.72rem;color:#8a8d91">ID: <%= g.groupId %></div>
+          <div style="font-weight:600;font-size:.86rem;color:#1c1e21"><%= g.pageName %></div>
+          <div style="font-size:.7rem;color:#8a8d91">ID: <%= g.groupId %></div>
         </div>
-        <% if (successPagePosts.length > 0) { %>
-        <button onclick="openGroupWithCopy('https://www.facebook.com/groups/<%= g.groupId %>')"
-          style="background:#42b72a;color:#fff;border:none;border-radius:8px;padding:.42rem .9rem;font-size:.8rem;cursor:pointer;font-family:inherit;font-weight:700;display:flex;align-items:center;gap:.35rem;flex-shrink:0">
+        <!-- Share popup button -->
+        <button onclick="fbShareOne()"
+          style="background:#1877f2;color:#fff;border:none;border-radius:7px;padding:.38rem .75rem;font-size:.78rem;cursor:pointer;font-family:inherit;font-weight:600;display:flex;align-items:center;gap:.3rem;flex-shrink:0">
+          <i class="fa-brands fa-facebook"></i> แชร์
+        </button>
+        <!-- Open group tab + copy -->
+        <button onclick="openGroupTab('https://www.facebook.com/groups/<%= g.groupId %>')"
+          style="background:#42b72a;color:#fff;border:none;border-radius:7px;padding:.38rem .75rem;font-size:.78rem;cursor:pointer;font-family:inherit;font-weight:600;display:flex;align-items:center;gap:.3rem;flex-shrink:0">
           <i class="fa-solid fa-arrow-up-right-from-square"></i> เปิดกลุ่ม
         </button>
-        <% } else { %>
-        <a href="https://www.facebook.com/groups/<%= g.groupId %>" target="_blank" rel="noopener"
-          style="background:#65676b;color:#fff;border:none;border-radius:8px;padding:.42rem .9rem;font-size:.8rem;text-decoration:none;display:flex;align-items:center;gap:.35rem;font-weight:700;flex-shrink:0">
-          <i class="fa-solid fa-arrow-up-right-from-square"></i> เปิดกลุ่ม
-        </a>
-        <% } %>
       </div>
       <% }); %>
 
-      <div style="margin-top:.75rem;padding:.6rem .85rem;background:#f8f9fa;border-radius:8px;font-size:.78rem;color:#65676b;line-height:1.7">
-        <strong style="color:#1c1e21"><i class="fa-solid fa-circle-info" style="color:#1877f2"></i> วิธีใช้:</strong><br>
-        1. กด <strong>"คัดลอกลิ้งค์โพสต์"</strong> เพื่อคัดลอก URL โพสต์ที่สำเร็จ<br>
-        2. กด <strong>"เปิดกลุ่ม"</strong> → กลุ่ม Facebook เปิดในแท็บใหม่พร้อม URL ในคลิปบอร์ด<br>
-        3. วางลิ้งค์ในช่องโพสต์ของกลุ่ม → กด Share
+      <% } else { %>
+      <div style="background:#fff3e0;border-radius:8px;padding:.6rem .85rem;font-size:.83rem;color:#e65100">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        ยังไม่มีเพจที่โพสต์สำเร็จ กรุณาโพสต์ไปยังเพจก่อน
+      </div>
+      <% } %>
+
+      <div style="margin-top:.75rem;border-top:1px solid #f0f2f5;padding-top:.65rem;font-size:.77rem;color:#8a8d91;line-height:1.65">
+        <strong style="color:#1c1e21">วิธีที่ 1 (แนะนำ):</strong>
+        กด <strong>"แชร์โพสต์บน Facebook"</strong> → เลือก "แชร์ในกลุ่ม" ใน popup → เลือกกลุ่มที่ต้องการ<br>
+        <strong style="color:#1c1e21">วิธีที่ 2:</strong>
+        กด <strong>"คัดลอก URL"</strong> → กด <strong>"เปิดกลุ่ม"</strong> → วาง URL แล้วกด Post
       </div>
     </div>
     <% } %>
@@ -280,55 +289,86 @@
   const failCount    = <%- fc %>;
   const total        = <%- total %>;
 
-  let _currentCopyUrl = '<%- successPagePosts[0]?.postUrl || "" %>';
+  let _srcUrl = '<%- (successPagePosts[0]?.postUrl || "").replace(/'/g, "\\'") %>';
 
   function viewImage(src) {
     Swal.fire({ imageUrl: src, imageAlt: 'รูปภาพ', showConfirmButton: false, showCloseButton: true, width: 'auto' });
   }
 
-  function copyLink(url) {
-    const u = url || _currentCopyUrl;
-    if (!u) return;
-    navigator.clipboard.writeText(u).catch(() => {
-      const ta = document.createElement('textarea');
-      ta.value = u; document.body.appendChild(ta); ta.select();
-      document.execCommand('copy'); document.body.removeChild(ta);
-    });
-    const btn = document.getElementById('copyBtn');
-    if (btn) {
+  /* ── Copy URL ── */
+  function copyLink() {
+    if (!_srcUrl) return;
+    const doFeedback = () => {
+      const btn = document.getElementById('copyBtn');
+      if (!btn) return;
       const orig = btn.innerHTML;
       btn.innerHTML = '<i class="fa-solid fa-check"></i> คัดลอกแล้ว!';
-      btn.style.background = '#2e7d32';
-      setTimeout(() => { btn.innerHTML = orig; btn.style.background = '#1877f2'; }, 2000);
+      btn.style.background = '#2e7d32'; btn.style.color = '#fff';
+      setTimeout(() => { btn.innerHTML = orig; btn.style.background = ''; btn.style.color = ''; }, 2200);
+    };
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(_srcUrl).then(doFeedback).catch(() => fallbackCopy(_srcUrl, doFeedback));
+    } else {
+      fallbackCopy(_srcUrl, doFeedback);
     }
   }
 
-  function switchCopyUrl(url, name, btn) {
-    _currentCopyUrl = url;
-    const el = document.getElementById('copyUrl');
-    if (el) el.textContent = url;
-    const bar = document.getElementById('copyBar');
-    document.querySelectorAll('.copy-page-pill').forEach(p => {
-      const active = p === btn;
-      p.style.borderColor = active ? '#1877f2' : '#e4e6eb';
-      p.style.background  = active ? '#e7f3ff' : '#fff';
-      p.style.color       = active ? '#1877f2' : '#65676b';
-    });
-    // Update copyBtn onclick
-    const copyBtn = document.getElementById('copyBtn');
-    if (copyBtn) copyBtn.onclick = () => copyLink(url);
+  function fallbackCopy(text, cb) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+    document.body.appendChild(ta);
+    ta.focus(); ta.select();
+    try { document.execCommand('copy'); cb && cb(); } catch {}
+    document.body.removeChild(ta);
   }
 
-  function openGroupWithCopy(groupUrl) {
-    copyLink(_currentCopyUrl);
-    window.open(groupUrl, '_blank', 'noopener');
-    Swal.fire({
-      icon: 'info',
-      title: 'คัดลอกแล้ว!',
-      html: 'ลิ้งค์โพสต์อยู่ในคลิปบอร์ดแล้ว<br>วางในช่องโพสต์ของกลุ่มได้เลย',
-      timer: 2500,
-      showConfirmButton: false,
+  /* ── Switch source post ── */
+  function switchSourcePost(url, btn) {
+    _srcUrl = url;
+    const el = document.getElementById('srcUrlDisplay');
+    if (el) el.textContent = url;
+    document.querySelectorAll('[data-url]').forEach(b => {
+      const active = b === btn;
+      b.style.borderColor = active ? '#1877f2' : '#e4e6eb';
+      b.style.background  = active ? '#e7f3ff' : '#fff';
+      b.style.color       = active ? '#1877f2' : '#65676b';
     });
+  }
+
+  /* ── Facebook Share dialog ── */
+  function fbShareDialog(postUrl) {
+    if (!postUrl) return;
+    const url = 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(postUrl);
+    const popup = window.open(url, 'fb-share-dialog', 'width=580,height=475,toolbar=0,status=0,menubar=0,scrollbars=1');
+    if (!popup) {
+      Swal.fire({
+        title: 'popup ถูกบล็อก',
+        html: `กด <a href="${url}" target="_blank" style="color:#1877f2;font-weight:700">ที่นี่เพื่อเปิดหน้าแชร์</a>`,
+        icon: 'warning',
+        confirmButtonColor: '#1877f2',
+      });
+    }
+  }
+
+  function fbShareAll() { fbShareDialog(_srcUrl); }
+  function fbShareOne() { fbShareDialog(_srcUrl); }
+
+  /* ── Open group tab + copy ── */
+  function openGroupTab(groupUrl) {
+    copyLink();
+    window.open(groupUrl, '_blank', 'noopener');
+    setTimeout(() => {
+      Swal.fire({
+        icon: 'success',
+        title: 'คัดลอก URL แล้ว',
+        html: 'วาง URL ในช่องโพสต์ของกลุ่มแล้วกด <strong>Share</strong>',
+        timer: 2800,
+        showConfirmButton: false,
+        position: 'bottom-end',
+        toast: true,
+      });
+    }, 300);
   }
 </script>
 <script src="/js/app.js"></script>
