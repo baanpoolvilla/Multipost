@@ -636,9 +636,26 @@ async function gpAdd() {
 }
 
 async function gpRemove(groupId) {
+  const group = _gpGroups.find(g => g.groupId === groupId);
+  const conf = await Swal.fire({
+    title: 'ลบกลุ่มนี้?',
+    text: group?.groupName || groupId,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#c62828',
+    cancelButtonColor: '#65676b',
+    confirmButtonText: '<i class="fa-solid fa-trash-can"></i> ลบเลย',
+    cancelButtonText: 'ยกเลิก',
+  });
+  if (!conf.isConfirmed) return _showGroupModal(_gpPageName);
   const res  = await fetch(`/pages/${_gpPageId}/groups/${groupId}`, { method: 'DELETE' });
   const data = await res.json();
-  if (data.ok) { _gpGroups = data.groups; _refreshModal(); }
+  if (data.ok) {
+    _gpGroups = data.groups;
+    updateGroupBadge(_gpPageId, _gpGroups);
+    _pageGroupsData[_gpPageId] = _gpGroups;
+  }
+  _showGroupModal(_gpPageName);
 }
 
 async function gpToggle(groupId, enabled) {
