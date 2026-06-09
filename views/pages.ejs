@@ -40,9 +40,58 @@
         <i class="fa-brands fa-facebook"></i> จัดการเพจ
         <span style="background:#e4e6ea;padding:.12rem .5rem;border-radius:999px;font-size:.78rem;font-weight:400;margin-left:.35rem" id="pageCountBadge"><%= pages.length %> เพจ</span>
       </div>
-      <button class="btn-post" onclick="openAddPage()" style="padding:.45rem 1rem;font-size:.86rem">
-        <i class="fa-solid fa-plus"></i> เพิ่มเพจใหม่
-      </button>
+      <div style="display:flex;gap:.5rem">
+        <button class="btn-post" onclick="openImportModal()" style="padding:.45rem 1rem;font-size:.86rem;background:#42b72a">
+          <i class="fa-solid fa-file-import"></i> นำเข้าจาก Token
+        </button>
+        <button class="btn-post" onclick="openAddPage()" style="padding:.45rem 1rem;font-size:.86rem">
+          <i class="fa-solid fa-plus"></i> เพิ่มเพจใหม่
+        </button>
+      </div>
+    </div>
+
+    <!-- App Settings Card -->
+    <div class="card" id="settingsCard" style="border:1.5px solid #e4e6eb">
+      <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="toggleSettings()">
+        <div class="card-title" style="margin:0;font-size:.95rem">
+          <i class="fa-solid fa-gear" style="color:#1877f2"></i> ตั้งค่า Facebook App
+          <span id="settingsSavedBadge" style="display:none;font-size:.72rem;background:#e8f5e9;color:#2e7d32;padding:.15rem .5rem;border-radius:999px;font-weight:600;margin-left:.4rem">
+            <i class="fa-solid fa-circle-check"></i> บันทึกแล้ว
+          </span>
+        </div>
+        <i class="fa-solid fa-chevron-down" id="settingsChevron" style="color:#8a8d91;transition:.2s"></i>
+      </div>
+      <div id="settingsBody" style="display:none;margin-top:1rem">
+        <p style="font-size:.82rem;color:#65676b;margin:0 0 .75rem">
+          ใช้สำหรับ <strong>ต่ออายุ Token อัตโนมัติ</strong> — หาได้ที่
+          <a href="https://developers.facebook.com" target="_blank" rel="noopener" style="color:#1877f2">developers.facebook.com</a>
+          → เลือก App → Settings → Basic
+        </p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">
+          <div>
+            <label style="font-size:.78rem;color:#65676b;display:block;margin-bottom:.25rem">App ID</label>
+            <input id="cfg-app-id" type="text" placeholder="เช่น 2015668002373717"
+              style="width:100%;padding:.5rem .7rem;border:1.5px solid #dbe0e6;border-radius:8px;font-family:inherit;font-size:.84rem;outline:none;box-sizing:border-box">
+          </div>
+          <div>
+            <label style="font-size:.78rem;color:#65676b;display:block;margin-bottom:.25rem">App Secret</label>
+            <div style="position:relative">
+              <input id="cfg-app-secret" type="password" placeholder="••••••••••••••••"
+                style="width:100%;padding:.5rem 2rem .5rem .7rem;border:1.5px solid #dbe0e6;border-radius:8px;font-family:inherit;font-size:.84rem;outline:none;box-sizing:border-box">
+              <button onclick="toggleSecret()" title="แสดง/ซ่อน"
+                style="position:absolute;right:.5rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#8a8d91;font-size:.85rem;padding:0">
+                <i class="fa-solid fa-eye" id="secretEyeIcon"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:.75rem">
+          <button onclick="saveSettings()"
+            style="background:#1877f2;color:#fff;border:none;border-radius:8px;padding:.45rem 1.1rem;font-size:.84rem;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:.4rem">
+            <i class="fa-solid fa-floppy-disk"></i> บันทึก
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Token status summary -->
@@ -58,14 +107,30 @@
         <div class="page-manage-header">
           <div class="avatar avatar-<%= colors[i%5] %>"><%= p.pageName.slice(-1) %></div>
           <div class="page-manage-info">
-            <div class="page-manage-name"><%= p.pageName %></div>
+            <div class="page-manage-name" style="display:flex;align-items:center;gap:.5rem">
+              <%= p.pageName %>
+              <span id="live-<%= p.pageId %>" style="font-size:.72rem;padding:.18rem .55rem;border-radius:999px;background:#f0f2f5;color:#8a8d91;display:inline-flex;align-items:center;gap:.25rem;font-weight:600">
+                <i class="fa-solid fa-spinner fa-spin" style="font-size:.65rem"></i> ตรวจสอบ...
+              </span>
+            </div>
             <div class="page-manage-id">Page ID: <code><%= p.pageId %></code></div>
           </div>
           <div class="page-manage-actions">
-            <button class="icon-btn" title="แก้ไข Token" onclick="openEditPage('<%= p.pageId %>','<%= p.pageName %>','<%= p.accessToken || '' %>','<%= p.tokenExpiry || '' %>')">
+            <button class="icon-btn" title="ต่ออายุ Token 60 วัน"
+              data-id="<%= p.pageId %>" data-name="<%= p.pageName %>"
+              onclick="exchangeToken(this.dataset.id, this.dataset.name, this)"
+              style="color:#2e7d32;border-color:#a5d6a7">
+              <i class="fa-solid fa-rotate"></i>
+            </button>
+            <button class="icon-btn" title="แก้ไข Token"
+              data-id="<%= p.pageId %>" data-name="<%= p.pageName %>"
+              data-token="<%= p.accessToken || '' %>" data-expiry="<%= p.tokenExpiry || '' %>"
+              onclick="openEditPage(this.dataset.id,this.dataset.name,this.dataset.token,this.dataset.expiry)">
               <i class="fa-solid fa-pen"></i>
             </button>
-            <button class="icon-btn danger" title="ลบเพจ" onclick="deletePage('<%= p.pageId %>', '<%= p.pageName %>', this)">
+            <button class="icon-btn danger" title="ลบเพจ"
+              data-id="<%= p.pageId %>" data-name="<%= p.pageName %>"
+              onclick="deletePage(this.dataset.id,this.dataset.name,this)">
               <i class="fa-solid fa-trash"></i>
             </button>
           </div>
@@ -110,15 +175,93 @@
   <aside class="right-panel">
     <div class="card stats-card">
       <div class="stats-title"><i class="fa-solid fa-shield-halved" style="color:#1877f2"></i> สถานะ Token</div>
-      <div class="stats-row"><span>🟢 ปกติ</span><span class="stats-val green" id="countActive">—</span></div>
-      <div class="stats-row"><span>🟡 ใกล้หมด</span><span class="stats-val orange-text" id="countWarning">—</span></div>
-      <div class="stats-row"><span>🔴 หมดแล้ว</span><span class="stats-val red" id="countExpired">—</span></div>
+      <div class="stats-row"><span>🟢 ใช้งานได้</span><span class="stats-val green" id="countActive">—</span></div>
+      <div class="stats-row"><span>🟡 ตรวจสอบ</span><span class="stats-val orange-text" id="countWarning">—</span></div>
+      <div class="stats-row"><span>🔴 ใช้ไม่ได้</span><span class="stats-val" style="color:#c62828" id="countExpired">—</span></div>
     </div>
   </aside>
 
 </div>
 
+<!-- ── Import from Token Modal ── -->
+<div id="tokenImportModal" class="map-modal-overlay" style="display:none" onclick="closeImportOnBg(event)">
+  <div class="map-modal-box" style="width:520px;max-width:95vw">
+    <div class="map-modal-header">
+      <span><i class="fa-brands fa-facebook" style="color:#1877f2"></i> นำเข้าเพจจาก Facebook Token</span>
+      <button class="map-close-btn" onclick="closeImportModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="map-modal-body" style="padding:1rem 1.25rem">
+      <p style="font-size:.83rem;color:#65676b;margin:0 0 .75rem">
+        ใส่ <strong>User Access Token</strong> จาก
+        <a href="https://developers.facebook.com/tools/explorer/" target="_blank" rel="noopener" style="color:#1877f2">Graph API Explorer</a>
+        เพื่อดึงรายการเพจที่คุณดูแล
+      </p>
+      <div style="display:flex;gap:.5rem;margin-bottom:.75rem">
+        <input id="importTokenInput" type="text"
+          placeholder="วาง User Access Token ที่นี่..."
+          style="flex:1;padding:.55rem .75rem;border:1.5px solid #dbe0e6;border-radius:8px;font-family:inherit;font-size:.84rem;outline:none">
+        <button class="btn-post" onclick="fetchImportPages()" id="fetchTokenBtn"
+          style="padding:.5rem .9rem;font-size:.84rem;white-space:nowrap">
+          <i class="fa-solid fa-magnifying-glass"></i> ดึงเพจ
+        </button>
+      </div>
+      <div id="importPageList" style="max-height:320px;overflow-y:auto;border-radius:8px"></div>
+    </div>
+    <div class="map-modal-footer" id="importFooter" style="display:none">
+      <span id="importSelectCount" style="font-size:.85rem;color:#65676b">เลือก 0 เพจ</span>
+      <button class="btn-post" onclick="doImportPages()" style="padding:.5rem 1.1rem">
+        <i class="fa-solid fa-file-import"></i> นำเข้าเพจที่เลือก
+      </button>
+    </div>
+  </div>
+</div>
+
 <script>
+/* ── App Settings ── */
+async function loadSettings() {
+  const res  = await fetch('/api/settings');
+  const data = await res.json();
+  if (data.fbAppId)     document.getElementById('cfg-app-id').value     = data.fbAppId;
+  if (data.fbAppSecret) document.getElementById('cfg-app-secret').value = data.fbAppSecret;
+  if (data.fbAppId || data.fbAppSecret) {
+    document.getElementById('settingsSavedBadge').style.display = '';
+  }
+}
+
+function toggleSettings() {
+  const body     = document.getElementById('settingsBody');
+  const chevron  = document.getElementById('settingsChevron');
+  const open     = body.style.display === 'none';
+  body.style.display    = open ? '' : 'none';
+  chevron.style.transform = open ? 'rotate(180deg)' : '';
+  if (open) loadSettings();
+}
+
+function toggleSecret() {
+  const inp  = document.getElementById('cfg-app-secret');
+  const icon = document.getElementById('secretEyeIcon');
+  if (inp.type === 'password') { inp.type = 'text';     icon.className = 'fa-solid fa-eye-slash'; }
+  else                         { inp.type = 'password'; icon.className = 'fa-solid fa-eye'; }
+}
+
+async function saveSettings() {
+  const fbAppId     = document.getElementById('cfg-app-id').value.trim();
+  const fbAppSecret = document.getElementById('cfg-app-secret').value.trim();
+  if (!fbAppId || !fbAppSecret) {
+    Swal.fire({ icon:'warning', title:'กรุณากรอกให้ครบ', text:'ต้องมีทั้ง App ID และ App Secret', confirmButtonColor:'#1877f2' });
+    return;
+  }
+  await fetch('/api/settings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fbAppId, fbAppSecret }),
+  });
+  document.getElementById('settingsSavedBadge').style.display = '';
+  Swal.fire({ icon:'success', title:'บันทึกสำเร็จ', timer:1200, showConfirmButton:false });
+}
+
+loadSettings();
+
 /* ── Token status logic ── */
 function getDaysLeft(expiryISO) {
   if (!expiryISO) return null;
@@ -177,14 +320,60 @@ function updateAll() {
 updateAll();
 setInterval(updateAll, 60000);
 
+/* ── Live token ping (auto on load) ── */
+async function checkAllTokens() {
+  let liveOk = 0, liveFail = 0;
+  try {
+    const res     = await fetch('/api/check-tokens');
+    const { results } = await res.json();
+    results.forEach(r => {
+      const el = document.getElementById(`live-${r.pageId}`);
+      if (!el) return;
+      if (r.valid) {
+        el.style.background = '#e8f5e9'; el.style.color = '#2e7d32';
+        el.innerHTML = `<i class="fa-solid fa-circle-check"></i> ใช้งานได้`;
+        liveOk++;
+      } else {
+        el.style.background = '#fdecea'; el.style.color = '#c62828';
+        el.title = r.error || '';
+        el.innerHTML = `<i class="fa-solid fa-circle-xmark"></i> ใช้ไม่ได้`;
+        liveFail++;
+      }
+    });
+    // Update right panel with live counts
+    document.getElementById('countActive').textContent  = liveOk;
+    document.getElementById('countExpired').textContent = liveFail;
+    document.getElementById('countWarning').textContent = '—';
+
+    if (liveFail > 0) {
+      const s = document.getElementById('tokenSummary');
+      s.innerHTML = `
+        <div class="card" style="background:#fdecea;border:1px solid #f5c6cb;padding:.75rem 1.1rem;display:flex;align-items:center;gap:.75rem">
+          <i class="fa-solid fa-triangle-exclamation" style="font-size:1.4rem;color:#c62828"></i>
+          <div>
+            <strong style="color:#c62828">${liveFail} เพจ Token ใช้งานไม่ได้</strong> — กรุณาอัปเดต Token ใหม่
+          </div>
+        </div>`;
+    }
+  } catch { /* silent */ }
+}
+
+checkAllTokens();
+
 /* ── CRUD ── */
 async function openAddPage() {
   const { value } = await Swal.fire({
     title: '<i class="fa-solid fa-plus" style="color:#1877f2"></i> เพิ่มเพจใหม่',
     html: `
-      <input id="sw-name"   class="swal2-input" placeholder="ชื่อเพจ เช่น Pool Villa X">
-      <input id="sw-id"     class="swal2-input" placeholder="Page ID เช่น 1014">
-      <input id="sw-token"  class="swal2-input" placeholder="Access Token (ถ้ามี)">
+      <div style="display:flex;gap:.4rem;padding:0 .6rem;margin-bottom:.3rem">
+        <input id="sw-token" class="swal2-input" style="margin:0;flex:1" placeholder="วาง Page Access Token แล้วกดตรวจสอบ">
+        <button type="button" id="sw-lookup-btn" onclick="lookupTokenInModal()"
+          style="padding:.5rem .75rem;background:#1877f2;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.82rem;white-space:nowrap;font-family:inherit">
+          <i class="fa-solid fa-magnifying-glass"></i> ตรวจสอบ
+        </button>
+      </div>
+      <input id="sw-name"   class="swal2-input" placeholder="ชื่อเพจ (กรอกเองหรือดึงอัตโนมัติ)">
+      <input id="sw-id"     class="swal2-input" placeholder="Page ID (ดึงอัตโนมัติจาก Token)">
       <input id="sw-expiry" class="swal2-input" type="date" placeholder="วันหมดอายุ">`,
     showCancelButton: true,
     confirmButtonColor: '#1877f2',
@@ -194,7 +383,7 @@ async function openAddPage() {
     preConfirm: () => {
       const name = document.getElementById('sw-name').value.trim();
       const id   = document.getElementById('sw-id').value.trim();
-      if (!name || !id) { Swal.showValidationMessage('กรุณากรอกชื่อเพจและ Page ID'); return false; }
+      if (!name || !id) { Swal.showValidationMessage('กรุณากรอกชื่อเพจและ Page ID (หรือกด "ตรวจสอบ" เพื่อดึงอัตโนมัติ)'); return false; }
       return {
         pageName: name, pageId: id,
         accessToken:  document.getElementById('sw-token').value.trim(),
@@ -209,6 +398,26 @@ async function openAddPage() {
   if (data.error) { Swal.fire({ icon:'error', title: data.error }); return; }
   Swal.fire({ icon:'success', title:'เพิ่มเพจสำเร็จ', timer:1500, showConfirmButton:false });
   setTimeout(() => location.reload(), 1500);
+}
+
+async function lookupTokenInModal() {
+  const token = document.getElementById('sw-token').value.trim();
+  if (!token) { Swal.showValidationMessage('กรุณาวาง Token ก่อน'); return; }
+  const btn = document.getElementById('sw-lookup-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+  try {
+    const res  = await fetch('/pages/lookup-token?token=' + encodeURIComponent(token));
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    document.getElementById('sw-id').value   = data.id;
+    document.getElementById('sw-name').value = data.name;
+  } catch (err) {
+    Swal.showValidationMessage('Token ผิดพลาด: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> ตรวจสอบ';
+  }
 }
 
 async function openEditPage(pageId, pageName, token, expiry) {
@@ -269,6 +478,152 @@ function copyToken(token, btn) {
     btn.innerHTML = '<i class="fa-solid fa-check" style="color:#2e7d32"></i>';
     setTimeout(() => btn.innerHTML = '<i class="fa-regular fa-copy"></i>', 1500);
   });
+}
+
+/* ── Exchange token → long-lived (60 วัน) ── */
+async function exchangeToken(pageId, pageName, btn) {
+  const conf = await Swal.fire({
+    title: `ต่ออายุ Token — ${pageName}`,
+    html: `<p style="font-size:.88rem;color:#555;margin:.4rem 0">
+      ระบบจะแลก Token ปัจจุบันเป็น <strong>Long-lived Token (60 วัน)</strong><br>
+      ถ้า Token เป็นแบบ Page Token จะได้ <strong>ไม่มีวันหมดอายุ</strong>
+    </p>`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#2e7d32',
+    cancelButtonColor: '#65676b',
+    confirmButtonText: '<i class="fa-solid fa-rotate"></i> ต่ออายุเลย',
+    cancelButtonText: 'ยกเลิก',
+  });
+  if (!conf.isConfirmed) return;
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
+  try {
+    const res  = await fetch('/api/exchange-token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pageId }),
+    });
+    const data = await res.json();
+
+    if (!data.ok) throw new Error(data.error);
+
+    const msg = data.neverExpires
+      ? '✅ ได้ Page Token แบบ <strong>ไม่มีวันหมดอายุ</strong>'
+      : `✅ Token ใหม่หมดอายุ <strong>${new Date(data.expiryDate).toLocaleDateString('th-TH', {year:'numeric',month:'long',day:'numeric'})}</strong>`;
+
+    await Swal.fire({ icon: 'success', title: 'ต่ออายุสำเร็จ', html: msg, confirmButtonColor: '#1877f2' });
+    location.reload();
+  } catch (err) {
+    Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.message });
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-rotate"></i>';
+  }
+}
+
+/* ── Import from Token ── */
+let _importCandidates = [];
+
+function openImportModal() {
+  document.getElementById('tokenImportModal').style.display = 'flex';
+}
+function closeImportModal() {
+  document.getElementById('tokenImportModal').style.display = 'none';
+  document.getElementById('importPageList').innerHTML = '';
+  document.getElementById('importTokenInput').value = '';
+  document.getElementById('importFooter').style.display = 'none';
+  _importCandidates = [];
+}
+function closeImportOnBg(e) {
+  if (e.target.id === 'tokenImportModal') closeImportModal();
+}
+
+async function fetchImportPages() {
+  const token = document.getElementById('importTokenInput').value.trim();
+  if (!token) {
+    Swal.fire({ icon:'warning', title:'กรุณาใส่ Token', timer:1500, showConfirmButton:false });
+    return;
+  }
+  const btn = document.getElementById('fetchTokenBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังดึง...';
+
+  try {
+    const res  = await fetch('/pages/from-token?token=' + encodeURIComponent(token));
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    renderImportList(data.pages);
+  } catch (err) {
+    Swal.fire({ icon:'error', title:'เกิดข้อผิดพลาด', text: err.message });
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> ดึงเพจ';
+  }
+}
+
+function renderImportList(pages) {
+  _importCandidates = pages;
+  const list   = document.getElementById('importPageList');
+  const footer = document.getElementById('importFooter');
+
+  if (!pages || pages.length === 0) {
+    list.innerHTML = '<p style="text-align:center;color:#8a8d91;padding:1.5rem 0">ไม่พบเพจที่ดูแล</p>';
+    footer.style.display = 'none';
+    return;
+  }
+
+  const colors = ['purple','green','orange','blue','red'];
+  list.innerHTML = pages.map((p, i) => `
+    <label style="display:flex;align-items:center;gap:.75rem;padding:.65rem .4rem;cursor:pointer;border-bottom:1px solid #f0f2f5">
+      <input type="checkbox" class="import-chk" data-idx="${i}" onchange="updateImportCount()"
+        style="width:16px;height:16px;cursor:pointer;accent-color:#1877f2">
+      <div class="avatar avatar-${colors[i%5]}" style="flex-shrink:0">${p.name.slice(-1)}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
+        <div style="font-size:.78rem;color:#65676b">ID: ${p.id}</div>
+      </div>
+      ${p.access_token ? '<span style="font-size:.75rem;color:#2e7d32;background:#e8f5e9;padding:.15rem .5rem;border-radius:4px"><i class="fa-solid fa-key"></i> มี Token</span>' : ''}
+    </label>
+  `).join('');
+
+  footer.style.display = 'flex';
+  // select all by default
+  document.querySelectorAll('.import-chk').forEach(c => c.checked = true);
+  updateImportCount();
+}
+
+function updateImportCount() {
+  const n = document.querySelectorAll('.import-chk:checked').length;
+  document.getElementById('importSelectCount').textContent = `เลือก ${n} เพจ`;
+}
+
+async function doImportPages() {
+  const selected = [...document.querySelectorAll('.import-chk:checked')]
+    .map(el => _importCandidates[+el.dataset.idx]);
+  if (!selected.length) return;
+
+  let imported = 0, skipped = 0;
+  for (const p of selected) {
+    const res  = await fetch('/pages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pageId: p.id, pageName: p.name, accessToken: p.access_token || '', tokenExpiry: null }),
+    });
+    const data = await res.json();
+    if (data.ok) imported++;
+    else skipped++;
+  }
+
+  closeImportModal();
+  await Swal.fire({
+    icon: 'success',
+    title: `นำเข้าสำเร็จ ${imported} เพจ` + (skipped ? ` (ข้าม ${skipped} เพจซ้ำ)` : ''),
+    timer: 2000,
+    showConfirmButton: false,
+  });
+  location.reload();
 }
 </script>
 </body>

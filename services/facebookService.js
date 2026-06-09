@@ -1,48 +1,125 @@
-const fs = require('fs');
-const path = require('path');
+const fs       = require('fs');
+const path     = require('path');
+const pageStore = require('./pageStore');
 
-const PAGES_PATH = path.join(__dirname, '../data/pages.json');
-const LOG_PATH   = process.env.VERCEL ? '/tmp/post.log' : path.join(__dirname, '../logs/post.log');
+const FB_API     = 'https://graph.facebook.com/v21.0';
+const UPLOADS_DIR = process.env.VERCEL
+    ? '/tmp/uploads'
+    : path.join(__dirname, '../public/uploads');
 
-function loadPages() {
-    return JSON.parse(fs.readFileSync(PAGES_PATH, 'utf-8'));
+const MIME_MAP = { jpg:'image/jpeg', jpeg:'image/jpeg', png:'image/png', gif:'image/gif', webp:'image/webp' };
+
+async function uploadPhoto(pageId, accessToken, filename) {
+    const filePath = path.join(UPLOADS_DIR, filename);
+    const buffer   = fs.readFileSync(filePath);
+    const ext      = path.extname(filename).slice(1).toLowerCase();
+    const mime     = MIME_MAP[ext] || 'image/jpeg';
+
+    const form = new FormData();
+    form.append('source', new Blob([buffer], { type: mime }), filename);
+    form.append('published', 'false');
+    form.append('access_token', accessToken);
+
+    const res  = await fetch(`${FB_API}/${pageId}/photos`, { method: 'POST', body: form });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    return data.id;
 }
 
-function appendLog(entry) {
-    fs.appendFileSync(LOG_PATH, JSON.stringify(entry) + '\n', 'utf-8');
+async function fbPost(pageId, accessToken, message, imageFiles) {
+    const params = new URLSearchParams({ message, access_token: accessToken });
+
+    if (imageFiles.length > 0) {
+        const photoIds = [];
+        for (const filename of imageFiles) {
+            const id = await uploadPhoto(pageId, accessToken, filename);
+            photoIds.push(id);
+        }
+        params.set('attached_media', JSON.stringify(photoIds.map(id => ({ media_fbid: id }))));
+    }
+
+    const res = await fetch(`${FB_API}/${pageId}/feed`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params,
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    return data.id; // format: "pageId_postId"
 }
 
-// pageIds = array of pageId strings to filter; null = all pages
-async function sendToPages(message, pageIds = null) {
-    const all = loadPages();
+async function sendToPages(message, pageIds = null, images = []) {
+    const all   = pageStore.load();
     const pages = pageIds ? all.filter(p => pageIds.includes(p.pageId)) : all;
     const results = [];
 
     for (const page of pages) {
-        await new Promise(r => setTimeout(r, 80));
-        const success = Math.random() > 0.1;
         const timestamp = new Date().toISOString();
-
-        const entry = {
-            timestamp,
-            pageId: page.pageId,
-            pageName: page.pageName,
-            message,
-            status: success ? 'success' : 'failed',
-            analytics: success ? {
-                likes:             Math.floor(Math.random() * 250) + 10,
-                comments:          Math.floor(Math.random() * 40),
-                shares:            Math.floor(Math.random() * 20),
-                reach:             Math.floor(Math.random() * 2000) + 200,
-                followersGained:   Math.floor(Math.random() * 150) + 5,
-            } : null,
-        };
-
-        appendLog(entry);
-        results.push(entry);
+        try {
+            if (!page.accessToken) throw new Error('ไม่มี Access Token สำหรับเพจนี้');
+            const fbId = await fbPost(page.pageId, page.accessToken, message, images);
+            const [pgId, pId] = fbId.split('_');
+            const postUrl = `https://www.facebook.com/${pgId}/posts/${pId}`;
+            results.push({
+                timestamp, pageId: page.pageId, pageName: page.pageName,
+                message, status: 'success', fbPostId: fbId, postUrl, analytics: null,
+            });
+        } catch (err) {
+            results.push({
+                timestamp, pageId: page.pageId, pageName: page.pageName,
+                message, status: 'failed', error: err.message, analytics: null,
+            });
+        }
     }
-
     return results;
 }
 
-module.exports = { sendToPages };
+async function fetchPagesFromToken(accessToken) {
+    // Try User Access Token first → returns all managed pages
+    const url  = `${FB_API}/me/accounts?fields=id,name,access_token&access_token=${encodeURIComponent(accessToken)}`;
+    const res  = await fetch(url);
+    const data = await res.json();
+
+    if (!data.error) return data.data || [];
+
+    // Fallback: might be a Page Access Token → fetch the page itself
+    if (data.error.code === 100 || data.error.code === 200) {
+        const r2   = await fetch(`${FB_API}/me?fields=id,name&access_token=${encodeURIComponent(accessToken)}`);
+        const d2   = await r2.json();
+        if (d2.error) throw new Error(d2.error.message);
+        return [{ id: d2.id, name: d2.name, access_token: accessToken }];
+    }
+
+    throw new Error(data.error.message);
+}
+
+async function refreshPostAnalytics(fbPostId, accessToken) {
+    // Basic metrics — no special permissions needed
+    const baseUrl = `${FB_API}/${fbPostId}?fields=likes.summary(true),comments.summary(true),shares&access_token=${encodeURIComponent(accessToken)}`;
+    const baseRes = await fetch(baseUrl);
+    const base    = await baseRes.json();
+    if (base.error) throw new Error(base.error.message);
+
+    // Reach — requires read_insights or pages_read_engagement
+    // period=lifetime is required for post-level insights
+    let reach = 0;
+    try {
+        const r = await fetch(`${FB_API}/${fbPostId}/insights?metric=post_impressions_unique&period=lifetime&access_token=${encodeURIComponent(accessToken)}`);
+        const d = await r.json();
+        if (d.error) {
+            console.log('[Analytics] reach error:', d.error.code, d.error.message);
+        } else {
+            const val = d.data?.[0]?.values?.[0]?.value ?? d.data?.[0]?.values?.at(-1)?.value;
+            if (typeof val === 'number') reach = val;
+        }
+    } catch (e) { console.log('[Analytics] reach fetch error:', e.message); }
+
+    return {
+        likes:    base.likes?.summary?.total_count    || 0,
+        comments: base.comments?.summary?.total_count || 0,
+        shares:   base.shares?.count                  || 0,
+        reach,
+    };
+}
+
+module.exports = { sendToPages, fetchPagesFromToken, refreshPostAnalytics };

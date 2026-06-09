@@ -95,8 +95,10 @@
       <% } %>
 
       <div class="fb-post-footer">
-        <span><i class="fa-solid fa-thumbs-up" style="color:#1877f2"></i> <i class="fa-solid fa-heart" style="color:#f5533d"></i> <%= Math.floor(Math.random()*50)+10 %></span>
-        <span><%= total %> เพจได้รับโพสต์</span>
+        <span><i class="fa-solid fa-layer-group" style="color:#1877f2"></i> <%= total %> เพจได้รับโพสต์</span>
+        <span class="pill pill-<%= allOk ? 'success' : 'fail' %>" style="font-size:.8rem">
+          <%= allOk ? 'สำเร็จทั้งหมด' : `สำเร็จ ${sc}/${total}` %>
+        </span>
       </div>
     </div>
 
@@ -113,15 +115,28 @@
         <div class="avatar avatar-<%= colors[i % colors.length] %> avatar-sm"><%= r.pageName.slice(-1) %></div>
         <div class="result-info">
           <div class="result-page-name"><%= r.pageName %></div>
-          <div class="result-time"><i class="fa-regular fa-clock"></i> <%= new Date(r.timestamp).toLocaleString('th-TH') %></div>
+          <div class="result-time">
+            <i class="fa-regular fa-clock"></i> <%= new Date(r.timestamp).toLocaleString('th-TH') %>
+            <% if (r.error) { %>
+              &nbsp;·&nbsp;<span style="color:#c62828;font-size:.78rem"><%= r.error %></span>
+            <% } %>
+          </div>
         </div>
-        <span class="status-badge <%= r.status %>">
-          <% if (r.status === 'success') { %>
-            <i class="fa-solid fa-circle-check"></i> สำเร็จ
-          <% } else { %>
-            <i class="fa-solid fa-circle-xmark"></i> ล้มเหลว
+        <div style="display:flex;align-items:center;gap:.5rem">
+          <% if (r.status === 'success' && r.postUrl) { %>
+          <a href="<%= r.postUrl %>" target="_blank" rel="noopener"
+             style="font-size:.8rem;color:#1877f2;text-decoration:none;display:flex;align-items:center;gap:.25rem">
+            <i class="fa-brands fa-facebook"></i> ดูโพสต์
+          </a>
           <% } %>
-        </span>
+          <span class="status-badge <%= r.status %>">
+            <% if (r.status === 'success') { %>
+              <i class="fa-solid fa-circle-check"></i> สำเร็จ
+            <% } else { %>
+              <i class="fa-solid fa-circle-xmark"></i> ล้มเหลว
+            <% } %>
+          </span>
+        </div>
       </div>
       <% }); %>
 

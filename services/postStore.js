@@ -36,4 +36,6 @@ function remove(id) {
     return post;
 }
 
-module.exports = { load, create, getById, remove };
+function saveAll(posts) { save(posts); }
+
+module.exports = { load, create, getById, remove, saveAll };

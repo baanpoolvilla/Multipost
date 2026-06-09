@@ -42,4 +42,6 @@ function remove(pageId) {
     return page;
 }
 
-module.exports = { load, add, update, remove };
+function saveAll(pages) { save(pages); }
+
+module.exports = { load, add, update, remove, saveAll };

@@ -10,3 +10,5 @@ logs/
 dist/
 build/
 .vercel/
+
+.vercel

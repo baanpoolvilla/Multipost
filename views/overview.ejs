@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -29,16 +30,24 @@
     <a href="/" class="sidebar-item"><i class="fa-solid fa-house"></i><span>หน้าหลัก</span></a>
     <a href="/overview" class="sidebar-item active"><i class="fa-solid fa-chart-line"></i><span>ภาพรวม</span></a>
     <a href="/history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพสต์</span></a>
+    <a href="/pages" class="sidebar-item"><i class="fa-brands fa-facebook"></i><span>จัดการเพจ</span></a>
   </aside>
 
   <main class="feed">
 
     <!-- Page title -->
     <div class="card" style="padding:.8rem 1.25rem">
-      <div class="card-title" style="font-size:1.05rem">
-        <i class="fa-solid fa-chart-line" style="color:#1877f2"></i>
-        ภาพรวมทั้งหมด
-        <span style="font-size:.8rem;font-weight:400;color:#65676b;margin-left:.4rem">ข้อมูลจำลองจาก Facebook</span>
+      <div class="card-title" style="font-size:1.05rem;display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+          <i class="fa-solid fa-chart-line" style="color:#1877f2"></i>
+          ภาพรวมทั้งหมด
+          <span id="last-updated" style="font-size:.78rem;font-weight:400;color:#8a8d91;margin-left:.4rem">
+            <i class="fa-solid fa-spinner fa-spin" style="font-size:.75rem"></i> กำลังอัปเดต...
+          </span>
+        </div>
+        <button onclick="showDailySummary()" style="background:#1877f2;color:#fff;border:none;border-radius:8px;padding:.35rem .85rem;font-size:.82rem;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:.4rem">
+          <i class="fa-solid fa-calendar-day"></i> สรุปผลรายวัน
+        </button>
       </div>
     </div>
 
@@ -47,50 +56,50 @@
       <div class="metric-card blue">
         <div class="metric-icon"><i class="fa-solid fa-paper-plane"></i></div>
         <div class="metric-body">
-          <div class="metric-val"><%= totalPosts %></div>
+          <div class="metric-val" id="m-posts"><%= totalPosts %></div>
           <div class="metric-label">โพสต์ทั้งหมด</div>
         </div>
       </div>
       <div class="metric-card green">
         <div class="metric-icon"><i class="fa-solid fa-circle-check"></i></div>
         <div class="metric-body">
-          <div class="metric-val"><%= totalSuccess %></div>
+          <div class="metric-val" id="m-success"><%= totalSuccess %></div>
           <div class="metric-label">ส่งสำเร็จ</div>
         </div>
       </div>
       <div class="metric-card purple">
         <div class="metric-icon"><i class="fa-solid fa-thumbs-up"></i></div>
         <div class="metric-body">
-          <div class="metric-val"><%= totalLikes.toLocaleString() %></div>
+          <div class="metric-val" id="m-likes"><%= totalLikes.toLocaleString() %></div>
           <div class="metric-label">ไลค์ทั้งหมด</div>
         </div>
       </div>
       <div class="metric-card orange">
         <div class="metric-icon"><i class="fa-solid fa-comment"></i></div>
         <div class="metric-body">
-          <div class="metric-val"><%= totalComments.toLocaleString() %></div>
+          <div class="metric-val" id="m-comments"><%= totalComments.toLocaleString() %></div>
           <div class="metric-label">ความคิดเห็น</div>
         </div>
       </div>
       <div class="metric-card teal">
         <div class="metric-icon"><i class="fa-solid fa-share-nodes"></i></div>
         <div class="metric-body">
-          <div class="metric-val"><%= totalShares.toLocaleString() %></div>
+          <div class="metric-val" id="m-shares"><%= totalShares.toLocaleString() %></div>
           <div class="metric-label">แชร์</div>
         </div>
       </div>
       <div class="metric-card red">
         <div class="metric-icon"><i class="fa-solid fa-eye"></i></div>
         <div class="metric-body">
-          <div class="metric-val"><%= totalReach.toLocaleString() %></div>
+          <div class="metric-val" id="m-reach"><%= totalReach.toLocaleString() %></div>
           <div class="metric-label">การเข้าถึง</div>
         </div>
       </div>
-      <div class="metric-card blue" style="border: 2px solid #1877f2; background: #f0f5ff;">
-        <div class="metric-icon" style="background: #1877f2;"><i class="fa-solid fa-user-plus"></i></div>
+      <div class="metric-card green" style="border: 2px solid #2e7d32; background: #f0fff4;">
+        <div class="metric-icon" style="background: #2e7d32;"><i class="fa-solid fa-chart-pie"></i></div>
         <div class="metric-body">
-          <div class="metric-val" style="color: #1877f2;"><%= totalFollowersGained.toLocaleString() %></div>
-          <div class="metric-label">ผู้ติดตามที่เพิ่มขึ้น</div>
+          <div class="metric-val" id="m-rate" style="color: #2e7d32;"><%= successRate %>%</div>
+          <div class="metric-label">อัตราสำเร็จ</div>
         </div>
       </div>
     </div>
@@ -106,15 +115,21 @@
     <!-- Per-page breakdown -->
     <% if (pageStats.length > 0) { %>
     <div class="card">
-      <div class="card-title" style="margin-bottom:1rem">
-        <i class="fa-solid fa-layer-group"></i> สถิติแต่ละเพจ
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;margin-bottom:1rem">
+        <div class="card-title" style="margin-bottom:0">
+          <i class="fa-solid fa-layer-group"></i> สถิติแต่ละเพจ
+        </div>
+        <div style="position:relative">
+          <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:.6rem;top:50%;transform:translateY(-50%);color:#8a8d91;font-size:.8rem;pointer-events:none"></i>
+          <input id="page-search" type="text" placeholder="ค้นหาชื่อเพจ..." oninput="filterPages(this.value)"
+            style="padding:.35rem .7rem .35rem 1.9rem;border:1px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;width:180px;outline:none;color:#333">
+        </div>
       </div>
       <div class="overview-table-wrap">
         <table class="overview-table">
           <thead>
             <tr>
               <th>เพจ</th>
-              <th><i class="fa-solid fa-user-plus"></i> เพิ่มขึ้น</th>
               <th><i class="fa-solid fa-paper-plane"></i> โพสต์</th>
               <th><i class="fa-solid fa-thumbs-up"></i> ไลค์</th>
               <th><i class="fa-solid fa-comment"></i> คอมเมนต์</th>
@@ -123,18 +138,17 @@
               <th>อัตราสำเร็จ</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="pages-tbody">
             <% pageStats.forEach((p, i) => { %>
             <% const rate = p.posts > 0 ? Math.round(p.success/p.posts*100) : 0; %>
             <% const colors = ['purple','green','orange','blue','red']; %>
-            <tr>
+            <tr class="page-row" data-name="<%= p.pageName.toLowerCase() %>" data-index="<%= i %>">
               <td>
                 <div style="display:flex;align-items:center;gap:.5rem">
                   <div class="avatar avatar-<%= colors[i%5] %> avatar-sm"><%= p.pageName.slice(-1) %></div>
                   <span style="font-weight:600"><%= p.pageName %></span>
                 </div>
               </td>
-              <td class="num" style="color: #1877f2;"><%= p.followersGained ? p.followersGained.toLocaleString() : '—' %></td>
               <td class="num"><%= p.posts %></td>
               <td class="num blue-text"><%= p.likes.toLocaleString() %></td>
               <td class="num orange-text"><%= p.comments.toLocaleString() %></td>
@@ -150,6 +164,11 @@
             <% }); %>
           </tbody>
         </table>
+      </div>
+      <div id="show-more-wrap" style="text-align:center;margin-top:.75rem;display:none">
+        <button onclick="showAllPages()" style="background:none;border:1px solid #1877f2;color:#1877f2;border-radius:8px;padding:.35rem 1.1rem;font-size:.82rem;cursor:pointer;font-family:inherit">
+          <i class="fa-solid fa-chevron-down"></i> ดูเพิ่มเติม
+        </button>
       </div>
     </div>
     <% } %>
@@ -176,9 +195,7 @@
             const totLikes    = post.results.reduce((s,r) => s + (r.analytics?.likes    || 0), 0);
             const totComments = post.results.reduce((s,r) => s + (r.analytics?.comments || 0), 0);
             const totReach    = post.results.reduce((s,r) => s + (r.analytics?.reach    || 0), 0);
-            const totFollowers = post.results.reduce((s,r) => s + (r.analytics?.followersGained || 0), 0);
           %>
-          <span><i class="fa-solid fa-user-plus" style="color:#1877f2"></i> <%= totFollowers %></span>
           <span><i class="fa-solid fa-thumbs-up" style="color:#f7b928"></i> <%= totLikes %></span>
           <span><i class="fa-solid fa-comment" style="color:#f5533d"></i> <%= totComments %></span>
           <span><i class="fa-solid fa-eye" style="color:#45bd62"></i> <%= totReach %></span>
@@ -226,6 +243,138 @@
 </div>
 
 <script>
+/* ── Auto-refresh (no button needed) ── */
+const POLL_MS = 60 * 1000; // poll ทุก 1 นาที
+
+function setLastUpdated() {
+  const now = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+  const el  = document.getElementById('last-updated');
+  if (el) el.innerHTML = `· อัปเดต ${now}`;
+}
+
+async function updateNumbers() {
+  const res  = await fetch('/api/stats');
+  const data = await res.json();
+  const set  = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  set('m-posts',     data.totalPosts);
+  set('m-success',   data.totalSuccess);
+  set('m-likes',     data.totalLikes.toLocaleString());
+  set('m-comments',  data.totalComments.toLocaleString());
+  set('m-shares', data.totalShares.toLocaleString());
+  set('m-reach',  data.totalReach.toLocaleString());
+  set('m-rate',   data.successRate + '%');
+}
+
+// Auto-refresh จาก Facebook ทุกครั้งที่โหลดหน้า
+(async function autoRefreshOnLoad() {
+  try {
+    await fetch('/api/refresh-analytics', { method: 'POST' });
+    await updateNumbers();
+    setLastUpdated();
+  } catch {
+    setLastUpdated();
+  }
+})();
+
+// Poll ทุก 5 นาทีเพื่ออัปเดตตัวเลขล่าสุด
+setInterval(async () => {
+  try { await updateNumbers(); setLastUpdated(); } catch {}
+}, POLL_MS);
+
+/* ── Daily Summary Popup ── */
+async function showDailySummary() {
+  const today = new Date().toISOString().slice(0, 10);
+
+  // date picker
+  const { value: date } = await Swal.fire({
+    title: '<i class="fa-solid fa-calendar-day" style="color:#1877f2"></i> สรุปผลรายวัน',
+    input: 'date',
+    inputValue: today,
+    confirmButtonText: 'ดูสรุป',
+    confirmButtonColor: '#1877f2',
+    showCancelButton: true,
+    cancelButtonText: 'ยกเลิก',
+  });
+  if (!date) return;
+
+  Swal.fire({ title: 'กำลังโหลด...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+  try {
+    const res  = await fetch(`/api/daily-summary?date=${date}`);
+    const d    = await res.json();
+    const label = new Date(date + 'T00:00:00').toLocaleDateString('th-TH', { year:'numeric', month:'long', day:'numeric' });
+
+    Swal.fire({
+      title: `สรุปผล ${label}`,
+      html: `
+        <div style="text-align:left">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:1rem">
+            <div style="background:#e8f4fd;border-radius:10px;padding:.6rem .8rem;text-align:center">
+              <div style="font-size:1.5rem;font-weight:700;color:#1877f2">${d.totalPosts}</div>
+              <div style="font-size:.75rem;color:#555">โพสต์ทั้งหมด</div>
+            </div>
+            <div style="background:#e8fde8;border-radius:10px;padding:.6rem .8rem;text-align:center">
+              <div style="font-size:1.5rem;font-weight:700;color:#2e7d32">${d.successRate}%</div>
+              <div style="font-size:.75rem;color:#555">อัตราสำเร็จ</div>
+            </div>
+            <div style="background:#fff8e6;border-radius:10px;padding:.6rem .8rem;text-align:center">
+              <div style="font-size:1.5rem;font-weight:700;color:#f7b928">${d.totalLikes}</div>
+              <div style="font-size:.75rem;color:#555">ไลค์</div>
+            </div>
+            <div style="background:#fff0ed;border-radius:10px;padding:.6rem .8rem;text-align:center">
+              <div style="font-size:1.5rem;font-weight:700;color:#f5533d">${d.totalComments}</div>
+              <div style="font-size:.75rem;color:#555">คอมเมนต์</div>
+            </div>
+            <div style="background:#e8faf4;border-radius:10px;padding:.6rem .8rem;text-align:center">
+              <div style="font-size:1.5rem;font-weight:700;color:#09af74">${d.totalShares}</div>
+              <div style="font-size:.75rem;color:#555">แชร์</div>
+            </div>
+            <div style="background:#f0edff;border-radius:10px;padding:.6rem .8rem;text-align:center">
+              <div style="font-size:1.5rem;font-weight:700;color:#7c3aed">${d.totalReach}</div>
+              <div style="font-size:.75rem;color:#555">การเข้าถึง</div>
+            </div>
+          </div>
+        </div>`,
+      confirmButtonText: 'ปิด',
+      confirmButtonColor: '#1877f2',
+      width: '480px',
+    });
+  } catch {
+    Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'ไม่สามารถโหลดข้อมูลได้' });
+  }
+}
+
+/* ── Page table: search + show-more ── */
+const PAGE_LIMIT = 8;
+let showingAll = false;
+
+function applyPageVisibility(query) {
+  const rows = document.querySelectorAll('.page-row');
+  let visible = 0;
+  rows.forEach(row => {
+    const match = !query || row.dataset.name.includes(query.toLowerCase());
+    const withinLimit = showingAll || parseInt(row.dataset.index) < PAGE_LIMIT;
+    row.style.display = match && withinLimit ? '' : 'none';
+    if (match) visible++;
+  });
+  const wrap = document.getElementById('show-more-wrap');
+  if (wrap) wrap.style.display = (!showingAll && !query && rows.length > PAGE_LIMIT) ? '' : 'none';
+}
+
+function filterPages(q) {
+  showingAll = !!q; // เมื่อค้นหา ให้แสดงทุกแถว
+  applyPageVisibility(q);
+}
+
+function showAllPages() {
+  showingAll = true;
+  const q = document.getElementById('page-search')?.value || '';
+  applyPageVisibility(q);
+}
+
+applyPageVisibility('');
+
+/* ── Chart ── */
 const ctx = document.getElementById('postsChart');
 if (ctx) {
   new Chart(ctx, {

@@ -28,9 +28,18 @@ router.post('/send',          upload.array('images', 10), ctrl.sendPost);
 router.get('/result/:id',     ctrl.showResult);
 router.get('/history',        ctrl.showHistory);
 router.delete('/history/:id', ctrl.deletePost);
-router.get('/overview',       ctrl.showOverview);
+router.get('/overview',               ctrl.showOverview);
+router.get('/api/stats',              ctrl.overviewStats);
+router.post('/api/refresh-analytics', ctrl.refreshAnalytics);
+router.get('/api/daily-summary',      ctrl.dailySummary);
+router.get('/api/check-tokens',       ctrl.checkTokens);
+router.post('/api/exchange-token',    ctrl.exchangeToken);
+router.get('/api/settings',          ctrl.getSettings);
+router.post('/api/settings',         ctrl.saveSettings);
 
 // Page management
+router.get('/pages/lookup-token', ctrl.lookupToken);
+router.get('/pages/from-token',  ctrl.importPagesFromToken);
 router.get('/pages',          ctrl.showPages);
 router.post('/pages',         ctrl.addPage);
 router.put('/pages/:id',      ctrl.updatePage);
