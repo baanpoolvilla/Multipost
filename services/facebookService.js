@@ -49,7 +49,7 @@ async function fbPost(pageId, accessToken, message, imageFiles) {
 }
 
 async function sendToPages(message, pageIds = null, images = []) {
-    const all   = pageStore.load();
+    const all   = await pageStore.load();
     const pages = pageIds ? all.filter(p => pageIds.includes(p.pageId)) : all;
     const results = [];
 
