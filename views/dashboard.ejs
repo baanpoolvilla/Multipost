@@ -127,6 +127,24 @@
         <% } %>
       </div>
 
+      <!-- Share-to-groups selector (shares the page post URL after posting) -->
+      <% const pagesWithGroups = pages.filter(p => (p.groups||[]).filter(g => g.enabled!==false).length > 0); %>
+      <% if (pagesWithGroups.length > 0) { %>
+      <div class="page-selector" style="border-top:1px dashed #e4e6eb;padding-top:.5rem">
+        <span class="page-selector-label"><i class="fa-solid fa-people-group" style="color:#42b72a"></i> กลุ่ม:</span>
+        <% pagesWithGroups.forEach((p, i) => { %>
+        <button class="page-sel-chip share-page-chip" data-page-id="<%= p.pageId %>" onclick="selectSharePage(this)">
+          <div class="avatar avatar-<%= colors[i%5] %>" style="width:16px;height:16px;font-size:.55rem;flex-shrink:0"><%= p.pageName.slice(-1) %></div>
+          <%= p.pageName %>
+          <span style="background:#e8f5e9;color:#2e7d32;border-radius:999px;font-size:.62rem;padding:.02rem .38rem;font-weight:700"><%= (p.groups||[]).filter(g=>g.enabled!==false).length %></span>
+        </button>
+        <% }); %>
+      </div>
+      <div id="shareGroupChipsRow" style="display:none" class="page-selector">
+        <span class="page-selector-label" style="visibility:hidden">:</span>
+        <div id="shareGroupChipsContainer" style="display:flex;flex-wrap:wrap;gap:.35rem;align-items:center"></div>
+      </div>
+      <% } %>
 
       <!-- Template image previews (loaded from template) -->
       <div id="tplImagePreview" class="image-preview-grid" style="display:none"></div>

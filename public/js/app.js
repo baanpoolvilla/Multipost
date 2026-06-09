@@ -189,8 +189,75 @@ function syncAllChip() {
 function updatePageCountLabel() {
   const el = document.getElementById('pageCountLabel');
   if (!el) return;
-  el.textContent = `โพสต์ไปยัง ${selectedPageIds.size} เพจ`;
+  let label = `โพสต์ไปยัง ${selectedPageIds.size} เพจ`;
+  if (_shareGroupIds.size > 0) label += ` · แชร์ ${_shareGroupIds.size} กลุ่ม`;
+  el.textContent = label;
   updateMoreChip();
+}
+
+/* ── Share-to-groups selector ── */
+let _sharePageId    = null;
+let _shareGroupIds  = new Set();
+let _shareGroupsData = [];   // [{groupId, groupName}]
+
+function selectSharePage(btn) {
+  const pageId = btn.dataset.pageId;
+  const row    = document.getElementById('shareGroupChipsRow');
+  if (_sharePageId === pageId) {
+    btn.classList.remove('active');
+    _sharePageId = null;
+    _shareGroupIds.clear();
+    _shareGroupsData = [];
+    if (row) row.style.display = 'none';
+    updatePageCountLabel();
+    return;
+  }
+  document.querySelectorAll('.share-page-chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  _sharePageId = pageId;
+  _shareGroupIds.clear();
+  _shareGroupsData = [];
+  const page   = ALL_PAGES.find(p => p.pageId === pageId);
+  const groups = (page?.groups || []).filter(g => g.enabled !== false);
+  renderShareGroupChips(groups);
+  if (row) row.style.display = 'flex';
+  updatePageCountLabel();
+}
+
+function renderShareGroupChips(groups) {
+  const container = document.getElementById('shareGroupChipsContainer');
+  if (!container) return;
+  if (!groups.length) {
+    container.innerHTML = '<span style="font-size:.8rem;color:#8a8d91">ไม่มีกลุ่ม</span>';
+    return;
+  }
+  container.innerHTML = groups.map(g => `
+    <button class="page-sel-chip share-group-chip active"
+      data-group-id="${g.groupId}" data-group-name="${g.groupName.replace(/"/g,'&quot;')}"
+      onclick="toggleShareGroupChip(this)">
+      <i class="fa-solid fa-people-group" style="font-size:.6rem;color:#42b72a;flex-shrink:0"></i>
+      ${g.groupName}
+    </button>`).join('');
+  groups.forEach(g => {
+    _shareGroupIds.add(g.groupId);
+    _shareGroupsData.push({ groupId: g.groupId, groupName: g.groupName });
+  });
+  updatePageCountLabel();
+}
+
+function toggleShareGroupChip(btn) {
+  const id   = btn.dataset.groupId;
+  const name = btn.dataset.groupName;
+  if (_shareGroupIds.has(id)) {
+    _shareGroupIds.delete(id);
+    _shareGroupsData = _shareGroupsData.filter(g => g.groupId !== id);
+    btn.classList.remove('active');
+  } else {
+    _shareGroupIds.add(id);
+    if (!_shareGroupsData.find(x => x.groupId === id)) _shareGroupsData.push({ groupId: id, groupName: name });
+    btn.classList.add('active');
+  }
+  updatePageCountLabel();
 }
 
 /* ── Sidebar show more ── */
@@ -418,6 +485,8 @@ async function submitPost() {
   selectedPageIds.forEach(id => fd.append('selectedPages', id));
   selectedFiles.forEach(f => fd.append('images', f));
   _tplLoadedImages.forEach(name => fd.append('templateImages', name));
+  if (_shareGroupsData.length > 0)
+    fd.append('shareGroups', JSON.stringify(_shareGroupsData));
 
   try {
     const res  = await fetch('/send', { method: 'POST', body: fd });

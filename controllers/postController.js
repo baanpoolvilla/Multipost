@@ -76,27 +76,18 @@ exports.sendPost = async (req, res) => {
 
     const feeling = feelingEmoji ? { emoji: feelingEmoji, label: feelingLabel } : null;
     const results = await sendToPages(message.trim(), pageIds || null, images);
-
-    if (groupIds && groupIds.length > 0 && groupPageId) {
-        const [pages, cfg] = await Promise.all([pageStore.load(), settingsStore.load()]);
-        const page  = pages.find(p => p.pageId === groupPageId);
-        const token = cfg.groupToken || page?.accessToken;
-        if (page && token) {
-            const groupMap = groupIds.map(gId => {
-                const group = (page.groups || []).find(g => g.groupId === gId);
-                return { groupId: gId, groupName: group?.groupName || gId, pageId: page.pageId, accessToken: token };
-            });
-            const gResults = await sendToGroups(message.trim(), groupMap, images);
-            results.push(...gResults);
-        }
-    }
-
     const successCount = results.filter(r => r.status === 'success').length;
+
+    let shareGroups = [];
+    if (req.body.shareGroups) {
+        try { shareGroups = JSON.parse(req.body.shareGroups); } catch {}
+    }
 
     const post = await postStore.create({
         message: message.trim(), feeling,
         location: location || null, images, results,
         successCount, failCount: results.length - successCount,
+        shareGroups,
     });
 
     res.json({ id: post.id });
