@@ -37,6 +37,12 @@ router.post('/api/exchange-token',    ctrl.exchangeToken);
 router.get('/api/settings',          ctrl.getSettings);
 router.post('/api/settings',         ctrl.saveSettings);
 
+// Group management
+router.post('/pages/:pageId/groups/sync',          ctrl.syncGroups);
+router.post('/pages/:pageId/groups',               ctrl.addGroup);
+router.delete('/pages/:pageId/groups/:groupId',    ctrl.removeGroup);
+router.patch('/pages/:pageId/groups/:groupId',     ctrl.toggleGroup);
+
 // Page management
 router.get('/pages/lookup-token', ctrl.lookupToken);
 router.get('/pages/from-token',  ctrl.importPagesFromToken);

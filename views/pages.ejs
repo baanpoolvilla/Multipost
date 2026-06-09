@@ -152,6 +152,53 @@
           <% } %>
         </div>
 
+        <!-- Groups section -->
+        <div class="page-groups-section" id="groups-<%= p.pageId %>">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+            <div style="font-size:.8rem;font-weight:600;color:#555;display:flex;align-items:center;gap:.4rem">
+              <i class="fa-solid fa-people-group" style="color:#1877f2"></i> กลุ่ม
+              <span class="group-count-badge" id="gcount-<%= p.pageId %>"
+                style="background:#e4e6ea;padding:.1rem .45rem;border-radius:999px;font-size:.72rem;font-weight:600">
+                <%= (p.groups||[]).length %>
+              </span>
+            </div>
+            <div style="display:flex;gap:.4rem">
+              <button onclick="syncGroups('<%= p.pageId %>',this)" title="ซิงค์จาก Facebook"
+                style="background:#e7f3ff;color:#1877f2;border:none;border-radius:6px;padding:.25rem .6rem;font-size:.75rem;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:.3rem">
+                <i class="fa-solid fa-rotate"></i> ซิงค์
+              </button>
+              <button onclick="openAddGroup('<%= p.pageId %>')" title="เพิ่มกลุ่มเอง"
+                style="background:#e6f9ee;color:#2e7d32;border:none;border-radius:6px;padding:.25rem .6rem;font-size:.75rem;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:.3rem">
+                <i class="fa-solid fa-plus"></i> เพิ่มเอง
+              </button>
+            </div>
+          </div>
+          <div id="glist-<%= p.pageId %>">
+            <% if ((p.groups||[]).length === 0) { %>
+            <div class="group-empty" style="font-size:.78rem;color:#8a8d91;padding:.3rem 0">
+              ยังไม่มีกลุ่ม — กด "ซิงค์" เพื่อดึงจาก Facebook หรือ "เพิ่มเอง"
+            </div>
+            <% } else { %>
+            <% (p.groups||[]).forEach(g => { %>
+            <div class="group-row" id="grow-<%= p.pageId %>-<%= g.groupId %>"
+              style="display:flex;align-items:center;gap:.5rem;padding:.3rem 0;border-bottom:1px solid #f0f2f5">
+              <input type="checkbox" <%= g.enabled ? 'checked' : '' %>
+                onchange="toggleGroup('<%= p.pageId %>','<%= g.groupId %>',this.checked)"
+                style="accent-color:#1877f2;cursor:pointer;width:14px;height:14px">
+              <span style="flex:1;font-size:.82rem;color:#333"><%= g.groupName %></span>
+              <span style="font-size:.7rem;color:#8a8d91;background:#f0f2f5;padding:.1rem .4rem;border-radius:4px">
+                <%= g.source === 'facebook' ? 'FB' : 'manual' %>
+              </span>
+              <button onclick="removeGroup('<%= p.pageId %>','<%= g.groupId %>',this)"
+                style="background:none;border:none;color:#c62828;cursor:pointer;font-size:.8rem;padding:.1rem .25rem">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+            <% }); %>
+            <% } %>
+          </div>
+        </div>
+
         <div class="token-status-row">
           <% if (p.tokenExpiry) { %>
           <div class="token-status-badge" data-expiry="<%= p.tokenExpiry %>">
@@ -477,6 +524,99 @@ function copyToken(token, btn) {
   navigator.clipboard.writeText(token).then(() => {
     btn.innerHTML = '<i class="fa-solid fa-check" style="color:#2e7d32"></i>';
     setTimeout(() => btn.innerHTML = '<i class="fa-regular fa-copy"></i>', 1500);
+  });
+}
+
+/* ── Group management ── */
+function renderGroups(pageId, groups) {
+  const list  = document.getElementById(`glist-${pageId}`);
+  const badge = document.getElementById(`gcount-${pageId}`);
+  if (badge) badge.textContent = groups.length;
+  if (!list) return;
+  if (groups.length === 0) {
+    list.innerHTML = `<div class="group-empty" style="font-size:.78rem;color:#8a8d91;padding:.3rem 0">ยังไม่มีกลุ่ม — กด "ซิงค์" เพื่อดึงจาก Facebook หรือ "เพิ่มเอง"</div>`;
+    return;
+  }
+  list.innerHTML = groups.map(g => `
+    <div class="group-row" id="grow-${pageId}-${g.groupId}"
+      style="display:flex;align-items:center;gap:.5rem;padding:.3rem 0;border-bottom:1px solid #f0f2f5">
+      <input type="checkbox" ${g.enabled ? 'checked' : ''}
+        onchange="toggleGroup('${pageId}','${g.groupId}',this.checked)"
+        style="accent-color:#1877f2;cursor:pointer;width:14px;height:14px">
+      <span style="flex:1;font-size:.82rem;color:#333">${g.groupName}</span>
+      <span style="font-size:.7rem;color:#8a8d91;background:#f0f2f5;padding:.1rem .4rem;border-radius:4px">
+        ${g.source === 'facebook' ? 'FB' : 'manual'}
+      </span>
+      <button onclick="removeGroup('${pageId}','${g.groupId}',this)"
+        style="background:none;border:none;color:#c62828;cursor:pointer;font-size:.8rem;padding:.1rem .25rem">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>`).join('');
+}
+
+async function syncGroups(pageId, btn) {
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+  try {
+    const res  = await fetch(`/pages/${pageId}/groups/sync`, { method: 'POST' });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+    renderGroups(pageId, data.groups);
+    const msg = data.fromFacebook > 0
+      ? `ซิงค์สำเร็จ พบ ${data.fromFacebook} กลุ่มจาก Facebook`
+      : 'ไม่พบกลุ่มใหม่จาก Facebook (เพจต้องเป็น Admin ของกลุ่ม)';
+    Swal.fire({ icon: data.fromFacebook > 0 ? 'success' : 'info', title: msg, timer: 2000, showConfirmButton: false });
+  } catch (err) {
+    Swal.fire({ icon: 'error', title: 'ซิงค์ไม่สำเร็จ', text: err.message });
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-rotate"></i> ซิงค์';
+  }
+}
+
+async function openAddGroup(pageId) {
+  const { value } = await Swal.fire({
+    title: '<i class="fa-solid fa-people-group" style="color:#1877f2"></i> เพิ่มกลุ่มเอง',
+    html: `
+      <input id="sw-gid"   class="swal2-input" placeholder="Group ID (ตัวเลข)">
+      <input id="sw-gname" class="swal2-input" placeholder="ชื่อกลุ่ม">`,
+    showCancelButton: true,
+    confirmButtonColor: '#1877f2',
+    confirmButtonText: 'เพิ่ม',
+    cancelButtonText: 'ยกเลิก',
+    focusConfirm: false,
+    preConfirm: () => {
+      const groupId   = document.getElementById('sw-gid').value.trim();
+      const groupName = document.getElementById('sw-gname').value.trim();
+      if (!groupId || !groupName) { Swal.showValidationMessage('กรุณากรอกให้ครบ'); return false; }
+      return { groupId, groupName };
+    },
+  });
+  if (!value) return;
+  const res  = await fetch(`/pages/${pageId}/groups`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(value),
+  });
+  const data = await res.json();
+  if (!data.ok) { Swal.fire({ icon: 'error', title: data.error }); return; }
+  renderGroups(pageId, data.groups);
+  Swal.fire({ icon: 'success', title: 'เพิ่มกลุ่มสำเร็จ', timer: 1200, showConfirmButton: false });
+}
+
+async function removeGroup(pageId, groupId, btn) {
+  btn.disabled = true;
+  const res  = await fetch(`/pages/${pageId}/groups/${groupId}`, { method: 'DELETE' });
+  const data = await res.json();
+  if (data.ok) renderGroups(pageId, data.groups);
+  else btn.disabled = false;
+}
+
+async function toggleGroup(pageId, groupId, enabled) {
+  await fetch(`/pages/${pageId}/groups/${groupId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled }),
   });
 }
 

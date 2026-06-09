@@ -1,6 +1,6 @@
 const fs   = require('fs');
 const path = require('path');
-const { sendToPages, fetchPagesFromToken, refreshPostAnalytics } = require('../services/facebookService');
+const { sendToPages, fetchPagesFromToken, refreshPostAnalytics, fetchPageGroups } = require('../services/facebookService');
 const postStore     = require('../services/postStore');
 const pageStore     = require('../services/pageStore');
 const settingsStore = require('../services/settingsStore');
@@ -279,6 +279,44 @@ exports.importPagesFromToken = async (req, res) => {
     } catch (err) {
         res.status(400).json({ error: err.message });
     }
+};
+
+// ── Group management ───────────────────────────
+exports.syncGroups = async (req, res) => {
+    const { pageId } = req.params;
+    const pages = await pageStore.load();
+    const page  = pages.find(p => p.pageId === pageId);
+    if (!page)             return res.status(404).json({ error: 'ไม่พบเพจ' });
+    if (!page.accessToken) return res.status(400).json({ error: 'ไม่มี Token' });
+    try {
+        const fbGroups = await fetchPageGroups(pageId, page.accessToken);
+        const updated  = await pageStore.syncGroups(pageId, fbGroups);
+        res.json({ ok: true, groups: updated.groups || [], fromFacebook: fbGroups.length });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+};
+
+exports.addGroup = async (req, res) => {
+    const { pageId } = req.params;
+    const { groupId, groupName } = req.body;
+    if (!groupId || !groupName) return res.status(400).json({ error: 'กรุณากรอก Group ID และชื่อกลุ่ม' });
+    const result = await pageStore.addGroup(pageId, groupId, groupName);
+    if (result?.error) return res.status(409).json({ error: result.error });
+    res.json({ ok: true, groups: result?.groups || [] });
+};
+
+exports.removeGroup = async (req, res) => {
+    const { pageId, groupId } = req.params;
+    const result = await pageStore.removeGroup(pageId, groupId);
+    res.json({ ok: true, groups: result?.groups || [] });
+};
+
+exports.toggleGroup = async (req, res) => {
+    const { pageId, groupId } = req.params;
+    const { enabled } = req.body;
+    const result = await pageStore.toggleGroup(pageId, groupId, enabled);
+    res.json({ ok: true, groups: result?.groups || [] });
 };
 
 // ── Page management ────────────────────────────

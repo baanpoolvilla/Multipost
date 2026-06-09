@@ -122,4 +122,12 @@ async function refreshPostAnalytics(fbPostId, accessToken) {
     };
 }
 
-module.exports = { sendToPages, fetchPagesFromToken, refreshPostAnalytics };
+async function fetchPageGroups(pageId, accessToken) {
+    const url  = `${FB_API}/${pageId}/groups?fields=id,name&access_token=${encodeURIComponent(accessToken)}`;
+    const res  = await fetch(url);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    return (data.data || []).map(g => ({ groupId: g.id, groupName: g.name }));
+}
+
+module.exports = { sendToPages, fetchPagesFromToken, refreshPostAnalytics, fetchPageGroups };
