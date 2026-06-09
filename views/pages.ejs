@@ -226,6 +226,12 @@
 </div>
 
 <script>
+/* ── Pre-loaded groups data from server ── */
+const _pageGroupsData = {};
+<% pages.forEach(p => { %>
+_pageGroupsData['<%= p.pageId %>'] = <%- JSON.stringify(p.groups || []) %>;
+<% }); %>
+
 /* ── App Settings ── */
 async function loadSettings() {
   const res  = await fetch('/api/settings');
@@ -511,13 +517,10 @@ function groupListHTML(pageId, groups) {
     </div>`).join('');
 }
 
-async function openGroupsPopup(pageId, pageName) {
+function openGroupsPopup(pageId, pageName) {
   _gpPageId   = pageId;
   _gpPageName = pageName;
-  const res = await fetch(`/pages/${pageId}/groups/sync`, { method: 'POST' });
-  const d   = await res.json();
-  _gpGroups = d.groups || [];
-  updateGroupBadge(pageId, _gpGroups);
+  _gpGroups   = (_pageGroupsData[pageId] || []).slice();
   _showGroupModal(pageName);
 }
 
@@ -526,13 +529,18 @@ function _showGroupModal(pageName) {
     title: `<i class="fa-solid fa-people-group" style="color:#1877f2"></i> กลุ่มของ ${pageName}`,
     html: `
       <div style="text-align:left">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;gap:.4rem">
           <span style="font-size:.82rem;color:#555">
             ทั้งหมด <strong id="gp-count">${_gpGroups.length}</strong> กลุ่ม
           </span>
-          <button onclick="gpAdd()" style="background:#42b72a;color:#fff;border:none;border-radius:7px;padding:.3rem .75rem;font-size:.8rem;cursor:pointer;font-family:inherit">
-            <i class="fa-solid fa-plus"></i> เพิ่มกลุ่ม
-          </button>
+          <div style="display:flex;gap:.4rem">
+            <button id="gp-sync-btn" onclick="gpSync()" style="background:#e7f3ff;color:#1877f2;border:1px solid #b3d4fb;border-radius:7px;padding:.3rem .7rem;font-size:.78rem;cursor:pointer;font-family:inherit">
+              <i class="fa-solid fa-rotate"></i> ซิงค์จาก FB
+            </button>
+            <button onclick="gpAdd()" style="background:#42b72a;color:#fff;border:none;border-radius:7px;padding:.3rem .75rem;font-size:.8rem;cursor:pointer;font-family:inherit">
+              <i class="fa-solid fa-plus"></i> เพิ่มกลุ่ม
+            </button>
+          </div>
         </div>
         <div id="gp-list" style="max-height:260px;overflow-y:auto">${groupListHTML(_gpPageId, _gpGroups)}</div>
       </div>`,
@@ -548,6 +556,38 @@ function _refreshModal() {
   if (el) el.innerHTML = groupListHTML(_gpPageId, _gpGroups);
   if (ct) ct.textContent = _gpGroups.length;
   updateGroupBadge(_gpPageId, _gpGroups);
+  _pageGroupsData[_gpPageId] = _gpGroups;
+}
+
+async function gpSync() {
+  const btn = document.getElementById('gp-sync-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
+  try {
+    const res  = await fetch(`/pages/${_gpPageId}/groups/sync`, { method: 'POST' });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+    _gpGroups = data.groups || [];
+    _pageGroupsData[_gpPageId] = _gpGroups;
+    _refreshModal();
+    if (data.notSupported) {
+      Swal.showValidationMessage && Swal.showValidationMessage('');
+      const el = document.getElementById('gp-list');
+      if (el) {
+        const note = document.createElement('p');
+        note.style.cssText = 'font-size:.75rem;color:#e65100;margin:.4rem 0 0;text-align:center';
+        note.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Token ไม่มีสิทธิ์ดึงกลุ่มจาก FB — กรุณา "เพิ่มกลุ่ม" เอง';
+        el.after(note);
+      }
+    } else if (data.fromFacebook > 0) {
+      const ct = document.getElementById('gp-count');
+      if (ct) ct.style.color = '#2e7d32';
+    }
+  } catch (err) {
+    alert('ซิงค์ไม่สำเร็จ: ' + err.message);
+  } finally {
+    const b = document.getElementById('gp-sync-btn');
+    if (b) { b.disabled = false; b.innerHTML = '<i class="fa-solid fa-rotate"></i> ซิงค์จาก FB'; }
+  }
 }
 
 async function gpAdd() {
