@@ -7,8 +7,7 @@ const imagePreview = document.getElementById('imagePreview');
 const fileInput   = document.getElementById('fileInput');
 const tagsBar     = document.getElementById('tagsBar');
 
-let selectedFiles       = [];
-let _tplLoadedImages    = [];
+let selectedFiles = [];
 
 /* Char counter */
 if (messageEl) {
