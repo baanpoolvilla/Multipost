@@ -625,8 +625,13 @@ async function gpAdd() {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value),
   });
   const data = await res.json();
-  if (data.ok) { _gpGroups = data.groups; }
-  else { await Swal.fire({ icon: 'error', title: data.error, timer: 1500, showConfirmButton: false }); }
+  if (data.ok) {
+    _gpGroups = data.groups;
+    updateGroupBadge(_gpPageId, _gpGroups);
+    _pageGroupsData[_gpPageId] = _gpGroups;
+  } else {
+    await Swal.fire({ icon: 'error', title: data.error, timer: 1500, showConfirmButton: false });
+  }
   _showGroupModal(_gpPageName);
 }
 
