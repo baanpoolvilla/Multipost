@@ -188,8 +188,62 @@ function syncAllChip() {
 
 function updatePageCountLabel() {
   const el = document.getElementById('pageCountLabel');
-  if (el) el.textContent = `โพสต์ไปยัง ${selectedPageIds.size} เพจ`;
+  if (!el) return;
+  let label = `โพสต์ไปยัง ${selectedPageIds.size} เพจ`;
+  if (selectedGroupIds.size > 0) label += ` + ${selectedGroupIds.size} กลุ่ม`;
+  el.textContent = label;
   updateMoreChip();
+}
+
+/* ── Group selector ── */
+let selectedGroupPageId = null;
+let selectedGroupIds    = new Set();
+
+function selectGroupPage(btn) {
+  const pageId = btn.dataset.pageId;
+  const row    = document.getElementById('groupChipsRow');
+
+  if (selectedGroupPageId === pageId) {
+    btn.classList.remove('active');
+    selectedGroupPageId = null;
+    selectedGroupIds.clear();
+    if (row) row.style.display = 'none';
+    updatePageCountLabel();
+    return;
+  }
+
+  document.querySelectorAll('.group-page-chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  selectedGroupPageId = pageId;
+  selectedGroupIds.clear();
+
+  const page   = ALL_PAGES.find(p => p.pageId === pageId);
+  const groups = (page?.groups || []).filter(g => g.enabled !== false);
+  renderGroupChips(groups);
+  if (row) row.style.display = 'flex';
+  updatePageCountLabel();
+}
+
+function renderGroupChips(groups) {
+  const container = document.getElementById('groupChipsContainer');
+  if (!container) return;
+  if (!groups.length) {
+    container.innerHTML = '<span style="font-size:.8rem;color:#8a8d91">ไม่มีกลุ่มที่เปิดใช้งาน</span>';
+    return;
+  }
+  container.innerHTML = groups.map(g => `
+    <button class="page-sel-chip group-chip active" data-group-id="${g.groupId}" onclick="toggleGroupChip(this)">
+      <i class="fa-solid fa-people-group" style="font-size:.6rem;color:#42b72a;flex-shrink:0"></i>
+      ${g.groupName}
+    </button>`).join('');
+  groups.forEach(g => selectedGroupIds.add(g.groupId));
+}
+
+function toggleGroupChip(btn) {
+  const id = btn.dataset.groupId;
+  if (selectedGroupIds.has(id)) { selectedGroupIds.delete(id); btn.classList.remove('active'); }
+  else                           { selectedGroupIds.add(id);    btn.classList.add('active'); }
+  updatePageCountLabel();
 }
 
 /* ── Sidebar show more ── */
@@ -401,11 +455,16 @@ async function submitPost() {
     Swal.fire({ icon: 'warning', title: 'กรุณาเลือกเพจอย่างน้อย 1 เพจ', confirmButtonColor: '#1877f2', confirmButtonText: 'ตกลง' });
     return;
   }
+  if (selectedGroupPageId && selectedGroupIds.size === 0) {
+    Swal.fire({ icon: 'warning', title: 'กรุณาเลือกกลุ่มอย่างน้อย 1 กลุ่ม', text: 'หรือยกเลิกการเลือกเพจกลุ่ม', confirmButtonColor: '#1877f2', confirmButtonText: 'ตกลง' });
+    return;
+  }
 
+  const groupLabel = selectedGroupIds.size > 0 ? ` + ${selectedGroupIds.size} กลุ่ม` : '';
   Swal.fire({
     title: 'กำลังส่งโพสต์...',
     html: `<i class="fa-brands fa-facebook" style="font-size:2rem;color:#1877f2"></i>
-           <p style="margin-top:.7rem;color:#65676b">กำลังโพสต์ไปยัง ${selectedPageIds.size} เพจ</p>`,
+           <p style="margin-top:.7rem;color:#65676b">กำลังโพสต์ไปยัง ${selectedPageIds.size} เพจ${groupLabel}</p>`,
     allowOutsideClick: false, allowEscapeKey: false, showConfirmButton: false,
     didOpen: () => Swal.showLoading(),
   });
@@ -417,6 +476,10 @@ async function submitPost() {
   fd.append('location',     document.getElementById('locationVal')?.value  || '');
   selectedPageIds.forEach(id => fd.append('selectedPages', id));
   selectedFiles.forEach(f => fd.append('images', f));
+  if (selectedGroupPageId) {
+    fd.append('selectedGroupPage', selectedGroupPageId);
+    selectedGroupIds.forEach(id => fd.append('selectedGroups', id));
+  }
 
   try {
     const res  = await fetch('/send', { method: 'POST', body: fd });

@@ -126,6 +126,25 @@
         <% } %>
       </div>
 
+      <!-- Group selector -->
+      <% const pagesWithGroups = pages.filter(p => (p.groups||[]).filter(g => g.enabled!==false).length > 0); %>
+      <% if (pagesWithGroups.length > 0) { %>
+      <div class="page-selector" style="border-top:1px dashed #e4e6eb;padding-top:.5rem">
+        <span class="page-selector-label"><i class="fa-solid fa-people-group" style="color:#42b72a"></i> กลุ่ม:</span>
+        <% pagesWithGroups.forEach((p, i) => { %>
+        <button class="page-sel-chip group-page-chip" data-page-id="<%= p.pageId %>" onclick="selectGroupPage(this)">
+          <div class="avatar avatar-<%= colors[i%5] %>" style="width:16px;height:16px;font-size:.55rem;flex-shrink:0"><%= p.pageName.slice(-1) %></div>
+          <%= p.pageName %>
+          <span style="background:#e8f5e9;color:#2e7d32;border-radius:999px;font-size:.62rem;padding:.02rem .38rem;font-weight:700"><%= (p.groups||[]).filter(g=>g.enabled!==false).length %></span>
+        </button>
+        <% }); %>
+      </div>
+      <div id="groupChipsRow" style="display:none" class="page-selector" >
+        <span class="page-selector-label" style="visibility:hidden"><i class="fa-solid fa-people-group"></i>:</span>
+        <div id="groupChipsContainer" style="display:flex;flex-wrap:wrap;gap:.35rem;align-items:center"></div>
+      </div>
+      <% } %>
+
       <!-- Action buttons -->
       <div class="composer-actions-row">
         <button type="button" class="action-chip" onclick="triggerImage()">

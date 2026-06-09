@@ -1,6 +1,6 @@
 const fs   = require('fs');
 const path = require('path');
-const { sendToPages, fetchPagesFromToken, refreshPostAnalytics, fetchPageGroups } = require('../services/facebookService');
+const { sendToPages, sendToGroups, fetchPagesFromToken, refreshPostAnalytics, fetchPageGroups } = require('../services/facebookService');
 const postStore     = require('../services/postStore');
 const pageStore     = require('../services/pageStore');
 const settingsStore = require('../services/settingsStore');
@@ -22,8 +22,26 @@ exports.sendPost = async (req, res) => {
     let pageIds = req.body.selectedPages;
     if (pageIds) pageIds = [].concat(pageIds);
 
-    const feeling  = feelingEmoji ? { emoji: feelingEmoji, label: feelingLabel } : null;
-    const results  = await sendToPages(message.trim(), pageIds || null, images);
+    let groupIds     = req.body.selectedGroups;
+    const groupPageId = req.body.selectedGroupPage;
+    if (groupIds) groupIds = [].concat(groupIds);
+
+    const feeling = feelingEmoji ? { emoji: feelingEmoji, label: feelingLabel } : null;
+    const results = await sendToPages(message.trim(), pageIds || null, images);
+
+    if (groupIds && groupIds.length > 0 && groupPageId) {
+        const pages = await pageStore.load();
+        const page  = pages.find(p => p.pageId === groupPageId);
+        if (page?.accessToken) {
+            const groupMap = groupIds.map(gId => {
+                const group = (page.groups || []).find(g => g.groupId === gId);
+                return { groupId: gId, groupName: group?.groupName || gId, pageId: page.pageId, accessToken: page.accessToken };
+            });
+            const gResults = await sendToGroups(message.trim(), groupMap, images);
+            results.push(...gResults);
+        }
+    }
+
     const successCount = results.filter(r => r.status === 'success').length;
 
     const post = await postStore.create({
@@ -138,7 +156,7 @@ exports.refreshAnalytics = async (req, res) => {
     for (const post of posts) {
         let changed = false;
         for (const result of post.results) {
-            if (result.status !== 'success' || !result.fbPostId) continue;
+            if (result.status !== 'success' || !result.fbPostId || result.type === 'group') continue;
             const token = tokenMap[result.pageId];
             if (!token) continue;
             try {
