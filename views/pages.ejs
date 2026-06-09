@@ -590,26 +590,49 @@ async function gpSync() {
   }
 }
 
+function _parseGroupId(input) {
+  input = (input || '').trim();
+  const m = input.match(/facebook\.com\/groups\/([^/?&#]+)/i);
+  return m ? m[1] : input;
+}
+
 async function gpAdd() {
   const { value } = await Swal.fire({
     title: 'เพิ่มกลุ่ม',
     html: `
-      <input id="sw-gid"   class="swal2-input" placeholder="Group ID (ตัวเลข เช่น 123456789)">
-      <input id="sw-gname" class="swal2-input" placeholder="ชื่อกลุ่ม">
-      <p style="font-size:.75rem;color:#8a8d91;margin:.4rem .6rem 0">หา Group ID: เปิดกลุ่มใน Facebook → URL จะมีตัวเลข</p>`,
+      <input id="sw-gurl" class="swal2-input" placeholder="ลิงก์กลุ่ม หรือ Group ID">
+      <div style="display:flex;gap:.4rem;margin:.3rem .5rem 0;align-items:center">
+        <input id="sw-gname" class="swal2-input" style="margin:0;flex:1" placeholder="ชื่อกลุ่ม">
+        <button type="button" id="sw-fetch-btn" onclick="gpFetchName()"
+          style="background:#e7f3ff;color:#1877f2;border:1px solid #b3d4fb;border-radius:7px;padding:.42rem .65rem;font-size:.78rem;cursor:pointer;white-space:nowrap;flex-shrink:0">
+          ดึงชื่อ
+        </button>
+      </div>
+      <p style="font-size:.73rem;color:#8a8d91;margin:.35rem .6rem 0">
+        <i class="fa-solid fa-circle-info"></i> วาง URL: facebook.com/groups/12345 หรือกรอก ID ตรงๆ
+      </p>`,
     showCancelButton: true,
     confirmButtonColor: '#1877f2',
     confirmButtonText: 'เพิ่ม',
     cancelButtonText: 'ยกเลิก',
     focusConfirm: false,
+    didOpen: () => {
+      document.getElementById('sw-gurl').addEventListener('paste', async () => {
+        await new Promise(r => setTimeout(r, 60));
+        const id = _parseGroupId(document.getElementById('sw-gurl').value);
+        document.getElementById('sw-gurl').value = id;
+        if (id && !document.getElementById('sw-gname').value) gpFetchName();
+      });
+    },
     preConfirm: () => {
-      const groupId   = document.getElementById('sw-gid').value.trim();
+      const groupId   = _parseGroupId(document.getElementById('sw-gurl').value);
       const groupName = document.getElementById('sw-gname').value.trim();
-      if (!groupId || !groupName) { Swal.showValidationMessage('กรุณากรอกให้ครบ'); return false; }
+      if (!groupId) { Swal.showValidationMessage('กรุณากรอก Group ID หรือลิงก์กลุ่ม'); return false; }
+      if (!groupName) { Swal.showValidationMessage('กรุณากรอกชื่อกลุ่ม'); return false; }
       return { groupId, groupName };
     },
   });
-  if (!value) return _showGroupModal('');
+  if (!value) return _showGroupModal(_gpPageName);
   const res  = await fetch(`/pages/${_gpPageId}/groups`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value),
   });
@@ -617,6 +640,20 @@ async function gpAdd() {
   if (data.ok) { _gpGroups = data.groups; }
   else { await Swal.fire({ icon: 'error', title: data.error, timer: 1500, showConfirmButton: false }); }
   _showGroupModal(_gpPageName);
+}
+
+async function gpFetchName() {
+  const btn     = document.getElementById('sw-fetch-btn');
+  const groupId = _parseGroupId(document.getElementById('sw-gurl').value);
+  if (!groupId) return;
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  try {
+    const res  = await fetch(`/pages/${_gpPageId}/groups/lookup?groupId=${encodeURIComponent(groupId)}`);
+    const data = await res.json();
+    document.getElementById('sw-gurl').value = groupId;
+    if (data.name) document.getElementById('sw-gname').value = data.name;
+  } catch {}
+  if (btn) { btn.disabled = false; btn.textContent = 'ดึงชื่อ'; }
 }
 
 async function gpRemove(groupId) {

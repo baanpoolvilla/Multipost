@@ -297,6 +297,22 @@ exports.syncGroups = async (req, res) => {
     }
 };
 
+exports.lookupGroup = async (req, res) => {
+    const { pageId } = req.params;
+    const { groupId } = req.query;
+    if (!groupId) return res.json({ name: null });
+    const pages = await pageStore.load();
+    const page  = pages.find(p => p.pageId === pageId);
+    if (!page?.accessToken) return res.json({ name: null });
+    try {
+        const FB_API = 'https://graph.facebook.com/v21.0';
+        const r = await fetch(`${FB_API}/${groupId}?fields=name&access_token=${encodeURIComponent(page.accessToken)}`);
+        const d = await r.json();
+        if (d.name) return res.json({ name: d.name });
+        return res.json({ name: null });
+    } catch { return res.json({ name: null }); }
+};
+
 exports.addGroup = async (req, res) => {
     const { pageId } = req.params;
     const { groupId, groupName } = req.body;

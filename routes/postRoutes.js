@@ -39,6 +39,7 @@ router.post('/api/settings',         ctrl.saveSettings);
 
 // Group management
 router.post('/pages/:pageId/groups/sync',          ctrl.syncGroups);
+router.get('/pages/:pageId/groups/lookup',         ctrl.lookupGroup);
 router.post('/pages/:pageId/groups',               ctrl.addGroup);
 router.delete('/pages/:pageId/groups/:groupId',    ctrl.removeGroup);
 router.patch('/pages/:pageId/groups/:groupId',     ctrl.toggleGroup);
