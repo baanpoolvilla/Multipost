@@ -4,6 +4,7 @@ const { sendToPages, sendToGroups, fetchPagesFromToken, refreshPostAnalytics, fe
 const postStore     = require('../services/postStore');
 const pageStore     = require('../services/pageStore');
 const settingsStore = require('../services/settingsStore');
+const templateStore = require('../services/templateStore');
 
 // ── Dashboard ──────────────────────────────────
 exports.showDashboard = async (req, res) => {
@@ -14,7 +15,9 @@ exports.showDashboard = async (req, res) => {
 // ── Send post ──────────────────────────────────
 exports.sendPost = async (req, res) => {
     const { message, feelingEmoji, feelingLabel, location } = req.body;
-    const images = (req.files || []).map(f => f.filename);
+    const uploadedImages = (req.files || []).map(f => f.filename);
+    const tplImages      = req.body.templateImages ? [].concat(req.body.templateImages) : [];
+    const images         = [...uploadedImages, ...tplImages];
 
     if (!message || !message.trim())
         return res.status(400).json({ error: 'กรุณากรอกข้อความ' });
@@ -392,4 +395,31 @@ exports.updatePage = async (req, res) => {
 exports.deletePage = async (req, res) => {
     const page = await pageStore.remove(req.params.id);
     res.json({ success: !!page });
+};
+
+// ── Templates ──────────────────────────────
+exports.getTemplates = async (req, res) => {
+    const templates = await templateStore.load();
+    res.json(templates);
+};
+
+exports.createTemplate = async (req, res) => {
+    const { name, message } = req.body;
+    if (!message?.trim()) return res.status(400).json({ error: 'กรุณากรอกข้อความ' });
+    const images   = (req.files || []).map(f => f.filename);
+    const template = await templateStore.create({ name: name?.trim() || '', message: message.trim(), images });
+    res.json({ ok: true, template });
+};
+
+exports.updateTemplate = async (req, res) => {
+    const { name, message } = req.body;
+    if (!message?.trim()) return res.status(400).json({ error: 'กรุณากรอกข้อความ' });
+    const updated = await templateStore.update(req.params.id, { name: name?.trim() || '', message: message.trim() });
+    if (!updated) return res.status(404).json({ error: 'ไม่พบ Template' });
+    res.json({ ok: true, template: updated });
+};
+
+exports.deleteTemplate = async (req, res) => {
+    const t = await templateStore.remove(req.params.id);
+    res.json({ success: !!t });
 };

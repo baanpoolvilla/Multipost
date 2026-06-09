@@ -7,7 +7,8 @@ const imagePreview = document.getElementById('imagePreview');
 const fileInput   = document.getElementById('fileInput');
 const tagsBar     = document.getElementById('tagsBar');
 
-let selectedFiles = [];
+let selectedFiles       = [];
+let _tplLoadedImages    = [];
 
 /* Char counter */
 if (messageEl) {
@@ -476,6 +477,7 @@ async function submitPost() {
   fd.append('location',     document.getElementById('locationVal')?.value  || '');
   selectedPageIds.forEach(id => fd.append('selectedPages', id));
   selectedFiles.forEach(f => fd.append('images', f));
+  _tplLoadedImages.forEach(name => fd.append('templateImages', name));
   if (selectedGroupPageId) {
     fd.append('selectedGroupPage', selectedGroupPageId);
     selectedGroupIds.forEach(id => fd.append('selectedGroups', id));
@@ -531,4 +533,333 @@ function toggleResultRows(btn) {
 /* viewImage helper (result/history pages) */
 function viewImage(src) {
   Swal.fire({ imageUrl: src, imageAlt: 'รูป', showConfirmButton: false, showCloseButton: true, width: 'auto' });
+}
+
+/* ═══════════════════════════════════════════
+   Template System
+═══════════════════════════════════════════ */
+let _templates        = [];
+let _tplView          = 'card';
+let _tplSelected      = null;
+let _tplLoadedImages  = [];   // filenames from loaded template (sent as templateImages on submit)
+let _tplNewFiles      = [];   // files picked inside create-template Swal
+
+function renderTplImagePreviews() {
+  const el = document.getElementById('tplImagePreview');
+  if (!el) return;
+  if (!_tplLoadedImages.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  el.style.display = 'grid';
+  el.innerHTML = _tplLoadedImages.map((name, i) => `
+    <div class="img-thumb">
+      <img src="/uploads/${name}" alt="">
+      <button class="img-thumb-remove" type="button" onclick="removeTplImage(${i})">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>`).join('');
+}
+
+function removeTplImage(idx) { _tplLoadedImages.splice(idx, 1); renderTplImagePreviews(); }
+
+async function openTemplateModal() {
+  const modal = document.getElementById('templateModal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  await loadTemplates();
+}
+
+function closeTemplateModal() {
+  const modal = document.getElementById('templateModal');
+  if (modal) modal.style.display = 'none';
+  document.body.style.overflow = '';
+  _tplSelected = null;
+  const footer = document.getElementById('tplFooter');
+  if (footer) footer.style.display = 'none';
+}
+
+function closeTplOnBg(e) {
+  if (e.target.id === 'templateModal') closeTemplateModal();
+}
+
+async function loadTemplates() {
+  try {
+    const res = await fetch('/api/templates');
+    _templates = await res.json();
+    renderTemplates();
+  } catch {
+    const body = document.getElementById('tplBody');
+    if (body) body.innerHTML = '<p style="text-align:center;color:#8a8d91;padding:2rem">เกิดข้อผิดพลาดในการโหลด</p>';
+  }
+}
+
+function setTplView(v) {
+  _tplView = v;
+  const cardBtn = document.getElementById('tplViewCardBtn');
+  const listBtn = document.getElementById('tplViewListBtn');
+  if (cardBtn) { cardBtn.style.background = v === 'card' ? '#1877f2' : 'transparent'; cardBtn.style.color = v === 'card' ? '#fff' : '#aaa'; }
+  if (listBtn) { listBtn.style.background = v === 'list' ? '#1877f2' : 'transparent'; listBtn.style.color = v === 'list' ? '#fff' : '#aaa'; }
+  renderTemplates();
+}
+
+function renderTemplates() {
+  const body   = document.getElementById('tplBody');
+  const badge  = document.getElementById('tplCountBadge');
+  const footer = document.getElementById('tplFooter');
+  if (!body) return;
+
+  const query    = (document.getElementById('tplSearchInput')?.value || '').toLowerCase();
+  const filtered = _templates.filter(t => !query || t.message.toLowerCase().includes(query) || (t.name||'').toLowerCase().includes(query));
+  if (badge) badge.textContent = _templates.length;
+
+  if (!filtered.length) {
+    body.innerHTML = `
+      <div style="text-align:center;padding:3rem 0;color:#8a8d91">
+        <i class="fa-solid fa-layer-group" style="font-size:2.5rem;display:block;margin-bottom:.75rem;opacity:.25"></i>
+        ${_templates.length === 0
+          ? 'ยังไม่มีโพสต์บันทึกไว้<br><small style="font-size:.8rem">กด "สร้างโพสต์" หรือ "บันทึก" ในหน้าหลักเพื่อเริ่มต้น</small>'
+          : 'ไม่พบโพสต์ที่ค้นหา'}
+      </div>`;
+    if (footer) footer.style.display = 'none';
+    return;
+  }
+
+  const total = _templates.length;
+  if (_tplView === 'card') {
+    body.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:.65rem">${filtered.map(t => renderTplCard(t, total - _templates.findIndex(x => x.id === t.id))).join('')}</div>`;
+  } else {
+    body.innerHTML = `<div style="display:flex;flex-direction:column;gap:.35rem">${filtered.map(t => renderTplListRow(t, total - _templates.findIndex(x => x.id === t.id))).join('')}</div>`;
+  }
+
+  if (footer) footer.style.display = _tplSelected ? 'block' : 'none';
+}
+
+function renderTplCard(t, num) {
+  const sel  = _tplSelected === t.id;
+  const msg  = t.message.length > 90 ? t.message.slice(0, 90) + '…' : t.message;
+  const imgs = (t.images || []);
+  const imgHtml = imgs.length ? `
+    <div style="display:flex;gap:3px;margin-top:.45rem;flex-wrap:wrap">
+      ${imgs.slice(0, 4).map(img => `<img src="/uploads/${img}" style="width:42px;height:42px;object-fit:cover;border-radius:5px;flex-shrink:0">`).join('')}
+      ${imgs.length > 4 ? `<div style="width:42px;height:42px;background:#e4e6eb;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:.7rem;color:#65676b">+${imgs.length-4}</div>` : ''}
+    </div>` : '';
+
+  return `
+    <div onclick="selectTpl('${t.id}')"
+      style="background:#fff;border:2px solid ${sel ? '#1877f2' : '#e4e6eb'};border-radius:10px;padding:.7rem;cursor:pointer;position:relative;transition:border-color .12s;${sel ? 'box-shadow:0 0 0 3px rgba(24,119,242,.15)' : ''}">
+      <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.35rem">
+        <div style="width:26px;height:26px;border-radius:50%;background:#e4e6eb;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <i class="fa-solid fa-file-lines" style="font-size:.62rem;color:#65676b"></i>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:.8rem;color:#1c1e21">โพสต์ #${num}</div>
+          ${t.name ? `<div style="font-size:.7rem;color:#8a8d91;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.name}</div>` : ''}
+        </div>
+        <div style="display:flex;gap:.15rem;flex-shrink:0" onclick="event.stopPropagation()">
+          <button onclick="openEditTpl('${t.id}')" style="background:none;border:none;color:#8a8d91;cursor:pointer;font-size:.72rem;padding:.15rem .25rem" title="แก้ไข"><i class="fa-solid fa-pen"></i></button>
+          <button onclick="deleteTpl('${t.id}')" style="background:none;border:none;color:#c62828;cursor:pointer;font-size:.72rem;padding:.15rem .25rem" title="ลบ"><i class="fa-solid fa-trash"></i></button>
+        </div>
+      </div>
+      <div style="font-size:.82rem;color:#1c1e21;line-height:1.45;min-height:2.2rem">${msg}</div>
+      ${imgHtml}
+      ${sel ? `<div style="position:absolute;top:.45rem;right:.45rem;color:#1877f2;font-size:1rem"><i class="fa-solid fa-circle-check"></i></div>` : ''}
+    </div>`;
+}
+
+function renderTplListRow(t, num) {
+  const sel = _tplSelected === t.id;
+  const msg = t.message.length > 110 ? t.message.slice(0, 110) + '…' : t.message;
+  return `
+    <div onclick="selectTpl('${t.id}')"
+      style="background:#fff;border:2px solid ${sel ? '#1877f2' : '#e4e6eb'};border-radius:8px;padding:.6rem .85rem;cursor:pointer;display:flex;align-items:center;gap:.65rem;transition:border-color .12s">
+      ${sel
+        ? `<i class="fa-solid fa-circle-check" style="color:#1877f2;flex-shrink:0;font-size:.95rem"></i>`
+        : `<i class="fa-regular fa-circle" style="color:#e4e6eb;flex-shrink:0;font-size:.95rem"></i>`}
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:.8rem;color:#1c1e21">โพสต์ #${num}${t.name ? ' — ' + t.name : ''}</div>
+        <div style="font-size:.79rem;color:#65676b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${msg}</div>
+      </div>
+      ${(t.images||[]).length ? `<span style="font-size:.7rem;color:#1877f2;background:#e7f3ff;padding:.1rem .4rem;border-radius:4px;flex-shrink:0"><i class="fa-solid fa-image"></i> ${t.images.length}</span>` : ''}
+      <div style="display:flex;gap:.25rem;flex-shrink:0" onclick="event.stopPropagation()">
+        <button onclick="openEditTpl('${t.id}')" style="background:none;border:none;color:#8a8d91;cursor:pointer;font-size:.75rem;padding:.1rem .28rem"><i class="fa-solid fa-pen"></i></button>
+        <button onclick="deleteTpl('${t.id}')" style="background:none;border:none;color:#c62828;cursor:pointer;font-size:.75rem;padding:.1rem .28rem"><i class="fa-solid fa-trash"></i></button>
+      </div>
+    </div>`;
+}
+
+function selectTpl(id) {
+  _tplSelected = _tplSelected === id ? null : id;
+  renderTemplates();
+}
+
+function useTpl() {
+  const t = _templates.find(t => t.id === _tplSelected);
+  if (!t) return;
+  if (messageEl) { messageEl.value = t.message; messageEl.dispatchEvent(new Event('input')); }
+  _tplLoadedImages = [...(t.images || [])];
+  renderTplImagePreviews();
+  closeTemplateModal();
+  Swal.fire({ icon: 'success', title: 'โหลดโพสต์แล้ว', timer: 1300, showConfirmButton: false });
+}
+
+/* ── Create new template ── */
+async function openCreateTemplate() {
+  _tplNewFiles = [];
+  const { value } = await Swal.fire({
+    title: '<i class="fa-solid fa-plus" style="color:#1877f2"></i> สร้างโพสต์ใหม่',
+    html: `
+      <div style="text-align:left">
+        <label style="font-size:.82rem;color:#65676b;display:block;margin-bottom:.3rem">ข้อความ:</label>
+        <textarea id="stMsg" placeholder="คุณกำลังคิดอะไรอยู่?" rows="4"
+          style="width:100%;padding:.6rem .75rem;border:1.5px solid #dbe0e6;border-radius:8px;font-family:inherit;font-size:.87rem;resize:vertical;outline:none;box-sizing:border-box"></textarea>
+        <label style="font-size:.82rem;color:#65676b;display:block;margin:.55rem 0 .3rem">ชื่อ Template (ไม่บังคับ):</label>
+        <input id="stName" type="text" placeholder="เช่น โปรโมชั่น A"
+          style="width:100%;padding:.48rem .75rem;border:1.5px solid #dbe0e6;border-radius:8px;font-family:inherit;font-size:.84rem;outline:none;box-sizing:border-box">
+        <label style="font-size:.82rem;color:#65676b;display:block;margin:.55rem 0 .3rem">รูปภาพ (สูงสุด 10 รูป):</label>
+        <div onclick="document.getElementById('stFileInp').click()"
+          style="border:2px dashed #dbe0e6;border-radius:8px;padding:.85rem;text-align:center;cursor:pointer;color:#8a8d91;font-size:.82rem">
+          <i class="fa-solid fa-cloud-arrow-up" style="font-size:1.4rem;display:block;margin-bottom:.3rem"></i>
+          คลิกเพื่อเลือกรูปภาพ
+        </div>
+        <input type="file" id="stFileInp" multiple accept="image/*" style="display:none"
+          onchange="onStFileChange(this)">
+        <div id="stImgPrev" style="display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.4rem"></div>
+      </div>`,
+    showCancelButton: true,
+    confirmButtonColor: '#1a1a1a',
+    confirmButtonText: '<i class="fa-solid fa-floppy-disk"></i> บันทึกโพสต์',
+    cancelButtonText: 'ยกเลิก',
+    width: 480,
+    focusConfirm: false,
+    preConfirm: () => {
+      const msg = document.getElementById('stMsg')?.value.trim();
+      if (!msg) { Swal.showValidationMessage('กรุณากรอกข้อความ'); return false; }
+      return { message: msg, name: document.getElementById('stName')?.value.trim() || '' };
+    },
+  });
+
+  if (!value) { openTemplateModal(); return; }
+
+  const fd = new FormData();
+  fd.append('message', value.message);
+  fd.append('name',    value.name);
+  _tplNewFiles.forEach(f => fd.append('images', f));
+  _tplNewFiles = [];
+
+  const res  = await fetch('/api/templates', { method: 'POST', body: fd });
+  const data = await res.json();
+  if (data.ok) {
+    openTemplateModal();
+  } else {
+    Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: data.error });
+  }
+}
+
+function onStFileChange(inp) {
+  Array.from(inp.files).forEach(f => { if (_tplNewFiles.length < 10) _tplNewFiles.push(f); });
+  inp.value = '';
+  const el = document.getElementById('stImgPrev');
+  if (!el) return;
+  el.innerHTML = _tplNewFiles.map((f, i) => `
+    <div style="position:relative">
+      <img src="${URL.createObjectURL(f)}" style="width:54px;height:54px;object-fit:cover;border-radius:6px">
+      <button onclick="_tplNewFiles.splice(${i},1);onStFileChange({files:[],value:''})" type="button"
+        style="position:absolute;top:-4px;right:-4px;background:#c62828;color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:.55rem;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;line-height:1">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>`).join('');
+}
+
+/* ── Edit template (text only) ── */
+async function openEditTpl(id) {
+  const t = _templates.find(t => t.id === id);
+  if (!t) return;
+  const { value } = await Swal.fire({
+    title: '<i class="fa-solid fa-pen" style="color:#1877f2"></i> แก้ไขโพสต์',
+    html: `
+      <div style="text-align:left">
+        <label style="font-size:.82rem;color:#65676b;display:block;margin-bottom:.3rem">ข้อความ:</label>
+        <textarea id="etMsg" rows="4"
+          style="width:100%;padding:.6rem .75rem;border:1.5px solid #dbe0e6;border-radius:8px;font-family:inherit;font-size:.87rem;resize:vertical;outline:none;box-sizing:border-box">${t.message}</textarea>
+        <label style="font-size:.82rem;color:#65676b;display:block;margin:.55rem 0 .3rem">ชื่อ Template:</label>
+        <input id="etName" type="text" value="${t.name||''}"
+          style="width:100%;padding:.48rem .75rem;border:1.5px solid #dbe0e6;border-radius:8px;font-family:inherit;font-size:.84rem;outline:none;box-sizing:border-box">
+      </div>`,
+    showCancelButton: true,
+    confirmButtonColor: '#1877f2',
+    confirmButtonText: 'บันทึก',
+    cancelButtonText: 'ยกเลิก',
+    width: 460,
+    focusConfirm: false,
+    preConfirm: () => {
+      const msg = document.getElementById('etMsg')?.value.trim();
+      if (!msg) { Swal.showValidationMessage('กรุณากรอกข้อความ'); return false; }
+      return { message: msg, name: document.getElementById('etName')?.value.trim() || '' };
+    },
+  });
+
+  if (!value) { openTemplateModal(); return; }
+
+  const res  = await fetch(`/api/templates/${id}`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(value),
+  });
+  const data = await res.json();
+  if (data.ok) {
+    const idx = _templates.findIndex(x => x.id === id);
+    if (idx >= 0) _templates[idx] = { ..._templates[idx], ...value };
+    openTemplateModal();
+  }
+}
+
+/* ── Delete template ── */
+async function deleteTpl(id) {
+  const t   = _templates.find(t => t.id === id);
+  const res = await Swal.fire({
+    title: 'ลบโพสต์นี้?',
+    text:  t ? (t.message.length > 60 ? t.message.slice(0, 60) + '…' : t.message) : '',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#c62828',
+    cancelButtonColor: '#65676b',
+    confirmButtonText: 'ลบเลย',
+    cancelButtonText: 'ยกเลิก',
+  });
+  if (!res.isConfirmed) return;
+  await fetch(`/api/templates/${id}`, { method: 'DELETE' });
+  if (_tplSelected === id) _tplSelected = null;
+  _templates = _templates.filter(x => x.id !== id);
+  renderTemplates();
+}
+
+/* ── Save current composer as template ── */
+async function saveCurrentAsTemplate() {
+  const msg = messageEl?.value.trim();
+  if (!msg) {
+    Swal.fire({ icon: 'warning', title: 'กรุณากรอกข้อความก่อนบันทึก', confirmButtonColor: '#1877f2', confirmButtonText: 'ตกลง' });
+    return;
+  }
+  const { value: name, isConfirmed } = await Swal.fire({
+    title: '<i class="fa-solid fa-floppy-disk" style="color:#1877f2"></i> บันทึก Template',
+    input: 'text',
+    inputLabel: 'ชื่อ Template (ไม่บังคับ)',
+    inputPlaceholder: 'เช่น โปรโมชั่นสินค้า A',
+    showCancelButton: true,
+    confirmButtonColor: '#1877f2',
+    confirmButtonText: 'บันทึก',
+    cancelButtonText: 'ยกเลิก',
+  });
+  if (!isConfirmed) return;
+
+  const fd = new FormData();
+  fd.append('message', msg);
+  fd.append('name', name || '');
+  selectedFiles.forEach(f => fd.append('images', f));
+
+  const res  = await fetch('/api/templates', { method: 'POST', body: fd });
+  const data = await res.json();
+  if (data.ok) {
+    Swal.fire({ icon: 'success', title: 'บันทึกแล้ว!', timer: 1400, showConfirmButton: false });
+  } else {
+    Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: data.error });
+  }
 }

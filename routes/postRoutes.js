@@ -22,6 +22,12 @@ const upload = multer({
     fileFilter: (req, file, cb) => cb(null, /\.(jpe?g|png|gif|webp)$/i.test(file.originalname)),
 });
 
+// Templates
+router.get('/api/templates',        ctrl.getTemplates);
+router.post('/api/templates',       upload.array('images', 10), ctrl.createTemplate);
+router.put('/api/templates/:id',    ctrl.updateTemplate);
+router.delete('/api/templates/:id', ctrl.deleteTemplate);
+
 // Posts
 router.get('/',               ctrl.showDashboard);
 router.post('/send',          upload.array('images', 10), ctrl.sendPost);
