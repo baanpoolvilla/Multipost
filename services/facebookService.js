@@ -9,18 +9,19 @@ const UPLOADS_DIR = process.env.VERCEL
 
 const MIME_MAP = { jpg:'image/jpeg', jpeg:'image/jpeg', png:'image/png', gif:'image/gif', webp:'image/webp' };
 
-async function uploadPhoto(pageId, accessToken, filename) {
+async function uploadPhoto(targetId, accessToken, filename) {
     const filePath = path.join(UPLOADS_DIR, filename);
-    const buffer   = fs.readFileSync(filePath);
-    const ext      = path.extname(filename).slice(1).toLowerCase();
-    const mime     = MIME_MAP[ext] || 'image/jpeg';
+    if (!fs.existsSync(filePath)) return null;   // skip missing files (Vercel /tmp cleanup)
+    const buffer = fs.readFileSync(filePath);
+    const ext    = path.extname(filename).slice(1).toLowerCase();
+    const mime   = MIME_MAP[ext] || 'image/jpeg';
 
     const form = new FormData();
     form.append('source', new Blob([buffer], { type: mime }), filename);
     form.append('published', 'false');
     form.append('access_token', accessToken);
 
-    const res  = await fetch(`${FB_API}/${pageId}/photos`, { method: 'POST', body: form });
+    const res  = await fetch(`${FB_API}/${targetId}/photos`, { method: 'POST', body: form });
     const data = await res.json();
     if (data.error) throw new Error(data.error.message);
     return data.id;
@@ -32,10 +33,15 @@ async function fbPost(pageId, accessToken, message, imageFiles) {
     if (imageFiles.length > 0) {
         const photoIds = [];
         for (const filename of imageFiles) {
-            const id = await uploadPhoto(pageId, accessToken, filename);
-            photoIds.push(id);
+            try {
+                const id = await uploadPhoto(pageId, accessToken, filename);
+                if (id) photoIds.push(id);
+            } catch (e) {
+                console.warn('[fbPost] image skip:', filename, e.message);
+            }
         }
-        params.set('attached_media', JSON.stringify(photoIds.map(id => ({ media_fbid: id }))));
+        if (photoIds.length > 0)
+            params.set('attached_media', JSON.stringify(photoIds.map(id => ({ media_fbid: id }))));
     }
 
     const res = await fetch(`${FB_API}/${pageId}/feed`, {
@@ -135,10 +141,16 @@ async function sendToGroups(message, groupMap, images = []) {
             if (images.length > 0) {
                 const photoIds = [];
                 for (const filename of images) {
-                    const id = await uploadPhoto(pageId, accessToken, filename);
-                    photoIds.push(id);
+                    try {
+                        // Upload photo directly to the group (not the page) using user token
+                        const id = await uploadPhoto(groupId, accessToken, filename);
+                        if (id) photoIds.push(id);
+                    } catch (e) {
+                        console.warn('[sendToGroups] image skip:', filename, e.message);
+                    }
                 }
-                params.set('attached_media', JSON.stringify(photoIds.map(id => ({ media_fbid: id }))));
+                if (photoIds.length > 0)
+                    params.set('attached_media', JSON.stringify(photoIds.map(id => ({ media_fbid: id }))));
             }
             const res  = await fetch(`${FB_API}/${groupId}/feed`, {
                 method: 'POST',
