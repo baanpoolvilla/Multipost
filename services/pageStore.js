@@ -1,47 +1,42 @@
-const fs   = require('fs');
-const path = require('path');
+const mongoose = require('mongoose');
+const { connect } = require('./db');
 
-const SOURCE = path.join(__dirname, '../data/pages.json'); // bundled read-only copy
-const FILE   = process.env.VERCEL ? '/tmp/pages.json' : SOURCE;
+const pageSchema = new mongoose.Schema({
+    pageId:      { type: String, required: true, unique: true },
+    pageName:    String,
+    accessToken: String,
+    tokenExpiry: String,
+}, { versionKey: false });
 
-function load() {
-    // On Vercel, seed /tmp/pages.json from bundled file on first access
-    if (process.env.VERCEL && !fs.existsSync(FILE)) {
-        try { fs.copyFileSync(SOURCE, FILE); } catch {}
+const Page = mongoose.models.Page || mongoose.model('Page', pageSchema);
+
+async function load() {
+    await connect();
+    return Page.find().lean();
+}
+
+async function add(data) {
+    await connect();
+    if (await Page.findOne({ pageId: data.pageId })) return { error: 'Page ID ซ้ำ' };
+    const page = await Page.create(data);
+    return { ok: true, page: page.toObject() };
+}
+
+async function update(pageId, data) {
+    await connect();
+    return Page.findOneAndUpdate({ pageId }, { $set: data }, { new: true }).lean();
+}
+
+async function remove(pageId) {
+    await connect();
+    return Page.findOneAndDelete({ pageId }).lean();
+}
+
+async function saveAll(pages) {
+    await connect();
+    for (const p of pages) {
+        await Page.findOneAndUpdate({ pageId: p.pageId }, { $set: p }, { upsert: true });
     }
-    try { return JSON.parse(fs.readFileSync(FILE, 'utf-8')); }
-    catch { return []; }
 }
-
-function save(pages) {
-    fs.writeFileSync(FILE, JSON.stringify(pages, null, 2), 'utf-8');
-}
-
-function add(data) {
-    const pages = load();
-    if (pages.find(p => p.pageId === data.pageId)) return { error: 'Page ID ซ้ำ' };
-    pages.push(data);
-    save(pages);
-    return { ok: true, page: data };
-}
-
-function update(pageId, data) {
-    const pages = load();
-    const idx = pages.findIndex(p => p.pageId === pageId);
-    if (idx === -1) return null;
-    pages[idx] = { ...pages[idx], ...data };
-    save(pages);
-    return pages[idx];
-}
-
-function remove(pageId) {
-    const pages = load();
-    const page = pages.find(p => p.pageId === pageId);
-    if (!page) return null;
-    save(pages.filter(p => p.pageId !== pageId));
-    return page;
-}
-
-function saveAll(pages) { save(pages); }
 
 module.exports = { load, add, update, remove, saveAll };

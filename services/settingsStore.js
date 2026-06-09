@@ -1,29 +1,34 @@
-const fs   = require('fs');
-const path = require('path');
+const mongoose = require('mongoose');
+const { connect } = require('./db');
 
-const FILE = process.env.VERCEL
-    ? '/tmp/settings.json'
-    : path.join(__dirname, '../data/settings.json');
+const settingsSchema = new mongoose.Schema({
+    _id:          { type: String, default: 'main' },
+    fbAppId:      { type: String, default: '' },
+    fbAppSecret:  { type: String, default: '' },
+}, { versionKey: false });
 
-function load() {
-    // Env vars take priority (Vercel dashboard / .env)
+const Settings = mongoose.models.Settings || mongoose.model('Settings', settingsSchema);
+
+async function load() {
     const fromEnv = {
         fbAppId:     process.env.FB_APP_ID     || '',
         fbAppSecret: process.env.FB_APP_SECRET || '',
     };
     try {
-        const file = JSON.parse(fs.readFileSync(FILE, 'utf-8'));
+        await connect();
+        const s = await Settings.findById('main').lean();
         return {
-            fbAppId:     fromEnv.fbAppId     || file.fbAppId     || '',
-            fbAppSecret: fromEnv.fbAppSecret || file.fbAppSecret || '',
+            fbAppId:     fromEnv.fbAppId     || (s && s.fbAppId)     || '',
+            fbAppSecret: fromEnv.fbAppSecret || (s && s.fbAppSecret) || '',
         };
     } catch {
         return fromEnv;
     }
 }
 
-function save(data) {
-    fs.writeFileSync(FILE, JSON.stringify(data, null, 2), 'utf-8');
+async function save(data) {
+    await connect();
+    await Settings.findByIdAndUpdate('main', { $set: data }, { upsert: true, new: true });
 }
 
 module.exports = { load, save };

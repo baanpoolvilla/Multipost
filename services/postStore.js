@@ -1,41 +1,57 @@
-const fs = require('fs');
-const path = require('path');
+const mongoose = require('mongoose');
+const { connect } = require('./db');
 
-const FILE = process.env.VERCEL ? '/tmp/posts.json' : path.join(__dirname, '../data/posts.json');
+const postSchema = new mongoose.Schema({
+    _id:          String,
+    createdAt:    String,
+    message:      String,
+    feeling:      mongoose.Schema.Types.Mixed,
+    location:     String,
+    images:       [String],
+    results:      [mongoose.Schema.Types.Mixed],
+    successCount: Number,
+    failCount:    Number,
+}, { versionKey: false });
 
-function load() {
-    try { return JSON.parse(fs.readFileSync(FILE, 'utf-8')); }
-    catch { return []; }
+const Post = mongoose.models.Post || mongoose.model('Post', postSchema);
+
+async function load() {
+    await connect();
+    const posts = await Post.find().sort({ createdAt: -1 }).lean();
+    return posts.map(p => ({ ...p, id: p._id }));
 }
 
-function save(posts) {
-    fs.writeFileSync(FILE, JSON.stringify(posts, null, 2), 'utf-8');
-}
-
-function create(data) {
-    const posts = load();
-    const post = {
-        id: `${Date.now()}${Math.random().toString(36).slice(2, 6)}`,
-        createdAt: new Date().toISOString(),
-        ...data,
-    };
-    posts.unshift(post);
-    save(posts);
+async function create(data) {
+    await connect();
+    const id   = `${Date.now()}${Math.random().toString(36).slice(2, 6)}`;
+    const post = { _id: id, id, createdAt: new Date().toISOString(), ...data };
+    await Post.create(post);
     return post;
 }
 
-function getById(id) {
-    return load().find(p => p.id === id) || null;
+async function getById(id) {
+    await connect();
+    const p = await Post.findById(id).lean();
+    return p ? { ...p, id: p._id } : null;
 }
 
-function remove(id) {
-    const posts = load();
-    const post = posts.find(p => p.id === id);
-    if (!post) return null;
-    save(posts.filter(p => p.id !== id));
-    return post;
+async function remove(id) {
+    await connect();
+    const p = await Post.findByIdAndDelete(id).lean();
+    return p ? { ...p, id: p._id } : null;
 }
 
-function saveAll(posts) { save(posts); }
+async function saveAll(posts) {
+    await connect();
+    if (!posts.length) return;
+    const ops = posts.map(p => ({
+        replaceOne: {
+            filter:      { _id: p.id || p._id },
+            replacement: { ...p, _id: p.id || p._id },
+            upsert:      true,
+        },
+    }));
+    await Post.bulkWrite(ops);
+}
 
 module.exports = { load, create, getById, remove, saveAll };

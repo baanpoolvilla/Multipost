@@ -1,16 +1,15 @@
-const fs     = require('fs');
-const path   = require('path');
-const settingsStore = require('../services/settingsStore');
+const fs   = require('fs');
+const path = require('path');
 const { sendToPages, fetchPagesFromToken, refreshPostAnalytics } = require('../services/facebookService');
-const postStore = require('../services/postStore');
-const pageStore = require('../services/pageStore');
+const postStore     = require('../services/postStore');
+const pageStore     = require('../services/pageStore');
+const settingsStore = require('../services/settingsStore');
 
 // ── Dashboard ──────────────────────────────────
-exports.showDashboard = (req, res) =>
-    res.render('dashboard', {
-        pages:       pageStore.load(),
-        recentPosts: postStore.load().slice(0, 5),
-    });
+exports.showDashboard = async (req, res) => {
+    const [pages, posts] = await Promise.all([pageStore.load(), postStore.load()]);
+    res.render('dashboard', { pages, recentPosts: posts.slice(0, 5) });
+};
 
 // ── Send post ──────────────────────────────────
 exports.sendPost = async (req, res) => {
@@ -27,7 +26,7 @@ exports.sendPost = async (req, res) => {
     const results  = await sendToPages(message.trim(), pageIds || null, images);
     const successCount = results.filter(r => r.status === 'success').length;
 
-    const post = postStore.create({
+    const post = await postStore.create({
         message: message.trim(), feeling,
         location: location || null, images, results,
         successCount, failCount: results.length - successCount,
@@ -36,18 +35,20 @@ exports.sendPost = async (req, res) => {
     res.json({ id: post.id });
 };
 
-// ── Result / History / Overview ────────────────
-exports.showResult = (req, res) => {
-    const post = postStore.getById(req.params.id);
+// ── Result / History ───────────────────────────
+exports.showResult = async (req, res) => {
+    const post = await postStore.getById(req.params.id);
     if (!post) return res.redirect('/');
     res.render('result', { post });
 };
 
-exports.showHistory = (req, res) =>
-    res.render('history', { posts: postStore.load() });
+exports.showHistory = async (req, res) => {
+    const posts = await postStore.load();
+    res.render('history', { posts });
+};
 
-exports.deletePost = (req, res) => {
-    const post = postStore.remove(req.params.id);
+exports.deletePost = async (req, res) => {
+    const post = await postStore.remove(req.params.id);
     if (post?.images) {
         const uploadsDir = process.env.VERCEL ? '/tmp/uploads' : path.join(__dirname, '../public/uploads');
         post.images.forEach(img => {
@@ -57,6 +58,7 @@ exports.deletePost = (req, res) => {
     res.json({ success: !!post });
 };
 
+// ── Overview helpers ───────────────────────────
 function computeStats(posts, allPages) {
     let totalLikes = 0, totalComments = 0, totalShares = 0, totalReach = 0;
     const pageStats = {};
@@ -93,12 +95,12 @@ function computeStats(posts, allPages) {
     const successRate  = totalResults > 0 ? Math.round(totalSuccess / totalResults * 100) : 100;
 
     const byDay = {};
-    posts.forEach(p => { const d = p.createdAt.slice(0,10); byDay[d] = (byDay[d]||0)+1; });
+    posts.forEach(p => { const d = p.createdAt.slice(0, 10); byDay[d] = (byDay[d] || 0) + 1; });
     const chartLabels = [], chartData = [];
     for (let i = 6; i >= 0; i--) {
         const d = new Date(); d.setDate(d.getDate() - i);
-        const key = d.toISOString().slice(0,10);
-        chartLabels.push(key.slice(5)); chartData.push(byDay[key]||0);
+        const key = d.toISOString().slice(0, 10);
+        chartLabels.push(key.slice(5)); chartData.push(byDay[key] || 0);
     }
 
     return {
@@ -112,15 +114,18 @@ function computeStats(posts, allPages) {
     };
 }
 
-exports.showOverview = (req, res) =>
-    res.render('overview', computeStats(postStore.load(), pageStore.load()));
+exports.showOverview = async (req, res) => {
+    const [posts, pages] = await Promise.all([postStore.load(), pageStore.load()]);
+    res.render('overview', computeStats(posts, pages));
+};
 
-exports.overviewStats = (req, res) =>
-    res.json(computeStats(postStore.load(), pageStore.load()));
+exports.overviewStats = async (req, res) => {
+    const [posts, pages] = await Promise.all([postStore.load(), pageStore.load()]);
+    res.json(computeStats(posts, pages));
+};
 
 exports.refreshAnalytics = async (req, res) => {
-    const posts    = postStore.load();
-    const pages    = pageStore.load();
+    const [posts, pages] = await Promise.all([postStore.load(), pageStore.load()]);
     const tokenMap = Object.fromEntries(pages.map(p => [p.pageId, p.accessToken]));
     let updated = 0, errors = 0;
 
@@ -137,96 +142,13 @@ exports.refreshAnalytics = async (req, res) => {
         }
         if (changed) updated++;
     }
-    postStore.saveAll(posts);
+    await postStore.saveAll(posts);
     res.json({ ok: true, updated, errors });
 };
 
-// แลก short-lived token → long-lived (60 วัน) แล้วบันทึกกลับ
-exports.exchangeToken = async (req, res) => {
-    const { pageId } = req.body;
-    const cfg       = settingsStore.load();
-    const appId     = cfg.fbAppId;
-    const appSecret = cfg.fbAppSecret;
-
-    if (!appId || !appSecret)
-        return res.status(400).json({ error: 'กรุณาตั้งค่า App ID และ App Secret ในหน้าตั้งค่า' });
-
-    const pages = pageStore.load();
-    const page  = pages.find(p => p.pageId === pageId);
-    if (!page)           return res.status(404).json({ error: 'ไม่พบเพจ' });
-    if (!page.accessToken) return res.status(400).json({ error: 'เพจนี้ไม่มี Access Token' });
-
-    try {
-        // ขั้น 1: แลก User/Page token → long-lived user token (60 วัน)
-        const exchUrl = `https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${encodeURIComponent(page.accessToken)}`;
-        const exchRes = await fetch(exchUrl);
-        const exchData = await exchRes.json();
-        if (exchData.error) throw new Error(exchData.error.message);
-
-        const longLivedToken = exchData.access_token;
-        const expiresIn      = exchData.expires_in; // seconds (~5183944 = 60 days)
-        const expiryDate     = expiresIn
-            ? new Date(Date.now() + expiresIn * 1000).toISOString()
-            : null;
-
-        // ขั้น 2: ลองดึง long-lived Page Token (ใช้ได้ถ้า token เป็น User token)
-        let finalToken  = longLivedToken;
-        let finalExpiry = expiryDate;
-        try {
-            const pgUrl = `https://graph.facebook.com/v21.0/${pageId}?fields=access_token&access_token=${encodeURIComponent(longLivedToken)}`;
-            const pgRes = await fetch(pgUrl);
-            const pgData = await pgRes.json();
-            if (!pgData.error && pgData.access_token) {
-                finalToken  = pgData.access_token;
-                finalExpiry = null; // Page token จาก long-lived user = ไม่มีวันหมด
-            }
-        } catch { /* ใช้ long-lived user token แทน */ }
-
-        // อัปเดต pageStore
-        page.accessToken  = finalToken;
-        page.tokenExpiry  = finalExpiry;
-        pageStore.saveAll(pages);
-
-        res.json({
-            ok: true,
-            neverExpires: finalExpiry === null,
-            expiryDate: finalExpiry,
-        });
-    } catch (err) {
-        res.status(400).json({ error: err.message });
-    }
-};
-
-exports.getSettings = (req, res) => {
-    const s = settingsStore.load();
-    res.json({ fbAppId: s.fbAppId || '', fbAppSecret: s.fbAppSecret || '' });
-};
-
-exports.saveSettings = (req, res) => {
-    const { fbAppId, fbAppSecret } = req.body;
-    settingsStore.save({ fbAppId: fbAppId || '', fbAppSecret: fbAppSecret || '' });
-    res.json({ ok: true });
-};
-
-exports.checkTokens = async (req, res) => {
-    const pages = pageStore.load();
-    const results = await Promise.all(pages.map(async p => {
-        if (!p.accessToken)
-            return { pageId: p.pageId, valid: false, error: 'ไม่มี Token' };
-        try {
-            const r = await fetch(`https://graph.facebook.com/v21.0/me?fields=id,name&access_token=${encodeURIComponent(p.accessToken)}`);
-            const d = await r.json();
-            if (d.error) return { pageId: p.pageId, valid: false, error: d.error.message };
-            return { pageId: p.pageId, valid: true };
-        } catch (e) {
-            return { pageId: p.pageId, valid: false, error: e.message };
-        }
-    }));
-    res.json({ results });
-};
-
-exports.dailySummary = (req, res) => {
-    const posts = postStore.load();
+// ── Daily Summary ──────────────────────────────
+exports.dailySummary = async (req, res) => {
+    const posts = await postStore.load();
     const today = new Date().toISOString().slice(0, 10);
     const date  = req.query.date || today;
 
@@ -253,33 +175,93 @@ exports.dailySummary = (req, res) => {
     dayPosts.forEach(p => p.results.forEach(r => pagesSet.add(r.pageName)));
 
     res.json({
-        date,
-        totalPosts: dayPosts.length,
-        totalSuccess,
-        totalFail,
-        successRate,
-        totalLikes,
-        totalComments,
-        totalShares,
-        totalReach,
+        date, totalPosts: dayPosts.length,
+        totalSuccess, totalFail, successRate,
+        totalLikes, totalComments, totalShares, totalReach,
         pages: [...pagesSet],
         posts: dayPosts.map(p => ({
-            message: p.message.length > 50 ? p.message.slice(0, 50) : p.message,
+            message:      p.message.length > 50 ? p.message.slice(0, 50) : p.message,
             successCount: p.successCount,
-            total: p.results.length,
-            createdAt: p.createdAt,
+            total:        p.results.length,
+            createdAt:    p.createdAt,
         })),
     });
 };
 
-// ── Lookup single page/user info from any token ─
+// ── Token exchange ─────────────────────────────
+exports.exchangeToken = async (req, res) => {
+    const { pageId } = req.body;
+    const cfg       = await settingsStore.load();
+    const appId     = cfg.fbAppId;
+    const appSecret = cfg.fbAppSecret;
+
+    if (!appId || !appSecret)
+        return res.status(400).json({ error: 'กรุณาตั้งค่า App ID และ App Secret ในหน้าตั้งค่า' });
+
+    const pages = await pageStore.load();
+    const page  = pages.find(p => p.pageId === pageId);
+    if (!page)             return res.status(404).json({ error: 'ไม่พบเพจ' });
+    if (!page.accessToken) return res.status(400).json({ error: 'เพจนี้ไม่มี Access Token' });
+
+    try {
+        const exchUrl  = `https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${encodeURIComponent(page.accessToken)}`;
+        const exchData = await (await fetch(exchUrl)).json();
+        if (exchData.error) throw new Error(exchData.error.message);
+
+        const longToken  = exchData.access_token;
+        const expiresIn  = exchData.expires_in;
+        let finalToken   = longToken;
+        let finalExpiry  = expiresIn ? new Date(Date.now() + expiresIn * 1000).toISOString() : null;
+
+        try {
+            const pgData = await (await fetch(`https://graph.facebook.com/v21.0/${pageId}?fields=access_token&access_token=${encodeURIComponent(longToken)}`)).json();
+            if (!pgData.error && pgData.access_token) {
+                finalToken  = pgData.access_token;
+                finalExpiry = null;
+            }
+        } catch {}
+
+        await pageStore.update(pageId, { accessToken: finalToken, tokenExpiry: finalExpiry });
+        res.json({ ok: true, neverExpires: finalExpiry === null, expiryDate: finalExpiry });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+};
+
+// ── Check tokens ───────────────────────────────
+exports.checkTokens = async (req, res) => {
+    const pages = await pageStore.load();
+    const results = await Promise.all(pages.map(async p => {
+        if (!p.accessToken) return { pageId: p.pageId, valid: false, error: 'ไม่มี Token' };
+        try {
+            const d = await (await fetch(`https://graph.facebook.com/v21.0/me?fields=id,name&access_token=${encodeURIComponent(p.accessToken)}`)).json();
+            if (d.error) return { pageId: p.pageId, valid: false, error: d.error.message };
+            return { pageId: p.pageId, valid: true };
+        } catch (e) {
+            return { pageId: p.pageId, valid: false, error: e.message };
+        }
+    }));
+    res.json({ results });
+};
+
+// ── Settings ───────────────────────────────────
+exports.getSettings = async (req, res) => {
+    const s = await settingsStore.load();
+    res.json({ fbAppId: s.fbAppId || '', fbAppSecret: s.fbAppSecret || '' });
+};
+
+exports.saveSettings = async (req, res) => {
+    const { fbAppId, fbAppSecret } = req.body;
+    await settingsStore.save({ fbAppId: fbAppId || '', fbAppSecret: fbAppSecret || '' });
+    res.json({ ok: true });
+};
+
+// ── Lookup token ───────────────────────────────
 exports.lookupToken = async (req, res) => {
     const { token } = req.query;
     if (!token) return res.status(400).json({ error: 'กรุณาใส่ Token' });
     try {
-        const url  = `https://graph.facebook.com/v21.0/me?fields=id,name&access_token=${encodeURIComponent(token)}`;
-        const r    = await fetch(url);
-        const data = await r.json();
+        const data = await (await fetch(`https://graph.facebook.com/v21.0/me?fields=id,name&access_token=${encodeURIComponent(token)}`)).json();
         if (data.error) throw new Error(data.error.message);
         res.json({ id: data.id, name: data.name });
     } catch (err) {
@@ -287,7 +269,7 @@ exports.lookupToken = async (req, res) => {
     }
 };
 
-// ── Import pages from Facebook token ──────────
+// ── Import pages ───────────────────────────────
 exports.importPagesFromToken = async (req, res) => {
     const { token } = req.query;
     if (!token) return res.status(400).json({ error: 'กรุณาใส่ Token' });
@@ -300,24 +282,26 @@ exports.importPagesFromToken = async (req, res) => {
 };
 
 // ── Page management ────────────────────────────
-exports.showPages = (req, res) =>
-    res.render('pages', { pages: pageStore.load() });
+exports.showPages = async (req, res) => {
+    const pages = await pageStore.load();
+    res.render('pages', { pages });
+};
 
-exports.addPage = (req, res) => {
+exports.addPage = async (req, res) => {
     const { pageId, pageName, accessToken, tokenExpiry } = req.body;
     if (!pageId || !pageName) return res.status(400).json({ error: 'กรุณากรอก Page ID และชื่อเพจ' });
-    const result = pageStore.add({ pageId, pageName, accessToken: accessToken || '', tokenExpiry: tokenExpiry || null });
+    const result = await pageStore.add({ pageId, pageName, accessToken: accessToken || '', tokenExpiry: tokenExpiry || null });
     if (result.error) return res.status(409).json({ error: result.error });
     res.json({ ok: true, page: result.page });
 };
 
-exports.updatePage = (req, res) => {
-    const updated = pageStore.update(req.params.id, req.body);
+exports.updatePage = async (req, res) => {
+    const updated = await pageStore.update(req.params.id, req.body);
     if (!updated) return res.status(404).json({ error: 'ไม่พบเพจ' });
     res.json({ ok: true, page: updated });
 };
 
-exports.deletePage = (req, res) => {
-    const page = pageStore.remove(req.params.id);
+exports.deletePage = async (req, res) => {
+    const page = await pageStore.remove(req.params.id);
     res.json({ success: !!page });
 };
