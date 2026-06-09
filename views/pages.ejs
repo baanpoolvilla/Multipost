@@ -509,7 +509,7 @@ function groupListHTML(pageId, groups) {
     <div style="display:flex;align-items:center;gap:.6rem;padding:.45rem 0;border-bottom:1px solid #f0f2f5">
       <input type="checkbox" ${g.enabled ? 'checked' : ''} onchange="gpToggle('${g.groupId}',this.checked)"
         style="accent-color:#1877f2;cursor:pointer;width:15px;height:15px;flex-shrink:0">
-      <span style="flex:1;font-size:.85rem;color:#1c1e21;text-align:left">${g.groupName}</span>
+      <span style="flex:1;font-size:.85rem;color:#1c1e21;text-align:left">${/^https?:\/\//.test(g.groupName) ? g.groupId : g.groupName}</span>
       <span style="font-size:.7rem;color:#8a8d91;background:#f0f2f5;padding:.1rem .4rem;border-radius:4px;flex-shrink:0">${g.source==='facebook'?'FB':'manual'}</span>
       <button onclick="gpRemove('${g.groupId}')" style="background:none;border:none;color:#c62828;cursor:pointer;font-size:.85rem;padding:.1rem .3rem;flex-shrink:0">
         <i class="fa-solid fa-trash-can"></i>
@@ -533,14 +533,9 @@ function _showGroupModal(pageName) {
           <span style="font-size:.82rem;color:#555">
             ทั้งหมด <strong id="gp-count">${_gpGroups.length}</strong> กลุ่ม
           </span>
-          <div style="display:flex;gap:.4rem">
-            <button id="gp-sync-btn" onclick="gpSync()" style="background:#e7f3ff;color:#1877f2;border:1px solid #b3d4fb;border-radius:7px;padding:.3rem .7rem;font-size:.78rem;cursor:pointer;font-family:inherit">
-              <i class="fa-solid fa-rotate"></i> ซิงค์จาก FB
-            </button>
-            <button onclick="gpAdd()" style="background:#42b72a;color:#fff;border:none;border-radius:7px;padding:.3rem .75rem;font-size:.8rem;cursor:pointer;font-family:inherit">
-              <i class="fa-solid fa-plus"></i> เพิ่มกลุ่ม
-            </button>
-          </div>
+          <button onclick="gpAdd()" style="background:#42b72a;color:#fff;border:none;border-radius:7px;padding:.3rem .75rem;font-size:.8rem;cursor:pointer;font-family:inherit">
+            <i class="fa-solid fa-plus"></i> เพิ่มกลุ่ม
+          </button>
         </div>
         <div id="gp-list" style="max-height:260px;overflow-y:auto">${groupListHTML(_gpPageId, _gpGroups)}</div>
       </div>`,
@@ -559,36 +554,6 @@ function _refreshModal() {
   _pageGroupsData[_gpPageId] = _gpGroups;
 }
 
-async function gpSync() {
-  const btn = document.getElementById('gp-sync-btn');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
-  try {
-    const res  = await fetch(`/pages/${_gpPageId}/groups/sync`, { method: 'POST' });
-    const data = await res.json();
-    if (!data.ok) throw new Error(data.error);
-    _gpGroups = data.groups || [];
-    _pageGroupsData[_gpPageId] = _gpGroups;
-    _refreshModal();
-    if (data.notSupported) {
-      Swal.showValidationMessage && Swal.showValidationMessage('');
-      const el = document.getElementById('gp-list');
-      if (el) {
-        const note = document.createElement('p');
-        note.style.cssText = 'font-size:.75rem;color:#e65100;margin:.4rem 0 0;text-align:center';
-        note.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Token ไม่มีสิทธิ์ดึงกลุ่มจาก FB — กรุณา "เพิ่มกลุ่ม" เอง';
-        el.after(note);
-      }
-    } else if (data.fromFacebook > 0) {
-      const ct = document.getElementById('gp-count');
-      if (ct) ct.style.color = '#2e7d32';
-    }
-  } catch (err) {
-    alert('ซิงค์ไม่สำเร็จ: ' + err.message);
-  } finally {
-    const b = document.getElementById('gp-sync-btn');
-    if (b) { b.disabled = false; b.innerHTML = '<i class="fa-solid fa-rotate"></i> ซิงค์จาก FB'; }
-  }
-}
 
 function _parseGroupId(input) {
   input = (input || '').trim();
@@ -600,16 +565,17 @@ async function gpAdd() {
   const { value } = await Swal.fire({
     title: 'เพิ่มกลุ่ม',
     html: `
-      <input id="sw-gurl" class="swal2-input" placeholder="ลิงก์กลุ่ม หรือ Group ID">
-      <div style="display:flex;gap:.4rem;margin:.3rem .5rem 0;align-items:center">
-        <input id="sw-gname" class="swal2-input" style="margin:0;flex:1" placeholder="ชื่อกลุ่ม">
-        <button type="button" id="sw-fetch-btn" onclick="gpFetchName()"
-          style="background:#e7f3ff;color:#1877f2;border:1px solid #b3d4fb;border-radius:7px;padding:.42rem .65rem;font-size:.78rem;cursor:pointer;white-space:nowrap;flex-shrink:0">
-          ดึงชื่อ
-        </button>
+      <p style="font-size:.82rem;color:#555;margin:0 0 .4rem;text-align:left">วาง URL หรือพิมพ์ Group ID:</p>
+      <input id="sw-gurl" class="swal2-input" placeholder="facebook.com/groups/... หรือตัวเลข ID">
+      <div id="sw-name-row" style="display:none;margin:.4rem .5rem 0;text-align:left">
+        <label style="font-size:.78rem;color:#555">ชื่อกลุ่ม:</label>
+        <input id="sw-gname" class="swal2-input" style="margin:.2rem 0 0" placeholder="กรอกชื่อกลุ่ม">
       </div>
-      <p style="font-size:.73rem;color:#8a8d91;margin:.35rem .6rem 0">
-        <i class="fa-solid fa-circle-info"></i> วาง URL: facebook.com/groups/12345 หรือกรอก ID ตรงๆ
+      <div id="sw-fetched" style="display:none;margin:.5rem .5rem 0;padding:.4rem .6rem;background:#f0f7ff;border-radius:7px;font-size:.82rem;color:#1877f2;text-align:left">
+        <i class="fa-solid fa-check-circle"></i> <span id="sw-fetched-name"></span>
+      </div>
+      <p id="sw-hint" style="font-size:.73rem;color:#8a8d91;margin:.35rem .6rem 0;text-align:left">
+        วาง URL แล้วระบบดึงชื่อให้อัตโนมัติ
       </p>`,
     showCancelButton: true,
     confirmButtonColor: '#1877f2',
@@ -617,17 +583,39 @@ async function gpAdd() {
     cancelButtonText: 'ยกเลิก',
     focusConfirm: false,
     didOpen: () => {
-      document.getElementById('sw-gurl').addEventListener('paste', async () => {
+      const inp = document.getElementById('sw-gurl');
+      inp.addEventListener('paste', async () => {
         await new Promise(r => setTimeout(r, 60));
-        const id = _parseGroupId(document.getElementById('sw-gurl').value);
-        document.getElementById('sw-gurl').value = id;
-        if (id && !document.getElementById('sw-gname').value) gpFetchName();
+        const id = _parseGroupId(inp.value);
+        inp.value = id;
+        if (!id) return;
+        document.getElementById('sw-hint').textContent = 'กำลังดึงชื่อกลุ่ม...';
+        try {
+          const r = await fetch(`/pages/${_gpPageId}/groups/lookup?groupId=${encodeURIComponent(id)}`);
+          const d = await r.json();
+          if (d.name) {
+            document.getElementById('sw-fetched-name').textContent = d.name;
+            document.getElementById('sw-fetched').style.display = 'block';
+            document.getElementById('sw-name-row').style.display = 'none';
+            document.getElementById('sw-hint').textContent = '';
+            inp.dataset.fetchedName = d.name;
+          } else {
+            document.getElementById('sw-name-row').style.display = 'block';
+            document.getElementById('sw-hint').textContent = 'ไม่พบชื่ออัตโนมัติ — กรอกชื่อกลุ่มด้านล่าง';
+            document.getElementById('sw-gname').focus();
+          }
+        } catch {
+          document.getElementById('sw-name-row').style.display = 'block';
+          document.getElementById('sw-hint').textContent = 'กรอกชื่อกลุ่มด้านล่าง';
+        }
       });
     },
     preConfirm: () => {
-      const groupId   = _parseGroupId(document.getElementById('sw-gurl').value);
-      const groupName = document.getElementById('sw-gname').value.trim();
+      const groupId = _parseGroupId(document.getElementById('sw-gurl').value);
       if (!groupId) { Swal.showValidationMessage('กรุณากรอก Group ID หรือลิงก์กลุ่ม'); return false; }
+      const fetched = document.getElementById('sw-gurl').dataset.fetchedName || '';
+      const manual  = (document.getElementById('sw-gname')?.value || '').trim();
+      const groupName = fetched || manual;
       if (!groupName) { Swal.showValidationMessage('กรุณากรอกชื่อกลุ่ม'); return false; }
       return { groupId, groupName };
     },
@@ -640,20 +628,6 @@ async function gpAdd() {
   if (data.ok) { _gpGroups = data.groups; }
   else { await Swal.fire({ icon: 'error', title: data.error, timer: 1500, showConfirmButton: false }); }
   _showGroupModal(_gpPageName);
-}
-
-async function gpFetchName() {
-  const btn     = document.getElementById('sw-fetch-btn');
-  const groupId = _parseGroupId(document.getElementById('sw-gurl').value);
-  if (!groupId) return;
-  if (btn) { btn.disabled = true; btn.textContent = '...'; }
-  try {
-    const res  = await fetch(`/pages/${_gpPageId}/groups/lookup?groupId=${encodeURIComponent(groupId)}`);
-    const data = await res.json();
-    document.getElementById('sw-gurl').value = groupId;
-    if (data.name) document.getElementById('sw-gname').value = data.name;
-  } catch {}
-  if (btn) { btn.disabled = false; btn.textContent = 'ดึงชื่อ'; }
 }
 
 async function gpRemove(groupId) {
