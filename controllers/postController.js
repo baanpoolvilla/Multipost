@@ -12,6 +12,51 @@ exports.showDashboard = async (req, res) => {
     res.render('dashboard', { pages, recentPosts: posts.slice(0, 5) });
 };
 
+// ── Group Post page ────────────────────────────
+exports.showGroupPost = async (req, res) => {
+    const pages = await pageStore.load();
+    res.render('grouppost', { pages });
+};
+
+exports.sendGroupsOnly = async (req, res) => {
+    const { message, feelingEmoji, feelingLabel, location } = req.body;
+    const uploadedImages = (req.files || []).map(f => f.filename);
+    const tplImages      = req.body.templateImages ? [].concat(req.body.templateImages) : [];
+    const images         = [...uploadedImages, ...tplImages];
+
+    if (!message || !message.trim())
+        return res.status(400).json({ error: 'กรุณากรอกข้อความ' });
+
+    let groupIds  = req.body.selectedGroups;
+    const groupPageId = req.body.selectedGroupPage;
+    if (groupIds) groupIds = [].concat(groupIds);
+
+    if (!groupIds || !groupIds.length || !groupPageId)
+        return res.status(400).json({ error: 'กรุณาเลือกกลุ่มอย่างน้อย 1 กลุ่ม' });
+
+    const [pages, cfg] = await Promise.all([pageStore.load(), settingsStore.load()]);
+    const page  = pages.find(p => p.pageId === groupPageId);
+    if (!page) return res.status(404).json({ error: 'ไม่พบเพจ' });
+
+    const token = cfg.groupToken || page.accessToken;
+    const groupMap = groupIds.map(gId => {
+        const group = (page.groups || []).find(g => g.groupId === gId);
+        return { groupId: gId, groupName: group?.groupName || gId, pageId: page.pageId, accessToken: token };
+    });
+
+    const feeling = feelingEmoji ? { emoji: feelingEmoji, label: feelingLabel } : null;
+    const results = await sendToGroups(message.trim(), groupMap, images);
+    const successCount = results.filter(r => r.status === 'success').length;
+
+    const post = await postStore.create({
+        message: message.trim(), feeling,
+        location: location || null, images, results,
+        successCount, failCount: results.length - successCount,
+    });
+
+    res.json({ id: post.id });
+};
+
 // ── Send post ──────────────────────────────────
 exports.sendPost = async (req, res) => {
     const { message, feelingEmoji, feelingLabel, location } = req.body;

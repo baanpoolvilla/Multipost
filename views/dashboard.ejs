@@ -29,6 +29,7 @@
   <!-- Sidebar -->
   <aside class="sidebar">
     <a href="/" class="sidebar-item active"><i class="fa-solid fa-house"></i><span>หน้าหลัก</span></a>
+    <a href="/group-post" class="sidebar-item"><i class="fa-solid fa-people-group"></i><span>โพสต์กลุ่ม</span></a>
     <a href="/overview" class="sidebar-item"><i class="fa-solid fa-chart-line"></i><span>ภาพรวม</span></a>
     <a href="/history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพสต์</span></a>
     <a href="/pages" class="sidebar-item"><i class="fa-brands fa-facebook"></i><span>จัดการเพจ</span></a>
@@ -126,24 +127,6 @@
         <% } %>
       </div>
 
-      <!-- Group selector -->
-      <% const pagesWithGroups = pages.filter(p => (p.groups||[]).filter(g => g.enabled!==false).length > 0); %>
-      <% if (pagesWithGroups.length > 0) { %>
-      <div class="page-selector" style="border-top:1px dashed #e4e6eb;padding-top:.5rem">
-        <span class="page-selector-label"><i class="fa-solid fa-people-group" style="color:#42b72a"></i> กลุ่ม:</span>
-        <% pagesWithGroups.forEach((p, i) => { %>
-        <button class="page-sel-chip group-page-chip" data-page-id="<%= p.pageId %>" onclick="selectGroupPage(this)">
-          <div class="avatar avatar-<%= colors[i%5] %>" style="width:16px;height:16px;font-size:.55rem;flex-shrink:0"><%= p.pageName.slice(-1) %></div>
-          <%= p.pageName %>
-          <span style="background:#e8f5e9;color:#2e7d32;border-radius:999px;font-size:.62rem;padding:.02rem .38rem;font-weight:700"><%= (p.groups||[]).filter(g=>g.enabled!==false).length %></span>
-        </button>
-        <% }); %>
-      </div>
-      <div id="groupChipsRow" style="display:none" class="page-selector" >
-        <span class="page-selector-label" style="visibility:hidden"><i class="fa-solid fa-people-group"></i>:</span>
-        <div id="groupChipsContainer" style="display:flex;flex-wrap:wrap;gap:.35rem;align-items:center"></div>
-      </div>
-      <% } %>
 
       <!-- Template image previews (loaded from template) -->
       <div id="tplImagePreview" class="image-preview-grid" style="display:none"></div>

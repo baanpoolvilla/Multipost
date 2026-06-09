@@ -30,7 +30,9 @@ router.delete('/api/templates/:id', ctrl.deleteTemplate);
 
 // Posts
 router.get('/',               ctrl.showDashboard);
+router.get('/group-post',     ctrl.showGroupPost);
 router.post('/send',          upload.array('images', 10), ctrl.sendPost);
+router.post('/send-groups',   upload.array('images', 10), ctrl.sendGroupsOnly);
 router.get('/result/:id',     ctrl.showResult);
 router.get('/history',        ctrl.showHistory);
 router.delete('/history/:id', ctrl.deletePost);
