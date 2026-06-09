@@ -48,7 +48,7 @@
       </div>
       <div class="summary-text">
         <h2><%= allOk ? 'โพสต์สำเร็จทุกเพจ! 🎉' : `สำเร็จ ${sc} จาก ${total} เพจ` %></h2>
-        <p><%= new Date(post.createdAt).toLocaleString('th-TH') %></p>
+        <p><%= new Date(post.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) %></p>
       </div>
       <div class="summary-pills">
         <span class="pill pill-success"><i class="fa-solid fa-check"></i> <%= sc %></span>
@@ -69,7 +69,7 @@
           </div>
           <div class="fb-post-time">
             <i class="fa-solid fa-earth-asia"></i>
-            <%= new Date(post.createdAt).toLocaleString('th-TH') %>
+            <%= new Date(post.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) %>
             <% if (post.location) { %>
               &nbsp;·&nbsp;<i class="fa-solid fa-location-dot" style="color:#f5533d"></i> <%= post.location %>
             <% } %>
@@ -116,7 +116,7 @@
         <div class="result-info">
           <div class="result-page-name"><%= r.pageName %></div>
           <div class="result-time">
-            <i class="fa-regular fa-clock"></i> <%= new Date(r.timestamp).toLocaleString('th-TH') %>
+            <i class="fa-regular fa-clock"></i> <%= new Date(r.timestamp).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) %>
             <% if (r.error) { %>
               &nbsp;·&nbsp;<span style="color:#c62828;font-size:.78rem"><%= r.error %></span>
             <% } %>

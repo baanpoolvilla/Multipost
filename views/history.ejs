@@ -74,7 +74,7 @@
           </div>
           <div class="fb-post-time">
             <i class="fa-solid fa-earth-asia"></i>
-            <%= new Date(post.createdAt).toLocaleString('th-TH') %>
+            <%= new Date(post.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) %>
             <% if (post.location) { %>
             &nbsp;·&nbsp;<i class="fa-solid fa-location-dot" style="color:#f5533d"></i> <%= post.location %>
             <% } %>

@@ -168,7 +168,7 @@
       <% recentPosts.forEach(post => { %>
       <%
         const dt  = new Date(post.createdAt);
-        const hm  = dt.toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit', hour12:false});
+        const hm  = dt.toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit', hour12:false, timeZone: 'Asia/Bangkok'});
         const allOk = post.failCount === 0;
         const total = post.results.length;
       %>

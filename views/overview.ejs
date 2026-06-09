@@ -186,7 +186,7 @@
             <%= post.message.length > 80 ? post.message.slice(0,80)+'…' : post.message %>
           </a>
           <div style="font-size:.75rem;color:#8a8d91;margin-top:.2rem">
-            <i class="fa-regular fa-clock"></i> <%= new Date(post.createdAt).toLocaleString('th-TH') %>
+            <i class="fa-regular fa-clock"></i> <%= new Date(post.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) %>
             &nbsp;·&nbsp; <%= post.results.length %> เพจ
           </div>
         </div>

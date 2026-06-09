@@ -58,6 +58,12 @@ exports.deletePost = async (req, res) => {
     res.json({ success: !!post });
 };
 
+// ── Helpers ────────────────────────────────────
+const TZ = 'Asia/Bangkok';
+function toThaiDate(isoStr) {
+    return new Date(isoStr).toLocaleDateString('en-CA', { timeZone: TZ }); // YYYY-MM-DD
+}
+
 // ── Overview helpers ───────────────────────────
 function computeStats(posts, allPages) {
     let totalLikes = 0, totalComments = 0, totalShares = 0, totalReach = 0;
@@ -95,11 +101,11 @@ function computeStats(posts, allPages) {
     const successRate  = totalResults > 0 ? Math.round(totalSuccess / totalResults * 100) : 100;
 
     const byDay = {};
-    posts.forEach(p => { const d = p.createdAt.slice(0, 10); byDay[d] = (byDay[d] || 0) + 1; });
+    posts.forEach(p => { const d = toThaiDate(p.createdAt); byDay[d] = (byDay[d] || 0) + 1; });
     const chartLabels = [], chartData = [];
     for (let i = 6; i >= 0; i--) {
         const d = new Date(); d.setDate(d.getDate() - i);
-        const key = d.toISOString().slice(0, 10);
+        const key = d.toLocaleDateString('en-CA', { timeZone: TZ });
         chartLabels.push(key.slice(5)); chartData.push(byDay[key] || 0);
     }
 
@@ -136,9 +142,18 @@ exports.refreshAnalytics = async (req, res) => {
             const token = tokenMap[result.pageId];
             if (!token) continue;
             try {
-                result.analytics = await refreshPostAnalytics(result.fbPostId, token);
+                const fresh = await refreshPostAnalytics(result.fbPostId, token);
+                // keep existing non-zero values if fresh fetch returns 0 (insights take time)
+                if (result.analytics) {
+                    fresh.comments = fresh.comments || result.analytics.comments || 0;
+                    fresh.reach    = fresh.reach    || result.analytics.reach    || 0;
+                }
+                result.analytics = fresh;
                 changed = true;
-            } catch { errors++; }
+            } catch (e) {
+                console.error('[refreshAnalytics] error for', result.fbPostId, e.message);
+                errors++;
+            }
         }
         if (changed) updated++;
     }
@@ -149,10 +164,10 @@ exports.refreshAnalytics = async (req, res) => {
 // ── Daily Summary ──────────────────────────────
 exports.dailySummary = async (req, res) => {
     const posts = await postStore.load();
-    const today = new Date().toISOString().slice(0, 10);
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: TZ });
     const date  = req.query.date || today;
 
-    const dayPosts = posts.filter(p => p.createdAt.slice(0, 10) === date);
+    const dayPosts = posts.filter(p => toThaiDate(p.createdAt) === date);
     let totalLikes = 0, totalComments = 0, totalShares = 0, totalReach = 0;
 
     dayPosts.forEach(p => {
