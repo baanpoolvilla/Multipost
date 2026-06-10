@@ -145,19 +145,24 @@ async function getAccountPages(accountId) {
 
         if (clicked) {
             await fb.waitForTimeout(2000);
-            const fromSwitcher = await fb.evaluate(() => {
+            // Filter out Facebook account-menu items (settings, logout, etc.)
+            const menuWords = ['การตั้งค่า','ความเป็นส่วนตัว','ความช่วยเหลือ','รายงาน','การแสดงผล',
+                               'ออกจากระบบ','เพิ่มเติม','Settings','Privacy','Help','Support',
+                               'Report','Display','Log out','Logout','More','Accessibility'];
+            const fromSwitcher = await fb.evaluate((mw) => {
                 const res = []; const seen = new Set();
                 for (const c of document.querySelectorAll('[role="menu"],[role="dialog"],[role="list"],[role="listbox"]')) {
                     for (const item of c.querySelectorAll('[role="menuitem"],[role="option"],[role="listitem"],li')) {
-                        // grab first non-empty short span inside item
                         const name = [...item.querySelectorAll('span')]
                             .map(s => s.textContent?.trim())
-                            .find(t => t && t.length >= 2 && t.length <= 80);
-                        if (name && !seen.has(name)) { seen.add(name); res.push({ name }); }
+                            .find(t => t && t.length >= 2 && t.length <= 60);
+                        if (!name || seen.has(name)) continue;
+                        if (mw.some(w => name.includes(w))) continue; // skip menu actions
+                        seen.add(name); res.push({ name });
                     }
                 }
                 return res;
-            });
+            }, menuWords);
             await fb.keyboard.press('Escape');
             if (fromSwitcher.length) { await fb.close(); return fromSwitcher; }
         }
@@ -212,52 +217,65 @@ async function _switchPostingAs(page, pageName, log) {
     if (!pageName) return;
     log(`🔄 สลับโพสในนาม "${pageName}"...`);
 
-    // Step 1: click the identity switcher inside the composer dialog
+    // Step 1: click the identity switcher (it lives at the TOP of the composer dialog)
     const clicked = await page.evaluate(() => {
         const dialog = document.querySelector('[role="dialog"]');
         if (!dialog) return null;
 
-        // Primary: aria-label contains "Posting as" / "โพสต์ในฐานะ"
+        // 1a. Explicit aria-label
         const byAria = dialog.querySelector('[aria-label*="Posting as"], [aria-label*="โพสต์ในฐานะ"]');
         if (byAria) { byAria.click(); return 'aria-label'; }
 
-        // Secondary: button in the lower half of the dialog (below textbox area)
-        const dRect  = dialog.getBoundingClientRect();
-        const midY   = dRect.top + dRect.height * 0.55;
-        const ignore = /photo|video|emoji|feeling|location|tag|gif|poll|event|live|watch|sticker/i;
+        // 1b. Combobox / haspopup (some FB versions)
+        const combo = dialog.querySelector('[aria-haspopup="listbox"],[aria-haspopup="menu"],[role="combobox"]');
+        if (combo) { combo.click(); return 'combobox'; }
+
+        // 1c. Top portion of dialog — profile/identity button lives here (first ~40%)
+        const dRect   = dialog.getBoundingClientRect();
+        const topZone = dRect.top + dRect.height * 0.40;
+        const ignoreTop = /close|ปิด|back|กลับ|emoji|gif|photo|video/i;
         for (const btn of dialog.querySelectorAll('[role="button"]')) {
             const br = btn.getBoundingClientRect();
-            if (br.top < midY) continue;
+            if (br.bottom > topZone || br.top <= dRect.top) continue; // only top area
             const al = btn.getAttribute('aria-label') || '';
-            if (ignore.test(al)) continue;
-            if (br.width > 40 && br.height > 20) { btn.click(); return 'lower-button'; }
+            if (ignoreTop.test(al)) continue;
+            if (br.width > 60 && br.height > 25) { btn.click(); return 'top-btn'; }
         }
         return null;
     });
 
     if (!clicked) { log('⚠️ ไม่พบปุ่มสลับ identity — โพสในนาม user ปกติ'); return; }
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(2000);
 
     // Step 2: pick the matching page from the popup list
     const found = await page.evaluate((name) => {
         const lower = name.toLowerCase();
-        const containers = [...document.querySelectorAll('[role="menu"], [role="listbox"], [role="dialog"], [role="list"]')];
-        containers.reverse(); // newest (topmost) first
+        // Search all overlays/menus — newest dialog first
+        const containers = [...document.querySelectorAll('[role="menu"],[role="listbox"],[role="dialog"],[role="list"]')];
+        containers.reverse();
         for (const c of containers) {
-            for (const item of c.querySelectorAll('[role="menuitem"], [role="option"], [role="button"], [role="listitem"], li')) {
-                if ((item.textContent || '').toLowerCase().includes(lower)) { item.click(); return true; }
+            for (const item of c.querySelectorAll('[role="menuitem"],[role="option"],[role="button"],[role="listitem"],li')) {
+                if ((item.textContent || '').toLowerCase().includes(lower)) {
+                    // click the innermost element to avoid mis-clicking parent
+                    (item.querySelector('span, div') || item).click();
+                    return 'popup';
+                }
             }
         }
-        // Fallback: scan all visible buttons
-        for (const btn of document.querySelectorAll('[role="button"]')) {
-            if ((btn.textContent || '').toLowerCase().includes(lower)) { btn.click(); return true; }
+        // Brute-force exact match on any button
+        for (const el of document.querySelectorAll('[role="button"],li,div')) {
+            if ((el.textContent || '').trim().toLowerCase() === lower) { el.click(); return 'exact'; }
         }
         return false;
     }, pageName);
 
-    if (!found) { log(`⚠️ ไม่พบ Page "${pageName}" — โพสในนาม user ปกติ`); return; }
+    if (!found) {
+        await page.screenshot({ path: path.join(_userDataBase, `debug-switcher.png`), fullPage: false }).catch(()=>{});
+        log(`⚠️ ไม่พบ Page "${pageName}" — โพสในนาม user ปกติ (screenshot: debug-switcher.png)`);
+        return;
+    }
     await page.waitForTimeout(1000);
-    log(`✅ สลับเป็น: ${pageName}`);
+    log(`✅ สลับเป็น: ${pageName} [${found}]`);
 }
 
 // ── Post to group ─────────────────────────────────────────────
