@@ -34,8 +34,11 @@ app.on('before-quit', async (e) => {
 });
 
 // ── IPC: Facebook ──────────────────────────────────────────
-ipcMain.handle('login-facebook', async (_, { email, password }) => {
-    return require('./src/facebookBot').loginWithCredentials(email, password);
+ipcMain.handle('login-facebook', async (event, { email, password }) => {
+    return require('./src/facebookBot').loginWithCredentials(email, password, (msg) => {
+        const ts = new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok', hour12: false });
+        if (win && !win.isDestroyed()) win.webContents.send('log', `[${ts}] 🔑 ${msg}`);
+    });
 });
 
 ipcMain.handle('check-login', async () => {

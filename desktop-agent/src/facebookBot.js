@@ -20,48 +20,56 @@ async function getContext() {
     fs.mkdirSync(dir, { recursive: true });
     _context = await chromium.launchPersistentContext(dir, {
         headless: false,
-        viewport: null,
+        viewport: { width: 1024, height: 768 },
         args: [
             '--disable-blink-features=AutomationControlled',
             '--no-first-run',
             '--no-default-browser-check',
+            '--foreground',
         ],
     });
     return _context;
 }
 
 // ── Auto-login with email + password ────────────────────────
-async function loginWithCredentials(email, password) {
+async function loginWithCredentials(email, password, onStatus) {
+    const log = (msg) => onStatus?.(msg);
     try {
+        log('เปิด Chromium...');
         const ctx  = await getContext();
         const page = await ctx.newPage();
+        await page.bringToFront();
 
-        await page.goto('https://www.facebook.com/login', { waitUntil: 'domcontentloaded' });
-        await page.waitForTimeout(1000);
+        log('เปิด Facebook Login...');
+        await page.goto('https://www.facebook.com/login', { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await page.bringToFront();
+        await page.waitForTimeout(1500);
 
         // Fill credentials
+        log('กรอก Email/Password...');
         await page.fill('#email', email);
         await page.fill('#pass',  password);
+        await page.waitForTimeout(500);
         await page.click('[name="login"]');
+
+        log('รอผล Login...');
 
         // Wait for page to move away from /login
         try {
             await page.waitForURL(
                 url => !url.toString().includes('/login'),
-                { timeout: 20000 }
+                { timeout: 25000 }
             );
         } catch {
             await page.close();
-            return { ok: false, error: 'Email หรือ Password ไม่ถูกต้อง' };
+            return { ok: false, error: 'Email หรือ Password ไม่ถูกต้อง (timeout)' };
         }
 
-        // Handle 2FA / checkpoint — keep browser visible, wait up to 3 min
-        const needsVerify = page.url().includes('/checkpoint') ||
-                            page.url().includes('/two_step')    ||
-                            page.url().includes('/login/device-based');
+        const url = page.url();
 
-        if (needsVerify) {
-            // browser stays open so user can complete 2FA
+        // Handle 2FA / checkpoint
+        if (url.includes('/checkpoint') || url.includes('/two_step') || url.includes('device-based')) {
+            log('⚠️ ต้องยืนยันตัวตน — ดูที่หน้าต่าง Chromium ใน taskbar แล้วทำตามขั้นตอน...');
             try {
                 await page.waitForFunction(
                     () => !location.href.includes('/checkpoint') &&
@@ -76,7 +84,10 @@ async function loginWithCredentials(email, password) {
         }
 
         const loggedIn = await _isLoggedIn(page);
-        if (loggedIn) fs.writeFileSync(getFlagPath(), '1');
+        if (loggedIn) {
+            fs.writeFileSync(getFlagPath(), '1');
+            log('Login สำเร็จ ✓');
+        }
         await page.close();
         return { ok: loggedIn, message: loggedIn ? 'Login สำเร็จ ✓' : 'Login ไม่สำเร็จ' };
     } catch (e) {
