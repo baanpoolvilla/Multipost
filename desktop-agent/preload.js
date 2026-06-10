@@ -2,7 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('agent', {
     // Facebook login
-    loginFacebook:  () => ipcRenderer.invoke('login-facebook'),
+    loginFacebook: (email, password) => ipcRenderer.invoke('login-facebook', { email, password }),
     checkLogin:     () => ipcRenderer.invoke('check-login'),
 
     // Groups (read from MongoDB same as web app)

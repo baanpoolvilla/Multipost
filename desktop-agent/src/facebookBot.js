@@ -30,27 +30,55 @@ async function getContext() {
     return _context;
 }
 
-// ── Open browser so user can login manually ──────────────────
-async function openLoginBrowser() {
+// ── Auto-login with email + password ────────────────────────
+async function loginWithCredentials(email, password) {
     try {
         const ctx  = await getContext();
         const page = await ctx.newPage();
-        await page.goto('https://www.facebook.com', { waitUntil: 'domcontentloaded' });
 
-        // Wait until user lands somewhere other than /login
+        await page.goto('https://www.facebook.com/login', { waitUntil: 'domcontentloaded' });
+        await page.waitForTimeout(1000);
+
+        // Fill credentials
+        await page.fill('#email', email);
+        await page.fill('#pass',  password);
+        await page.click('[name="login"]');
+
+        // Wait for page to move away from /login
         try {
-            await page.waitForFunction(
-                () => !location.href.includes('/login') && !location.href.includes('/checkpoint'),
-                { timeout: 180000, polling: 1000 }
+            await page.waitForURL(
+                url => !url.toString().includes('/login'),
+                { timeout: 20000 }
             );
         } catch {
-            // timeout — user didn't finish in 3 min
+            await page.close();
+            return { ok: false, error: 'Email หรือ Password ไม่ถูกต้อง' };
+        }
+
+        // Handle 2FA / checkpoint — keep browser visible, wait up to 3 min
+        const needsVerify = page.url().includes('/checkpoint') ||
+                            page.url().includes('/two_step')    ||
+                            page.url().includes('/login/device-based');
+
+        if (needsVerify) {
+            // browser stays open so user can complete 2FA
+            try {
+                await page.waitForFunction(
+                    () => !location.href.includes('/checkpoint') &&
+                          !location.href.includes('/two_step')   &&
+                          !location.href.includes('/login'),
+                    { timeout: 180000, polling: 1500 }
+                );
+            } catch {
+                await page.close();
+                return { ok: false, error: 'หมดเวลายืนยัน 2FA (3 นาที)' };
+            }
         }
 
         const loggedIn = await _isLoggedIn(page);
         if (loggedIn) fs.writeFileSync(getFlagPath(), '1');
         await page.close();
-        return { ok: loggedIn, message: loggedIn ? 'Login สำเร็จ ✓' : 'ยังไม่ได้ Login' };
+        return { ok: loggedIn, message: loggedIn ? 'Login สำเร็จ ✓' : 'Login ไม่สำเร็จ' };
     } catch (e) {
         return { ok: false, error: e.message };
     }
@@ -215,4 +243,4 @@ async function closeBrowser() {
     }
 }
 
-module.exports = { openLoginBrowser, checkLoginStatus, postToGroup, closeBrowser };
+module.exports = { loginWithCredentials, checkLoginStatus, postToGroup, closeBrowser };

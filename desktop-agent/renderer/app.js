@@ -31,21 +31,30 @@ function registerPushEvents() {
 
 // ── Facebook Login ────────────────────────────────────────────
 async function loginFacebook() {
+    const email    = document.getElementById('fbEmail').value.trim();
+    const password = document.getElementById('fbPassword').value;
+
+    if (!email || !password) {
+        alert('กรุณากรอก Email และ Password ก่อน');
+        return;
+    }
+
     const btn = document.getElementById('btnLogin');
     btn.disabled = true;
-    btn.textContent = 'กำลังเปิด Browser...';
-    appendLog('[ℹ️] เปิด Chromium สำหรับ Login Facebook...');
+    btn.textContent = '⏳ กำลัง Login...';
+    appendLog('[ℹ️] กำลัง Login Facebook อัตโนมัติ...');
 
-    const result = await agent.loginFacebook();
+    const result = await agent.loginFacebook(email, password);
     btn.disabled = false;
-    btn.textContent = 'เปิด Browser ให้ Login';
+    btn.textContent = '🔑 Login อัตโนมัติ';
 
     if (result.ok) {
         setFBStatus(true);
+        document.getElementById('fbPassword').value = '';
         appendLog('[✅] ' + result.message);
     } else {
         setFBStatus(false);
-        appendLog('[❌] ' + (result.error || result.message));
+        appendLog('[❌] ' + (result.error || result.message || 'Login ไม่สำเร็จ'));
     }
 }
 

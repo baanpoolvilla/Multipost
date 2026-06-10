@@ -30,13 +30,20 @@
     <!-- Facebook Login -->
     <div class="card">
       <div class="card-title">🔐 Facebook Login</div>
-      <p class="hint" id="loginHint">กด "เปิด Browser" เพื่อ Login Facebook</p>
-      <div class="btn-group">
+      <p class="hint" id="loginHint">กรอก Email/Password แล้วกด Login — Agent จะ login ให้อัตโนมัติ</p>
+      <label class="field-label">Email / Phone</label>
+      <input type="text"     id="fbEmail"    placeholder="email@example.com">
+      <label class="field-label" style="margin-top:.4rem">Password</label>
+      <input type="password" id="fbPassword" placeholder="รหัสผ่าน Facebook">
+      <div class="btn-group" style="margin-top:.5rem">
         <button class="btn btn-primary" id="btnLogin" onclick="loginFacebook()">
-          เปิด Browser ให้ Login
+          🔑 Login อัตโนมัติ
         </button>
         <button class="btn btn-secondary" onclick="checkLogin()">ตรวจสอบ</button>
       </div>
+      <p class="hint" style="font-size:11px;color:#666;margin-top:.3rem">
+        ถ้ามี 2FA จะมี browser เปิดให้ยืนยันเอง
+      </p>
     </div>
 
     <!-- Create Job -->

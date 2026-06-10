@@ -34,8 +34,8 @@ app.on('before-quit', async (e) => {
 });
 
 // ── IPC: Facebook ──────────────────────────────────────────
-ipcMain.handle('login-facebook', async () => {
-    return require('./src/facebookBot').openLoginBrowser();
+ipcMain.handle('login-facebook', async (_, { email, password }) => {
+    return require('./src/facebookBot').loginWithCredentials(email, password);
 });
 
 ipcMain.handle('check-login', async () => {
