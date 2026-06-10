@@ -171,8 +171,6 @@ async function loadGroups() {
 
 function renderGroupsInline() {
     const el    = document.getElementById('groupPickList');
-    const badge = document.getElementById('groupCountBadge');
-    if (badge) badge.textContent = _groups.length || '';
     if (!_groups.length) {
         el.innerHTML = '<div class="empty-list">ไม่มีกลุ่ม — เพิ่มในเว็บก่อน</div>';
         document.getElementById('showMoreGroupsBtn').style.display = 'none';
