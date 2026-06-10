@@ -419,12 +419,13 @@ exports.shareToGroupHandler = async (req, res) => {
     const { postUrl, message, groupId, pageId } = req.body;
     if (!postUrl || !groupId || !pageId)
         return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
-    const pages = await pageStore.load();
+    const [pages, cfg] = await Promise.all([pageStore.load(), settingsStore.load()]);
     const page  = pages.find(p => p.pageId === pageId);
-    if (!page?.accessToken)
-        return res.status(404).json({ error: 'ไม่พบเพจหรือ Token' });
+    if (!page) return res.status(404).json({ error: 'ไม่พบเพจ' });
+    const token = cfg.groupToken || page.accessToken;
+    if (!token) return res.status(400).json({ error: 'ไม่มี Token สำหรับโพสต์กลุ่ม' });
     try {
-        const id = await shareToGroup(groupId, page.accessToken, postUrl, message);
+        const id = await shareToGroup(groupId, token, postUrl, message);
         res.json({ ok: true, id });
     } catch (err) {
         res.status(400).json({ error: err.message });
