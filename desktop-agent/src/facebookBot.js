@@ -118,6 +118,50 @@ async function loginAccount(account, onLog) {
     } catch(e) { return { ok: false, error: e.message }; }
 }
 
+// ── Get Pages managed by an account ──────────────────────────
+async function getAccountPages(accountId) {
+    try {
+        const ctx  = await _getContext(accountId);
+        const page = await ctx.newPage();
+
+        await page.goto('https://www.facebook.com/pages/', {
+            waitUntil: 'domcontentloaded', timeout: 20000,
+        });
+        if (page.url().includes('/login')) { await page.close(); return []; }
+
+        await page.waitForTimeout(3000);
+
+        const pages = await page.evaluate(() => {
+            const results = [];
+            const seen    = new Set();
+            const skip    = new Set(['Pages', 'เพจ', 'Create new Page', 'สร้างเพจใหม่', 'Manage Pages', 'จัดการเพจ']);
+
+            // Strategy 1: role="heading" inside page cards (most reliable)
+            for (const h of document.querySelectorAll('[role="heading"]')) {
+                const name = h.textContent?.trim();
+                if (!name || name.length < 2 || name.length > 80 || skip.has(name) || seen.has(name)) continue;
+                seen.add(name);
+                results.push({ name });
+            }
+
+            // Strategy 2: look at strong/h2/h3 inside list items
+            if (!results.length) {
+                for (const el of document.querySelectorAll('a strong, h2 a, h3 a, [data-testid*="page"] a')) {
+                    const name = el.textContent?.trim();
+                    if (!name || name.length < 2 || name.length > 80 || skip.has(name) || seen.has(name)) continue;
+                    seen.add(name);
+                    results.push({ name });
+                }
+            }
+
+            return results.slice(0, 30);
+        });
+
+        await page.close();
+        return pages;
+    } catch(e) { return []; }
+}
+
 // ── Switch "Posting as" identity ──────────────────────────────
 async function _switchPostingAs(page, pageName, log) {
     if (!pageName) return;
@@ -336,4 +380,4 @@ async function closeAll() {
     for (const id of Object.keys(_contexts)) await closeContext(id);
 }
 
-module.exports = { init, loginAccount, postToGroup, closeContext, closeAll };
+module.exports = { init, loginAccount, postToGroup, getAccountPages, closeContext, closeAll };

@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('agent', {
     removeAccount:   (id)       => ipcRenderer.invoke('accounts:remove', id),
     loginAccount:    (id)       => ipcRenderer.invoke('accounts:login', id),
     logoutAccount:   (id)       => ipcRenderer.invoke('accounts:logout', id),
+    getAccountPages: (id)       => ipcRenderer.invoke('accounts:pages', id),
 
     // Jobs
     listJobs:        ()         => ipcRenderer.invoke('jobs:list'),

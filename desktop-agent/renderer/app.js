@@ -311,6 +311,29 @@ async function deleteJob(id) {
     renderJobs();
 }
 
+// ── Fetch Pages for account ───────────────────────────────────
+async function fetchAccountPages() {
+    const accId = document.getElementById('jobAccount').value;
+    if (!accId) { alert('กรุณาเลือก Account ก่อน'); return; }
+    const btn = document.getElementById('fetchPagesBtn');
+    btn.textContent = '⏳'; btn.disabled = true;
+    try {
+        const pages = await agent.getAccountPages(accId);
+        const sel   = document.getElementById('jobPostAs');
+        const prev  = sel.value;
+        sel.innerHTML = '<option value="">ใช้ user ปกติ</option>';
+        pages.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.name; opt.textContent = p.name;
+            sel.appendChild(opt);
+        });
+        if (prev) sel.value = prev;
+        appendLog(pages.length ? `[📄] พบ ${pages.length} Page` : '[⚠️] ไม่พบเพจ — account อาจยังไม่ได้ Login');
+    } finally {
+        btn.textContent = '🔄'; btn.disabled = false;
+    }
+}
+
 // ── Templates ─────────────────────────────────────────────────
 let _templates = [];
 
@@ -355,9 +378,16 @@ async function saveTemplate() {
 function applyTemplate(id) {
     const t = _templates.find(x=>x.id===id);
     if (!t) return;
-    document.getElementById('jobMsg').value    = t.message || '';
-    document.getElementById('jobDelay').value  = t.delaySeconds || 5;
-    document.getElementById('jobPostAs').value = t.postAsPage || '';
+    document.getElementById('jobMsg').value   = t.message || '';
+    document.getElementById('jobDelay').value = t.delaySeconds || 5;
+    const pasSel = document.getElementById('jobPostAs');
+    if (t.postAsPage) {
+        if (![...pasSel.options].some(o => o.value === t.postAsPage)) {
+            const opt = document.createElement('option'); opt.value = t.postAsPage; opt.textContent = t.postAsPage;
+            pasSel.appendChild(opt);
+        }
+        pasSel.value = t.postAsPage;
+    } else { pasSel.value = ''; }
     _selected = _groups.map(g => (t.groups||[]).some(tg=>tg.groupId===g.groupId));
     renderGroupsInline();
     // Show create form if hidden

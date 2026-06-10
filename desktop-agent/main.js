@@ -70,6 +70,8 @@ ipcMain.handle('accounts:list',   ()          => accountStore.list());
 ipcMain.handle('accounts:add',    (_, e, p)   => accountStore.add(e, p));
 ipcMain.handle('accounts:remove', (_, id)     => accountStore.remove(id));
 
+ipcMain.handle('accounts:pages', async (_, id) => facebookBot.getAccountPages(id));
+
 ipcMain.handle('accounts:login', async (_, id) => {
     const acc = accountStore.get(id);
     if (!acc) return { ok: false, error: 'ไม่พบ account' };
