@@ -1,6 +1,6 @@
 const fs   = require('fs');
 const path = require('path');
-const { sendToPages, sendToGroups, fetchPagesFromToken, refreshPostAnalytics, fetchPageGroups } = require('../services/facebookService');
+const { sendToPages, sendToGroups, fetchPagesFromToken, refreshPostAnalytics, fetchPageGroups, shareToGroup } = require('../services/facebookService');
 const postStore     = require('../services/postStore');
 const pageStore     = require('../services/pageStore');
 const settingsStore = require('../services/settingsStore');
@@ -406,6 +406,29 @@ exports.toggleGroup = async (req, res) => {
     const { enabled } = req.body;
     const result = await pageStore.toggleGroup(pageId, groupId, enabled);
     res.json({ ok: true, groups: result?.groups || [] });
+};
+
+// ── Share post to groups ───────────────────────
+exports.showSharePost = async (req, res) => {
+    const pages = await pageStore.load();
+    const url = req.query.url || '';
+    res.render('share-post', { pages, url });
+};
+
+exports.shareToGroupHandler = async (req, res) => {
+    const { postUrl, message, groupId, pageId } = req.body;
+    if (!postUrl || !groupId || !pageId)
+        return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
+    const pages = await pageStore.load();
+    const page  = pages.find(p => p.pageId === pageId);
+    if (!page?.accessToken)
+        return res.status(404).json({ error: 'ไม่พบเพจหรือ Token' });
+    try {
+        const id = await shareToGroup(groupId, page.accessToken, postUrl, message);
+        res.json({ ok: true, id });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
 };
 
 // ── Page management ────────────────────────────

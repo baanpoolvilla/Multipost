@@ -22,6 +22,10 @@ const upload = multer({
     fileFilter: (req, file, cb) => cb(null, /\.(jpe?g|png|gif|webp)$/i.test(file.originalname)),
 });
 
+// Share post to groups
+router.get('/share-post',              ctrl.showSharePost);
+router.post('/api/share-to-group',     ctrl.shareToGroupHandler);
+
 // Templates
 router.get('/api/templates',        ctrl.getTemplates);
 router.post('/api/templates',       upload.array('images', 10), ctrl.createTemplate);

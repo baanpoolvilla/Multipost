@@ -30,6 +30,8 @@
     <a href="/" class="sidebar-item"><i class="fa-solid fa-house"></i><span>หน้าหลัก</span></a>
     <a href="/group-post" class="sidebar-item"><i class="fa-solid fa-people-group"></i><span>โพสต์กลุ่ม</span></a>
     <a href="/history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพสต์</span></a>
+    <a href="/pages" class="sidebar-item"><i class="fa-brands fa-facebook"></i><span>จัดการเพจ</span></a>
+    <a href="/share-post" class="sidebar-item"><i class="fa-solid fa-share-nodes"></i><span>แชร์โพสลงกลุ่ม</span></a>
     <div class="sidebar-item active"><i class="fa-solid fa-circle-check"></i><span>ผลการส่ง</span></div>
   </aside>
 
@@ -135,6 +137,15 @@
         </div>
         <div style="display:flex;align-items:center;gap:.5rem">
           <% if (r.status === 'success' && r.postUrl) { %>
+          <button onclick="copyLink('<%= r.postUrl %>')"
+            style="font-size:.78rem;color:#65676b;background:#f0f2f5;border:none;border-radius:6px;padding:.25rem .6rem;cursor:pointer;display:flex;align-items:center;gap:.25rem;font-family:inherit"
+            title="คัดลอกลิ้ง">
+            <i class="fa-solid fa-copy"></i> คัดลอก
+          </button>
+          <a href="/share-post?url=<%= encodeURIComponent(r.postUrl) %>"
+             style="font-size:.78rem;color:#fff;background:#1877f2;border-radius:6px;padding:.25rem .6rem;text-decoration:none;display:flex;align-items:center;gap:.25rem;font-weight:600">
+            <i class="fa-solid fa-share-nodes"></i> แชร์กลุ่ม
+          </a>
           <a href="<%= r.postUrl %>" target="_blank" rel="noopener"
              style="font-size:.8rem;color:#1877f2;text-decoration:none;display:flex;align-items:center;gap:.25rem">
             <i class="fa-brands fa-facebook"></i> ดูโพสต์
@@ -268,10 +279,17 @@
     </div>
     <% } %>
 
-    <div style="text-align:center;margin-top:1rem;display:flex;gap:.75rem;justify-content:center">
+    <div style="text-align:center;margin-top:1rem;display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap">
       <a href="/" class="btn-post" style="text-decoration:none">
         <i class="fa-solid fa-paper-plane"></i> โพสต์อีกครั้ง
       </a>
+      <% const firstSuccessUrl = post.results.find(r => r.status === 'success' && r.postUrl)?.postUrl; %>
+      <% if (firstSuccessUrl) { %>
+      <a href="/share-post?url=<%= encodeURIComponent(firstSuccessUrl) %>" class="btn-post"
+         style="text-decoration:none;background:#42b72a">
+        <i class="fa-solid fa-share-nodes"></i> แชร์ลงกลุ่ม
+      </a>
+      <% } %>
       <a href="/history" class="btn-post" style="text-decoration:none;background:#65676b">
         <i class="fa-solid fa-clock-rotate-left"></i> ดูประวัติ
       </a>
@@ -301,21 +319,16 @@
     Swal.fire({ imageUrl: src, imageAlt: 'รูปภาพ', showConfirmButton: false, showCloseButton: true, width: 'auto' });
   }
 
-  /* ── Copy URL ── */
-  function copyLink() {
-    if (!_srcUrl) return;
-    const doFeedback = () => {
-      const btn = document.getElementById('copyBtn');
-      if (!btn) return;
-      const orig = btn.innerHTML;
-      btn.innerHTML = '<i class="fa-solid fa-check"></i> คัดลอกแล้ว!';
-      btn.style.background = '#2e7d32'; btn.style.color = '#fff';
-      setTimeout(() => { btn.innerHTML = orig; btn.style.background = ''; btn.style.color = ''; }, 2200);
-    };
+  /* ── Copy URL (per-row button) ── */
+  function copyLink(url) {
+    const u = url || _srcUrl;
+    if (!u) return;
     if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(_srcUrl).then(doFeedback).catch(() => fallbackCopy(_srcUrl, doFeedback));
+      navigator.clipboard.writeText(u).then(() => {
+        Swal.fire({ icon: 'success', title: 'คัดลอกลิ้งแล้ว!', timer: 1200, showConfirmButton: false });
+      }).catch(() => fallbackCopy(u));
     } else {
-      fallbackCopy(_srcUrl, doFeedback);
+      fallbackCopy(u);
     }
   }
 
@@ -351,7 +364,6 @@
       Swal.fire({ icon: 'warning', title: 'ยังไม่มี URL โพสต์', text: 'โพสต์ไปยังเพจก่อน', confirmButtonColor: '#42b72a' });
       return;
     }
-    /* copy URL */
     const doCopy = () => {
       if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(_srcUrl).catch(() => fallbackCopy(_srcUrl));
@@ -360,26 +372,16 @@
       }
     };
     doCopy();
-
-    /* open group */
     window.open(`https://www.facebook.com/groups/${groupId}`, '_blank', 'noopener');
-
-    /* mark as opened */
     _visitedGroups.add(groupId);
-    const row    = document.getElementById(`gsr-${groupId}`);
     const status = document.getElementById(`gsr-status-${groupId}`);
     const gbtn   = document.getElementById(`gsr-btn-${groupId}`);
     if (status) { status.innerHTML = '<i class="fa-solid fa-circle-check" style="color:#42b72a"></i> เปิดแล้ว — วาง URL แล้วกด Post'; status.style.color = '#2e7d32'; }
     if (gbtn)   { gbtn.style.background = '#8a8d91'; gbtn.innerHTML = '<i class="fa-solid fa-check"></i> เปิดแล้ว'; }
-
     Swal.fire({
-      icon: 'success',
-      title: `คัดลอก URL แล้ว`,
+      icon: 'success', title: 'คัดลอก URL แล้ว',
       html: `เปิดกลุ่ม <strong>${groupName}</strong> แล้ว<br>วาง URL ในช่องโพสต์ แล้วกด <strong>Post</strong>`,
-      timer: 3000,
-      showConfirmButton: false,
-      position: 'bottom-end',
-      toast: true,
+      timer: 3000, showConfirmButton: false, position: 'bottom-end', toast: true,
     });
   }
 
@@ -389,6 +391,15 @@
     btns.forEach((btn, i) => {
       setTimeout(() => btn.click(), i * 600);
     });
+  }
+
+  function toggleResultRows(btn) {
+    const hidden = document.querySelectorAll('.result-row-hidden');
+    const isHidden = hidden[0]?.style.display === 'none';
+    hidden.forEach(r => r.style.display = isHidden ? 'flex' : 'none');
+    btn.innerHTML = isHidden
+      ? '<i class="fa-solid fa-chevron-up"></i> ซ่อน'
+      : `<i class="fa-solid fa-chevron-down"></i> ดูเพิ่มเติม ${hidden.length} เพจ`;
   }
 </script>
 <script src="/js/app.js"></script>

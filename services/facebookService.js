@@ -190,4 +190,17 @@ async function fetchPageGroups(pageId, accessToken) {
     return { groups: (data.data || []).map(g => ({ groupId: g.id, groupName: g.name })), notSupported: false };
 }
 
-module.exports = { sendToPages, sendToGroups, fetchPagesFromToken, refreshPostAnalytics, fetchPageGroups };
+async function shareToGroup(groupId, accessToken, postUrl, message) {
+    const params = new URLSearchParams({ link: postUrl, access_token: accessToken });
+    if (message && message.trim()) params.set('message', message.trim());
+    const res = await fetch(`${FB_API}/${groupId}/feed`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params,
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    return data.id;
+}
+
+module.exports = { sendToPages, sendToGroups, fetchPagesFromToken, refreshPostAnalytics, fetchPageGroups, shareToGroup };
