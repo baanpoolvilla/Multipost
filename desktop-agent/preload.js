@@ -6,7 +6,8 @@ contextBridge.exposeInMainWorld('agent', {
     checkLogin:     () => ipcRenderer.invoke('check-login'),
 
     // Groups (read from MongoDB same as web app)
-    getGroups:      () => ipcRenderer.invoke('get-groups'),
+    getGroups:          () => ipcRenderer.invoke('get-groups'),
+    getRecentPosts:     () => ipcRenderer.invoke('get-recent-posts'),
 
     // Jobs
     createJob:  (data) => ipcRenderer.invoke('create-job', data),

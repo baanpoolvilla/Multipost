@@ -47,6 +47,11 @@ ipcMain.handle('get-groups', async () => {
     return require('./src/jobStore').getAllGroups();
 });
 
+// ── IPC: Recent posts ──────────────────────────────────────
+ipcMain.handle('get-recent-posts', async () => {
+    return require('./src/jobStore').getRecentPosts();
+});
+
 // ── IPC: Jobs ──────────────────────────────────────────────
 ipcMain.handle('create-job', async (_, jobData) => {
     return require('./src/jobStore').createJob(jobData);

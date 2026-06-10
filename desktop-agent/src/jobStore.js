@@ -137,9 +137,27 @@ async function deleteJob(jobId) {
     }
 }
 
+async function getRecentPosts() {
+    try {
+        await connectDB();
+        const postSchema = new mongoose.Schema({
+            message: String, successCount: Number, results: Array, createdAt: String,
+        }, { versionKey: false, collection: 'posts' });
+        const Post = mongoose.models.AgentWebPost || mongoose.model('AgentWebPost', postSchema, 'posts');
+        const posts = await Post.find().sort({ createdAt: -1 }).limit(20).lean();
+        return posts.map(p => ({
+            _id:   p._id.toString(),
+            message:      p.message || '',
+            successCount: p.successCount || 0,
+            createdAt:    p.createdAt,
+            postUrls: (p.results || []).filter(r => r.postUrl).map(r => r.postUrl),
+        }));
+    } catch { return []; }
+}
+
 function _serialize(j) {
     if (!j) return j;
     return { ...j, _id: j._id?.toString?.() ?? j._id };
 }
 
-module.exports = { getAllGroups, createJob, getJobs, getPendingJobs, updateJob, deleteJob };
+module.exports = { getAllGroups, createJob, getJobs, getPendingJobs, updateJob, deleteJob, getRecentPosts };

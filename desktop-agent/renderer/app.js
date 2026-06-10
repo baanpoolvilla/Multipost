@@ -74,6 +74,46 @@ function setFBStatus(loggedIn) {
         : 'กด "เปิด Browser" เพื่อ Login Facebook';
 }
 
+// ── Recent Posts ──────────────────────────────────────────────
+let _selectedPostIdx = -1;
+
+async function loadRecentPosts() {
+    const el = document.getElementById('recentPostsList');
+    el.innerHTML = '<div class="loading">กำลังโหลด...</div>';
+    const posts = await agent.getRecentPosts();
+    if (!posts.length) {
+        el.innerHTML = '<div class="empty-list">ยังไม่มีโพสต์ในประวัติ</div>';
+        return;
+    }
+    el.innerHTML = posts.map((p, i) => {
+        const msg  = p.message.length > 60 ? p.message.slice(0, 60) + '...' : p.message;
+        const date = fmtDate(p.createdAt);
+        const urls = p.postUrls.length ? `· ${p.postUrls.length} URL` : '';
+        return `
+          <div class="recent-post-item" id="rpi_${i}" onclick="selectPost(${i})">
+            <div class="recent-post-msg">${escHtml(msg)}</div>
+            <div class="recent-post-meta">✓ ${p.successCount} เพจ ${urls} · ${date}</div>
+          </div>`;
+    }).join('');
+    el.dataset.posts = JSON.stringify(posts);
+}
+
+function selectPost(i) {
+    const posts = JSON.parse(document.getElementById('recentPostsList').dataset.posts || '[]');
+    const post  = posts[i];
+    if (!post) return;
+
+    // Highlight selected
+    document.querySelectorAll('.recent-post-item').forEach(el => el.classList.remove('selected'));
+    document.getElementById(`rpi_${i}`)?.classList.add('selected');
+    _selectedPostIdx = i;
+
+    // Fill message with post content + first URL if any
+    let msg = post.message;
+    if (post.postUrls.length) msg += '\n\n' + post.postUrls[0];
+    document.getElementById('jobMessage').value = msg;
+}
+
 // ── Groups ────────────────────────────────────────────────────
 async function loadGroups() {
     document.getElementById('groupList').innerHTML = '<div class="loading">กำลังโหลดกลุ่ม...</div>';

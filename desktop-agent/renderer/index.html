@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'">
   <title>MultiPost – Desktop Agent</title>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -50,16 +50,25 @@
     <div class="card">
       <div class="card-title">✏️ สร้าง Job โพสต์กลุ่ม</div>
 
-      <label class="field-label">ข้อความที่จะโพสต์</label>
-      <textarea id="jobMessage" rows="5" placeholder="พิมพ์ข้อความที่ต้องการโพสต์ลงกลุ่ม..."></textarea>
-
+      <!-- Recent posts picker -->
       <div class="field-row">
-        <div>
+        <label class="field-label">โพสต์ล่าสุดจากเพจ</label>
+        <button class="btn-link" onclick="loadRecentPosts()">🔄 โหลด</button>
+      </div>
+      <div id="recentPostsList" class="recent-posts">
+        <div class="empty-list">กด "โหลด" เพื่อดูโพสต์ล่าสุดจากเว็บ</div>
+      </div>
+
+      <label class="field-label" style="margin-top:.5rem">ข้อความที่จะโพสต์</label>
+      <textarea id="jobMessage" rows="4" placeholder="พิมพ์ข้อความ หรือคลิกเลือกจากโพสต์ล่าสุดด้านบน..."></textarea>
+
+      <div class="field-row" style="margin-top:.4rem">
+        <div style="flex:1">
           <label class="field-label">เลือกกลุ่ม</label>
           <div class="group-actions">
             <button class="btn-link" onclick="selectAllGroups()">เลือกทั้งหมด</button>
-            <button class="btn-link" onclick="deselectAllGroups()">ยกเลิกทั้งหมด</button>
-            <button class="btn-link" onclick="loadGroups()">🔄 โหลดใหม่</button>
+            <button class="btn-link" onclick="deselectAllGroups()">ยกเลิก</button>
+            <button class="btn-link" onclick="loadGroups()">🔄</button>
           </div>
         </div>
       </div>
