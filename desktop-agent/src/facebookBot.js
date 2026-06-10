@@ -212,70 +212,93 @@ async function getAccountPages(accountId) {
     } catch(e) { return []; }
 }
 
-// ── Switch "Posting as" identity ──────────────────────────────
-async function _switchPostingAs(page, pageName, log) {
-    if (!pageName) return;
-    log(`🔄 สลับโพสในนาม "${pageName}"...`);
+// ── Navbar profile switcher (shared by switchIdentity / getAccountPages) ──
+const _MENU_WORDS = ['การตั้งค่า','ความเป็นส่วนตัว','ความช่วยเหลือ','รายงาน','การแสดงผล',
+                     'ออกจากระบบ','เพิ่มเติม','Settings','Privacy','Help','Support',
+                     'Report','Display','Log out','Logout','More','Accessibility'];
 
-    // Step 1: click the identity switcher (it lives at the TOP of the composer dialog)
-    const clicked = await page.evaluate(() => {
-        const dialog = document.querySelector('[role="dialog"]');
-        if (!dialog) return null;
-
-        // 1a. Explicit aria-label
-        const byAria = dialog.querySelector('[aria-label*="Posting as"], [aria-label*="โพสต์ในฐานะ"]');
-        if (byAria) { byAria.click(); return 'aria-label'; }
-
-        // 1b. Combobox / haspopup (some FB versions)
-        const combo = dialog.querySelector('[aria-haspopup="listbox"],[aria-haspopup="menu"],[role="combobox"]');
-        if (combo) { combo.click(); return 'combobox'; }
-
-        // 1c. Top portion of dialog — profile/identity button lives here (first ~40%)
-        const dRect   = dialog.getBoundingClientRect();
-        const topZone = dRect.top + dRect.height * 0.40;
-        const ignoreTop = /close|ปิด|back|กลับ|emoji|gif|photo|video/i;
-        for (const btn of dialog.querySelectorAll('[role="button"]')) {
-            const br = btn.getBoundingClientRect();
-            if (br.bottom > topZone || br.top <= dRect.top) continue; // only top area
-            const al = btn.getAttribute('aria-label') || '';
-            if (ignoreTop.test(al)) continue;
-            if (br.width > 60 && br.height > 25) { btn.click(); return 'top-btn'; }
+async function _navOpenSwitcher(page) {
+    return page.evaluate(() => {
+        const labels = ['Switch profiles','Switch Profile','สลับโปรไฟล์',
+                        'Your profiles','โปรไฟล์ของคุณ','Profiles','โปรไฟล์'];
+        for (const lbl of labels) {
+            const el = document.querySelector(`[aria-label="${lbl}"], [title="${lbl}"]`);
+            if (el) { el.click(); return lbl; }
         }
         return null;
     });
+}
 
-    if (!clicked) { log('⚠️ ไม่พบปุ่มสลับ identity — โพสในนาม user ปกติ'); return; }
-    await page.waitForTimeout(2000);
-
-    // Step 2: pick the matching page from the popup list
-    const found = await page.evaluate((name) => {
-        const lower = name.toLowerCase();
-        // Search all overlays/menus — newest dialog first
-        const containers = [...document.querySelectorAll('[role="menu"],[role="listbox"],[role="dialog"],[role="list"]')];
+// pickName = string → click that profile/page; null → click first valid item (personal)
+async function _navPickIdentity(page, pickName, menuWords) {
+    return page.evaluate((name, mw) => {
+        const lower = name ? name.toLowerCase() : null;
+        const containers = [...document.querySelectorAll('[role="menu"],[role="dialog"],[role="list"],[role="listbox"]')];
         containers.reverse();
         for (const c of containers) {
-            for (const item of c.querySelectorAll('[role="menuitem"],[role="option"],[role="button"],[role="listitem"],li')) {
-                if ((item.textContent || '').toLowerCase().includes(lower)) {
-                    // click the innermost element to avoid mis-clicking parent
-                    (item.querySelector('span, div') || item).click();
-                    return 'popup';
-                }
-            }
+            const items = [...c.querySelectorAll('[role="menuitem"],[role="option"],[role="listitem"],li')]
+                .filter(item => {
+                    const t = (item.textContent || '').trim();
+                    return t && t.length >= 2 && t.length <= 60 && !mw.some(w => t.includes(w));
+                });
+            if (!items.length) continue;
+            if (!lower) { items[0].click(); return 'first'; }
+            const target = items.find(item => (item.textContent || '').toLowerCase().includes(lower));
+            if (target) { target.click(); return name; }
         }
-        // Brute-force exact match on any button
-        for (const el of document.querySelectorAll('[role="button"],li,div')) {
-            if ((el.textContent || '').trim().toLowerCase() === lower) { el.click(); return 'exact'; }
-        }
-        return false;
-    }, pageName);
+        return null;
+    }, pickName, menuWords);
+}
 
-    if (!found) {
-        await page.screenshot({ path: path.join(_userDataBase, `debug-switcher.png`), fullPage: false }).catch(()=>{});
-        log(`⚠️ ไม่พบ Page "${pageName}" — โพสในนาม user ปกติ (screenshot: debug-switcher.png)`);
-        return;
-    }
-    await page.waitForTimeout(1000);
-    log(`✅ สลับเป็น: ${pageName} [${found}]`);
+// ── Public: switch to a page identity via navbar ───────────────
+async function switchIdentity(accountId, pageName, onLog) {
+    const log = m => onLog?.(m);
+    log(`🔄 สลับโปรไฟล์เป็น "${pageName}"...`);
+    try {
+        const ctx  = await _getContext(accountId);
+        const page = await ctx.newPage();
+        await page.goto('https://www.facebook.com/', { waitUntil: 'domcontentloaded', timeout: 15000 });
+        await page.waitForTimeout(2000);
+
+        const btnFound = await _navOpenSwitcher(page);
+        if (!btnFound) {
+            await page.screenshot({ path: path.join(_userDataBase, 'debug-switcher.png') }).catch(()=>{});
+            log('⚠️ ไม่พบปุ่ม profile switcher — โพสเป็น user ปกติ');
+            await page.close(); return false;
+        }
+        await page.waitForTimeout(1500);
+
+        const picked = await _navPickIdentity(page, pageName, _MENU_WORDS);
+        if (!picked) {
+            await page.screenshot({ path: path.join(_userDataBase, 'debug-switcher.png') }).catch(()=>{});
+            log(`⚠️ ไม่พบ "${pageName}" ใน switcher — โพสเป็น user ปกติ`);
+            await page.close(); return false;
+        }
+
+        await page.waitForTimeout(3000); // FB needs time to complete identity switch
+        await page.close();
+        log(`✅ สลับเป็น: ${pageName}`);
+        return true;
+    } catch(e) { log(`❌ switchIdentity: ${e.message}`); return false; }
+}
+
+// ── Public: switch back to personal account (first item in switcher) ─
+async function switchIdentityBack(accountId, onLog) {
+    const log = m => onLog?.(m);
+    try {
+        const ctx  = await _getContext(accountId);
+        const page = await ctx.newPage();
+        await page.goto('https://www.facebook.com/', { waitUntil: 'domcontentloaded', timeout: 15000 });
+        await page.waitForTimeout(2000);
+        const btnFound = await _navOpenSwitcher(page);
+        if (btnFound) {
+            await page.waitForTimeout(1500);
+            await _navPickIdentity(page, null, _MENU_WORDS); // null = first = personal
+            await page.waitForTimeout(2000);
+        }
+        await page.close();
+        log('🔄 สลับกลับเป็น personal account');
+    } catch(e) { log?.(`⚠️ switchIdentityBack: ${e.message}`); }
 }
 
 // ── Post to group ─────────────────────────────────────────────
@@ -374,9 +397,6 @@ async function postToGroup(accountId, groupId, groupName, message, postAsPage, o
         await textbox.click();
         await page.waitForTimeout(500);
 
-        // Switch "Posting as" identity if specified
-        await _switchPostingAs(page, postAsPage, log);
-
         // Support "text|||url" or "|||url" (text-only preview, no link shown)
         if (message.includes('|||')) {
             const sep  = message.indexOf('|||');
@@ -443,4 +463,4 @@ async function closeAll() {
     for (const id of Object.keys(_contexts)) await closeContext(id);
 }
 
-module.exports = { init, loginAccount, postToGroup, getAccountPages, closeContext, closeAll };
+module.exports = { init, loginAccount, postToGroup, getAccountPages, switchIdentity, switchIdentityBack, closeContext, closeAll };

@@ -69,6 +69,12 @@ async function processJob(job) {
         return;
     }
 
+    // Switch to page identity ONCE before posting to all groups
+    let identitySwitched = false;
+    if (job.postAsPage) {
+        identitySwitched = await _bot.switchIdentity(acc.id, job.postAsPage, (m) => log(`   ${m}`));
+    }
+
     const results = [];
     let ok = 0;
 
@@ -88,6 +94,11 @@ async function processJob(job) {
             log(`   ⏳ รอ ${job.delaySeconds}s...`);
             await sleep(job.delaySeconds*1000);
         }
+    }
+
+    // Switch back to personal account after all groups done
+    if (identitySwitched) {
+        await _bot.switchIdentityBack(acc.id, (m) => log(`   ${m}`));
     }
 
     const status = ok>0 ? 'done' : 'failed';
