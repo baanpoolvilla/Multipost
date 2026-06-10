@@ -231,7 +231,7 @@ async function _navOpenSwitcher(page) {
 
 // pickName = string → click that profile/page; null → click first valid item (personal)
 async function _navPickIdentity(page, pickName, menuWords) {
-    return page.evaluate((name, mw) => {
+    return page.evaluate(({ name, mw }) => {
         const lower = name ? name.toLowerCase() : null;
         const containers = [...document.querySelectorAll('[role="menu"],[role="dialog"],[role="list"],[role="listbox"]')];
         containers.reverse();
@@ -247,7 +247,7 @@ async function _navPickIdentity(page, pickName, menuWords) {
             if (target) { target.click(); return name; }
         }
         return null;
-    }, pickName, menuWords);
+    }, { name: pickName, mw: menuWords });
 }
 
 // ── Public: switch to a page identity via navbar ───────────────
