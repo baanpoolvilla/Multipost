@@ -122,43 +122,88 @@ async function loginAccount(account, onLog) {
 async function getAccountPages(accountId) {
     try {
         const ctx  = await _getContext(accountId);
-        const page = await ctx.newPage();
+        const fb   = await ctx.newPage();
 
-        await page.goto('https://www.facebook.com/pages/', {
+        await fb.goto('https://www.facebook.com/', {
             waitUntil: 'domcontentloaded', timeout: 20000,
         });
-        if (page.url().includes('/login')) { await page.close(); return []; }
+        if (fb.url().includes('/login')) { await fb.close(); return []; }
+        await fb.waitForTimeout(2500);
 
-        await page.waitForTimeout(3000);
+        // ── Strategy 1: click profile/identity switcher on home ──
+        const clicked = await fb.evaluate(() => {
+            const labels = [
+                'Switch profiles', 'Switch Profile', 'สลับโปรไฟล์',
+                'Your profiles', 'โปรไฟล์ของคุณ', 'Profiles', 'โปรไฟล์',
+            ];
+            for (const lbl of labels) {
+                const el = document.querySelector(`[aria-label="${lbl}"], [title="${lbl}"]`);
+                if (el) { el.click(); return lbl; }
+            }
+            return null;
+        });
 
-        const pages = await page.evaluate(() => {
-            const results = [];
-            const seen    = new Set();
-            const skip    = new Set(['Pages', 'เพจ', 'Create new Page', 'สร้างเพจใหม่', 'Manage Pages', 'จัดการเพจ']);
+        if (clicked) {
+            await fb.waitForTimeout(2000);
+            const fromSwitcher = await fb.evaluate(() => {
+                const res = []; const seen = new Set();
+                for (const c of document.querySelectorAll('[role="menu"],[role="dialog"],[role="list"],[role="listbox"]')) {
+                    for (const item of c.querySelectorAll('[role="menuitem"],[role="option"],[role="listitem"],li')) {
+                        // grab first non-empty short span inside item
+                        const name = [...item.querySelectorAll('span')]
+                            .map(s => s.textContent?.trim())
+                            .find(t => t && t.length >= 2 && t.length <= 80);
+                        if (name && !seen.has(name)) { seen.add(name); res.push({ name }); }
+                    }
+                }
+                return res;
+            });
+            await fb.keyboard.press('Escape');
+            if (fromSwitcher.length) { await fb.close(); return fromSwitcher; }
+        }
 
-            // Strategy 1: role="heading" inside page cards (most reliable)
-            for (const h of document.querySelectorAll('[role="heading"]')) {
-                const name = h.textContent?.trim();
+        // ── Strategy 2: facebook.com/pages/ with long wait ───────
+        await fb.goto('https://www.facebook.com/pages/', {
+            waitUntil: 'domcontentloaded', timeout: 20000,
+        });
+        await fb.waitForTimeout(5000);
+
+        const fromPages = await fb.evaluate(() => {
+            const res = []; const seen = new Set();
+            const skip = new Set([
+                'Pages', 'เพจ', 'Create new Page', 'สร้างเพจใหม่',
+                'Your Pages and profiles', 'เพจและโปรไฟล์ของคุณ',
+                'Manage Pages', 'All', 'ทั้งหมด', 'More', 'เพิ่มเติม',
+                'See all', 'See more',
+            ]);
+
+            // role=heading
+            for (const el of document.querySelectorAll('[role="heading"], h1, h2, h3')) {
+                const name = el.textContent?.trim();
                 if (!name || name.length < 2 || name.length > 80 || skip.has(name) || seen.has(name)) continue;
-                seen.add(name);
-                results.push({ name });
+                seen.add(name); res.push({ name });
             }
 
-            // Strategy 2: look at strong/h2/h3 inside list items
-            if (!results.length) {
-                for (const el of document.querySelectorAll('a strong, h2 a, h3 a, [data-testid*="page"] a')) {
-                    const name = el.textContent?.trim();
-                    if (!name || name.length < 2 || name.length > 80 || skip.has(name) || seen.has(name)) continue;
-                    seen.add(name);
-                    results.push({ name });
+            // Fallback: page link text (slug-style hrefs = pages)
+            if (!res.length) {
+                const NON_PAGE = new Set(['login','groups','pages','watch','marketplace','events',
+                    'gaming','bookmarks','settings','notifications','friends','feeds','home',
+                    'messages','stories','reels','videos','saved','memories','weather']);
+                for (const a of document.querySelectorAll('a[href]')) {
+                    const m = (a.getAttribute('href') || '').match(/^\/([a-zA-Z0-9._]{3,60})\/?(?:\?.*)?$/);
+                    if (!m || NON_PAGE.has(m[1].toLowerCase())) continue;
+                    const name = [...a.querySelectorAll('span')]
+                        .map(s => s.textContent?.trim())
+                        .find(t => t && t.length >= 2 && t.length <= 80);
+                    if (name && !skip.has(name) && !seen.has(name)) { seen.add(name); res.push({ name }); }
                 }
             }
 
-            return results.slice(0, 30);
+            return res.slice(0, 20);
         });
 
-        await page.close();
-        return pages;
+        await fb.close();
+        return fromPages;
     } catch(e) { return []; }
 }
 
