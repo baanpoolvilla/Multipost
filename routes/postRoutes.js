@@ -1,8 +1,9 @@
-const express = require('express');
-const router  = express.Router();
-const multer  = require('multer');
-const path    = require('path');
-const ctrl    = require('../controllers/postController');
+const express    = require('express');
+const router     = express.Router();
+const multer     = require('multer');
+const path       = require('path');
+const ctrl       = require('../controllers/postController');
+const agentCtrl  = require('../controllers/agentController');
 
 const UPLOADS_DIR = process.env.VERCEL ? '/tmp/uploads' : path.join(__dirname, '../public/uploads');
 
@@ -57,5 +58,15 @@ router.get('/pages',          ctrl.showPages);
 router.post('/pages',         ctrl.addPage);
 router.put('/pages/:id',      ctrl.updatePage);
 router.delete('/pages/:id',   ctrl.deletePage);
+
+// Agent / Groups / Job Queue pages
+router.get('/agent',     agentCtrl.showAgent);
+router.get('/groups',    agentCtrl.showGroups);
+router.get('/job-queue', agentCtrl.showJobQueue);
+
+// Job Queue API
+router.get('/api/agent/jobs',        agentCtrl.listJobs);
+router.post('/api/agent/jobs',       agentCtrl.createJob);
+router.delete('/api/agent/jobs/:id', agentCtrl.deleteJob);
 
 module.exports = router;

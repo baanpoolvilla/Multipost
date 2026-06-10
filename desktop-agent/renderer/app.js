@@ -1,296 +1,296 @@
 // ── State ────────────────────────────────────────────────────
-let _groups   = [];
-let _jobs     = [];
-let _running  = false;
-let _loggedIn = false;
+let _accounts = [], _groups = [], _jobs = [], _jobFilter = 'all';
+let _statusInterval = null;
 
 // ── Init ─────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', async () => {
-    await checkLogin();
-    await loadGroups();
-    await refreshJobs();
-    await syncRunnerStatus();
-    registerPushEvents();
+    setupTabs();
+    setupPushEvents();
+    await refreshStatus();
+    await loadAccounts();
+    await loadJobs();
+    loadGroups();
+    _statusInterval = setInterval(refreshStatus, 5000);
 });
 
-// ── Push events from main process ────────────────────────────
-function registerPushEvents() {
-    agent.onLog((msg) => appendLog(msg));
+// ── Tab navigation ────────────────────────────────────────────
+function setupTabs() {
+    document.querySelectorAll('.nav-item[data-tab]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('tab-'+btn.dataset.tab)?.classList.add('active');
+        });
+    });
+}
 
-    agent.onJobUpdate((job) => {
-        const idx = _jobs.findIndex(j => j._id === job._id);
-        if (idx !== -1) _jobs[idx] = job;
-        else _jobs.unshift(job);
+// ── Push events ───────────────────────────────────────────────
+function setupPushEvents() {
+    agent.on('log',          msg  => appendLog(msg));
+    agent.on('runner:status',data => setRunnerUI(data.running));
+    agent.on('accounts:updated', ()  => loadAccounts());
+    agent.on('jobs:updated', job  => {
+        const i = _jobs.findIndex(j=>j._id===job._id);
+        if (i!==-1) _jobs[i]=job; else _jobs.unshift(job);
         renderJobs();
     });
-
-    agent.onProgress(({ groupName, status }) => {
-        // Visual feedback can be added later; log is sufficient for now
-    });
+    agent.on('jobs:progress', ()  => {});
 }
 
-// ── Facebook Login ────────────────────────────────────────────
-async function loginFacebook() {
-    const email    = document.getElementById('fbEmail').value.trim();
-    const password = document.getElementById('fbPassword').value;
+// ── Status ────────────────────────────────────────────────────
+async function refreshStatus() {
+    const s = await agent.getStatus();
+    document.getElementById('statApi').textContent     = `port ${s.apiPort}`;
+    document.getElementById('statDb').textContent      = s.dbConnected ? 'Connected' : 'Offline';
+    document.getElementById('statUptime').textContent  = fmtUptime(s.uptime);
+    document.getElementById('statRunner').textContent  = s.running ? 'กำลังทำงาน' : 'หยุด';
 
-    if (!email || !password) {
-        alert('กรุณากรอก Email และ Password ก่อน');
-        return;
-    }
+    setDot('dotApi',    true);
+    setDot('dotDb',     s.dbConnected);
+    setDot('dotRunner', s.running);
+    document.getElementById('lblApi').textContent    = `API: :${s.apiPort}`;
+    document.getElementById('lblDb').textContent     = s.dbConnected ? 'DB: Connected' : 'DB: Offline';
+    document.getElementById('lblRunner').textContent = s.running ? 'Runner: กำลังทำ' : 'Runner: หยุด';
 
-    const btn = document.getElementById('btnLogin');
-    btn.disabled = true;
-    btn.textContent = '⏳ กำลัง Login...';
-    appendLog('[ℹ️] กำลัง Login Facebook อัตโนมัติ...');
-
-    const result = await agent.loginFacebook(email, password);
-    btn.disabled = false;
-    btn.textContent = '🔑 Login อัตโนมัติ';
-
-    if (result.ok) {
-        setFBStatus(true);
-        document.getElementById('fbPassword').value = '';
-        appendLog('[✅] ' + result.message);
-    } else {
-        setFBStatus(false);
-        appendLog('[❌] ' + (result.error || result.message || 'Login ไม่สำเร็จ'));
-    }
+    setRunnerUI(s.running);
 }
 
-async function checkLogin() {
-    const { loggedIn } = await agent.checkLogin();
-    setFBStatus(loggedIn);
+function setDot(id, ok) {
+    const d = document.getElementById(id);
+    d.className = 'dot ' + (ok ? 'ok' : 'err');
 }
 
-function setFBStatus(loggedIn) {
-    _loggedIn = loggedIn;
-    const pill = document.getElementById('fbStatusPill');
-    const hint = document.getElementById('loginHint');
-    pill.className = 'status-pill ' + (loggedIn ? 'online' : 'offline');
-    pill.innerHTML = `<span class="dot"></span> Facebook: ${loggedIn ? 'Login แล้ว ✓' : 'ยังไม่ Login'}`;
-    hint.textContent = loggedIn
-        ? 'Login สำเร็จแล้ว พร้อมโพสต์'
-        : 'กด "เปิด Browser" เพื่อ Login Facebook';
+// ── Runner ────────────────────────────────────────────────────
+async function startRunner() {
+    await agent.startRunner();
+    setRunnerUI(true);
+    appendLog('[▶] Runner เริ่มทำงาน');
+}
+async function stopRunner() {
+    await agent.stopRunner();
+    setRunnerUI(false);
+    appendLog('[⏹] Runner หยุดแล้ว');
+}
+function setRunnerUI(running) {
+    document.getElementById('btnStart').disabled = running;
+    document.getElementById('btnStop').disabled  = !running;
 }
 
-// ── Recent Posts ──────────────────────────────────────────────
-let _selectedPostIdx = -1;
+// ── Accounts ──────────────────────────────────────────────────
+async function loadAccounts() {
+    _accounts = await agent.listAccounts();
+    renderAccounts();
+    updateAccountSelect();
+}
 
-async function loadRecentPosts() {
-    const el = document.getElementById('recentPostsList');
-    el.innerHTML = '<div class="loading">กำลังโหลด...</div>';
-    const posts = await agent.getRecentPosts();
-    if (!posts.length) {
-        el.innerHTML = '<div class="empty-list">ยังไม่มีโพสต์ในประวัติ</div>';
-        return;
-    }
-    el.innerHTML = posts.map((p, i) => {
-        const msg  = p.message.length > 60 ? p.message.slice(0, 60) + '...' : p.message;
-        const date = fmtDate(p.createdAt);
-        const urls = p.postUrls.length ? `· ${p.postUrls.length} URL` : '';
+function renderAccounts() {
+    const el = document.getElementById('accountsList');
+    document.getElementById('accCount').textContent = _accounts.length;
+    if (!_accounts.length) { el.innerHTML='<div class="empty-state">ยังไม่มี Account</div>'; return; }
+    el.innerHTML = _accounts.map(a => {
+        const init = a.email[0].toUpperCase();
+        const ts   = a.loginedAt ? fmtDate(a.loginedAt) : '—';
         return `
-          <div class="recent-post-item" id="rpi_${i}" onclick="selectPost(${i})">
-            <div class="recent-post-msg">${escHtml(msg)}</div>
-            <div class="recent-post-meta">✓ ${p.successCount} เพจ ${urls} · ${date}</div>
+          <div class="acc-item">
+            <div class="acc-avatar">${init}</div>
+            <div class="acc-info">
+              <div class="acc-email">${esc(a.email)}</div>
+              <div class="acc-meta">Login: ${ts}</div>
+            </div>
+            <span class="acc-status ${a.status}">${statusAccTH(a.status)}</span>
+            <button class="btn btn-primary" style="font-size:11px;padding:.3rem .65rem;margin-left:.4rem"
+              onclick="loginAcc('${a.id}')">Login</button>
+            <button class="btn btn-secondary" style="font-size:11px;padding:.3rem .65rem"
+              onclick="logoutAcc('${a.id}')" ${a.status!=='logged_in'?'disabled':''}>Logout</button>
+            <button class="btn btn-secondary" style="font-size:11px;padding:.3rem .5rem;color:var(--red)"
+              onclick="removeAcc('${a.id}')">🗑</button>
           </div>`;
     }).join('');
-    el.dataset.posts = JSON.stringify(posts);
 }
 
-function selectPost(i) {
-    const posts = JSON.parse(document.getElementById('recentPostsList').dataset.posts || '[]');
-    const post  = posts[i];
-    if (!post) return;
+function updateAccountSelect() {
+    const sel = document.getElementById('jobAccount');
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">Auto (account ที่ login อยู่)</option>';
+    _accounts.forEach(a => {
+        const opt = document.createElement('option');
+        opt.value = a.id; opt.textContent = a.email;
+        if (a.status==='logged_in') opt.textContent += ' ✓';
+        sel.appendChild(opt);
+    });
+    if (prev) sel.value = prev;
+}
 
-    // Highlight selected
-    document.querySelectorAll('.recent-post-item').forEach(el => el.classList.remove('selected'));
-    document.getElementById(`rpi_${i}`)?.classList.add('selected');
-    _selectedPostIdx = i;
+function toggleAddAccount() {
+    const f = document.getElementById('addAccountForm');
+    f.style.display = f.style.display==='none' ? '' : 'none';
+}
 
-    // Fill message with post content + first URL if any
-    let msg = post.message;
-    if (post.postUrls.length) msg += '\n\n' + post.postUrls[0];
-    document.getElementById('jobMessage').value = msg;
+async function addAccount() {
+    const email = document.getElementById('accEmail').value.trim();
+    const pass  = document.getElementById('accPassword').value;
+    if (!email||!pass) { alert('กรุณากรอกข้อมูลให้ครบ'); return; }
+    const res = await agent.addAccount(email, pass);
+    if (res.error) { alert(res.error); return; }
+    document.getElementById('accEmail').value = '';
+    document.getElementById('accPassword').value = '';
+    toggleAddAccount();
+    await loadAccounts();
+    appendLog(`[✅] เพิ่ม Account: ${email}`);
+}
+
+async function removeAcc(id) {
+    if (!confirm('ลบ account นี้?')) return;
+    await agent.removeAccount(id);
+    await loadAccounts();
+}
+
+async function loginAcc(id) {
+    appendLog('[🔑] กำลัง Login...');
+    const res = await agent.loginAccount(id);
+    if (res.ok) appendLog('[✅] '+res.message);
+    else appendLog('[❌] '+(res.error||'Login ไม่สำเร็จ'));
+    await loadAccounts();
+}
+
+async function logoutAcc(id) {
+    await agent.logoutAccount(id);
+    await loadAccounts();
+    appendLog('[⏹] Logout แล้ว');
 }
 
 // ── Groups ────────────────────────────────────────────────────
 async function loadGroups() {
-    document.getElementById('groupList').innerHTML = '<div class="loading">กำลังโหลดกลุ่ม...</div>';
+    const el = document.getElementById('groupPickList');
+    el.innerHTML = '<div class="loading">กำลังโหลด...</div>';
     _groups = await agent.getGroups();
-    renderGroups();
+    if (!_groups.length) { el.innerHTML='<div class="empty-list">ไม่มีกลุ่ม — เพิ่มในเว็บก่อน</div>'; return; }
+    el.innerHTML = _groups.map((g,i)=>`
+      <div class="pick-item" onclick="togGrp(${i})">
+        <input type="checkbox" id="g_${i}" checked>
+        <label for="g_${i}">${esc(g.groupName)}</label>
+      </div>`).join('');
 }
 
-function renderGroups() {
-    const el = document.getElementById('groupList');
-    if (!_groups.length) {
-        el.innerHTML = '<div class="empty-list">ไม่มีกลุ่ม — เพิ่มกลุ่มใน "จัดการเพจ" บนเว็บก่อน</div>';
-        document.getElementById('selectedCount').style.display = 'none';
-        return;
-    }
-    el.innerHTML = _groups.map((g, i) => `
-      <div class="group-item" onclick="toggleGroup(${i})">
-        <input type="checkbox" id="grp_${i}" checked>
-        <label for="grp_${i}">${escHtml(g.groupName)}</label>
-      </div>
-    `).join('');
-    updateSelectedCount();
-    document.getElementById('selectedCount').style.display = '';
+function togGrp(i){ const c=document.getElementById(`g_${i}`); if(c) c.checked=!c.checked; }
+function selAll()  { document.querySelectorAll('#groupPickList input').forEach(c=>c.checked=true); }
+function selNone() { document.querySelectorAll('#groupPickList input').forEach(c=>c.checked=false); }
+function selectedGroups() { return _groups.filter((_,i)=>document.getElementById(`g_${i}`)?.checked); }
+
+// ── Recent posts ──────────────────────────────────────────────
+async function loadRecentPosts() {
+    const el = document.getElementById('recentPostsList');
+    el.innerHTML = '<div class="loading">กำลังโหลด...</div>';
+    const posts = await agent.getRecentPosts();
+    if (!posts.length) { el.innerHTML='<div class="empty-list">ยังไม่มีโพสต์</div>'; return; }
+    el.dataset.posts = JSON.stringify(posts);
+    el.innerHTML = posts.map((p,i)=>{
+        const msg = p.message.length>55 ? p.message.slice(0,55)+'...' : p.message;
+        const urls = p.postUrls.length ? ` · ${p.postUrls.length} URL` : '';
+        return `<div class="pick-item" id="rp_${i}" onclick="pickPost(${i})">
+          <div style="flex:1;min-width:0">
+            <div class="pick-msg">${esc(msg)}</div>
+            <div class="pick-meta">✓ ${p.successCount} เพจ${urls} · ${fmtDate(p.createdAt)}</div>
+          </div></div>`;
+    }).join('');
 }
 
-function toggleGroup(i) {
-    const cb = document.getElementById(`grp_${i}`);
-    cb.checked = !cb.checked;
-    updateSelectedCount();
+function pickPost(i) {
+    const posts = JSON.parse(document.getElementById('recentPostsList').dataset.posts||'[]');
+    const p = posts[i]; if(!p) return;
+    document.querySelectorAll('.recent-post-item,.pick-item').forEach(e=>e.classList.remove('selected'));
+    document.getElementById(`rp_${i}`)?.classList.add('selected');
+    let msg = p.message;
+    if (p.postUrls.length) msg += '\n\n' + p.postUrls[0];
+    document.getElementById('jobMsg').value = msg;
 }
 
-function updateSelectedCount() {
-    const n = document.querySelectorAll('.group-list input[type="checkbox"]:checked').length;
-    document.getElementById('selectedNum').textContent = n;
+// ── Jobs ──────────────────────────────────────────────────────
+async function loadJobs() {
+    _jobs = await agent.listJobs();
+    renderJobs();
 }
 
-function selectAllGroups()  {
-    document.querySelectorAll('.group-list input[type="checkbox"]').forEach(c => c.checked = true);
-    updateSelectedCount();
-}
-function deselectAllGroups() {
-    document.querySelectorAll('.group-list input[type="checkbox"]').forEach(c => c.checked = false);
-    updateSelectedCount();
-}
-
-function getSelectedGroups() {
-    return _groups.filter((_, i) => {
-        const cb = document.getElementById(`grp_${i}`);
-        return cb && cb.checked;
-    });
-}
-
-// ── Create Job ────────────────────────────────────────────────
-async function createJob() {
-    const message = document.getElementById('jobMessage').value.trim();
-    if (!message) { alert('กรุณากรอกข้อความ'); return; }
-
-    const groups = getSelectedGroups();
-    if (!groups.length) { alert('กรุณาเลือกอย่างน้อย 1 กลุ่ม'); return; }
-
-    const delay = parseInt(document.getElementById('jobDelay').value, 10) || 5;
-
-    const job = await agent.createJob({ message, groups, delaySeconds: delay });
-    if (job) {
-        _jobs.unshift(job);
-        renderJobs();
-        document.getElementById('jobMessage').value = '';
-        appendLog(`[📋] สร้าง Job ใหม่: "${message.slice(0, 40)}..." → ${groups.length} กลุ่ม`);
-    }
-}
-
-// ── Jobs list ─────────────────────────────────────────────────
-async function refreshJobs() {
-    _jobs = await agent.getJobs();
+function filterJobs(btn, filter) {
+    document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    _jobFilter = filter;
     renderJobs();
 }
 
 function renderJobs() {
     const el = document.getElementById('jobsList');
-    document.getElementById('jobCountBadge').textContent = _jobs.length;
+    const filtered = _jobFilter==='all' ? _jobs : _jobs.filter(j=>j.status===_jobFilter);
+    const pending = _jobs.filter(j=>j.status==='pending').length;
+    const badge = document.getElementById('pendingBadge');
+    if (pending>0) { badge.textContent=pending; badge.style.display=''; }
+    else badge.style.display='none';
 
-    if (!_jobs.length) {
-        el.innerHTML = '<div class="empty-state">ยังไม่มี Job</div>';
-        return;
-    }
-
-    el.innerHTML = _jobs.map(j => {
-        const icon  = { pending: '⏳', running: '🔄', done: '✅', failed: '❌' }[j.status] || '❓';
-        const total = j.groups?.length || 0;
-        const ok    = (j.results || []).filter(r => r.status === 'success').length;
-        const meta  = j.status === 'done' || j.status === 'failed'
-            ? `${ok}/${total} กลุ่มสำเร็จ`
-            : `${total} กลุ่ม · หน่วง ${j.delaySeconds}s`;
-        return `
-          <div class="job-item">
-            <div class="job-status-icon">${icon}</div>
-            <div class="job-body">
-              <div class="job-msg">${escHtml(j.message)}</div>
-              <div class="job-meta">
-                ${meta}
-                &nbsp;·&nbsp;
-                ${fmtDate(j.createdAt)}
-              </div>
-            </div>
-            <span class="job-status ${j.status}">${statusTH(j.status)}</span>
-            <button class="job-delete" title="ลบ" onclick="deleteJob('${j._id}')">🗑</button>
+    if (!filtered.length) { el.innerHTML='<div class="empty-state">ไม่มี Job</div>'; return; }
+    const icons = { pending:'⏳', running:'🔄', done:'✅', failed:'❌' };
+    el.innerHTML = filtered.map(j=>{
+        const ok  = (j.results||[]).filter(r=>r.status==='success').length;
+        const tot = j.groups?.length||0;
+        const meta = (j.status==='done'||j.status==='failed') ? `${ok}/${tot} กลุ่ม` : `${tot} กลุ่ม · ${j.delaySeconds}s`;
+        return `<div class="job-item">
+          <div class="job-icon">${icons[j.status]||'❓'}</div>
+          <div class="job-body">
+            <div class="job-msg">${esc(j.message)}</div>
+            <div class="job-meta">${meta} · ${fmtDate(j.createdAt)}</div>
           </div>
-        `;
+          <span class="job-status ${j.status}">${statusJobTH(j.status)}</span>
+          <button class="job-del" onclick="deleteJob('${j._id}')">🗑</button>
+        </div>`;
     }).join('');
+}
+
+function toggleCreateJob() {
+    const f = document.getElementById('createJobForm');
+    f.style.display = f.style.display==='' ? 'none' : '';
+}
+
+async function createJob() {
+    const msg    = document.getElementById('jobMsg').value.trim();
+    const groups = selectedGroups();
+    const delay  = parseInt(document.getElementById('jobDelay').value)||5;
+    const accId  = document.getElementById('jobAccount').value||null;
+
+    if (!msg)         { alert('กรุณากรอกข้อความ'); return; }
+    if (!groups.length){ alert('กรุณาเลือกอย่างน้อย 1 กลุ่ม'); return; }
+
+    const job = await agent.createJob({ message:msg, groups, delaySeconds:delay, accountId:accId||undefined });
+    if (job) {
+        _jobs.unshift(job); renderJobs();
+        document.getElementById('jobMsg').value = '';
+        toggleCreateJob();
+        appendLog(`[📋] สร้าง Job: "${msg.slice(0,40)}..." → ${groups.length} กลุ่ม`);
+    }
 }
 
 async function deleteJob(id) {
     await agent.deleteJob(id);
-    _jobs = _jobs.filter(j => j._id !== id);
+    _jobs = _jobs.filter(j=>j._id!==id);
     renderJobs();
-    appendLog(`[🗑] ลบ Job ${id}`);
-}
-
-// ── Runner ────────────────────────────────────────────────────
-async function startRunner() {
-    if (!_loggedIn) {
-        alert('กรุณา Login Facebook ก่อนเริ่ม Runner');
-        return;
-    }
-    await agent.startRunner();
-    setRunnerStatus(true);
-}
-
-async function stopRunner() {
-    await agent.stopRunner();
-    setRunnerStatus(false);
-}
-
-async function syncRunnerStatus() {
-    const { running } = await agent.runnerStatus();
-    setRunnerStatus(running);
-}
-
-function setRunnerStatus(running) {
-    _running = running;
-    document.getElementById('btnStart').disabled = running;
-    document.getElementById('btnStop').disabled  = !running;
-    const pill = document.getElementById('runnerStatusPill');
-    pill.className = 'status-pill ' + (running ? 'online' : 'offline');
-    pill.innerHTML = `<span class="dot"></span> Runner: ${running ? 'กำลังทำงาน' : 'หยุด'}`;
 }
 
 // ── Log ───────────────────────────────────────────────────────
 function appendLog(msg) {
-    const el  = document.getElementById('logOutput');
+    const el   = document.getElementById('logOutput');
     const line = document.createElement('span');
-    line.className = 'log-line';
-
-    if (msg.includes('✅') || msg.includes('สำเร็จ')) line.classList.add('log-ok');
-    else if (msg.includes('❌') || msg.includes('ล้มเหลว') || msg.includes('error')) line.classList.add('log-err');
-    else if (msg.includes('ℹ️') || msg.includes('📋') || msg.includes('🔄')) line.classList.add('log-info');
-
+    line.style.display = 'block';
+    if (msg.includes('✅')||msg.includes('สำเร็จ')) line.className='log-ok';
+    else if (msg.includes('❌')||msg.includes('error')||msg.includes('ล้มเหลว')) line.className='log-err';
+    else if (msg.includes('ℹ️')||msg.includes('📋')||msg.includes('▶')) line.className='log-info';
     line.textContent = msg;
     el.appendChild(line);
-    el.appendChild(document.createTextNode('\n'));
     el.scrollTop = el.scrollHeight;
 }
-
-function clearLog() {
-    document.getElementById('logOutput').innerHTML = '';
-}
+function clearLog() { document.getElementById('logOutput').innerHTML=''; }
 
 // ── Helpers ───────────────────────────────────────────────────
-function escHtml(s) {
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-function fmtDate(iso) {
-    if (!iso) return '';
-    try { return new Date(iso).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', hour12: false, dateStyle: 'short', timeStyle: 'short' }); }
-    catch { return iso; }
-}
-
-function statusTH(s) {
-    return { pending: 'รอ', running: 'กำลังทำ', done: 'สำเร็จ', failed: 'ล้มเหลว' }[s] || s;
-}
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtDate(iso){ try{ return new Date(iso).toLocaleString('th-TH',{timeZone:'Asia/Bangkok',hour12:false,dateStyle:'short',timeStyle:'short'}); }catch{return iso||'';} }
+function fmtUptime(s){ if(!s)return'—'; const h=Math.floor(s/3600),m=Math.floor((s%3600)/60); return h?`${h}h ${m}m`:`${m}m`; }
+function statusAccTH(s){ return {logged_in:'Login แล้ว',logged_out:'Logout',error:'Error'}[s]||s; }
+function statusJobTH(s){ return {pending:'รอ',running:'กำลังทำ',done:'เสร็จ',failed:'ล้มเหลว'}[s]||s; }

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>กลุ่ม Facebook - Multi Post System</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-inner">
+    <div class="navbar-brand">
+      <div class="fb-logo"><i class="fa-brands fa-facebook"></i></div>
+      <span>Multi Post System</span>
+    </div>
+    <div class="navbar-right">
+      <a href="/" class="btn-back"><i class="fa-solid fa-plus"></i> โพสต์ใหม่</a>
+    </div>
+  </div>
+</nav>
+
+<div class="page-wrap">
+
+  <aside class="sidebar">
+    <a href="/" class="sidebar-item"><i class="fa-solid fa-house"></i><span>หน้าหลัก</span></a>
+    <a href="/overview" class="sidebar-item"><i class="fa-solid fa-chart-line"></i><span>ภาพรวม</span></a>
+    <a href="/history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพสต์</span></a>
+    <a href="/pages" class="sidebar-item"><i class="fa-brands fa-facebook"></i><span>จัดการเพจ</span></a>
+    <div class="sidebar-divider"></div>
+    <a href="/agent" class="sidebar-item"><i class="fa-solid fa-robot"></i><span>Agent</span></a>
+    <a href="/groups" class="sidebar-item active"><i class="fa-solid fa-users-rectangle"></i><span>กลุ่ม</span></a>
+    <a href="/job-queue" class="sidebar-item"><i class="fa-solid fa-list-check"></i><span>Job Queue</span></a>
+  </aside>
+
+  <main class="feed">
+
+    <div class="card" style="padding:.85rem 1.25rem;display:flex;align-items:center;justify-content:space-between">
+      <div class="card-title" style="font-size:1.05rem">
+        <i class="fa-solid fa-users-rectangle"></i> กลุ่ม Facebook ทั้งหมด
+        <span style="background:#e4e6ea;padding:.15rem .55rem;border-radius:999px;font-size:.8rem;margin-left:.4rem"><%= groups.length %></span>
+      </div>
+      <a href="/pages" class="btn-back" style="font-size:.82rem"><i class="fa-solid fa-gear"></i> จัดการเพจ/กลุ่ม</a>
+    </div>
+
+    <% if (groups.length === 0) { %>
+    <div class="card empty-state">
+      <i class="fa-solid fa-users-rectangle" style="font-size:2rem;color:#c5c8d0;margin-bottom:.5rem"></i>
+      <h3>ยังไม่มีกลุ่ม</h3>
+      <p>เพิ่มกลุ่มได้ที่หน้า <a href="/pages">จัดการเพจ</a> → คลิกปุ่ม "กลุ่ม" ของเพจ</p>
+    </div>
+    <% } else { %>
+
+    <!-- Group table by page -->
+    <% pages.forEach(page => { %>
+    <% const pg = (page.groups||[]).filter(g=>g.enabled!==false); %>
+    <% if (!pg.length) return; %>
+    <div class="card">
+      <div class="card-title">
+        <div class="avatar avatar-blue avatar-xs" style="flex-shrink:0"><%= page.pageName.slice(-1) %></div>
+        <%= page.pageName %>
+        <span style="background:#e7f3ff;color:#1877f2;border-radius:999px;font-size:.72rem;padding:.1rem .45rem;font-weight:700;margin-left:.35rem"><%= pg.length %> กลุ่ม</span>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:.88rem">
+        <thead>
+          <tr style="border-bottom:1px solid var(--border-color)">
+            <th style="text-align:left;padding:.4rem .5rem;color:var(--text-secondary);font-weight:600">ชื่อกลุ่ม</th>
+            <th style="text-align:left;padding:.4rem .5rem;color:var(--text-secondary);font-weight:600">Group ID</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% pg.forEach(g => { %>
+          <tr style="border-bottom:1px solid var(--border-color)">
+            <td style="padding:.5rem .5rem">
+              <i class="fa-solid fa-users" style="color:#1877f2;margin-right:.4rem"></i><%= g.groupName %>
+            </td>
+            <td style="padding:.5rem .5rem;color:var(--text-secondary);font-family:monospace;font-size:.82rem"><%= g.groupId %></td>
+          </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+    <% }); %>
+
+    <div class="card" style="background:#f0f7ff;border-color:#b3d4f9">
+      <div style="font-size:.85rem;color:#1877f2;line-height:1.8">
+        <strong>ℹ️ หมายเหตุ:</strong> กลุ่มเหล่านี้จะถูกใช้โดย Desktop Agent เพื่อโพสต์อัตโนมัติ
+        ผ่าน Playwright — ไม่ใช้ Facebook Graph API
+      </div>
+    </div>
+
+    <% } %>
+
+  </main>
+</div>
+
+</body>
+</html>

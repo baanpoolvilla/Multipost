@@ -8,122 +8,188 @@
 </head>
 <body>
 
-<!-- Header -->
-<header class="header">
-  <div class="header-brand">🤖 MultiPost Desktop Agent</div>
-  <div class="header-status">
-    <span class="status-pill" id="fbStatusPill">
-      <span class="dot"></span> Facebook: ตรวจสอบ...
-    </span>
-    <span class="status-pill" id="runnerStatusPill">
-      <span class="dot"></span> Runner: หยุด
-    </span>
+<!-- Sidebar nav -->
+<nav class="sidenav">
+  <div class="sidenav-brand">🤖 Agent v2</div>
+
+  <button class="nav-item active" data-tab="status">
+    <span class="nav-icon">📊</span><span>สถานะ</span>
+  </button>
+  <button class="nav-item" data-tab="accounts">
+    <span class="nav-icon">👤</span><span>Accounts</span>
+  </button>
+  <button class="nav-item" data-tab="jobs">
+    <span class="nav-icon">📋</span><span>Job Queue</span>
+    <span class="nav-badge" id="pendingBadge" style="display:none">0</span>
+  </button>
+
+  <div class="sidenav-footer">
+    <div class="status-row">
+      <span class="dot" id="dotApi"></span>
+      <span id="lblApi">API: ...</span>
+    </div>
+    <div class="status-row">
+      <span class="dot" id="dotDb"></span>
+      <span id="lblDb">DB: ...</span>
+    </div>
+    <div class="status-row">
+      <span class="dot" id="dotRunner"></span>
+      <span id="lblRunner">Runner: หยุด</span>
+    </div>
   </div>
-</header>
+</nav>
 
-<!-- Layout -->
-<div class="layout">
+<!-- Content area -->
+<div class="content">
 
-  <!-- LEFT: controls -->
-  <aside class="panel-left">
-
-    <!-- Facebook Login -->
-    <div class="card">
-      <div class="card-title">🔐 Facebook Login</div>
-      <p class="hint" id="loginHint">กรอก Email/Password แล้วกด Login — Agent จะ login ให้อัตโนมัติ</p>
-      <label class="field-label">Email / Phone</label>
-      <input type="text"     id="fbEmail"    placeholder="email@example.com">
-      <label class="field-label" style="margin-top:.4rem">Password</label>
-      <input type="password" id="fbPassword" placeholder="รหัสผ่าน Facebook">
-      <div class="btn-group" style="margin-top:.5rem">
-        <button class="btn btn-primary" id="btnLogin" onclick="loginFacebook()">
-          🔑 Login อัตโนมัติ
-        </button>
-        <button class="btn btn-secondary" onclick="checkLogin()">ตรวจสอบ</button>
-      </div>
-      <p class="hint" style="font-size:11px;color:#666;margin-top:.3rem">
-        ถ้ามี 2FA จะมี browser เปิดให้ยืนยันเอง
-      </p>
-    </div>
-
-    <!-- Create Job -->
-    <div class="card">
-      <div class="card-title">✏️ สร้าง Job โพสต์กลุ่ม</div>
-
-      <!-- Recent posts picker -->
-      <div class="field-row">
-        <label class="field-label">โพสต์ล่าสุดจากเพจ</label>
-        <button class="btn-link" onclick="loadRecentPosts()">🔄 โหลด</button>
-      </div>
-      <div id="recentPostsList" class="recent-posts">
-        <div class="empty-list">กด "โหลด" เพื่อดูโพสต์ล่าสุดจากเว็บ</div>
-      </div>
-
-      <label class="field-label" style="margin-top:.5rem">ข้อความที่จะโพสต์</label>
-      <textarea id="jobMessage" rows="4" placeholder="พิมพ์ข้อความ หรือคลิกเลือกจากโพสต์ล่าสุดด้านบน..."></textarea>
-
-      <div class="field-row" style="margin-top:.4rem">
-        <div style="flex:1">
-          <label class="field-label">เลือกกลุ่ม</label>
-          <div class="group-actions">
-            <button class="btn-link" onclick="selectAllGroups()">เลือกทั้งหมด</button>
-            <button class="btn-link" onclick="deselectAllGroups()">ยกเลิก</button>
-            <button class="btn-link" onclick="loadGroups()">🔄</button>
-          </div>
-        </div>
-      </div>
-      <div class="group-list" id="groupList">
-        <div class="loading">กำลังโหลดกลุ่ม...</div>
-      </div>
-      <div class="selected-count" id="selectedCount" style="display:none">
-        เลือก <strong id="selectedNum">0</strong> กลุ่ม
-      </div>
-
-      <label class="field-label">หน่วงเวลาระหว่างกลุ่ม (วินาที)</label>
-      <input type="number" id="jobDelay" value="5" min="1" max="120" style="width:80px">
-
-      <button class="btn btn-primary" style="margin-top:.75rem;width:100%" onclick="createJob()">
-        📋 เพิ่มลงคิว
-      </button>
-    </div>
-
-    <!-- Runner -->
-    <div class="card">
-      <div class="card-title">⚙️ Runner</div>
-      <p class="hint">Runner จะดึง Job จากคิวและโพสต์ไปยังกลุ่มอัตโนมัติ</p>
-      <div class="btn-group">
+  <!-- ── TAB: STATUS ── -->
+  <section id="tab-status" class="tab active">
+    <div class="tab-header">
+      <h1>📊 สถานะ Agent</h1>
+      <div style="display:flex;gap:.5rem">
         <button class="btn btn-green" id="btnStart" onclick="startRunner()">▶ เริ่ม Runner</button>
-        <button class="btn btn-danger" id="btnStop" onclick="stopRunner()" disabled>⏹ หยุด</button>
+        <button class="btn btn-red"   id="btnStop"  onclick="stopRunner()" disabled>⏹ หยุด</button>
       </div>
     </div>
 
-  </aside>
-
-  <!-- RIGHT: jobs + log -->
-  <div class="panel-right">
-
-    <!-- Jobs -->
-    <div class="card jobs-card">
-      <div class="card-title">
-        📋 คิว Jobs
-        <span class="badge" id="jobCountBadge">0</span>
-        <button class="btn-link" style="margin-left:auto" onclick="refreshJobs()">🔄 รีเฟรช</button>
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-label">Local API</div>
+        <div class="stat-val" id="statApi">—</div>
       </div>
-      <div id="jobsList">
-        <div class="empty-state">ยังไม่มี Job</div>
+      <div class="stat-card">
+        <div class="stat-label">Database</div>
+        <div class="stat-val" id="statDb">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Runner</div>
+        <div class="stat-val" id="statRunner">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Uptime</div>
+        <div class="stat-val" id="statUptime">—</div>
       </div>
     </div>
 
-    <!-- Log -->
     <div class="card log-card">
       <div class="card-title">
         📄 Log
-        <button class="btn-link" style="margin-left:auto" onclick="clearLog()">ล้าง</button>
+        <button class="btn-link ml-auto" onclick="clearLog()">ล้าง</button>
       </div>
       <div class="log-output" id="logOutput"></div>
     </div>
+  </section>
 
-  </div>
+  <!-- ── TAB: ACCOUNTS ── -->
+  <section id="tab-accounts" class="tab">
+    <div class="tab-header">
+      <h1>👤 Account Manager</h1>
+      <button class="btn btn-primary" onclick="toggleAddAccount()">+ เพิ่ม Account</button>
+    </div>
+
+    <!-- Add form -->
+    <div class="card" id="addAccountForm" style="display:none">
+      <div class="card-title">เพิ่ม Facebook Account</div>
+      <div class="form-row">
+        <div class="form-col">
+          <label class="field-label">Email / Phone</label>
+          <input type="text"     id="accEmail"    placeholder="email@example.com">
+        </div>
+        <div class="form-col">
+          <label class="field-label">Password</label>
+          <input type="password" id="accPassword" placeholder="รหัสผ่าน">
+        </div>
+      </div>
+      <div style="display:flex;gap:.5rem;margin-top:.5rem">
+        <button class="btn btn-primary" onclick="addAccount()">บันทึก</button>
+        <button class="btn btn-secondary" onclick="toggleAddAccount()">ยกเลิก</button>
+      </div>
+    </div>
+
+    <!-- Account list -->
+    <div class="card">
+      <div class="card-title">Accounts <span class="badge" id="accCount">0</span></div>
+      <div id="accountsList">
+        <div class="empty-state">ยังไม่มี Account — กด "เพิ่ม Account" ด้านบน</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── TAB: JOB QUEUE ── -->
+  <section id="tab-jobs" class="tab">
+    <div class="tab-header">
+      <h1>📋 Job Queue</h1>
+      <button class="btn btn-primary" onclick="toggleCreateJob()">+ สร้าง Job</button>
+    </div>
+
+    <!-- Create job form -->
+    <div id="createJobForm" style="display:none">
+      <div class="card">
+        <div class="card-title">สร้าง Job โพสต์กลุ่ม</div>
+
+        <div class="form-row">
+          <div class="form-col" style="flex:1.5">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <label class="field-label">โพสต์ล่าสุด</label>
+              <button class="btn-link" onclick="loadRecentPosts()">🔄 โหลด</button>
+            </div>
+            <div id="recentPostsList" class="pick-list">
+              <div class="empty-list">กด "โหลด" เพื่อดูโพสต์ล่าสุด</div>
+            </div>
+            <label class="field-label" style="margin-top:.5rem">ข้อความ</label>
+            <textarea id="jobMsg" rows="4" placeholder="พิมพ์ข้อความ หรือเลือกจากโพสต์ล่าสุด..."></textarea>
+          </div>
+          <div class="form-col">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <label class="field-label">กลุ่ม</label>
+              <div>
+                <button class="btn-link" onclick="selAll()">ทั้งหมด</button>
+                <button class="btn-link" onclick="selNone()">ยกเลิก</button>
+                <button class="btn-link" onclick="loadGroups()">🔄</button>
+              </div>
+            </div>
+            <div id="groupPickList" class="pick-list" style="max-height:160px">
+              <div class="loading">กำลังโหลด...</div>
+            </div>
+            <div style="display:flex;gap:.75rem;margin-top:.5rem;align-items:center">
+              <div>
+                <label class="field-label">Account</label>
+                <select id="jobAccount" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:.35rem .5rem;font-size:12px;font-family:inherit">
+                  <option value="">Auto (account ที่ login)</option>
+                </select>
+              </div>
+              <div>
+                <label class="field-label">Delay (วินาที)</label>
+                <input type="number" id="jobDelay" value="5" min="1" max="120" style="width:70px">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:.5rem;margin-top:.75rem">
+          <button class="btn btn-primary" onclick="createJob()">📋 เพิ่มลงคิว</button>
+          <button class="btn btn-secondary" onclick="toggleCreateJob()">ยกเลิก</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Jobs list -->
+    <div class="card">
+      <div class="card-title">
+        Jobs
+        <div class="status-filter" style="margin-left:.75rem">
+          <button class="filter-btn active" data-filter="all"     onclick="filterJobs(this,'all')">ทั้งหมด</button>
+          <button class="filter-btn"        data-filter="pending" onclick="filterJobs(this,'pending')">รอ</button>
+          <button class="filter-btn"        data-filter="running" onclick="filterJobs(this,'running')">กำลังทำ</button>
+          <button class="filter-btn"        data-filter="done"    onclick="filterJobs(this,'done')">เสร็จ</button>
+          <button class="filter-btn"        data-filter="failed"  onclick="filterJobs(this,'failed')">ล้มเหลว</button>
+        </div>
+        <button class="btn-link ml-auto" onclick="loadJobs()">🔄 รีเฟรช</button>
+      </div>
+      <div id="jobsList"></div>
+    </div>
+  </section>
+
 </div>
 
 <script src="app.js"></script>

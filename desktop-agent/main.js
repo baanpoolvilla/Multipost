@@ -3,85 +3,97 @@ require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 
+const apiServer   = require('./api/server');
+const accountStore = require('./src/accountStore');
+const jobStore    = require('./src/jobStore');
+const jobRunner   = require('./src/jobRunner');
+const facebookBot = require('./src/facebookBot');
+
 let win;
 
+// ── Window ─────────────────────────────────────────────────────
 function createWindow() {
     win = new BrowserWindow({
-        width: 1000,
-        height: 720,
-        minWidth: 800,
-        minHeight: 600,
+        width: 1050, height: 740,
+        minWidth: 860, minHeight: 600,
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true,
             nodeIntegration: false,
         },
-        title: 'MultiPost – Desktop Agent',
+        title: 'MultiPost – Desktop Agent v2',
         backgroundColor: '#1a1b1e',
     });
     win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(async () => {
+    const userDataDir = app.getPath('userData');
+
+    // Init stores
+    accountStore.init(userDataDir);
+    facebookBot.init(userDataDir);
+    await jobStore.connect().catch(() => {});
+
+    // Start local API
+    apiServer.init(jobStore, jobRunner);
+    apiServer.start();
+
+    // Start job runner
+    jobRunner.init(jobStore, facebookBot, accountStore, (event, data) => {
+        if (win && !win.isDestroyed()) win.webContents.send(event, data);
+    });
+
+    createWindow();
+});
 
 app.on('window-all-closed', async () => {
-    try { await require('./src/facebookBot').closeBrowser(); } catch {}
+    jobRunner.stop();
+    apiServer.stop();
+    await facebookBot.closeAll().catch(() => {});
     if (process.platform !== 'darwin') app.quit();
 });
 
-app.on('before-quit', async (e) => {
-    try { require('./src/jobRunner').stop(); } catch {}
-});
+// ── IPC: System ────────────────────────────────────────────────
+ipcMain.handle('get-status', () => ({
+    running:     jobRunner.isRunning(),
+    dbConnected: jobStore.isDbConnected(),
+    apiPort:     apiServer.PORT,
+    version:     '2.0.0',
+    uptime:      Math.floor(process.uptime()),
+}));
 
-// ── IPC: Facebook ──────────────────────────────────────────
-ipcMain.handle('login-facebook', async (event, { email, password }) => {
-    return require('./src/facebookBot').loginWithCredentials(email, password, (msg) => {
-        const ts = new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok', hour12: false });
+// ── IPC: Accounts ──────────────────────────────────────────────
+ipcMain.handle('accounts:list',   ()          => accountStore.list());
+ipcMain.handle('accounts:add',    (_, e, p)   => accountStore.add(e, p));
+ipcMain.handle('accounts:remove', (_, id)     => accountStore.remove(id));
+
+ipcMain.handle('accounts:login', async (_, id) => {
+    const acc = accountStore.get(id);
+    if (!acc) return { ok: false, error: 'ไม่พบ account' };
+    const result = await facebookBot.loginAccount(acc, (msg) => {
+        const ts = new Date().toLocaleTimeString('th-TH', { hour12: false });
         if (win && !win.isDestroyed()) win.webContents.send('log', `[${ts}] 🔑 ${msg}`);
     });
+    accountStore.updateStatus(id, result.ok ? 'logged_in' : 'error');
+    if (win && !win.isDestroyed()) win.webContents.send('accounts:updated');
+    return result;
 });
 
-ipcMain.handle('check-login', async () => {
-    return require('./src/facebookBot').checkLoginStatus();
+ipcMain.handle('accounts:logout', (_, id) => {
+    accountStore.updateStatus(id, 'logged_out');
+    facebookBot.closeContext(id);
+    if (win && !win.isDestroyed()) win.webContents.send('accounts:updated');
+    return { ok: true };
 });
 
-// ── IPC: Groups ────────────────────────────────────────────
-ipcMain.handle('get-groups', async () => {
-    return require('./src/jobStore').getAllGroups();
-});
+// ── IPC: Jobs ──────────────────────────────────────────────────
+ipcMain.handle('jobs:list',   ()          => jobStore.getJobs());
+ipcMain.handle('jobs:create', (_, data)   => jobStore.createJob(data));
+ipcMain.handle('jobs:delete', (_, id)     => jobStore.deleteJob(id));
+ipcMain.handle('jobs:groups', ()          => jobStore.getAllGroups());
+ipcMain.handle('jobs:recent-posts', ()    => jobStore.getRecentPosts());
 
-// ── IPC: Recent posts ──────────────────────────────────────
-ipcMain.handle('get-recent-posts', async () => {
-    return require('./src/jobStore').getRecentPosts();
-});
-
-// ── IPC: Jobs ──────────────────────────────────────────────
-ipcMain.handle('create-job', async (_, jobData) => {
-    return require('./src/jobStore').createJob(jobData);
-});
-
-ipcMain.handle('get-jobs', async () => {
-    return require('./src/jobStore').getJobs();
-});
-
-ipcMain.handle('delete-job', async (_, jobId) => {
-    return require('./src/jobStore').deleteJob(jobId);
-});
-
-// ── IPC: Runner ────────────────────────────────────────────
-ipcMain.handle('start-runner', async () => {
-    const runner = require('./src/jobRunner');
-    runner.start((event, data) => {
-        if (win && !win.isDestroyed()) win.webContents.send(event, data);
-    });
-    return { running: true };
-});
-
-ipcMain.handle('stop-runner', async () => {
-    require('./src/jobRunner').stop();
-    return { running: false };
-});
-
-ipcMain.handle('runner-status', async () => {
-    return { running: require('./src/jobRunner').isRunning() };
-});
+// ── IPC: Runner ────────────────────────────────────────────────
+ipcMain.handle('runner:start', () => { jobRunner.start(); return { ok: true }; });
+ipcMain.handle('runner:stop',  () => { jobRunner.stop();  return { ok: true }; });

@@ -1,17 +1,24 @@
-const jobStore    = require('./jobStore');
-const facebookBot = require('./facebookBot');
-
+let _store   = null;
+let _bot     = null;
+let _accounts = null;
+let _emit    = null;
 let _running = false;
 let _timer   = null;
-let _emit    = null;
+
+function init(store, bot, accounts, emit) {
+    _store    = store;
+    _bot      = bot;
+    _accounts = accounts;
+    _emit     = emit;
+}
 
 function isRunning() { return _running; }
 
-function start(emit) {
+function start() {
     if (_running) return;
     _running = true;
-    _emit    = emit;
-    log('▶ Runner เริ่มทำงาน — ตรวจสอบ job ทุก 3 วินาที');
+    log('▶ Runner เริ่มทำงาน');
+    _emit?.('runner:status', { running: true });
     scheduleNext(1000);
 }
 
@@ -20,14 +27,15 @@ function stop() {
     _running = false;
     if (_timer) { clearTimeout(_timer); _timer = null; }
     log('⏹ Runner หยุดแล้ว');
+    _emit?.('runner:status', { running: false });
 }
 
 function log(msg) {
-    const ts = new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok', hour12: false });
+    const ts = new Date().toLocaleTimeString('th-TH', { hour12:false });
     _emit?.('log', `[${ts}] ${msg}`);
 }
 
-function scheduleNext(delay = 3000) {
+function scheduleNext(delay=3000) {
     if (!_running) return;
     _timer = setTimeout(poll, delay);
 }
@@ -35,78 +43,60 @@ function scheduleNext(delay = 3000) {
 async function poll() {
     if (!_running) return;
     try {
-        const jobs = await jobStore.getPendingJobs();
-        if (jobs.length > 0) {
-            await processJob(jobs[0]);
-        }
-    } catch (e) {
-        log(`❌ Runner error: ${e.message}`);
-    }
+        const jobs = await _store.getPendingJobs();
+        if (jobs.length) await processJob(jobs[0]);
+    } catch(e) { log(`❌ Runner error: ${e.message}`); }
     scheduleNext();
 }
 
 async function processJob(job) {
     const id = job._id?.toString?.() ?? job._id;
-    log(`📋 เริ่ม Job: "${job.message.slice(0, 50)}${job.message.length > 50 ? '...' : ''}"`);
-    log(`   กลุ่มเป้าหมาย: ${job.groups.length} กลุ่ม`);
+    log(`📋 เริ่ม Job: "${job.message.slice(0,50)}..."`);
+    log(`   ${job.groups.length} กลุ่ม · delay ${job.delaySeconds}s`);
 
-    await jobStore.updateJob(id, { status: 'running' });
-    _emit?.('job-update', { ...job, _id: id, status: 'running' });
+    await _store.updateJob(id, { status:'running' });
+    _emit?.('jobs:updated', { ...job, _id:id, status:'running' });
+
+    // Determine which account to use
+    const acc = job.accountId
+        ? _accounts.get(job.accountId)
+        : _accounts.getActive();
+
+    if (!acc) {
+        log('❌ ไม่มี account ที่ login อยู่ — หยุด Job');
+        await _store.updateJob(id, { status:'failed', results: [] });
+        _emit?.('jobs:updated', { ...job, _id:id, status:'failed' });
+        return;
+    }
 
     const results = [];
-    let successCount = 0;
+    let ok = 0;
 
-    for (let i = 0; i < job.groups.length; i++) {
-        if (!_running) {
-            log('⚠️ Runner ถูกหยุด — Job ยังค้างอยู่');
-            break;
-        }
+    for (let i=0; i<job.groups.length; i++) {
+        if (!_running) break;
+        const g = job.groups[i];
+        log(`➡️ [${i+1}/${job.groups.length}] ${g.groupName}`);
+        _emit?.('jobs:progress', { groupName:g.groupName, status:'posting', current:i+1, total:job.groups.length });
 
-        const group = job.groups[i];
-        log(`➡️ [${i + 1}/${job.groups.length}] โพสต์ → ${group.groupName}`);
-        _emit?.('progress', { groupName: group.groupName, status: 'posting', current: i + 1, total: job.groups.length });
+        const res = await _bot.postToGroup(acc.id, g.groupId, g.groupName, job.message, (m)=>log(`   ${m}`));
+        results.push({ groupId:g.groupId, groupName:g.groupName, status:res.ok?'success':'failed', error:res.error||null, timestamp:new Date().toISOString() });
 
-        const result = await facebookBot.postToGroup(
-            group.groupId,
-            group.groupName,
-            job.message,
-            (msg) => log(`   ${msg}`)
-        );
+        if (res.ok) { ok++; log(`   ✅ สำเร็จ`); _emit?.('jobs:progress', { groupName:g.groupName, status:'success' }); }
+        else        { log(`   ❌ ${res.error}`); _emit?.('jobs:progress', { groupName:g.groupName, status:'failed', error:res.error }); }
 
-        const entry = {
-            groupId: group.groupId,
-            groupName: group.groupName,
-            status: result.ok ? 'success' : 'failed',
-            error: result.error || null,
-            timestamp: new Date().toISOString(),
-        };
-        results.push(entry);
-
-        if (result.ok) {
-            successCount++;
-            log(`   ✅ สำเร็จ`);
-            _emit?.('progress', { groupName: group.groupName, status: 'success' });
-        } else {
-            log(`   ❌ ล้มเหลว: ${result.error}`);
-            _emit?.('progress', { groupName: group.groupName, status: 'failed', error: result.error });
-        }
-
-        // Delay between groups (skip after last)
-        if (i < job.groups.length - 1 && job.delaySeconds > 0 && _running) {
-            log(`   ⏳ รอ ${job.delaySeconds} วินาที...`);
-            await sleep(job.delaySeconds * 1000);
+        if (i < job.groups.length-1 && job.delaySeconds>0 && _running) {
+            log(`   ⏳ รอ ${job.delaySeconds}s...`);
+            await sleep(job.delaySeconds*1000);
         }
     }
 
-    const finalStatus = successCount > 0 ? 'done' : 'failed';
-    await jobStore.updateJob(id, { status: finalStatus, results });
-
-    const updated = { ...job, _id: id, status: finalStatus, results };
-    _emit?.('job-update', updated);
-    log(`✅ Job เสร็จ: ${successCount}/${job.groups.length} กลุ่มสำเร็จ`);
-    log('─────────────────────────────────────────');
+    const status = ok>0 ? 'done' : 'failed';
+    await _store.updateJob(id, { status, results });
+    _emit?.('jobs:updated', { ...job, _id:id, status, results });
+    log(`✅ เสร็จ: ${ok}/${job.groups.length} สำเร็จ`);
+    log('─────────────────────────────');
 }
 
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
 
-module.exports = { start, stop, isRunning };
+module.exports = { init, start, stop, isRunning };
