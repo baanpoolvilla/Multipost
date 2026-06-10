@@ -191,8 +191,11 @@ async function fetchPageGroups(pageId, accessToken) {
 }
 
 async function shareToGroup(groupId, accessToken, postUrl, message) {
-    const params = new URLSearchParams({ link: postUrl, access_token: accessToken });
-    if (message && message.trim()) params.set('message', message.trim());
+    // Facebook API no longer supports `link` param for groups — embed URL in message instead
+    const text = message && message.trim()
+        ? `${message.trim()}\n\n${postUrl}`
+        : postUrl;
+    const params = new URLSearchParams({ message: text, access_token: accessToken });
     const res = await fetch(`${FB_API}/${groupId}/feed`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
