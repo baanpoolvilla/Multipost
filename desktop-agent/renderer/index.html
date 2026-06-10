@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'">
+  <title>MultiPost – Desktop Agent</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="header-brand">🤖 MultiPost Desktop Agent</div>
+  <div class="header-status">
+    <span class="status-pill" id="fbStatusPill">
+      <span class="dot"></span> Facebook: ตรวจสอบ...
+    </span>
+    <span class="status-pill" id="runnerStatusPill">
+      <span class="dot"></span> Runner: หยุด
+    </span>
+  </div>
+</header>
+
+<!-- Layout -->
+<div class="layout">
+
+  <!-- LEFT: controls -->
+  <aside class="panel-left">
+
+    <!-- Facebook Login -->
+    <div class="card">
+      <div class="card-title">🔐 Facebook Login</div>
+      <p class="hint" id="loginHint">กด "เปิด Browser" เพื่อ Login Facebook</p>
+      <div class="btn-group">
+        <button class="btn btn-primary" id="btnLogin" onclick="loginFacebook()">
+          เปิด Browser ให้ Login
+        </button>
+        <button class="btn btn-secondary" onclick="checkLogin()">ตรวจสอบ</button>
+      </div>
+    </div>
+
+    <!-- Create Job -->
+    <div class="card">
+      <div class="card-title">✏️ สร้าง Job โพสต์กลุ่ม</div>
+
+      <label class="field-label">ข้อความที่จะโพสต์</label>
+      <textarea id="jobMessage" rows="5" placeholder="พิมพ์ข้อความที่ต้องการโพสต์ลงกลุ่ม..."></textarea>
+
+      <div class="field-row">
+        <div>
+          <label class="field-label">เลือกกลุ่ม</label>
+          <div class="group-actions">
+            <button class="btn-link" onclick="selectAllGroups()">เลือกทั้งหมด</button>
+            <button class="btn-link" onclick="deselectAllGroups()">ยกเลิกทั้งหมด</button>
+            <button class="btn-link" onclick="loadGroups()">🔄 โหลดใหม่</button>
+          </div>
+        </div>
+      </div>
+      <div class="group-list" id="groupList">
+        <div class="loading">กำลังโหลดกลุ่ม...</div>
+      </div>
+      <div class="selected-count" id="selectedCount" style="display:none">
+        เลือก <strong id="selectedNum">0</strong> กลุ่ม
+      </div>
+
+      <label class="field-label">หน่วงเวลาระหว่างกลุ่ม (วินาที)</label>
+      <input type="number" id="jobDelay" value="5" min="1" max="120" style="width:80px">
+
+      <button class="btn btn-primary" style="margin-top:.75rem;width:100%" onclick="createJob()">
+        📋 เพิ่มลงคิว
+      </button>
+    </div>
+
+    <!-- Runner -->
+    <div class="card">
+      <div class="card-title">⚙️ Runner</div>
+      <p class="hint">Runner จะดึง Job จากคิวและโพสต์ไปยังกลุ่มอัตโนมัติ</p>
+      <div class="btn-group">
+        <button class="btn btn-green" id="btnStart" onclick="startRunner()">▶ เริ่ม Runner</button>
+        <button class="btn btn-danger" id="btnStop" onclick="stopRunner()" disabled>⏹ หยุด</button>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- RIGHT: jobs + log -->
+  <div class="panel-right">
+
+    <!-- Jobs -->
+    <div class="card jobs-card">
+      <div class="card-title">
+        📋 คิว Jobs
+        <span class="badge" id="jobCountBadge">0</span>
+        <button class="btn-link" style="margin-left:auto" onclick="refreshJobs()">🔄 รีเฟรช</button>
+      </div>
+      <div id="jobsList">
+        <div class="empty-state">ยังไม่มี Job</div>
+      </div>
+    </div>
+
+    <!-- Log -->
+    <div class="card log-card">
+      <div class="card-title">
+        📄 Log
+        <button class="btn-link" style="margin-left:auto" onclick="clearLog()">ล้าง</button>
+      </div>
+      <div class="log-output" id="logOutput"></div>
+    </div>
+
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

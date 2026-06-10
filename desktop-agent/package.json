@@ -1,0 +1,16 @@
+{
+  "name": "multipost-desktop-agent",
+  "version": "1.0.0",
+  "description": "Desktop Agent for Facebook Group Posting via Playwright",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "setup": "playwright install chromium"
+  },
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "electron": "^28.3.3",
+    "mongoose": "^8.0.3",
+    "playwright": "^1.40.0"
+  }
+}
