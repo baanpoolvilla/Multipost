@@ -65,8 +65,12 @@ router.get('/groups',    agentCtrl.showGroups);
 router.get('/job-queue', agentCtrl.showJobQueue);
 
 // Job Queue API
-router.get('/api/agent/jobs',        agentCtrl.listJobs);
-router.post('/api/agent/jobs',       agentCtrl.createJob);
-router.delete('/api/agent/jobs/:id', agentCtrl.deleteJob);
+router.get('/api/agent/jobs',         agentCtrl.listJobs);
+router.post('/api/agent/jobs',        agentCtrl.createJob);
+router.delete('/api/agent/jobs/:id',  agentCtrl.deleteJob);
+
+// Groups API (shared across all users)
+router.post('/api/agent/groups',        agentCtrl.addGroup);
+router.delete('/api/agent/groups/:id',  agentCtrl.deleteGroup);
 
 module.exports = router;

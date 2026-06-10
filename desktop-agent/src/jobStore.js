@@ -5,7 +5,7 @@ const fs       = require('fs');
 let _conn = null;
 let _dbOk = false;
 let _dataPath = null;
-let Job, Page, WebPost;
+let Job, Page, WebPost, FbGroup;
 
 // ── Schemas ───────────────────────────────────────────────────
 const resultSchema = new mongoose.Schema({
@@ -31,6 +31,10 @@ const pageSchema = new mongoose.Schema({
     groups: [{ groupId: String, groupName: String, enabled: Boolean }],
 }, { versionKey: false, collection: 'pages' });
 
+const fbGroupSchema = new mongoose.Schema({
+    groupId: String, groupName: String, addedAt: Date,
+}, { versionKey: false, collection: 'fbgroups' });
+
 const postSchema = new mongoose.Schema({
     message: String, successCount: Number, results: Array, createdAt: String,
 }, { versionKey: false, collection: 'posts' });
@@ -41,9 +45,10 @@ async function connect() {
     const uri = process.env.MONGODB_URI;
     if (!uri) throw new Error('MONGODB_URI not set');
     _conn = await mongoose.connect(uri, { serverSelectionTimeoutMS: 6000 });
-    Job     = mongoose.models.GroupJob   || mongoose.model('GroupJob',   jobSchema,  'groupjobs');
-    Page    = mongoose.models.AgentPage2 || mongoose.model('AgentPage2', pageSchema, 'pages');
-    WebPost = mongoose.models.AgentPost2 || mongoose.model('AgentPost2', postSchema, 'posts');
+    Job     = mongoose.models.GroupJob    || mongoose.model('GroupJob',    jobSchema,     'groupjobs');
+    Page    = mongoose.models.AgentPage2  || mongoose.model('AgentPage2',  pageSchema,    'pages');
+    WebPost = mongoose.models.AgentPost2  || mongoose.model('AgentPost2',  postSchema,    'posts');
+    FbGroup = mongoose.models.AgentFbGrp  || mongoose.model('AgentFbGrp',  fbGroupSchema, 'fbgroups');
     _dbOk = true;
 }
 
@@ -59,12 +64,8 @@ function fId() { return Date.now().toString(); }
 async function getAllGroups() {
     try {
         await connect();
-        const pages = await Page.find().lean();
-        const seen = new Set(); const out = [];
-        for (const p of pages)
-            for (const g of (p.groups||[]))
-                if (g.enabled && !seen.has(g.groupId)) { seen.add(g.groupId); out.push({ groupId: g.groupId, groupName: g.groupName }); }
-        return out;
+        const groups = await FbGroup.find().sort({ groupName: 1 }).lean();
+        return groups.map(g => ({ groupId: g.groupId, groupName: g.groupName }));
     } catch { return []; }
 }
 

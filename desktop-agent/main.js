@@ -3,11 +3,12 @@ require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 
-const apiServer   = require('./api/server');
-const accountStore = require('./src/accountStore');
-const jobStore    = require('./src/jobStore');
-const jobRunner   = require('./src/jobRunner');
-const facebookBot = require('./src/facebookBot');
+const apiServer        = require('./api/server');
+const accountStore     = require('./src/accountStore');
+const jobStore         = require('./src/jobStore');
+const jobRunner        = require('./src/jobRunner');
+const facebookBot      = require('./src/facebookBot');
+const jobTemplateStore = require('./src/jobTemplateStore');
 
 let win;
 
@@ -33,6 +34,7 @@ app.whenReady().then(async () => {
     // Init stores
     accountStore.init(userDataDir);
     facebookBot.init(userDataDir);
+    jobTemplateStore.init(userDataDir);
     await jobStore.connect().catch(() => {});
 
     // Start local API
@@ -88,12 +90,17 @@ ipcMain.handle('accounts:logout', (_, id) => {
 });
 
 // ── IPC: Jobs ──────────────────────────────────────────────────
-ipcMain.handle('jobs:list',   ()          => jobStore.getJobs());
-ipcMain.handle('jobs:create', (_, data)   => jobStore.createJob(data));
-ipcMain.handle('jobs:delete', (_, id)     => jobStore.deleteJob(id));
-ipcMain.handle('jobs:groups', ()          => jobStore.getAllGroups());
-ipcMain.handle('jobs:recent-posts', ()    => jobStore.getRecentPosts());
+ipcMain.handle('jobs:list',         ()        => jobStore.getJobs());
+ipcMain.handle('jobs:create',       (_, data) => jobStore.createJob(data));
+ipcMain.handle('jobs:delete',       (_, id)   => jobStore.deleteJob(id));
+ipcMain.handle('jobs:groups',       ()        => jobStore.getAllGroups());
+ipcMain.handle('jobs:recent-posts', ()        => jobStore.getRecentPosts());
 
 // ── IPC: Runner ────────────────────────────────────────────────
 ipcMain.handle('runner:start', () => { jobRunner.start(); return { ok: true }; });
 ipcMain.handle('runner:stop',  () => { jobRunner.stop();  return { ok: true }; });
+
+// ── IPC: Templates ─────────────────────────────────────────────
+ipcMain.handle('templates:list',   ()         => jobTemplateStore.list());
+ipcMain.handle('templates:save',   (_, tpl)   => jobTemplateStore.save(tpl));
+ipcMain.handle('templates:delete', (_, id)    => jobTemplateStore.remove(id));

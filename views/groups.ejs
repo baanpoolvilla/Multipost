@@ -24,7 +24,6 @@
 </nav>
 
 <div class="page-wrap">
-
   <aside class="sidebar">
     <a href="/" class="sidebar-item"><i class="fa-solid fa-house"></i><span>หน้าหลัก</span></a>
     <a href="/overview" class="sidebar-item"><i class="fa-solid fa-chart-line"></i><span>ภาพรวม</span></a>
@@ -38,64 +37,148 @@
 
   <main class="feed">
 
+    <!-- Header -->
     <div class="card" style="padding:.85rem 1.25rem;display:flex;align-items:center;justify-content:space-between">
       <div class="card-title" style="font-size:1.05rem">
-        <i class="fa-solid fa-users-rectangle"></i> กลุ่ม Facebook ทั้งหมด
-        <span style="background:#e4e6ea;padding:.15rem .55rem;border-radius:999px;font-size:.8rem;margin-left:.4rem"><%= groups.length %></span>
+        <i class="fa-solid fa-users-rectangle"></i> กลุ่ม Facebook
+        <span style="background:#e4e6ea;padding:.15rem .55rem;border-radius:999px;font-size:.8rem;margin-left:.4rem" id="groupCount"><%= groups.length %></span>
       </div>
-      <a href="/pages" class="btn-back" style="font-size:.82rem"><i class="fa-solid fa-gear"></i> จัดการเพจ/กลุ่ม</a>
+      <button class="btn-post" style="font-size:.82rem;padding:.4rem .9rem" onclick="toggleAddForm()">
+        <i class="fa-solid fa-plus"></i> เพิ่มกลุ่ม
+      </button>
     </div>
 
-    <% if (groups.length === 0) { %>
-    <div class="card empty-state">
-      <i class="fa-solid fa-users-rectangle" style="font-size:2rem;color:#c5c8d0;margin-bottom:.5rem"></i>
-      <h3>ยังไม่มีกลุ่ม</h3>
-      <p>เพิ่มกลุ่มได้ที่หน้า <a href="/pages">จัดการเพจ</a> → คลิกปุ่ม "กลุ่ม" ของเพจ</p>
+    <!-- Add group form -->
+    <div class="card" id="addForm" style="display:none">
+      <div class="card-title"><i class="fa-solid fa-plus"></i> เพิ่มกลุ่มใหม่</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem">
+        <div>
+          <label class="form-label">URL กลุ่ม หรือ Group ID</label>
+          <input type="text" id="fGroupUrl" placeholder="https://facebook.com/groups/123... หรือ 123456789" oninput="parseGroupUrl(this.value)">
+        </div>
+        <div>
+          <label class="form-label">ชื่อกลุ่ม <span style="color:#fa5252">*</span></label>
+          <input type="text" id="fGroupName" placeholder="ชื่อกลุ่ม">
+        </div>
+      </div>
+      <div style="display:flex;gap:.5rem">
+        <button class="btn-post" style="font-size:.85rem;padding:.45rem 1rem" onclick="addGroup()">
+          <i class="fa-solid fa-plus"></i> เพิ่ม
+        </button>
+        <button class="btn-back" onclick="toggleAddForm()">ยกเลิก</button>
+      </div>
     </div>
-    <% } else { %>
 
-    <!-- Group table by page -->
-    <% pages.forEach(page => { %>
-    <% const pg = (page.groups||[]).filter(g=>g.enabled!==false); %>
-    <% if (!pg.length) return; %>
+    <!-- Groups list -->
     <div class="card">
-      <div class="card-title">
-        <div class="avatar avatar-blue avatar-xs" style="flex-shrink:0"><%= page.pageName.slice(-1) %></div>
-        <%= page.pageName %>
-        <span style="background:#e7f3ff;color:#1877f2;border-radius:999px;font-size:.72rem;padding:.1rem .45rem;font-weight:700;margin-left:.35rem"><%= pg.length %> กลุ่ม</span>
+      <div class="card-title"><i class="fa-solid fa-list"></i> รายการกลุ่มทั้งหมด</div>
+      <% if (!groups.length) { %>
+      <div style="color:var(--text-secondary);text-align:center;padding:1.5rem;font-size:.9rem">
+        ยังไม่มีกลุ่ม — กด "+ เพิ่มกลุ่ม" ด้านบน
       </div>
-      <table style="width:100%;border-collapse:collapse;font-size:.88rem">
-        <thead>
-          <tr style="border-bottom:1px solid var(--border-color)">
-            <th style="text-align:left;padding:.4rem .5rem;color:var(--text-secondary);font-weight:600">ชื่อกลุ่ม</th>
-            <th style="text-align:left;padding:.4rem .5rem;color:var(--text-secondary);font-weight:600">Group ID</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% pg.forEach(g => { %>
-          <tr style="border-bottom:1px solid var(--border-color)">
-            <td style="padding:.5rem .5rem">
-              <i class="fa-solid fa-users" style="color:#1877f2;margin-right:.4rem"></i><%= g.groupName %>
-            </td>
-            <td style="padding:.5rem .5rem;color:var(--text-secondary);font-family:monospace;font-size:.82rem"><%= g.groupId %></td>
-          </tr>
-          <% }); %>
-        </tbody>
-      </table>
-    </div>
-    <% }); %>
-
-    <div class="card" style="background:#f0f7ff;border-color:#b3d4f9">
-      <div style="font-size:.85rem;color:#1877f2;line-height:1.8">
-        <strong>ℹ️ หมายเหตุ:</strong> กลุ่มเหล่านี้จะถูกใช้โดย Desktop Agent เพื่อโพสต์อัตโนมัติ
-        ผ่าน Playwright — ไม่ใช้ Facebook Graph API
+      <% } %>
+      <div id="groupsList">
+      <% groups.forEach(g => { %>
+      <div style="display:flex;align-items:center;gap:.75rem;padding:.6rem .5rem;border-bottom:1px solid var(--border-color)" id="gr_<%= g._id %>">
+        <i class="fa-solid fa-users" style="color:#1877f2;width:16px;text-align:center;flex-shrink:0"></i>
+        <div style="flex:1">
+          <div style="font-weight:600;font-size:.92rem"><%= g.groupName %></div>
+          <div style="font-size:.76rem;color:var(--text-secondary);font-family:monospace"><%= g.groupId %></div>
+        </div>
+        <a href="https://www.facebook.com/groups/<%= g.groupId %>" target="_blank" style="color:var(--text-secondary);font-size:.8rem;text-decoration:none" title="เปิดในFacebook">
+          <i class="fa-solid fa-arrow-up-right-from-square"></i>
+        </a>
+        <button onclick="deleteGroup('<%= g._id %>')" style="background:none;border:none;cursor:pointer;color:#c5c8d0;font-size:.95rem;padding:.15rem .35rem;border-radius:4px" title="ลบ">
+          <i class="fa-solid fa-trash"></i>
+        </button>
+      </div>
+      <% }); %>
       </div>
     </div>
 
-    <% } %>
+    <div class="card" style="background:#f0f7ff;border-color:#b3d4f9;font-size:.85rem;color:#1877f2;line-height:1.8">
+      <strong>ℹ️ หมายเหตุ:</strong> กลุ่มที่เพิ่มที่นี่จะแสดงใน <strong>Job Queue</strong> และ <strong>Desktop Agent</strong> ของทุกคนที่เข้าระบบ
+    </div>
 
   </main>
 </div>
+
+<style>
+.form-label { display:block;font-size:.8rem;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.3rem }
+</style>
+
+<script>
+function toggleAddForm() {
+  const f = document.getElementById('addForm');
+  f.style.display = f.style.display === '' ? 'none' : '';
+  if (f.style.display === '') document.getElementById('fGroupUrl').focus();
+}
+
+function parseGroupUrl(val) {
+  const m = val.match(/facebook\.com\/groups\/([^/?#\s]+)/);
+  if (m) document.getElementById('fGroupUrl').value = m[1];
+}
+
+async function addGroup() {
+  const raw  = document.getElementById('fGroupUrl').value.trim();
+  const name = document.getElementById('fGroupName').value.trim();
+
+  // Extract group ID from URL if needed
+  const m = raw.match(/facebook\.com\/groups\/([^/?#\s]+)/);
+  const gid = m ? m[1] : raw;
+
+  if (!gid)  { Swal.fire({ icon:'warning', title:'กรุณากรอก Group ID', confirmButtonColor:'#1877f2' }); return; }
+  if (!name) { Swal.fire({ icon:'warning', title:'กรุณากรอกชื่อกลุ่ม', confirmButtonColor:'#1877f2' }); return; }
+
+  try {
+    const r = await fetch('/api/agent/groups', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ groupId: gid, groupName: name }),
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'เกิดข้อผิดพลาด');
+
+    // Add to list without reload
+    const el = document.createElement('div');
+    el.id = `gr_${d.group._id}`;
+    el.style.cssText = 'display:flex;align-items:center;gap:.75rem;padding:.6rem .5rem;border-bottom:1px solid var(--border-color)';
+    el.innerHTML = `
+      <i class="fa-solid fa-users" style="color:#1877f2;width:16px;text-align:center;flex-shrink:0"></i>
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:.92rem">${esc(name)}</div>
+        <div style="font-size:.76rem;color:var(--text-secondary);font-family:monospace">${esc(gid)}</div>
+      </div>
+      <a href="https://www.facebook.com/groups/${esc(gid)}" target="_blank" style="color:var(--text-secondary);font-size:.8rem;text-decoration:none">
+        <i class="fa-solid fa-arrow-up-right-from-square"></i>
+      </a>
+      <button onclick="deleteGroup('${d.group._id}')" style="background:none;border:none;cursor:pointer;color:#c5c8d0;font-size:.95rem;padding:.15rem .35rem;border-radius:4px">
+        <i class="fa-solid fa-trash"></i>
+      </button>`;
+    document.getElementById('groupsList').appendChild(el);
+
+    const cnt = document.getElementById('groupCount');
+    cnt.textContent = parseInt(cnt.textContent||0) + 1;
+
+    document.getElementById('fGroupUrl').value  = '';
+    document.getElementById('fGroupName').value = '';
+    toggleAddForm();
+  } catch(e) {
+    Swal.fire({ icon:'error', title:'เกิดข้อผิดพลาด', text: e.message, confirmButtonColor:'#1877f2' });
+  }
+}
+
+async function deleteGroup(id) {
+  const res = await Swal.fire({ title:'ลบกลุ่มนี้?', icon:'warning', showCancelButton:true, confirmButtonColor:'#fa5252', confirmButtonText:'ลบ', cancelButtonText:'ยกเลิก' });
+  if (!res.isConfirmed) return;
+  await fetch(`/api/agent/groups/${id}`, { method:'DELETE' });
+  document.getElementById(`gr_${id}`)?.remove();
+  const cnt = document.getElementById('groupCount');
+  cnt.textContent = Math.max(0, parseInt(cnt.textContent||0) - 1);
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+</script>
 
 </body>
 </html>

@@ -1,5 +1,6 @@
 const pageStore    = require('../services/pageStore');
 const groupJobStore = require('../services/groupJobStore');
+const groupStore   = require('../services/groupStore');
 
 // ── Agent status page ──────────────────────────────────────────
 exports.showAgent = async (req, res) => {
@@ -8,26 +9,27 @@ exports.showAgent = async (req, res) => {
 
 // ── Groups page ────────────────────────────────────────────────
 exports.showGroups = async (req, res) => {
-    const pages = await pageStore.load();
-    // Flatten all groups across all pages with page info attached
-    const groups = [];
-    pages.forEach(p => {
-        (p.groups || []).forEach(g => {
-            groups.push({ ...g, pageId: p.pageId, pageName: p.pageName });
-        });
-    });
-    res.render('groups', { pages, groups });
+    const groups = await groupStore.list();
+    res.render('groups', { groups });
+};
+
+exports.addGroup = async (req, res) => {
+    const { groupId, groupName } = req.body;
+    if (!groupId?.trim() || !groupName?.trim())
+        return res.status(400).json({ error: 'กรุณากรอก Group ID และชื่อกลุ่ม' });
+    const result = await groupStore.add(groupId.trim(), groupName.trim());
+    if (result.error) return res.status(409).json({ error: result.error });
+    res.json({ ok: true, group: result.group });
+};
+
+exports.deleteGroup = async (req, res) => {
+    await groupStore.remove(req.params.id);
+    res.json({ ok: true });
 };
 
 // ── Job Queue page ─────────────────────────────────────────────
 exports.showJobQueue = async (req, res) => {
-    const [pages, jobs] = await Promise.all([pageStore.load(), groupJobStore.list()]);
-    const groups = [];
-    pages.forEach(p => {
-        (p.groups || []).forEach(g => {
-            groups.push({ ...g, pageId: p.pageId, pageName: p.pageName });
-        });
-    });
+    const [groups, jobs] = await Promise.all([groupStore.list(), groupJobStore.list()]);
     res.render('job-queue', { jobs, groups });
 };
 

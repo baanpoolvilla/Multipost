@@ -22,6 +22,11 @@ contextBridge.exposeInMainWorld('agent', {
     startRunner:     ()         => ipcRenderer.invoke('runner:start'),
     stopRunner:      ()         => ipcRenderer.invoke('runner:stop'),
 
+    // Templates
+    listTemplates:   ()         => ipcRenderer.invoke('templates:list'),
+    saveTemplate:    (tpl)      => ipcRenderer.invoke('templates:save', tpl),
+    deleteTemplate:  (id)       => ipcRenderer.invoke('templates:delete', id),
+
     // Push events → renderer
     on: (channel, cb) => ipcRenderer.on(channel, (_, data) => cb(data)),
 });

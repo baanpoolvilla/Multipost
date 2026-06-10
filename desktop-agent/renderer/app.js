@@ -1,5 +1,5 @@
 // ── State ────────────────────────────────────────────────────
-let _accounts = [], _groups = [], _jobs = [], _jobFilter = 'all';
+let _accounts = [], _groups = [], _selected = [], _jobs = [], _jobFilter = 'all';
 let _statusInterval = null;
 
 // ── Init ─────────────────────────────────────────────────────
@@ -165,18 +165,55 @@ async function loadGroups() {
     const el = document.getElementById('groupPickList');
     el.innerHTML = '<div class="loading">กำลังโหลด...</div>';
     _groups = await agent.getGroups();
-    if (!_groups.length) { el.innerHTML='<div class="empty-list">ไม่มีกลุ่ม — เพิ่มในเว็บก่อน</div>'; return; }
-    el.innerHTML = _groups.map((g,i)=>`
+    _selected = _groups.map(() => true);
+    renderGroupsInline();
+}
+
+function renderGroupsInline() {
+    const el    = document.getElementById('groupPickList');
+    const badge = document.getElementById('groupCountBadge');
+    if (badge) badge.textContent = _groups.length || '';
+    if (!_groups.length) {
+        el.innerHTML = '<div class="empty-list">ไม่มีกลุ่ม — เพิ่มในเว็บก่อน</div>';
+        document.getElementById('showMoreGroupsBtn').style.display = 'none';
+        return;
+    }
+    const show = _groups.slice(0, 5);
+    el.innerHTML = show.map((g, i) => `
       <div class="pick-item" onclick="togGrp(${i})">
-        <input type="checkbox" id="g_${i}" checked>
+        <input type="checkbox" id="g_${i}" ${_selected[i]?'checked':''} onchange="_selected[${i}]=this.checked">
         <label for="g_${i}">${esc(g.groupName)}</label>
+      </div>`).join('');
+    const moreBtn = document.getElementById('showMoreGroupsBtn');
+    if (_groups.length > 5) {
+        document.getElementById('showMoreCount').textContent = _groups.length;
+        moreBtn.style.display = '';
+    } else {
+        moreBtn.style.display = 'none';
+    }
+}
+
+function renderGroupsModal() {
+    const el = document.getElementById('groupsModalList');
+    if (!el) return;
+    el.innerHTML = _groups.map((g, i) => `
+      <div class="pick-item" onclick="togGrpM(${i})">
+        <input type="checkbox" id="gm_${i}" ${_selected[i]?'checked':''} onchange="_selected[${i}]=this.checked;_syncInline(${i})">
+        <label for="gm_${i}">${esc(g.groupName)}</label>
       </div>`).join('');
 }
 
-function togGrp(i){ const c=document.getElementById(`g_${i}`); if(c) c.checked=!c.checked; }
-function selAll()  { document.querySelectorAll('#groupPickList input').forEach(c=>c.checked=true); }
-function selNone() { document.querySelectorAll('#groupPickList input').forEach(c=>c.checked=false); }
-function selectedGroups() { return _groups.filter((_,i)=>document.getElementById(`g_${i}`)?.checked); }
+function _syncInline(i) { const c=document.getElementById(`g_${i}`); if(c) c.checked=_selected[i]; }
+
+function openGroupsModal()  { renderGroupsModal(); document.getElementById('groupsModal').style.display='flex'; }
+function closeGroupsModal(e){ if(!e||e.target===document.getElementById('groupsModal')) document.getElementById('groupsModal').style.display='none'; }
+
+function togGrp(i) { _selected[i]=!_selected[i]; const c=document.getElementById(`g_${i}`); if(c) c.checked=_selected[i]; }
+function togGrpM(i){ _selected[i]=!_selected[i]; const c=document.getElementById(`gm_${i}`); if(c) c.checked=_selected[i]; _syncInline(i); }
+
+function selAll()  { _selected=_selected.map(()=>true);  renderGroupsInline(); renderGroupsModal(); }
+function selNone() { _selected=_selected.map(()=>false); renderGroupsInline(); renderGroupsModal(); }
+function selectedGroups() { return _groups.filter((_,i)=>_selected[i]); }
 
 // ── Recent posts ──────────────────────────────────────────────
 async function loadRecentPosts() {
@@ -272,6 +309,66 @@ async function deleteJob(id) {
     await agent.deleteJob(id);
     _jobs = _jobs.filter(j=>j._id!==id);
     renderJobs();
+}
+
+// ── Templates ─────────────────────────────────────────────────
+let _templates = [];
+
+async function loadTemplates() {
+    _templates = await agent.listTemplates();
+    renderTemplates();
+}
+
+function renderTemplates() {
+    const el = document.getElementById('templatesList');
+    if (!_templates.length) { el.innerHTML='<div class="empty-state">ยังไม่มี Template</div>'; return; }
+    el.innerHTML = _templates.map(t => `
+      <div class="tpl-item">
+        <div class="tpl-info">
+          <div class="tpl-name">${esc(t.name||'ไม่มีชื่อ')}</div>
+          <div class="tpl-meta">${(t.groups||[]).length} กลุ่ม · delay ${t.delaySeconds}s</div>
+        </div>
+        <button class="btn btn-primary" style="font-size:11px;padding:.3rem .6rem" onclick="applyTemplate('${t.id}')">ใช้</button>
+        <button class="btn btn-secondary" style="font-size:11px;padding:.3rem .5rem;color:var(--red)" onclick="removeTemplate('${t.id}')">🗑</button>
+      </div>`).join('');
+}
+
+function toggleTemplates() {
+    const p = document.getElementById('templatesPanel');
+    if (p.style.display === 'none') { loadTemplates(); p.style.display = ''; }
+    else p.style.display = 'none';
+}
+
+async function saveTemplate() {
+    const name = document.getElementById('templateName').value.trim() || `Template ${_templates.length+1}`;
+    const msg  = document.getElementById('jobMsg').value.trim();
+    const grps = selectedGroups();
+    const del  = parseInt(document.getElementById('jobDelay').value)||5;
+    if (!msg && !grps.length) { alert('กรุณากรอกข้อความหรือเลือกกลุ่มก่อน'); return; }
+    _templates = await agent.saveTemplate({ name, message:msg, groups:grps, delaySeconds:del });
+    renderTemplates();
+    document.getElementById('templateName').value = '';
+    appendLog(`[💾] บันทึก Template: "${name}"`);
+}
+
+function applyTemplate(id) {
+    const t = _templates.find(x=>x.id===id);
+    if (!t) return;
+    document.getElementById('jobMsg').value   = t.message || '';
+    document.getElementById('jobDelay').value = t.delaySeconds || 5;
+    _selected = _groups.map(g => (t.groups||[]).some(tg=>tg.groupId===g.groupId));
+    renderGroupsInline();
+    // Show create form if hidden
+    const f = document.getElementById('createJobForm');
+    if (f.style.display==='none') f.style.display='';
+    document.getElementById('templatesPanel').style.display='none';
+    appendLog(`[📁] โหลด Template: "${t.name}"`);
+}
+
+async function removeTemplate(id) {
+    if (!confirm('ลบ Template นี้?')) return;
+    _templates = await agent.deleteTemplate(id);
+    renderTemplates();
 }
 
 // ── Log ───────────────────────────────────────────────────────

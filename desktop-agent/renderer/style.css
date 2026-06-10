@@ -102,6 +102,18 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent)}
 .filter-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:.2rem .55rem;font-size:11px;cursor:pointer;font-family:inherit;transition:all .1s}
 .filter-btn:hover{background:var(--bg4)}.filter-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
 
+/* ── Templates ── */
+.tpl-item{display:flex;align-items:center;gap:.6rem;padding:.55rem .75rem;border-bottom:1px solid var(--border)}
+.tpl-item:last-child{border-bottom:none}.tpl-item:hover{background:var(--bg3)}
+.tpl-info{flex:1;min-width:0}
+.tpl-name{font-size:12.5px;color:#fff;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tpl-meta{font-size:11px;color:var(--text2)}
+
+/* ── Modal ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:9999}
+.modal-box{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);width:340px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,.5)}
+.modal-header{display:flex;align-items:center;gap:.4rem;padding:.65rem .85rem;font-weight:600;font-size:12.5px;color:#fff;border-bottom:1px solid var(--border)}
+
 /* ── Log ── */
 .log-output{flex:1;overflow-y:auto;background:#111214;border:1px solid var(--border);border-radius:7px;padding:.6rem .75rem;font-family:'Cascadia Code','Consolas',monospace;font-size:11.5px;line-height:1.7;color:#9da5b4;white-space:pre-wrap;word-break:break-word}
 .log-ok{color:var(--green)}.log-err{color:var(--red)}.log-info{color:#61afef}
