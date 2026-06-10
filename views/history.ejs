@@ -108,9 +108,11 @@
       <% if (post.images && post.images.length > 0) { %>
       <div class="post-img-grid post-img-<%= Math.min(post.images.length, 4) %>">
         <% post.images.slice(0, 4).forEach((img, i) => { %>
+        <% const imgSrc = img.startsWith('http') ? img : '/uploads/' + img; %>
         <div class="post-img-item <%= (i === 3 && post.images.length > 4) ? 'has-more' : '' %>"
-             onclick="viewImage('/uploads/<%= img %>')">
-          <img src="/uploads/<%= img %>" alt="รูปภาพ">
+             onclick="viewImage('<%= imgSrc %>')">
+          <img src="<%= imgSrc %>" alt="รูปภาพ"
+               onerror="var it=this.closest('.post-img-item');if(it){it.style.display='none';var g=it.closest('.post-img-grid');if(g&&!g.querySelector('.post-img-item:not([style*=none])')){g.style.display='none';}}">
           <% if (i === 3 && post.images.length > 4) { %>
           <div class="img-more-overlay">+<%= post.images.length - 4 %></div>
           <% } %>
