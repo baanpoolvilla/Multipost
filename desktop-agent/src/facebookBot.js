@@ -145,19 +145,30 @@ async function getAccountPages(accountId) {
 
         if (clicked) {
             await fb.waitForTimeout(2000);
-            // Filter out Facebook account-menu items (settings, logout, etc.)
             const menuWords = ['การตั้งค่า','ความเป็นส่วนตัว','ความช่วยเหลือ','รายงาน','การแสดงผล',
                                'ออกจากระบบ','เพิ่มเติม','Settings','Privacy','Help','Support',
-                               'Report','Display','Log out','Logout','More','Accessibility'];
+                               'Report','Display','Log out','Logout','More','Accessibility',
+                               'ดูโปรไฟล์ทั้งหมด','View all profiles','View all'];
             const fromSwitcher = await fb.evaluate((mw) => {
                 const res = []; const seen = new Set();
-                for (const c of document.querySelectorAll('[role="menu"],[role="dialog"],[role="list"],[role="listbox"]')) {
+                // Only look in the TOP-RIGHT area where the account menu popup appears
+                const W = window.innerWidth;
+                const containers = [...document.querySelectorAll('[role="menu"],[role="dialog"],[role="list"],[role="listbox"]')]
+                    .filter(c => {
+                        const br = c.getBoundingClientRect();
+                        // Must be in top-right portion of screen (account menu location)
+                        return br.x > W * 0.35 && br.y < 400 && br.height < 700 && br.width > 50;
+                    });
+                for (const c of containers) {
                     for (const item of c.querySelectorAll('[role="menuitem"],[role="option"],[role="listitem"],li')) {
+                        // Must have an avatar image — Pages/profiles have icons, notifications don't
+                        const hasAvatar = !!item.querySelector('img,image,svg[role="img"],svg[aria-label],[role="img"]');
+                        if (!hasAvatar) continue;
                         const name = [...item.querySelectorAll('span')]
                             .map(s => s.textContent?.trim())
                             .find(t => t && t.length >= 2 && t.length <= 60);
                         if (!name || seen.has(name)) continue;
-                        if (mw.some(w => name.includes(w))) continue; // skip menu actions
+                        if (mw.some(w => name.toLowerCase().includes(w.toLowerCase()))) continue;
                         seen.add(name); res.push({ name });
                     }
                 }
@@ -219,13 +230,41 @@ const _MENU_WORDS = ['การตั้งค่า','ความเป็น�
 
 async function _navOpenSwitcher(page) {
     return page.evaluate(() => {
-        const labels = ['Switch profiles','Switch Profile','สลับโปรไฟล์',
-                        'Your profiles','โปรไฟล์ของคุณ','Profiles','โปรไฟล์'];
-        for (const lbl of labels) {
+        // 1. Exact aria-label match
+        const exact = ['Switch profiles','Switch Profile','สลับโปรไฟล์',
+                       'Your profiles','โปรไฟล์ของคุณ','Profiles','โปรไฟล์'];
+        for (const lbl of exact) {
             const el = document.querySelector(`[aria-label="${lbl}"], [title="${lbl}"]`);
-            if (el) { el.click(); return lbl; }
+            if (el) { el.click(); return 'exact:' + lbl; }
         }
-        return null;
+
+        // 2. Partial / contains match
+        const kws = ['switch','สลับ','profile','โปรไฟล์','your profile'];
+        for (const kw of kws) {
+            const el = document.querySelector(`[aria-label*="${kw}" i], [title*="${kw}" i]`);
+            if (el) { el.click(); return 'partial:' + kw; }
+        }
+
+        // 3. Button in top-right of page that has an <img> (profile picture)
+        const rightImgBtns = [...document.querySelectorAll('[role="button"]')].filter(btn => {
+            const br = btn.getBoundingClientRect();
+            return br.x > window.innerWidth * 0.6 && br.y < 80 && btn.querySelector('img');
+        });
+        rightImgBtns.sort((a, b) => b.getBoundingClientRect().x - a.getBoundingClientRect().x);
+        if (rightImgBtns.length) { rightImgBtns[0].click(); return 'img-btn'; }
+
+        // 4. Any small button in top-right area (last resort)
+        const topRight = [...document.querySelectorAll('[role="button"]')].filter(btn => {
+            const br = btn.getBoundingClientRect();
+            return br.x > window.innerWidth * 0.75 && br.y < 80 && br.width < 80 && br.height < 80;
+        });
+        topRight.sort((a, b) => b.getBoundingClientRect().x - a.getBoundingClientRect().x);
+        if (topRight.length) { topRight[0].click(); return 'top-right'; }
+
+        // Return all found aria-labels for debugging
+        const allLabels = [...document.querySelectorAll('[aria-label]')]
+            .map(el => el.getAttribute('aria-label')).filter(Boolean).slice(0, 30);
+        return '__notfound__:' + allLabels.join('|');
     });
 }
 
@@ -233,25 +272,47 @@ async function _navOpenSwitcher(page) {
 async function _navPickIdentity(page, pickName, menuWords) {
     return page.evaluate(({ name, mw }) => {
         const lower = name ? name.toLowerCase() : null;
+
+        function getCleanText(el) {
+            // Get shortest non-empty span text inside (less likely to contain menu garbage)
+            const spans = [...el.querySelectorAll('span')].map(s => (s.textContent||'').trim()).filter(Boolean);
+            spans.sort((a,b) => a.length - b.length);
+            return spans[0] || (el.textContent||'').trim();
+        }
+
         const containers = [...document.querySelectorAll('[role="menu"],[role="dialog"],[role="list"],[role="listbox"]')];
         containers.reverse();
         for (const c of containers) {
-            const items = [...c.querySelectorAll('[role="menuitem"],[role="option"],[role="listitem"],li')]
+            // try menuitem/option/listitem first, then role=button inside container
+            let items = [...c.querySelectorAll('[role="menuitem"],[role="option"],[role="listitem"],li,[role="button"]')]
                 .filter(item => {
-                    const t = (item.textContent || '').trim();
-                    return t && t.length >= 2 && t.length <= 60 && !mw.some(w => t.includes(w));
+                    const t = getCleanText(item);
+                    return t && t.length >= 2 && t.length <= 80 && !mw.some(w => t.toLowerCase().includes(w.toLowerCase()));
                 });
             if (!items.length) continue;
-            if (!lower) { items[0].click(); return 'first'; }
-            const target = items.find(item => (item.textContent || '').toLowerCase().includes(lower));
-            if (target) { target.click(); return name; }
+            if (!lower) { items[0].click(); return 'first:' + getCleanText(items[0]); }
+            const target = items.find(item => getCleanText(item).toLowerCase().includes(lower));
+            if (target) { target.click(); return 'found:' + name; }
+        }
+        // last resort: any button anywhere on page whose shortest span matches
+        const allBtns = [...document.querySelectorAll('[role="button"]')].filter(btn => {
+            const br = btn.getBoundingClientRect();
+            return br.width > 0 && br.height > 0;
+        });
+        if (lower) {
+            const target = allBtns.find(btn => {
+                const t = getCleanText(btn);
+                return t && t.toLowerCase().includes(lower) && !mw.some(w => t.toLowerCase().includes(w.toLowerCase()));
+            });
+            if (target) { target.click(); return 'global:' + name; }
         }
         return null;
     }, { name: pickName, mw: menuWords });
 }
 
-// ── Public: switch to a page identity via navbar ───────────────
-async function switchIdentity(accountId, pageName, onLog) {
+// ── Open a page and switch to Page identity on it ────────────────
+// Returns { page, pageId } — pageId is used to navigate group as the Page
+async function openSwitchedPage(accountId, pageName, onLog) {
     const log = m => onLog?.(m);
     log(`🔄 สลับโปรไฟล์เป็น "${pageName}"...`);
     try {
@@ -260,56 +321,200 @@ async function switchIdentity(accountId, pageName, onLog) {
         await page.goto('https://www.facebook.com/', { waitUntil: 'domcontentloaded', timeout: 15000 });
         await page.waitForTimeout(2000);
 
+        // Open account menu
         const btnFound = await _navOpenSwitcher(page);
-        if (!btnFound) {
-            await page.screenshot({ path: path.join(_userDataBase, 'debug-switcher.png') }).catch(()=>{});
-            log('⚠️ ไม่พบปุ่ม profile switcher — โพสเป็น user ปกติ');
-            await page.close(); return false;
+        log(`   🔍 menu: ${btnFound || 'null'}`);
+        if (!btnFound || btnFound.startsWith('__notfound__')) {
+            log('⚠️ ไม่พบปุ่ม menu');
+            return { page, pageId: null, personalName: null };
         }
         await page.waitForTimeout(1500);
 
-        const picked = await _navPickIdentity(page, pageName, _MENU_WORDS);
-        if (!picked) {
-            await page.screenshot({ path: path.join(_userDataBase, 'debug-switcher.png') }).catch(()=>{});
-            log(`⚠️ ไม่พบ "${pageName}" ใน switcher — โพสเป็น user ปกติ`);
-            await page.close(); return false;
+        // Use Playwright native click (fires real mouse events, not JS click)
+        let clicked = false;
+        try {
+            const loc = page.getByText(pageName, { exact: true }).first();
+            if (await loc.count() > 0) {
+                await loc.click({ timeout: 3000 });
+                clicked = true;
+                log(`   ✅ native click: ${pageName}`);
+            }
+        } catch(e) { log(`   ⚠️ native click err: ${e.message}`); }
+
+        if (!clicked) {
+            // Fallback: JS evaluate click
+            const picked = await _navPickIdentity(page, pageName, _MENU_WORDS);
+            clicked = !!picked;
+            log(`   evaluate: ${picked || 'failed'}`);
         }
 
-        await page.waitForTimeout(3000); // FB needs time to complete identity switch
-        await page.close();
-        log(`✅ สลับเป็น: ${pageName}`);
-        return true;
-    } catch(e) { log(`❌ switchIdentity: ${e.message}`); return false; }
+        if (!clicked) { return { page, pageId: null }; }
+
+        // Wait for navigation to wherever Facebook takes us after clicking the Page
+        try { await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 8000 }); } catch {}
+        await page.waitForTimeout(2000);
+        const landedUrl = page.url();
+        log(`   🔍 landed: ${landedUrl.slice(0, 80)}`);
+
+        // Extract Page ID from the URL (numeric id or entity_id in URL)
+        let pageId = null;
+        const idMatch = landedUrl.match(/\/(\d{10,20})\/?/) || landedUrl.match(/[?&]id=(\d{10,20})/);
+        if (idMatch) { pageId = idMatch[1]; log(`   🔍 pageId: ${pageId}`); }
+
+        // Also try og:url / page meta for numeric ID
+        if (!pageId) {
+            pageId = await page.evaluate(() => {
+                const og = document.querySelector('meta[property="al:android:url"]')?.content
+                        || document.querySelector('meta[property="fb:page_id"]')?.content;
+                if (og) { const m = og.match(/\d{10,20}/); return m ? m[0] : null; }
+                // Check URL params in any link that has page_id
+                for (const a of document.querySelectorAll('a[href*="page_id="]')) {
+                    const m = (a.href||'').match(/page_id=(\d+)/);
+                    if (m) return m[1];
+                }
+                return null;
+            }).catch(()=>null);
+            if (pageId) log(`   🔍 pageId (meta): ${pageId}`);
+        }
+
+        // Try to click "Use Facebook as [Page]" button if present
+        const switchTerms = ['use facebook as','สลับเป็น','ใช้ facebook','switch to','switch profile'];
+        for (const term of switchTerms) {
+            try {
+                const btn = page.getByText(term, { exact: false }).first();
+                if (await btn.count() > 0) {
+                    await btn.click({ timeout: 2000 });
+                    log(`   ✅ switch btn: "${term}"`);
+                    try { await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 5000 }); } catch {}
+                    await page.waitForTimeout(1500);
+                    break;
+                }
+            } catch {}
+        }
+
+        log(`✅ สลับเป็น: ${pageName}${pageId ? ` (id:${pageId})` : ''}`);
+        return { page, pageId };
+    } catch(e) {
+        log(`❌ openSwitchedPage: ${e.message}`);
+        return { page: null, pageId: null };
+    }
 }
 
-// ── Public: switch back to personal account (first item in switcher) ─
-async function switchIdentityBack(accountId, onLog) {
+// ── Switch back to personal on an existing page, then close it ────
+// currentPageName: the Page we're currently browsing as — skip it in the switcher
+async function switchBackOnPage(page, onLog, currentPageName = null) {
     const log = m => onLog?.(m);
     try {
-        const ctx  = await _getContext(accountId);
-        const page = await ctx.newPage();
         await page.goto('https://www.facebook.com/', { waitUntil: 'domcontentloaded', timeout: 15000 });
         await page.waitForTimeout(2000);
         const btnFound = await _navOpenSwitcher(page);
-        if (btnFound) {
+        if (btnFound && !btnFound.startsWith('__notfound__')) {
             await page.waitForTimeout(1500);
-            await _navPickIdentity(page, null, _MENU_WORDS); // null = first = personal
-            await page.waitForTimeout(2000);
+            // Pick the first item that does NOT match the current Page name
+            const switched = await page.evaluate(({ skipName, mw }) => {
+                function getCleanText(el) {
+                    const spans = [...el.querySelectorAll('span')].map(s=>(s.textContent||'').trim()).filter(Boolean);
+                    spans.sort((a,b)=>a.length-b.length);
+                    return spans[0]||(el.textContent||'').trim();
+                }
+                const skipLower = skipName ? skipName.toLowerCase() : null;
+                const containers = [...document.querySelectorAll('[role="menu"],[role="dialog"],[role="list"],[role="listbox"]')];
+                containers.reverse();
+                for (const c of containers) {
+                    const items = [...c.querySelectorAll('[role="menuitem"],[role="option"],[role="listitem"],li,[role="button"]')]
+                        .filter(i => {
+                            const t = getCleanText(i);
+                            return t && t.length >= 2 && t.length <= 80
+                                && !mw.some(w => t.toLowerCase().includes(w.toLowerCase()));
+                        });
+                    if (!items.length) continue;
+                    // Skip the current page, pick the first OTHER item
+                    const target = skipLower
+                        ? items.find(i => !getCleanText(i).toLowerCase().includes(skipLower))
+                        : items[0];
+                    if (target) { target.click(); return getCleanText(target); }
+                }
+                return null;
+            }, { skipName: currentPageName, mw: _MENU_WORDS });
+            log(`   switched to: ${switched || 'unknown'}`);
+            try { await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 6000 }); } catch {}
+            await page.waitForTimeout(1500);
         }
         await page.close();
         log('🔄 สลับกลับเป็น personal account');
-    } catch(e) { log?.(`⚠️ switchIdentityBack: ${e.message}`); }
+    } catch(e) {
+        log?.(`⚠️ switchBack: ${e.message}`);
+        try { await page.close(); } catch {}
+    }
+}
+
+// ── Try to switch identity inside the group composer dialog ──────
+async function _tryDialogIdentitySwitch(page, pageName) {
+    try {
+        // Step 1: click the profile/identity area in dialog top (opens switcher popup)
+        const clickResult = await page.evaluate(() => {
+            const dialog = document.querySelector('[role="dialog"]');
+            if (!dialog) return null;
+            const dRect = dialog.getBoundingClientRect();
+            const topBtns = [...dialog.querySelectorAll('[role="button"]')].filter(btn => {
+                const br = btn.getBoundingClientRect();
+                return br.width > 40 && br.height > 20
+                    && br.y > dRect.y && br.y < dRect.y + 130;
+            });
+            if (!topBtns.length) return null;
+            const candidate = topBtns.find(b => b.querySelector('img,image,[role="img"]'))
+                           || topBtns.find(b => b.offsetWidth > 60)
+                           || topBtns[0];
+            candidate.click();
+            return (candidate.textContent || '').trim().slice(0, 40) || 'clicked';
+        });
+        if (!clickResult) return null;
+
+        // Step 2: wait for switcher popup to appear
+        await page.waitForTimeout(2500);
+
+        // Step 3: try Playwright locator — more reliable than evaluate for dynamic popups
+        const lower = pageName.toLowerCase();
+        // Scan all visible popup/menu/list containers for the page name
+        const allMenuItems = page.locator('[role="menu"] [role="menuitem"], [role="listbox"] [role="option"], [role="menu"] [role="button"], [role="list"] li');
+        const count = await allMenuItems.count().catch(() => 0);
+        for (let i = 0; i < count; i++) {
+            try {
+                const item = allMenuItems.nth(i);
+                const txt = (await item.textContent({ timeout: 500 }).catch(() => '')) || '';
+                if (txt.toLowerCase().includes(lower) && !_MENU_WORDS.some(w => txt.toLowerCase().includes(w.toLowerCase()))) {
+                    await item.click({ timeout: 3000 });
+                    await page.waitForTimeout(1000);
+                    return 'locator:' + pageName;
+                }
+            } catch {}
+        }
+
+        // Step 4: fallback — evaluate global scan
+        const picked = await _navPickIdentity(page, pageName, _MENU_WORDS);
+        if (picked) { await page.waitForTimeout(1000); return picked; }
+
+        // Save debug screenshot if nothing worked
+        await page.screenshot({ path: path.join(_userDataBase, 'debug-dialog-switch.png') }).catch(()=>{});
+        return null;
+    } catch { return null; }
 }
 
 // ── Post to group ─────────────────────────────────────────────
-async function postToGroup(accountId, groupId, groupName, message, postAsPage, onLog) {
+// sharedPage: if provided, use this already-switched page (don't open a new one, don't close it)
+// pageId: if provided, append ?profile_id=PAGE_ID to group URL to force Page context
+async function postToGroup(accountId, groupId, groupName, message, postAsPage, onLog, sharedPage = null, pageId = null) {
     const log = m => onLog?.(m);
     try {
         const ctx  = await _getContext(accountId);
-        const page = await ctx.newPage();
+        const page = sharedPage || await ctx.newPage();
+        const ownPage = !sharedPage;
 
-        log(`🌐 เปิดกลุ่ม ${groupName}...`);
-        await page.goto(`https://www.facebook.com/groups/${groupId}`, {
+        const groupUrl = pageId
+            ? `https://www.facebook.com/groups/${groupId}?profile_id=${pageId}`
+            : `https://www.facebook.com/groups/${groupId}`;
+        log(`🌐 เปิดกลุ่ม ${groupName}...${pageId ? ` [as Page ${pageId}]` : ''}`);
+        await page.goto(groupUrl, {
             waitUntil: 'domcontentloaded', timeout: 30000,
         });
 
@@ -372,7 +577,7 @@ async function postToGroup(accountId, groupId, groupName, message, postAsPage, o
         log(`   composer: ${clickResult||'ไม่เจอ'}`);
         if (!clickResult) {
             await page.screenshot({ path: path.join(_userDataBase, `debug-${groupId}.png`), fullPage: false });
-            await page.close();
+            if (ownPage) await page.close();
             return { ok: false, error: `หาช่องโพสต์ไม่เจอ (debug-${groupId}.png บันทึกแล้ว)` };
         }
 
@@ -392,10 +597,25 @@ async function postToGroup(accountId, groupId, groupName, message, postAsPage, o
                 if (textbox) break;
             } catch {}
         }
-        if (!textbox) { await page.close(); return { ok: false, error: 'Dialog โพสต์ไม่เปิด — ลองใหม่' }; }
+        if (!textbox) { if (ownPage) await page.close(); return { ok: false, error: 'Dialog โพสต์ไม่เปิด — ลองใหม่' }; }
 
         await textbox.click();
         await page.waitForTimeout(500);
+
+        // If postAsPage, try to switch identity inside the dialog (before typing)
+        if (postAsPage) {
+            log(`   🏢 สลับ identity ใน dialog → "${postAsPage}"...`);
+            const ds = await _tryDialogIdentitySwitch(page, postAsPage);
+            log(`   dialog switch: ${ds || 'ไม่มีตัวเลือก — โพสเป็น user ปกติ'}`);
+            if (ds) {
+                // Re-find textbox after identity switch (dialog may have re-rendered)
+                let newTb = null;
+                for (const s of tbSels) {
+                    try { newTb = await page.waitForSelector(s, { timeout: 4000, state:'visible' }); if (newTb) break; } catch {}
+                }
+                if (newTb) { textbox = newTb; await textbox.click(); await page.waitForTimeout(500); }
+            }
+        }
 
         // Support "text|||url" or "|||url" (text-only preview, no link shown)
         if (message.includes('|||')) {
@@ -446,10 +666,10 @@ async function postToGroup(accountId, groupId, groupName, message, postAsPage, o
                 if (await btn.count() > 0) { await btn.click(); posted = true; }
             } catch {}
         }
-        if (!posted) { await page.close(); return { ok: false, error: 'กด Post ไม่ได้' }; }
+        if (!posted) { if (ownPage) await page.close(); return { ok: false, error: 'กด Post ไม่ได้' }; }
 
         await page.waitForTimeout(4000);
-        await page.close();
+        if (ownPage) await page.close();
         return { ok: true };
     } catch(e) { return { ok: false, error: e.message }; }
 }
@@ -463,4 +683,4 @@ async function closeAll() {
     for (const id of Object.keys(_contexts)) await closeContext(id);
 }
 
-module.exports = { init, loginAccount, postToGroup, getAccountPages, switchIdentity, switchIdentityBack, closeContext, closeAll };
+module.exports = { init, loginAccount, postToGroup, getAccountPages, openSwitchedPage, switchBackOnPage, closeContext, closeAll };

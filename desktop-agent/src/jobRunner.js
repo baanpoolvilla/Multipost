@@ -69,10 +69,14 @@ async function processJob(job) {
         return;
     }
 
-    // Switch to page identity ONCE before posting to all groups
-    let identitySwitched = false;
+    // Open ONE page and switch identity on it — reuse same page for all groups
+    log(`ℹ️ postAsPage: ${job.postAsPage || '(ไม่ได้เลือก — โพสเป็น user)'}`);
+    let sharedPage = null;
+    let sharedPageId = null;
     if (job.postAsPage) {
-        identitySwitched = await _bot.switchIdentity(acc.id, job.postAsPage, (m) => log(`   ${m}`));
+        const result = await _bot.openSwitchedPage(acc.id, job.postAsPage, (m) => log(`   ${m}`));
+        sharedPage   = result?.page   || null;
+        sharedPageId = result?.pageId || null;
     }
 
     const results = [];
@@ -84,7 +88,7 @@ async function processJob(job) {
         log(`➡️ [${i+1}/${job.groups.length}] ${g.groupName}`);
         _emit?.('jobs:progress', { groupName:g.groupName, status:'posting', current:i+1, total:job.groups.length });
 
-        const res = await _bot.postToGroup(acc.id, g.groupId, g.groupName, job.message, job.postAsPage||null, (m)=>log(`   ${m}`));
+        const res = await _bot.postToGroup(acc.id, g.groupId, g.groupName, job.message, job.postAsPage||null, (m)=>log(`   ${m}`), sharedPage, sharedPageId);
         results.push({ groupId:g.groupId, groupName:g.groupName, status:res.ok?'success':'failed', error:res.error||null, timestamp:new Date().toISOString() });
 
         if (res.ok) { ok++; log(`   ✅ สำเร็จ`); _emit?.('jobs:progress', { groupName:g.groupName, status:'success' }); }
@@ -96,9 +100,9 @@ async function processJob(job) {
         }
     }
 
-    // Switch back to personal account after all groups done
-    if (identitySwitched) {
-        await _bot.switchIdentityBack(acc.id, (m) => log(`   ${m}`));
+    // Switch back to personal and close the shared page
+    if (sharedPage) {
+        await _bot.switchBackOnPage(sharedPage, (m) => log(`   ${m}`), job.postAsPage).catch(()=>{});
     }
 
     const status = ok>0 ? 'done' : 'failed';

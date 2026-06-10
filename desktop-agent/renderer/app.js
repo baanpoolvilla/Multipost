@@ -293,6 +293,8 @@ async function createJob() {
     const accId  = document.getElementById('jobAccount').value||null;
     const postAs = document.getElementById('jobPostAs').value.trim()||null;
 
+    appendLog(`[🔍 DEBUG] postAs="${postAs}" accId="${accId}"`);
+
     if (!msg)         { alert('กรุณากรอกข้อความ'); return; }
     if (!groups.length){ alert('กรุณาเลือกอย่างน้อย 1 กลุ่ม'); return; }
 
