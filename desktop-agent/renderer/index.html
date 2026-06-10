@@ -167,12 +167,16 @@
             <button id="showMoreGroupsBtn" class="btn btn-secondary" style="display:none;width:100%;font-size:11.5px;margin-top:.35rem;padding:.3rem" onclick="openGroupsModal()">
               ดูทั้งหมด <span id="showMoreCount"></span> กลุ่ม
             </button>
-            <div style="display:flex;gap:.75rem;margin-top:.5rem;align-items:center">
+            <div style="display:flex;gap:.75rem;margin-top:.5rem;align-items:flex-end;flex-wrap:wrap">
               <div>
                 <label class="field-label">Account</label>
                 <select id="jobAccount" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:.35rem .5rem;font-size:12px;font-family:inherit">
                   <option value="">Auto (account ที่ login)</option>
                 </select>
+              </div>
+              <div style="flex:1;min-width:110px">
+                <label class="field-label">โพสในนาม Page</label>
+                <input type="text" id="jobPostAs" placeholder="ชื่อ Page (ว่าง = ใช้ user)">
               </div>
               <div>
                 <label class="field-label">Delay (วินาที)</label>

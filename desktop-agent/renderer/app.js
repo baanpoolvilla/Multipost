@@ -267,7 +267,8 @@ function renderJobs() {
     el.innerHTML = filtered.map(j=>{
         const ok  = (j.results||[]).filter(r=>r.status==='success').length;
         const tot = j.groups?.length||0;
-        const meta = (j.status==='done'||j.status==='failed') ? `${ok}/${tot} กลุ่ม` : `${tot} กลุ่ม · ${j.delaySeconds}s`;
+        const pageTag = j.postAsPage ? ` · 🏢 ${esc(j.postAsPage)}` : '';
+        const meta = (j.status==='done'||j.status==='failed') ? `${ok}/${tot} กลุ่ม${pageTag}` : `${tot} กลุ่ม · ${j.delaySeconds}s${pageTag}`;
         return `<div class="job-item">
           <div class="job-icon">${icons[j.status]||'❓'}</div>
           <div class="job-body">
@@ -290,11 +291,12 @@ async function createJob() {
     const groups = selectedGroups();
     const delay  = parseInt(document.getElementById('jobDelay').value)||5;
     const accId  = document.getElementById('jobAccount').value||null;
+    const postAs = document.getElementById('jobPostAs').value.trim()||null;
 
     if (!msg)         { alert('กรุณากรอกข้อความ'); return; }
     if (!groups.length){ alert('กรุณาเลือกอย่างน้อย 1 กลุ่ม'); return; }
 
-    const job = await agent.createJob({ message:msg, groups, delaySeconds:delay, accountId:accId||undefined });
+    const job = await agent.createJob({ message:msg, groups, delaySeconds:delay, accountId:accId||undefined, postAsPage:postAs||undefined });
     if (job) {
         _jobs.unshift(job); renderJobs();
         document.getElementById('jobMsg').value = '';
@@ -338,12 +340,13 @@ function toggleTemplates() {
 }
 
 async function saveTemplate() {
-    const name = document.getElementById('templateName').value.trim() || `Template ${_templates.length+1}`;
-    const msg  = document.getElementById('jobMsg').value.trim();
-    const grps = selectedGroups();
-    const del  = parseInt(document.getElementById('jobDelay').value)||5;
+    const name   = document.getElementById('templateName').value.trim() || `Template ${_templates.length+1}`;
+    const msg    = document.getElementById('jobMsg').value.trim();
+    const grps   = selectedGroups();
+    const del    = parseInt(document.getElementById('jobDelay').value)||5;
+    const postAs = document.getElementById('jobPostAs').value.trim()||null;
     if (!msg && !grps.length) { alert('กรุณากรอกข้อความหรือเลือกกลุ่มก่อน'); return; }
-    _templates = await agent.saveTemplate({ name, message:msg, groups:grps, delaySeconds:del });
+    _templates = await agent.saveTemplate({ name, message:msg, groups:grps, delaySeconds:del, postAsPage:postAs||undefined });
     renderTemplates();
     document.getElementById('templateName').value = '';
     appendLog(`[💾] บันทึก Template: "${name}"`);
@@ -352,8 +355,9 @@ async function saveTemplate() {
 function applyTemplate(id) {
     const t = _templates.find(x=>x.id===id);
     if (!t) return;
-    document.getElementById('jobMsg').value   = t.message || '';
-    document.getElementById('jobDelay').value = t.delaySeconds || 5;
+    document.getElementById('jobMsg').value    = t.message || '';
+    document.getElementById('jobDelay').value  = t.delaySeconds || 5;
+    document.getElementById('jobPostAs').value = t.postAsPage || '';
     _selected = _groups.map(g => (t.groups||[]).some(tg=>tg.groupId===g.groupId));
     renderGroupsInline();
     // Show create form if hidden

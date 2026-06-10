@@ -118,8 +118,61 @@ async function loginAccount(account, onLog) {
     } catch(e) { return { ok: false, error: e.message }; }
 }
 
+// ── Switch "Posting as" identity ──────────────────────────────
+async function _switchPostingAs(page, pageName, log) {
+    if (!pageName) return;
+    log(`🔄 สลับโพสในนาม "${pageName}"...`);
+
+    // Step 1: click the identity switcher inside the composer dialog
+    const clicked = await page.evaluate(() => {
+        const dialog = document.querySelector('[role="dialog"]');
+        if (!dialog) return null;
+
+        // Primary: aria-label contains "Posting as" / "โพสต์ในฐานะ"
+        const byAria = dialog.querySelector('[aria-label*="Posting as"], [aria-label*="โพสต์ในฐานะ"]');
+        if (byAria) { byAria.click(); return 'aria-label'; }
+
+        // Secondary: button in the lower half of the dialog (below textbox area)
+        const dRect  = dialog.getBoundingClientRect();
+        const midY   = dRect.top + dRect.height * 0.55;
+        const ignore = /photo|video|emoji|feeling|location|tag|gif|poll|event|live|watch|sticker/i;
+        for (const btn of dialog.querySelectorAll('[role="button"]')) {
+            const br = btn.getBoundingClientRect();
+            if (br.top < midY) continue;
+            const al = btn.getAttribute('aria-label') || '';
+            if (ignore.test(al)) continue;
+            if (br.width > 40 && br.height > 20) { btn.click(); return 'lower-button'; }
+        }
+        return null;
+    });
+
+    if (!clicked) { log('⚠️ ไม่พบปุ่มสลับ identity — โพสในนาม user ปกติ'); return; }
+    await page.waitForTimeout(1500);
+
+    // Step 2: pick the matching page from the popup list
+    const found = await page.evaluate((name) => {
+        const lower = name.toLowerCase();
+        const containers = [...document.querySelectorAll('[role="menu"], [role="listbox"], [role="dialog"], [role="list"]')];
+        containers.reverse(); // newest (topmost) first
+        for (const c of containers) {
+            for (const item of c.querySelectorAll('[role="menuitem"], [role="option"], [role="button"], [role="listitem"], li')) {
+                if ((item.textContent || '').toLowerCase().includes(lower)) { item.click(); return true; }
+            }
+        }
+        // Fallback: scan all visible buttons
+        for (const btn of document.querySelectorAll('[role="button"]')) {
+            if ((btn.textContent || '').toLowerCase().includes(lower)) { btn.click(); return true; }
+        }
+        return false;
+    }, pageName);
+
+    if (!found) { log(`⚠️ ไม่พบ Page "${pageName}" — โพสในนาม user ปกติ`); return; }
+    await page.waitForTimeout(1000);
+    log(`✅ สลับเป็น: ${pageName}`);
+}
+
 // ── Post to group ─────────────────────────────────────────────
-async function postToGroup(accountId, groupId, groupName, message, onLog) {
+async function postToGroup(accountId, groupId, groupName, message, postAsPage, onLog) {
     const log = m => onLog?.(m);
     try {
         const ctx  = await _getContext(accountId);
@@ -213,6 +266,9 @@ async function postToGroup(accountId, groupId, groupName, message, onLog) {
 
         await textbox.click();
         await page.waitForTimeout(500);
+
+        // Switch "Posting as" identity if specified
+        await _switchPostingAs(page, postAsPage, log);
 
         // Support "text|||url" or "|||url" (text-only preview, no link shown)
         if (message.includes('|||')) {

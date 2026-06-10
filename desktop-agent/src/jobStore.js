@@ -21,6 +21,7 @@ const jobSchema = new mongoose.Schema({
     groups:       [{ groupId: String, groupName: String }],
     delaySeconds: { type: Number, default: 5 },
     accountId:    String,
+    postAsPage:   { type: String, default: null },
     results:      [resultSchema],
     createdAt:    { type: String, default: () => new Date().toISOString() },
     updatedAt:    String,
