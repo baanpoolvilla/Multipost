@@ -11,6 +11,7 @@ const schema = new mongoose.Schema({
     _id: { type: String, default: 'main' },
     fbAppId: { type: String, default: '' },
     fbAppSecret: { type: String, default: '' },
+    groupToken: { type: String, default: '' },
 }, { versionKey: false });
 const Settings = mongoose.models.Settings || mongoose.model('Settings', schema);
 
@@ -19,10 +20,18 @@ async function load() {
     try {
         await connect();
         const s = await Settings.findById('main').lean();
-        return { fbAppId: fromEnv.fbAppId || (s && s.fbAppId) || '', fbAppSecret: fromEnv.fbAppSecret || (s && s.fbAppSecret) || '' };
+        return {
+            fbAppId:    fromEnv.fbAppId    || (s && s.fbAppId)    || '',
+            fbAppSecret: fromEnv.fbAppSecret || (s && s.fbAppSecret) || '',
+            groupToken: (s && s.groupToken) || '',
+        };
     } catch {
         const f = fLoad();
-        return { fbAppId: fromEnv.fbAppId || f.fbAppId || '', fbAppSecret: fromEnv.fbAppSecret || f.fbAppSecret || '' };
+        return {
+            fbAppId:    fromEnv.fbAppId    || f.fbAppId    || '',
+            fbAppSecret: fromEnv.fbAppSecret || f.fbAppSecret || '',
+            groupToken: f.groupToken || '',
+        };
     }
 }
 

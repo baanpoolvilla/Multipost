@@ -324,8 +324,8 @@ exports.getSettings = async (req, res) => {
 };
 
 exports.saveSettings = async (req, res) => {
-    const { fbAppId, fbAppSecret } = req.body;
-    await settingsStore.save({ fbAppId: fbAppId || '', fbAppSecret: fbAppSecret || '' });
+    const { fbAppId, fbAppSecret, groupToken } = req.body;
+    await settingsStore.save({ fbAppId: fbAppId || '', fbAppSecret: fbAppSecret || '', groupToken: groupToken || '' });
     res.json({ ok: true });
 };
 
