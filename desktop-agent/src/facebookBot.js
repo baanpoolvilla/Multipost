@@ -333,16 +333,32 @@ async function openSwitchedPage(accountId, pageName, onLog) {
         // Use Playwright native click (fires real mouse events, not JS click)
         let clicked = false;
         try {
-            const loc = page.getByText(pageName, { exact: true }).first();
-            if (await loc.count() > 0) {
-                await loc.click({ timeout: 3000 });
+            // Prefer clicking the menuitem/button ancestor that CONTAINS the text
+            // getByText finds the deepest span which is often "not visible" to Playwright
+            const roleLoc = page.locator('[role="menuitem"],[role="option"],[role="button"],li')
+                .filter({ hasText: new RegExp(`^${pageName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`) })
+                .first();
+            if (await roleLoc.count() > 0) {
+                await roleLoc.click({ timeout: 3000 });
                 clicked = true;
-                log(`   ✅ native click: ${pageName}`);
+                log(`   ✅ role click: ${pageName}`);
             }
-        } catch(e) { log(`   ⚠️ native click err: ${e.message}`); }
+        } catch(e) { log(`   ⚠️ role click err: ${e.message}`); }
 
         if (!clicked) {
-            // Fallback: JS evaluate click
+            // Fallback: force-click the text locator (bypasses visibility check)
+            try {
+                const loc = page.getByText(pageName, { exact: true }).first();
+                if (await loc.count() > 0) {
+                    await loc.click({ timeout: 3000, force: true });
+                    clicked = true;
+                    log(`   ✅ force click: ${pageName}`);
+                }
+            } catch(e) { log(`   ⚠️ force click err: ${e.message}`); }
+        }
+
+        if (!clicked) {
+            // Last resort: JS evaluate click
             const picked = await _navPickIdentity(page, pageName, _MENU_WORDS);
             clicked = !!picked;
             log(`   evaluate: ${picked || 'failed'}`);
@@ -503,7 +519,8 @@ async function _tryDialogIdentitySwitch(page, pageName) {
 // ── Post to group ─────────────────────────────────────────────
 // sharedPage: if provided, use this already-switched page (don't open a new one, don't close it)
 // pageId: if provided, append ?profile_id=PAGE_ID to group URL to force Page context
-async function postToGroup(accountId, groupId, groupName, message, postAsPage, onLog, sharedPage = null, pageId = null) {
+// images: array of absolute file paths to attach as photos
+async function postToGroup(accountId, groupId, groupName, message, postAsPage, onLog, sharedPage = null, pageId = null, images = []) {
     const log = m => onLog?.(m);
     try {
         const ctx  = await _getContext(accountId);
@@ -601,6 +618,28 @@ async function postToGroup(accountId, groupId, groupName, message, postAsPage, o
 
         await textbox.click();
         await page.waitForTimeout(500);
+
+        // Attach photos/videos if any
+        if (images && images.length > 0) {
+            log(`📷 แนบรูปภาพ ${images.length} รูป...`);
+            try {
+                // Facebook's file input is usually hidden; setInputFiles works on hidden inputs
+                let fileInput = await page.$('[role="dialog"] input[type="file"]');
+                if (!fileInput) {
+                    // Click Photo/Video button to expose the file input
+                    const photoBtn = await page.$('[role="dialog"] [aria-label*="Photo"],[role="dialog"] [aria-label*="รูปภาพ"],[role="dialog"] [aria-label*="photo"]');
+                    if (photoBtn) { await photoBtn.click(); await page.waitForTimeout(1200); }
+                    fileInput = await page.$('input[type="file"]');
+                }
+                if (fileInput) {
+                    await fileInput.setInputFiles(images);
+                    log(`   ✅ แนบรูปสำเร็จ`);
+                    await page.waitForTimeout(4000);
+                } else {
+                    log('   ⚠️ ไม่พบ file input — ข้ามการแนบรูป');
+                }
+            } catch(imgErr) { log(`   ⚠️ แนบรูปล้มเหลว: ${imgErr.message}`); }
+        }
 
         // If postAsPage, try to switch identity inside the dialog (before typing)
         if (postAsPage) {

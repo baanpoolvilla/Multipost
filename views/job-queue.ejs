@@ -30,7 +30,6 @@
     <a href="/overview" class="sidebar-item"><i class="fa-solid fa-chart-line"></i><span>ภาพรวม</span></a>
     <a href="/history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพสต์</span></a>
     <a href="/pages" class="sidebar-item"><i class="fa-brands fa-facebook"></i><span>จัดการเพจ</span></a>
-    <div class="sidebar-divider"></div>
     <a href="/agent" class="sidebar-item"><i class="fa-solid fa-robot"></i><span>Agent</span></a>
     <a href="/groups" class="sidebar-item"><i class="fa-solid fa-users-rectangle"></i><span>กลุ่ม</span></a>
     <a href="/job-queue" class="sidebar-item active"><i class="fa-solid fa-list-check"></i><span>Job Queue</span></a>
@@ -44,11 +43,6 @@
         <i class="fa-solid fa-list-check"></i> Job Queue
         <span style="background:#e4e6ea;padding:.15rem .55rem;border-radius:999px;font-size:.8rem;margin-left:.4rem" id="jobCount"><%= jobs.length %></span>
       </div>
-      <% if (groups.length > 0) { %>
-      <button class="btn-post" style="font-size:.82rem;padding:.4rem .9rem" onclick="toggleForm()">
-        <i class="fa-solid fa-plus"></i> สร้าง Job
-      </button>
-      <% } %>
     </div>
 
     <% if (groups.length === 0) { %>
@@ -114,18 +108,31 @@
       </div>
 
       <% if (jobs.length === 0) { %>
-      <div style="color:var(--text-secondary);text-align:center;padding:1.5rem;font-size:.9rem">
-        ยังไม่มี Job — กด "+ สร้าง Job" ด้านบน
-      </div>
+      <div style="color:var(--text-secondary);text-align:center;padding:1.5rem;font-size:.9rem">ยังไม่มี Job</div>
       <% } else { %>
       <% const icons = { pending:'⏳', running:'🔄', done:'✅', failed:'❌' }; %>
       <% const statusTH = { pending:'รอ', running:'กำลังทำ', done:'เสร็จ', failed:'ล้มเหลว' }; %>
       <% const statusCls = { pending:'badge-yellow', running:'badge-blue', done:'badge-green', failed:'badge-red' }; %>
-      <% jobs.forEach(j => { %>
-      <div style="display:flex;align-items:flex-start;gap:.7rem;padding:.65rem .5rem;border-bottom:1px solid var(--border-color)" id="job_<%= j._id %>">
+      <% jobs.forEach((j, idx) => {
+           // parse display text — strip |||URL
+           let dispMsg = j.message||'';
+           let modeTag = '';
+           if (dispMsg.includes('|||')) {
+             const sep = dispMsg.indexOf('|||');
+             const txt = dispMsg.slice(0,sep).trim();
+             const url = dispMsg.slice(sep+3).trim();
+             if (txt) { dispMsg = txt; modeTag = '🔗 ลิงก์'; }
+             else { dispMsg = url.length>55?url.slice(0,55)+'…':url; modeTag = '↗ แชร์'; }
+           }
+           if (dispMsg.length>70) dispMsg = dispMsg.slice(0,70)+'…';
+      %>
+      <div style="display:flex;align-items:flex-start;gap:.7rem;padding:.65rem .5rem;border-bottom:1px solid var(--border-color)"
+           id="job_<%= j._id %>" class="job-row" data-idx="<%= idx %>">
         <span style="font-size:1.2rem;flex-shrink:0;margin-top:.1rem"><%= icons[j.status]||'❓' %></span>
         <div style="flex:1;min-width:0">
-          <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><%= j.message.length>70?j.message.slice(0,70)+'...':j.message %></div>
+          <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+            <% if(modeTag){ %><span style="font-size:.7rem;font-weight:700;background:#e7f3ff;color:#1877f2;border-radius:4px;padding:.05rem .4rem;margin-right:.3rem"><%= modeTag %></span><% } %><%= dispMsg %>
+          </div>
           <div style="font-size:.78rem;color:var(--text-secondary);margin-top:.2rem">
             <%= (j.groups||[]).length %> กลุ่ม · delay <%= j.delaySeconds %>s ·
             <%= new Date(j.createdAt).toLocaleString('th-TH',{timeZone:'Asia/Bangkok',hour12:false,dateStyle:'short',timeStyle:'short'}) %>
@@ -140,6 +147,13 @@
         </button>
       </div>
       <% }); %>
+      <% if (jobs.length > 20) { %>
+      <div id="showMoreRow" style="padding:.65rem;text-align:center">
+        <button onclick="showMoreJobs()" style="background:#f0f2f5;border:none;border-radius:8px;padding:.45rem 1.1rem;font-size:.85rem;cursor:pointer;font-family:inherit;color:#1877f2;font-weight:600">
+          เพิ่มเติม (<%= jobs.length-20 %> รายการ)
+        </button>
+      </div>
+      <% } %>
       <% } %>
     </div>
 
@@ -165,6 +179,22 @@
 
 <script>
 const _groups = <%- JSON.stringify(groups) %>;
+let _visibleJobs = 20;
+
+// Hide jobs beyond 20 on load
+document.querySelectorAll('.job-row').forEach(r => {
+  if (parseInt(r.dataset.idx) >= _visibleJobs) r.style.display = 'none';
+});
+
+function showMoreJobs() {
+  _visibleJobs += 20;
+  document.querySelectorAll('.job-row').forEach(r => {
+    if (parseInt(r.dataset.idx) < _visibleJobs) r.style.display = 'flex';
+  });
+  const btn = document.getElementById('showMoreRow');
+  const remaining = document.querySelectorAll('.job-row[style*="display: none"], .job-row[style*="display:none"]').length;
+  if (remaining === 0 && btn) btn.style.display = 'none';
+}
 
 function toggleForm() {
   const f = document.getElementById('createForm');

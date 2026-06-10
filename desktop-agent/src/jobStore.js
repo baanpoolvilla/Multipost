@@ -22,6 +22,7 @@ const jobSchema = new mongoose.Schema({
     delaySeconds: { type: Number, default: 5 },
     accountId:    String,
     postAsPage:   { type: String, default: null },
+    images:       { type: [String], default: [] },
     results:      [resultSchema],
     createdAt:    { type: String, default: () => new Date().toISOString() },
     updatedAt:    String,
@@ -126,6 +127,11 @@ async function deleteJob(id) {
     catch { const jobs=fLoad(); const i=jobs.findIndex(x=>x._id===id); if(i!==-1){ jobs.splice(i,1); fSave(jobs); } }
 }
 
+async function deleteAllJobs() {
+    try { await connect(); await Job.deleteMany({}); }
+    catch { fSave([]); }
+}
+
 function _s(j) { return j ? { ...j, _id: j._id?.toString?.()??j._id } : j; }
 
-module.exports = { connect, isDbConnected, setDataPath, getAllGroups, getRecentPosts, createJob, getJobs, getPendingJobs, updateJob, deleteJob };
+module.exports = { connect, isDbConnected, setDataPath, getAllGroups, getRecentPosts, createJob, getJobs, getPendingJobs, updateJob, deleteJob, deleteAllJobs };

@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('agent', {
     listJobs:        ()         => ipcRenderer.invoke('jobs:list'),
     createJob:       (data)     => ipcRenderer.invoke('jobs:create', data),
     deleteJob:       (id)       => ipcRenderer.invoke('jobs:delete', id),
+    deleteAllJobs:   ()         => ipcRenderer.invoke('jobs:delete-all'),
     getGroups:       ()         => ipcRenderer.invoke('jobs:groups'),
     getRecentPosts:  ()         => ipcRenderer.invoke('jobs:recent-posts'),
 

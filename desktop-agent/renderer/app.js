@@ -1,6 +1,13 @@
 // ── State ────────────────────────────────────────────────────
-let _accounts = [], _groups = [], _selected = [], _jobs = [], _jobFilter = 'all';
+let _accounts = [], _groups = [], _selected = [], _jobs = [], _jobFilter = 'all', _jobsVisible = 20;
 let _statusInterval = null;
+let _selectedPage = null;
+let _recentLoaded = false;
+let _selectedImages = [];   // array of { path, url } (path = fs path, url = objectURL)
+let _selectedLocation = null; // { name, lat, lng }
+let _map = null;
+let _mapMarker = null;
+let _mapSearchTimer = null;
 
 // ── Init ─────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', async () => {
@@ -111,6 +118,7 @@ function renderAccounts() {
 
 function updateAccountSelect() {
     const sel = document.getElementById('jobAccount');
+    if (!sel) return;
     const prev = sel.value;
     sel.innerHTML = '<option value="">Auto (account ที่ login อยู่)</option>';
     _accounts.forEach(a => {
@@ -120,6 +128,12 @@ function updateAccountSelect() {
         sel.appendChild(opt);
     });
     if (prev) sel.value = prev;
+    // Update avatar
+    const av = document.getElementById('fbAvatar');
+    if (av) {
+        const acc = _accounts.find(a => a.id === sel.value) || _accounts.find(a => a.status === 'logged_in');
+        av.textContent = acc ? acc.email[0].toUpperCase() : '?';
+    }
 }
 
 function toggleAddAccount() {
@@ -167,6 +181,7 @@ async function loadGroups() {
     _groups = await agent.getGroups();
     _selected = _groups.map(() => true);
     renderGroupsInline();
+    updateGroupCount();
 }
 
 function renderGroupsInline() {
@@ -206,11 +221,11 @@ function _syncInline(i) { const c=document.getElementById(`g_${i}`); if(c) c.che
 function openGroupsModal()  { renderGroupsModal(); document.getElementById('groupsModal').style.display='flex'; }
 function closeGroupsModal(e){ if(!e||e.target===document.getElementById('groupsModal')) document.getElementById('groupsModal').style.display='none'; }
 
-function togGrp(i) { _selected[i]=!_selected[i]; const c=document.getElementById(`g_${i}`); if(c) c.checked=_selected[i]; }
-function togGrpM(i){ _selected[i]=!_selected[i]; const c=document.getElementById(`gm_${i}`); if(c) c.checked=_selected[i]; _syncInline(i); }
+function togGrp(i) { _selected[i]=!_selected[i]; const c=document.getElementById(`g_${i}`); if(c) c.checked=_selected[i]; updateGroupCount(); }
+function togGrpM(i){ _selected[i]=!_selected[i]; const c=document.getElementById(`gm_${i}`); if(c) c.checked=_selected[i]; _syncInline(i); updateGroupCount(); }
 
-function selAll()  { _selected=_selected.map(()=>true);  renderGroupsInline(); renderGroupsModal(); }
-function selNone() { _selected=_selected.map(()=>false); renderGroupsInline(); renderGroupsModal(); }
+function selAll()  { _selected=_selected.map(()=>true);  renderGroupsInline(); renderGroupsModal(); updateGroupCount(); }
+function selNone() { _selected=_selected.map(()=>false); renderGroupsInline(); renderGroupsModal(); updateGroupCount(); }
 function selectedGroups() { return _groups.filter((_,i)=>_selected[i]); }
 
 // ── Recent posts ──────────────────────────────────────────────
@@ -244,6 +259,7 @@ function pickPost(i) {
 // ── Jobs ──────────────────────────────────────────────────────
 async function loadJobs() {
     _jobs = await agent.listJobs();
+    _jobsVisible = 20;
     renderJobs();
 }
 
@@ -251,6 +267,7 @@ function filterJobs(btn, filter) {
     document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
     _jobFilter = filter;
+    _jobsVisible = 20;
     renderJobs();
 }
 
@@ -264,26 +281,57 @@ function renderJobs() {
 
     if (!filtered.length) { el.innerHTML='<div class="empty-state">ไม่มี Job</div>'; return; }
     const icons = { pending:'⏳', running:'🔄', done:'✅', failed:'❌' };
-    el.innerHTML = filtered.map(j=>{
+    const shown = filtered.slice(0, _jobsVisible);
+    let html = shown.map(j=>{
         const ok  = (j.results||[]).filter(r=>r.status==='success').length;
         const tot = j.groups?.length||0;
         const pageTag = j.postAsPage ? ` · 🏢 ${esc(j.postAsPage)}` : '';
         const meta = (j.status==='done'||j.status==='failed') ? `${ok}/${tot} กลุ่ม${pageTag}` : `${tot} กลุ่ม · ${j.delaySeconds}s${pageTag}`;
+        const { display, modeTag } = _parseJobMsg(j.message);
         return `<div class="job-item">
           <div class="job-icon">${icons[j.status]||'❓'}</div>
           <div class="job-body">
-            <div class="job-msg">${esc(j.message)}</div>
+            <div class="job-msg">${modeTag ? `<span class="job-mode-tag">${modeTag}</span> ` : ''}${esc(display)}</div>
             <div class="job-meta">${meta} · ${fmtDate(j.createdAt)}</div>
           </div>
           <span class="job-status ${j.status}">${statusJobTH(j.status)}</span>
           <button class="job-del" onclick="deleteJob('${j._id}')">🗑</button>
         </div>`;
     }).join('');
+    if (filtered.length > _jobsVisible) {
+        html += `<div style="padding:.65rem;text-align:center;border-top:1px solid var(--border)">
+          <button class="btn btn-secondary" style="font-size:12px;padding:.35rem .85rem" onclick="showMoreJobs()">
+            เพิ่มเติม (${filtered.length - _jobsVisible} รายการ)
+          </button>
+        </div>`;
+    }
+    el.innerHTML = html;
+}
+
+function showMoreJobs() {
+    _jobsVisible += 20;
+    renderJobs();
+}
+
+async function deleteAllJobs() {
+    const n = _jobs.length;
+    if (!n) return;
+    const running = _jobs.filter(j=>j.status==='pending'||j.status==='running').length;
+    const msg = running
+        ? `มี Job ที่รอ/กำลังทำอยู่ ${running} รายการ\nต้องการลบ Job ทั้งหมด ${n} รายการหรือไม่?`
+        : `ลบ Job ทั้งหมด ${n} รายการ?`;
+    if (!confirm(msg)) return;
+    await agent.deleteAllJobs();
+    _jobs = []; _jobsVisible = 20;
+    renderJobs();
+    appendLog('[🗑] ลบ Job ทั้งหมดแล้ว');
 }
 
 function toggleCreateJob() {
     const f = document.getElementById('createJobForm');
-    f.style.display = f.style.display==='' ? 'none' : '';
+    const opening = f.style.display === 'none';
+    f.style.display = opening ? '' : 'none';
+    if (opening) updateGroupCount();
 }
 
 async function createJob() {
@@ -291,19 +339,27 @@ async function createJob() {
     const groups = selectedGroups();
     const delay  = parseInt(document.getElementById('jobDelay').value)||5;
     const accId  = document.getElementById('jobAccount').value||null;
-    const postAs = document.getElementById('jobPostAs').value.trim()||null;
-
-    appendLog(`[🔍 DEBUG] postAs="${postAs}" accId="${accId}"`);
+    const postAs = _selectedPage || null;
 
     if (!msg)         { alert('กรุณากรอกข้อความ'); return; }
     if (!groups.length){ alert('กรุณาเลือกอย่างน้อย 1 กลุ่ม'); return; }
 
-    const job = await agent.createJob({ message:msg, groups, delaySeconds:delay, accountId:accId||undefined, postAsPage:postAs||undefined });
+    // Append location to message text if selected
+    const fullMsg = _selectedLocation ? `${msg}\n\n📍 ${_selectedLocation.name}` : msg;
+    const imagePaths = _selectedImages.map(i => i.path).filter(Boolean);
+
+    const job = await agent.createJob({ message:fullMsg, groups, delaySeconds:delay, accountId:accId||undefined, postAsPage:postAs||undefined, images:imagePaths });
     if (job) {
         _jobs.unshift(job); renderJobs();
         document.getElementById('jobMsg').value = '';
+        // Reset attachments
+        _selectedImages.forEach(i => URL.revokeObjectURL(i.url));
+        _selectedImages = []; _selectedLocation = null;
+        document.getElementById('photoPreviewRow').style.display = 'none';
+        document.getElementById('fbLocationTag').style.display = 'none';
         toggleCreateJob();
-        appendLog(`[📋] สร้าง Job: "${msg.slice(0,40)}..." → ${groups.length} กลุ่ม`);
+        const info = [groups.length + ' กลุ่ม', postAs ? postAs : null, imagePaths.length ? imagePaths.length+' รูป' : null].filter(Boolean).join(' · ');
+        appendLog(`[📋] สร้าง Job: "${fullMsg.slice(0,40)}..." → ${info}`);
     }
 }
 
@@ -313,7 +369,7 @@ async function deleteJob(id) {
     renderJobs();
 }
 
-// ── Fetch Pages for account ───────────────────────────────────
+// ── Page chips + account change ───────────────────────────────
 async function fetchAccountPages() {
     const accId = document.getElementById('jobAccount').value;
     if (!accId) { alert('กรุณาเลือก Account ก่อน'); return; }
@@ -321,19 +377,201 @@ async function fetchAccountPages() {
     btn.textContent = '⏳'; btn.disabled = true;
     try {
         const pages = await agent.getAccountPages(accId);
-        const sel   = document.getElementById('jobPostAs');
-        const prev  = sel.value;
-        sel.innerHTML = '<option value="">ใช้ user ปกติ</option>';
-        pages.forEach(p => {
-            const opt = document.createElement('option');
-            opt.value = p.name; opt.textContent = p.name;
-            sel.appendChild(opt);
-        });
-        if (prev) sel.value = prev;
+        renderPageChips(pages);
         appendLog(pages.length ? `[📄] พบ ${pages.length} Page` : '[⚠️] ไม่พบเพจ — account อาจยังไม่ได้ Login');
     } finally {
         btn.textContent = '🔄'; btn.disabled = false;
     }
+}
+
+function renderPageChips(pages) {
+    const el = document.getElementById('pageChips');
+    if (!el) return;
+    el.innerHTML = '';
+    const addChip = (name, label) => {
+        const btn = document.createElement('button');
+        const isActive = name === '' ? !_selectedPage : name === _selectedPage;
+        btn.className = 'page-chip' + (isActive ? ' active' : '');
+        btn.textContent = label;
+        btn.dataset.page = name;
+        btn.addEventListener('click', () => selectPageChip(btn, name));
+        el.appendChild(btn);
+    };
+    addChip('', 'ตัวเอง');
+    pages.forEach(p => addChip(p.name, p.name));
+}
+
+function selectPageChip(btn, name) {
+    _selectedPage = name || null;
+    document.querySelectorAll('#pageChips .page-chip').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+}
+
+async function onAccountChange() {
+    const sel = document.getElementById('jobAccount');
+    const acc = _accounts.find(a => a.id === sel.value);
+    const av  = document.getElementById('fbAvatar');
+    if (av) av.textContent = acc ? acc.email[0].toUpperCase() : '?';
+    _selectedPage = null;
+    renderPageChips([]);
+    if (sel.value) fetchAccountPages();
+}
+
+function updateGroupCount() {
+    const n  = _selected.filter(Boolean).length;
+    const el = document.getElementById('fbGroupCount');
+    if (el) el.textContent = `เลือก ${n} กลุ่ม`;
+}
+
+function toggleRecentPosts() {
+    const p = document.getElementById('recentPostsPanel');
+    const open = p.style.display === '';
+    p.style.display = open ? 'none' : '';
+    if (!open && !_recentLoaded) { _recentLoaded = true; loadRecentPosts(); }
+}
+
+// ── Photo upload ──────────────────────────────────────────────
+function openImagePicker() {
+    document.getElementById('imageFileInput').click();
+}
+
+function onImageFilesSelected(input) {
+    for (const file of input.files) {
+        const url = URL.createObjectURL(file);
+        _selectedImages.push({ path: file.path || '', url, name: file.name });
+    }
+    input.value = '';
+    renderImagePreviews();
+}
+
+function removeImage(i) {
+    URL.revokeObjectURL(_selectedImages[i].url);
+    _selectedImages.splice(i, 1);
+    renderImagePreviews();
+}
+
+function renderImagePreviews() {
+    const row = document.getElementById('photoPreviewRow');
+    if (!_selectedImages.length) { row.style.display = 'none'; row.innerHTML = ''; return; }
+    row.style.display = 'flex';
+    row.innerHTML = _selectedImages.map((img, i) => `
+      <div class="fb-photo-thumb">
+        <img src="${img.url}" alt="${esc(img.name)}">
+        <button class="rm-btn" onclick="removeImage(${i})" title="ลบ">✕</button>
+      </div>`).join('') +
+      `<button class="fb-photo-add-btn" onclick="openImagePicker()" title="เพิ่มรูปอีก">+</button>`;
+}
+
+// ── Map / check-in ────────────────────────────────────────────
+function openMapModal() {
+    document.getElementById('mapModal').style.display = 'flex';
+    if (!_map) {
+        _map = L.map('mapContainer').setView([13.75, 100.51], 6);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 19,
+        }).addTo(_map);
+        _map.on('click', onMapClick);
+    }
+    setTimeout(() => _map.invalidateSize(), 150);
+    if (_selectedLocation) _setMapMarker(_selectedLocation.lat, _selectedLocation.lng, _selectedLocation.name);
+}
+
+function closeMapModal(e) {
+    if (!e || e.target === document.getElementById('mapModal'))
+        document.getElementById('mapModal').style.display = 'none';
+}
+
+async function onMapClick(e) {
+    const { lat, lng } = e.latlng;
+    try {
+        const res  = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=th`);
+        const data = await res.json();
+        const name = data.address?.city || data.address?.town || data.address?.village || data.address?.suburb
+                  || data.display_name?.split(',')[0] || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+        _setMapMarker(lat, lng, name);
+    } catch {
+        _setMapMarker(lat, lng, `${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+    }
+}
+
+function _setMapMarker(lat, lng, name) {
+    if (_mapMarker) _mapMarker.remove();
+    _mapMarker = L.marker([lat, lng]).addTo(_map).bindPopup(name).openPopup();
+    document.getElementById('mapSelectedLabel').textContent = `📍 ${name}`;
+    document.getElementById('mapSelectedLabel').style.color = '#fff';
+    // Store pending selection (confirmed on button press)
+    _map._pendingLoc = { lat, lng, name };
+}
+
+function confirmLocation() {
+    if (!_map?._pendingLoc && !_selectedLocation) { alert('กรุณาเลือกสถานที่บนแผนที่'); return; }
+    const loc = _map?._pendingLoc || _selectedLocation;
+    _selectedLocation = loc;
+    const tag = document.getElementById('fbLocationTag');
+    tag.innerHTML = `<span>📍 ${esc(loc.name)}</span><button class="rm-loc" onclick="removeLocation()" title="ลบ">✕</button>`;
+    tag.style.display = 'flex';
+    closeMapModal();
+}
+
+function removeLocation() {
+    _selectedLocation = null;
+    if (_map) { _map._pendingLoc = null; document.getElementById('mapSelectedLabel').textContent = 'คลิกบนแผนที่หรือค้นหาสถานที่'; }
+    document.getElementById('fbLocationTag').style.display = 'none';
+}
+
+function locateMe() {
+    if (!_map) return;
+    _map.locate({ setView: true, maxZoom: 15 });
+    _map.once('locationfound', async e => {
+        try {
+            const res  = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${e.latlng.lat}&lon=${e.latlng.lng}&accept-language=th`);
+            const data = await res.json();
+            const name = data.address?.city || data.address?.town || data.address?.suburb
+                      || data.display_name?.split(',')[0] || 'ตำแหน่งของฉัน';
+            _setMapMarker(e.latlng.lat, e.latlng.lng, name);
+        } catch {
+            _setMapMarker(e.latlng.lat, e.latlng.lng, 'ตำแหน่งของฉัน');
+        }
+    });
+    _map.once('locationerror', () => alert('ไม่สามารถระบุตำแหน่งได้'));
+}
+
+function onMapSearchInput() {
+    clearTimeout(_mapSearchTimer);
+    const q = document.getElementById('mapSearchInput').value.trim();
+    if (!q) { document.getElementById('mapSearchResults').style.display = 'none'; return; }
+    _mapSearchTimer = setTimeout(() => doMapSearch(), 500);
+}
+
+async function doMapSearch() {
+    const q = document.getElementById('mapSearchInput').value.trim();
+    if (!q) return;
+    try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5&accept-language=th`);
+        const results = await res.json();
+        const el = document.getElementById('mapSearchResults');
+        if (!results.length) { el.innerHTML = '<div class="map-result-item" style="color:var(--text2)">ไม่พบสถานที่</div>'; el.style.display = ''; return; }
+        el.style.display = '';
+        el.innerHTML = results.map(r => {
+            const parts = r.display_name.split(',');
+            return `<div class="map-result-item" data-lat="${r.lat}" data-lon="${r.lon}" data-name="${esc(parts[0])}">
+              <div class="map-result-name">${esc(parts[0])}</div>
+              <div class="map-result-sub">${esc(parts.slice(1,3).join(','))}</div>
+            </div>`;
+        }).join('');
+        el.querySelectorAll('.map-result-item').forEach(item => {
+            item.addEventListener('click', () =>
+                pickSearchResult(parseFloat(item.dataset.lat), parseFloat(item.dataset.lon), item.dataset.name));
+        });
+    } catch {}
+}
+
+function pickSearchResult(lat, lng, name) {
+    document.getElementById('mapSearchResults').style.display = 'none';
+    document.getElementById('mapSearchInput').value = name;
+    _map.setView([lat, lng], 14);
+    _setMapMarker(lat, lng, name);
 }
 
 // ── Templates ─────────────────────────────────────────────────
@@ -369,7 +607,7 @@ async function saveTemplate() {
     const msg    = document.getElementById('jobMsg').value.trim();
     const grps   = selectedGroups();
     const del    = parseInt(document.getElementById('jobDelay').value)||5;
-    const postAs = document.getElementById('jobPostAs').value.trim()||null;
+    const postAs = _selectedPage || null;
     if (!msg && !grps.length) { alert('กรุณากรอกข้อความหรือเลือกกลุ่มก่อน'); return; }
     _templates = await agent.saveTemplate({ name, message:msg, groups:grps, delaySeconds:del, postAsPage:postAs||undefined });
     renderTemplates();
@@ -382,16 +620,30 @@ function applyTemplate(id) {
     if (!t) return;
     document.getElementById('jobMsg').value   = t.message || '';
     document.getElementById('jobDelay').value = t.delaySeconds || 5;
-    const pasSel = document.getElementById('jobPostAs');
+    // Restore page chip selection
     if (t.postAsPage) {
-        if (![...pasSel.options].some(o => o.value === t.postAsPage)) {
-            const opt = document.createElement('option'); opt.value = t.postAsPage; opt.textContent = t.postAsPage;
-            pasSel.appendChild(opt);
+        _selectedPage = t.postAsPage;
+        const chips = document.getElementById('pageChips');
+        if (chips) {
+            let found = [...chips.querySelectorAll('.page-chip')].find(c => c.dataset.page === t.postAsPage);
+            if (!found) {
+                found = document.createElement('button');
+                found.className = 'page-chip';
+                found.textContent = t.postAsPage;
+                found.dataset.page = t.postAsPage;
+                found.addEventListener('click', () => selectPageChip(found, t.postAsPage));
+                chips.appendChild(found);
+            }
+            selectPageChip(found, t.postAsPage);
         }
-        pasSel.value = t.postAsPage;
-    } else { pasSel.value = ''; }
+    } else {
+        _selectedPage = null;
+        const first = document.querySelector('#pageChips .page-chip');
+        if (first) selectPageChip(first, '');
+    }
     _selected = _groups.map(g => (t.groups||[]).some(tg=>tg.groupId===g.groupId));
     renderGroupsInline();
+    updateGroupCount();
     // Show create form if hidden
     const f = document.getElementById('createJobForm');
     if (f.style.display==='none') f.style.display='';
@@ -420,6 +672,24 @@ function appendLog(msg) {
 function clearLog() { document.getElementById('logOutput').innerHTML=''; }
 
 // ── Helpers ───────────────────────────────────────────────────
+function _parseJobMsg(msg) {
+    if (!msg) return { display: '', modeTag: null };
+    if (msg.includes('|||')) {
+        const sep  = msg.indexOf('|||');
+        const text = msg.slice(0, sep).trim();
+        const url  = msg.slice(sep + 3).trim();
+        if (text) return { display: text, modeTag: '🔗 ลิงก์' };
+        const short = url.length > 55 ? url.slice(0, 55) + '…' : url;
+        return { display: short, modeTag: '↗ แชร์' };
+    }
+    return { display: msg, modeTag: null };
+}
+
+function togglePostingHelp() {
+    const el = document.getElementById('postingHelpPanel');
+    el.style.display = el.style.display === 'none' ? '' : 'none';
+}
+
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function fmtDate(iso){ try{ return new Date(iso).toLocaleString('th-TH',{timeZone:'Asia/Bangkok',hour12:false,dateStyle:'short',timeStyle:'short'}); }catch{return iso||'';} }
 function fmtUptime(s){ if(!s)return'—'; const h=Math.floor(s/3600),m=Math.floor((s%3600)/60); return h?`${h}h ${m}m`:`${m}m`; }

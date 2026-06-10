@@ -2,7 +2,9 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: blob: https://*.tile.openstreetmap.org; connect-src 'self' https://nominatim.openstreetmap.org">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <title>MultiPost – Desktop Agent</title>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -135,70 +137,114 @@
       </div>
     </div>
 
-    <!-- Create job form -->
+    <!-- Create job form - FB-style composer -->
     <div id="createJobForm" style="display:none">
-      <div class="card">
-        <div class="card-title">สร้าง Job โพสต์กลุ่ม</div>
+      <div class="card fb-composer">
 
-        <div class="form-row">
-          <div class="form-col" style="flex:1.5">
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <label class="field-label">โพสต์ล่าสุด</label>
-              <button class="btn-link" onclick="loadRecentPosts()">🔄 โหลด</button>
+        <!-- Header: avatar + account selector + page chips -->
+        <div class="fb-header">
+          <div class="fb-avatar" id="fbAvatar">?</div>
+          <div class="fb-header-body">
+            <select id="jobAccount" class="fb-acct-sel" onchange="onAccountChange()">
+              <option value="">Auto (account ที่ login อยู่)</option>
+            </select>
+            <div class="fb-page-row">
+              <span class="fb-page-label">โพสในนาม</span>
+              <div id="pageChips" class="page-chips">
+                <button class="page-chip active" data-page="" onclick="selectPageChip(this,'')">ตัวเอง</button>
+              </div>
+              <button class="btn-link" id="fetchPagesBtn" onclick="fetchAccountPages()" title="โหลดเพจจาก Facebook" style="font-size:13px;padding:0 .25rem">🔄</button>
             </div>
-            <div id="recentPostsList" class="pick-list">
-              <div class="empty-list">กด "โหลด" เพื่อดูโพสต์ล่าสุด</div>
-            </div>
-            <label class="field-label" style="margin-top:.5rem">ข้อความ</label>
-            <textarea id="jobMsg" rows="4" placeholder="พิมพ์ข้อความ หรือเลือกจากโพสต์ล่าสุด..."></textarea>
           </div>
-          <div class="form-col">
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <label class="field-label">กลุ่ม</label>
-              <div>
-                <button class="btn-link" onclick="selAll()">ทั้งหมด</button>
-                <button class="btn-link" onclick="selNone()">ยกเลิก</button>
-              </div>
+          <button class="fb-close" onclick="toggleCreateJob()">✕</button>
+        </div>
+
+        <div class="fb-divider"></div>
+
+        <!-- Message textarea -->
+        <textarea id="jobMsg" class="fb-textarea" placeholder="คุณกำลังคิดอะไรอยู่?" rows="4"></textarea>
+
+        <!-- Toolbar: photo / map / recent posts / delay -->
+        <div class="fb-toolbar">
+          <button class="fb-tool-btn" onclick="openImagePicker()" title="เพิ่มรูปภาพ">
+            📷 <span>รูปภาพ</span>
+          </button>
+          <button class="fb-tool-btn" onclick="openMapModal()" title="เช็คอินสถานที่">
+            📍 <span>สถานที่</span>
+          </button>
+          <button class="fb-tool-btn" onclick="toggleRecentPosts()">📝 โพสต์ล่าสุด</button>
+          <button class="fb-tool-btn" onclick="togglePostingHelp()" title="วิธีการโพส">❓ วิธีโพส</button>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:.35rem">
+            <span style="font-size:11px;color:var(--text2)">⏱ Delay</span>
+            <input type="number" id="jobDelay" value="5" min="1" max="120" class="fb-delay-input">
+            <span style="font-size:11px;color:var(--text2)">วิ</span>
+          </div>
+        </div>
+
+        <!-- Hidden file input for photos -->
+        <input type="file" id="imageFileInput" accept="image/*,video/*" multiple style="display:none" onchange="onImageFilesSelected(this)">
+
+        <!-- Photo preview strip (shown when images selected) -->
+        <div id="photoPreviewRow" class="fb-photo-row" style="display:none"></div>
+
+        <!-- Location tag (shown when location selected) -->
+        <div id="fbLocationTag" class="fb-location-tag" style="display:none"></div>
+
+        <!-- Recent posts panel (collapsible) -->
+        <div id="recentPostsPanel" style="display:none">
+          <div id="recentPostsList" class="pick-list" style="max-height:110px;border-radius:0;border-left:none;border-right:none;border-top:none">
+            <div class="empty-list">กด "โพสต์ล่าสุด" เพื่อโหลด</div>
+          </div>
+        </div>
+
+        <!-- Posting help panel (collapsible) -->
+        <div id="postingHelpPanel" style="display:none">
+          <div class="posting-help">
+            <div class="posting-help-title">วิธีการโพส</div>
+            <div class="posting-help-row">
+              <span class="phmode">ข้อความปกติ</span>
+              <span class="phdesc">พิมพ์ข้อความแล้วกด <b>โพสต์ทุกกลุ่ม</b> ได้เลย</span>
             </div>
-            <!-- Groups list (first 5 inline) -->
-            <div id="groupPickList" class="pick-list" style="max-height:190px">
-              <div class="loading">กำลังโหลด...</div>
+            <div class="posting-help-row">
+              <span class="phmode">🔗 ข้อความ + ลิงก์</span>
+              <span class="phdesc">พิมพ์ <code>ข้อความ|||ลิงก์</code> — โพสต์จะแสดงข้อความ พร้อมการ์ดลิงก์ด้านล่าง</span>
             </div>
-            <button id="showMoreGroupsBtn" class="btn btn-secondary" style="display:none;width:100%;font-size:11.5px;margin-top:.35rem;padding:.3rem" onclick="openGroupsModal()">
-              ดูทั้งหมด <span id="showMoreCount"></span> กลุ่ม
-            </button>
-            <div style="display:flex;gap:.75rem;margin-top:.5rem;align-items:flex-end;flex-wrap:wrap">
-              <div>
-                <label class="field-label">Account</label>
-                <select id="jobAccount" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:.35rem .5rem;font-size:12px;font-family:inherit">
-                  <option value="">Auto (account ที่ login)</option>
-                </select>
-              </div>
-              <div style="flex:1;min-width:120px">
-                <label class="field-label">โพสในนาม Page</label>
-                <div style="display:flex;gap:.3rem">
-                  <select id="jobPostAs" style="flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:.35rem .5rem;font-size:12px;font-family:inherit">
-                    <option value="">ใช้ user ปกติ</option>
-                  </select>
-                  <button class="btn btn-secondary" id="fetchPagesBtn" style="padding:.35rem .5rem;font-size:12px" onclick="fetchAccountPages()" title="ดึงรายการ Pages จาก Facebook">🔄</button>
-                </div>
-              </div>
-              <div>
-                <label class="field-label">Delay (วินาที)</label>
-                <input type="number" id="jobDelay" value="5" min="1" max="120" style="width:70px">
-              </div>
+            <div class="posting-help-row">
+              <span class="phmode">↗ แชร์โพสต์</span>
+              <span class="phdesc">พิมพ์ <code>|||ลิงก์</code> (ไม่มีข้อความหน้า) — จะแชร์โพสต์นั้นโดยตรง</span>
             </div>
           </div>
         </div>
 
-        <div style="display:flex;gap:.5rem;margin-top:.75rem;align-items:center;flex-wrap:wrap">
-          <button class="btn btn-primary" onclick="createJob()">📋 เพิ่มลงคิว</button>
-          <button class="btn btn-secondary" onclick="toggleCreateJob()">ยกเลิก</button>
-          <div style="margin-left:auto;display:flex;gap:.4rem;align-items:center">
-            <input id="templateName" placeholder="ชื่อ Template" style="width:130px;padding:.35rem .5rem;font-size:11.5px">
-            <button class="btn btn-secondary" onclick="saveTemplate()" title="บันทึกเป็น Template">💾 บันทึก</button>
+        <div class="fb-divider"></div>
+
+        <!-- Groups section -->
+        <div class="fb-groups">
+          <div class="fb-groups-hd">
+            <span>📌 กลุ่มที่จะโพสต์</span>
+            <button class="btn-link" onclick="selAll()">ทั้งหมด</button>
+            <button class="btn-link" onclick="selNone()">ยกเลิก</button>
+          </div>
+          <div id="groupPickList" class="pick-list" style="max-height:150px">
+            <div class="loading">กำลังโหลด...</div>
+          </div>
+          <button id="showMoreGroupsBtn" class="btn btn-secondary" style="display:none;width:100%;font-size:11.5px;margin-top:.35rem;padding:.3rem" onclick="openGroupsModal()">
+            ดูทั้งหมด <span id="showMoreCount"></span> กลุ่ม
+          </button>
+        </div>
+
+        <div class="fb-divider"></div>
+
+        <!-- Footer: group count + template save + post button -->
+        <div class="fb-footer">
+          <span class="fb-count" id="fbGroupCount">เลือก 0 กลุ่ม</span>
+          <div class="fb-footer-actions">
+            <input id="templateName" placeholder="ชื่อ Template" class="fb-tpl-input">
+            <button class="btn btn-secondary" style="padding:.35rem .55rem;font-size:12px" onclick="saveTemplate()" title="บันทึก Template">💾</button>
+            <button class="btn btn-primary fb-post-btn" onclick="createJob()">โพสต์ทุกกลุ่ม</button>
           </div>
         </div>
+
       </div>
     </div>
 
@@ -213,6 +259,7 @@
           <button class="filter-btn"        data-filter="done"    onclick="filterJobs(this,'done')">เสร็จ</button>
           <button class="filter-btn"        data-filter="failed"  onclick="filterJobs(this,'failed')">ล้มเหลว</button>
         </div>
+        <button class="btn-link" style="color:var(--red)" onclick="deleteAllJobs()">🗑 ลบทั้งหมด</button>
         <button class="btn-link ml-auto" onclick="loadJobs()">🔄 รีเฟรช</button>
       </div>
       <div id="jobsList"></div>
@@ -222,6 +269,32 @@
 </div>
 
 <script src="app.js"></script>
+
+<!-- Map / check-in modal -->
+<div id="mapModal" class="modal-overlay" style="display:none" onclick="closeMapModal(event)">
+  <div class="modal-box map-modal-box" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span>📍 เช็คอินสถานที่</span>
+      <button class="btn-link ml-auto" style="font-size:15px;color:var(--text2)" onclick="closeMapModal()">✕</button>
+    </div>
+    <!-- Search bar -->
+    <div class="map-search-row">
+      <span class="map-search-icon">🔍</span>
+      <input id="mapSearchInput" class="map-search-input" placeholder="ค้นหาสถานที่... เช่น ภูเก็ต, สุวรรณภูมิ"
+        oninput="onMapSearchInput()" onkeydown="if(event.key==='Enter')doMapSearch()">
+      <button class="btn-link" onclick="locateMe()" title="ตำแหน่งของฉัน" style="font-size:18px;padding:.1rem .4rem">🎯</button>
+    </div>
+    <!-- Search results dropdown -->
+    <div id="mapSearchResults" class="map-search-results" style="display:none"></div>
+    <!-- Leaflet map -->
+    <div id="mapContainer" class="map-container"></div>
+    <!-- Footer -->
+    <div class="map-footer">
+      <span class="map-selected-label" id="mapSelectedLabel">คลิกบนแผนที่หรือค้นหาสถานที่</span>
+      <button class="btn btn-primary" style="padding:.4rem 1rem;font-size:13px;font-weight:600" onclick="confirmLocation()">✓ ยืนยัน</button>
+    </div>
+  </div>
+</div>
 
 <!-- Groups modal (all groups) -->
 <div id="groupsModal" class="modal-overlay" style="display:none" onclick="closeGroupsModal(event)">
