@@ -28,26 +28,19 @@
 
   <aside class="sidebar">
     <a href="/" class="sidebar-item"><i class="fa-solid fa-house"></i><span>หน้าหลัก</span></a>
-    <a href="/group-post" class="sidebar-item"><i class="fa-solid fa-people-group"></i><span>โพสต์กลุ่ม</span></a>
+    <a href="/overview" class="sidebar-item"><i class="fa-solid fa-chart-line"></i><span>ภาพรวม</span></a>
     <a href="/history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพสต์</span></a>
     <a href="/pages" class="sidebar-item"><i class="fa-brands fa-facebook"></i><span>จัดการเพจ</span></a>
-    <a href="/share-post" class="sidebar-item"><i class="fa-solid fa-share-nodes"></i><span>แชร์โพสลงกลุ่ม</span></a>
     <div class="sidebar-item active"><i class="fa-solid fa-circle-check"></i><span>ผลการส่ง</span></div>
   </aside>
 
   <main class="feed">
 
     <%
-      const sc = post.successCount;
-      const fc = post.failCount;
+      const sc    = post.successCount;
+      const fc    = post.failCount;
       const total = post.results.length;
       const allOk = fc === 0;
-      const pageResults  = post.results.filter(r => r.type !== 'group');
-      const groupResults = post.results.filter(r => r.type === 'group');
-      const isGroupOnly  = pageResults.length === 0 && groupResults.length > 0;
-      const successPagePosts = pageResults.filter(r => r.status === 'success');
-      const failedGroups     = groupResults.filter(r => r.status === 'failed');
-      const unit = isGroupOnly ? 'กลุ่ม' : 'เพจ';
     %>
 
     <!-- Summary banner -->
@@ -56,7 +49,7 @@
         <% if (allOk) { %><i class="fa-solid fa-circle-check"></i><% } else { %><i class="fa-solid fa-triangle-exclamation"></i><% } %>
       </div>
       <div class="summary-text">
-        <h2><%= allOk ? `โพสต์สำเร็จทุก${unit}! 🎉` : `สำเร็จ ${sc} จาก ${total} ${unit}` %></h2>
+        <h2><%= allOk ? 'โพสต์สำเร็จทุกเพจ! 🎉' : `สำเร็จ ${sc} จาก ${total} เพจ` %></h2>
         <p><%= new Date(post.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) %></p>
       </div>
       <div class="summary-pills">
@@ -104,11 +97,7 @@
       <% } %>
 
       <div class="fb-post-footer">
-        <% if (isGroupOnly) { %>
-        <span><i class="fa-solid fa-people-group" style="color:#42b72a"></i> <%= total %> กลุ่มได้รับโพสต์</span>
-        <% } else { %>
         <span><i class="fa-solid fa-layer-group" style="color:#1877f2"></i> <%= total %> เพจได้รับโพสต์</span>
-        <% } %>
         <span class="pill pill-<%= allOk ? 'success' : 'fail' %>" style="font-size:.8rem">
           <%= allOk ? 'สำเร็จทั้งหมด' : `สำเร็จ ${sc}/${total}` %>
         </span>
@@ -118,14 +107,13 @@
     <% const colors = ['purple','green','orange','blue','red']; %>
     <% const SHOW = 5; %>
 
-    <!-- Per-page results (hide when group-only post) -->
-    <% if (!isGroupOnly) { %>
+    <!-- Per-page results -->
     <div class="card">
       <div class="card-title" style="margin-bottom:1rem">
         <i class="fa-solid fa-layer-group"></i> ผลลัพธ์แต่ละเพจ
-        <span style="margin-left:auto;font-size:.8rem;font-weight:400;color:#65676b"><%= pageResults.length %> เพจ</span>
+        <span style="margin-left:auto;font-size:.8rem;font-weight:400;color:#65676b"><%= post.results.length %> เพจ</span>
       </div>
-      <% pageResults.forEach((r, i) => { %>
+      <% post.results.forEach((r, i) => { %>
       <div class="result-row<%= i >= SHOW ? ' result-row-hidden' : '' %>" style="<%= i >= SHOW ? 'display:none' : '' %>">
         <div class="avatar avatar-<%= colors[i % colors.length] %> avatar-sm"><%= r.pageName.slice(-1) %></div>
         <div class="result-info">
@@ -137,15 +125,6 @@
         </div>
         <div style="display:flex;align-items:center;gap:.5rem">
           <% if (r.status === 'success' && r.postUrl) { %>
-          <button onclick="copyLink('<%= r.postUrl %>')"
-            style="font-size:.78rem;color:#65676b;background:#f0f2f5;border:none;border-radius:6px;padding:.25rem .6rem;cursor:pointer;display:flex;align-items:center;gap:.25rem;font-family:inherit"
-            title="คัดลอกลิ้ง">
-            <i class="fa-solid fa-copy"></i> คัดลอก
-          </button>
-          <a href="/share-post?url=<%= encodeURIComponent(r.postUrl) %>"
-             style="font-size:.78rem;color:#fff;background:#1877f2;border-radius:6px;padding:.25rem .6rem;text-decoration:none;display:flex;align-items:center;gap:.25rem;font-weight:600">
-            <i class="fa-solid fa-share-nodes"></i> แชร์กลุ่ม
-          </a>
           <a href="<%= r.postUrl %>" target="_blank" rel="noopener"
              style="font-size:.8rem;color:#1877f2;text-decoration:none;display:flex;align-items:center;gap:.25rem">
             <i class="fa-brands fa-facebook"></i> ดูโพสต์
@@ -158,138 +137,17 @@
         </div>
       </div>
       <% }); %>
-      <% if (pageResults.length > SHOW) { %>
+      <% if (post.results.length > SHOW) { %>
       <button id="showMoreResults" class="show-more-btn" onclick="toggleResultRows(this)">
-        <i class="fa-solid fa-chevron-down"></i> ดูเพิ่มเติม <%= pageResults.length - SHOW %> เพจ
+        <i class="fa-solid fa-chevron-down"></i> ดูเพิ่มเติม <%= post.results.length - SHOW %> เพจ
       </button>
       <% } %>
     </div>
-    <% } %>
 
-    <!-- Group results (all — success + failed with errors) -->
-    <% if (groupResults.length > 0) { %>
-    <div class="card">
-      <div class="card-title" style="margin-bottom:1rem">
-        <i class="fa-solid fa-people-group" style="color:#42b72a"></i> ผลลัพธ์แต่ละกลุ่ม
-        <span style="margin-left:auto;font-size:.8rem;font-weight:400;color:#65676b"><%= groupResults.length %> กลุ่ม</span>
-      </div>
-      <% groupResults.forEach((r, i) => { %>
-      <div class="result-row<%= i >= SHOW ? ' result-row-hidden' : '' %>" style="<%= i >= SHOW ? 'display:none' : '' %>">
-        <div class="avatar avatar-green avatar-sm"><i class="fa-solid fa-people-group" style="font-size:.65rem"></i></div>
-        <div class="result-info">
-          <div class="result-page-name"><%= r.pageName %></div>
-          <div class="result-time">
-            <i class="fa-regular fa-clock"></i> <%= new Date(r.timestamp).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) %>
-            <% if (r.error) { %>&nbsp;·&nbsp;<span style="color:#c62828;font-size:.78rem"><%= r.error %></span><% } %>
-          </div>
-        </div>
-        <div style="display:flex;align-items:center;gap:.5rem">
-          <% if (r.status === 'success') { %>
-          <a href="<%= r.postUrl %>" target="_blank" rel="noopener"
-             style="font-size:.8rem;color:#1877f2;text-decoration:none;display:flex;align-items:center;gap:.25rem">
-            <i class="fa-solid fa-people-group"></i> ดูกลุ่ม
-          </a>
-          <% } %>
-          <span class="status-badge <%= r.status %>">
-            <% if (r.status === 'success') { %><i class="fa-solid fa-circle-check"></i> สำเร็จ
-            <% } else { %><i class="fa-solid fa-circle-xmark"></i> ล้มเหลว<% } %>
-          </span>
-        </div>
-      </div>
-      <% }); %>
-      <% if (groupResults.length > SHOW) { %>
-      <button class="show-more-btn" onclick="toggleResultRows(this)">
-        <i class="fa-solid fa-chevron-down"></i> ดูเพิ่มเติม <%= groupResults.length - SHOW %> กลุ่ม
-      </button>
-      <% } %>
-    </div>
-    <% } %>
-
-    <!-- ── YADEEP-style Share to Groups wizard ── -->
-    <% const shareGroups = post.shareGroups || []; %>
-    <% if (shareGroups.length > 0 && successPagePosts.length > 0) { %>
-    <div class="card" style="border-top:3px solid #42b72a">
-
-      <!-- Step 2 header -->
-      <div style="display:flex;align-items:center;gap:.65rem;margin-bottom:.9rem">
-        <div style="width:28px;height:28px;background:#42b72a;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-          <span style="color:#fff;font-weight:700;font-size:.82rem">2</span>
-        </div>
-        <div>
-          <div style="font-weight:700;font-size:.95rem;color:#1c1e21">แชร์โพสต์ไปยังกลุ่ม</div>
-          <div style="font-size:.75rem;color:#65676b">กดปุ่ม "เปิดกลุ่ม" — URL จะคัดลอกอัตโนมัติ วางแล้ว Post ในกลุ่มได้เลย</div>
-        </div>
-        <span style="margin-left:auto;background:#e8f5e9;color:#2e7d32;border-radius:999px;font-size:.75rem;padding:.15rem .55rem;font-weight:700"><%= shareGroups.length %> กลุ่ม</span>
-      </div>
-
-      <!-- Source post URL (switchable if multiple pages succeeded) -->
-      <% if (successPagePosts.length > 1) { %>
-      <div style="display:flex;gap:.35rem;flex-wrap:wrap;align-items:center;margin-bottom:.55rem">
-        <span style="font-size:.78rem;color:#65676b;flex-shrink:0">โพสต์จากเพจ:</span>
-        <% successPagePosts.forEach((r, i) => { %>
-        <button onclick="switchSourcePost('<%- r.postUrl.replace(/'/g,"\\'") %>',this)" data-url="<%- r.postUrl %>"
-          style="border:1.5px solid <%= i===0 ? '#42b72a' : '#e4e6eb' %>;background:<%= i===0 ? '#e8f5e9' : '#fff' %>;color:<%= i===0 ? '#2e7d32' : '#65676b' %>;border-radius:999px;padding:.22rem .65rem;font-size:.76rem;cursor:pointer;font-family:inherit;font-weight:<%= i===0 ? '700' : '400' %>">
-          <%= r.pageName %>
-        </button>
-        <% }); %>
-      </div>
-      <% } %>
-
-      <!-- URL display + copy button -->
-      <div style="display:flex;align-items:center;gap:.5rem;background:#f0f9f0;border:1.5px solid #c8e6c9;border-radius:8px;padding:.5rem .75rem;margin-bottom:.9rem;flex-wrap:wrap">
-        <i class="fa-solid fa-link" style="color:#42b72a;font-size:.8rem;flex-shrink:0"></i>
-        <span id="srcUrlDisplay" style="font-size:.76rem;color:#2e7d32;flex:1;word-break:break-all;min-width:0;font-weight:500"><%- successPagePosts[0].postUrl %></span>
-        <button onclick="copyLink()" id="copyBtn"
-          style="background:#42b72a;color:#fff;border:none;border-radius:6px;padding:.32rem .8rem;font-size:.76rem;cursor:pointer;font-family:inherit;font-weight:700;flex-shrink:0;display:flex;align-items:center;gap:.3rem">
-          <i class="fa-solid fa-copy"></i> คัดลอก URL
-        </button>
-      </div>
-
-      <!-- Group list -->
-      <div id="groupShareList">
-      <% shareGroups.forEach((g, i) => { %>
-      <div id="gsr-<%= g.groupId %>" style="display:flex;align-items:center;gap:.6rem;padding:.55rem 0;<%= i < shareGroups.length-1 ? 'border-bottom:1px solid #f0f2f5' : '' %>">
-        <div style="width:34px;height:34px;background:#e8f5e9;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-          <i class="fa-solid fa-people-group" style="color:#2e7d32;font-size:.78rem"></i>
-        </div>
-        <div style="flex:1;min-width:0">
-          <div style="font-weight:600;font-size:.88rem;color:#1c1e21"><%= g.groupName %></div>
-          <div id="gsr-status-<%= g.groupId %>" style="font-size:.72rem;color:#8a8d91">รอแชร์</div>
-        </div>
-        <button onclick="openGroupAndShare('<%= g.groupId %>','<%= g.groupName.replace(/'/g,"\\'") %>')"
-          id="gsr-btn-<%= g.groupId %>"
-          style="background:#42b72a;color:#fff;border:none;border-radius:8px;padding:.42rem 1rem;font-size:.82rem;cursor:pointer;font-family:inherit;font-weight:700;display:flex;align-items:center;gap:.35rem;flex-shrink:0;transition:background .15s">
-          <i class="fa-solid fa-arrow-up-right-from-square"></i> เปิดกลุ่ม
-        </button>
-      </div>
-      <% }); %>
-      </div>
-
-      <!-- Open all at once -->
-      <% if (shareGroups.length > 1) { %>
-      <button onclick="openAllGroups()" id="openAllBtn"
-        style="margin-top:.75rem;width:100%;background:#1c1e21;color:#fff;border:none;border-radius:10px;padding:.62rem;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:.5rem">
-        <i class="fa-solid fa-layer-group"></i> เปิดทุกกลุ่มพร้อมกัน (<%= shareGroups.length %> แท็บ)
-      </button>
-      <% } %>
-
-      <div style="margin-top:.7rem;padding-top:.6rem;border-top:1px solid #f0f2f5;font-size:.75rem;color:#8a8d91">
-        กด <strong style="color:#1c1e21">เปิดกลุ่ม</strong> → URL คัดลอกอัตโนมัติ → วางในช่องโพสต์ของกลุ่ม → กด <strong style="color:#1c1e21">Post</strong>
-      </div>
-    </div>
-    <% } %>
-
-    <div style="text-align:center;margin-top:1rem;display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap">
+    <div style="text-align:center;margin-top:1rem;display:flex;gap:.75rem;justify-content:center">
       <a href="/" class="btn-post" style="text-decoration:none">
         <i class="fa-solid fa-paper-plane"></i> โพสต์อีกครั้ง
       </a>
-      <% const firstSuccessUrl = post.results.find(r => r.status === 'success' && r.postUrl)?.postUrl; %>
-      <% if (firstSuccessUrl) { %>
-      <a href="/share-post?url=<%= encodeURIComponent(firstSuccessUrl) %>" class="btn-post"
-         style="text-decoration:none;background:#42b72a">
-        <i class="fa-solid fa-share-nodes"></i> แชร์ลงกลุ่ม
-      </a>
-      <% } %>
       <a href="/history" class="btn-post" style="text-decoration:none;background:#65676b">
         <i class="fa-solid fa-clock-rotate-left"></i> ดูประวัติ
       </a>
@@ -309,88 +167,8 @@
 </div>
 
 <script>
-  const successCount = <%- sc %>;
-  const failCount    = <%- fc %>;
-  const total        = <%- total %>;
-
-  let _srcUrl = '<%- (successPagePosts[0]?.postUrl || "").replace(/'/g, "\\'") %>';
-
   function viewImage(src) {
     Swal.fire({ imageUrl: src, imageAlt: 'รูปภาพ', showConfirmButton: false, showCloseButton: true, width: 'auto' });
-  }
-
-  /* ── Copy URL (per-row button) ── */
-  function copyLink(url) {
-    const u = url || _srcUrl;
-    if (!u) return;
-    if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(u).then(() => {
-        Swal.fire({ icon: 'success', title: 'คัดลอกลิ้งแล้ว!', timer: 1200, showConfirmButton: false });
-      }).catch(() => fallbackCopy(u));
-    } else {
-      fallbackCopy(u);
-    }
-  }
-
-  function fallbackCopy(text, cb) {
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
-    document.body.appendChild(ta);
-    ta.focus(); ta.select();
-    try { document.execCommand('copy'); cb && cb(); } catch {}
-    document.body.removeChild(ta);
-  }
-
-  /* ── Switch source post ── */
-  function switchSourcePost(url, btn) {
-    _srcUrl = url;
-    const el = document.getElementById('srcUrlDisplay');
-    if (el) el.textContent = url;
-    document.querySelectorAll('[data-url]').forEach(b => {
-      const active = b === btn;
-      b.style.borderColor = active ? '#42b72a' : '#e4e6eb';
-      b.style.background  = active ? '#e8f5e9' : '#fff';
-      b.style.color       = active ? '#2e7d32' : '#65676b';
-      b.style.fontWeight  = active ? '700'     : '400';
-    });
-  }
-
-  /* ── YADEEP-style: open group tab + auto-copy URL ── */
-  const _visitedGroups = new Set();
-
-  function openGroupAndShare(groupId, groupName) {
-    if (!_srcUrl) {
-      Swal.fire({ icon: 'warning', title: 'ยังไม่มี URL โพสต์', text: 'โพสต์ไปยังเพจก่อน', confirmButtonColor: '#42b72a' });
-      return;
-    }
-    const doCopy = () => {
-      if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(_srcUrl).catch(() => fallbackCopy(_srcUrl));
-      } else {
-        fallbackCopy(_srcUrl);
-      }
-    };
-    doCopy();
-    window.open(`https://www.facebook.com/groups/${groupId}`, '_blank', 'noopener');
-    _visitedGroups.add(groupId);
-    const status = document.getElementById(`gsr-status-${groupId}`);
-    const gbtn   = document.getElementById(`gsr-btn-${groupId}`);
-    if (status) { status.innerHTML = '<i class="fa-solid fa-circle-check" style="color:#42b72a"></i> เปิดแล้ว — วาง URL แล้วกด Post'; status.style.color = '#2e7d32'; }
-    if (gbtn)   { gbtn.style.background = '#8a8d91'; gbtn.innerHTML = '<i class="fa-solid fa-check"></i> เปิดแล้ว'; }
-    Swal.fire({
-      icon: 'success', title: 'คัดลอก URL แล้ว',
-      html: `เปิดกลุ่ม <strong>${groupName}</strong> แล้ว<br>วาง URL ในช่องโพสต์ แล้วกด <strong>Post</strong>`,
-      timer: 3000, showConfirmButton: false, position: 'bottom-end', toast: true,
-    });
-  }
-
-  function openAllGroups() {
-    if (!_srcUrl) return;
-    const btns = document.querySelectorAll('[id^="gsr-btn-"]');
-    btns.forEach((btn, i) => {
-      setTimeout(() => btn.click(), i * 600);
-    });
   }
 
   function toggleResultRows(btn) {

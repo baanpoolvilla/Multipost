@@ -1,6 +1,6 @@
 const fs   = require('fs');
 const path = require('path');
-const { sendToPages, sendToGroups, fetchPagesFromToken, refreshPostAnalytics, fetchPageGroups, shareToGroup } = require('../services/facebookService');
+const { sendToPages, fetchPagesFromToken, refreshPostAnalytics, fetchPageGroups } = require('../services/facebookService');
 const postStore     = require('../services/postStore');
 const pageStore     = require('../services/pageStore');
 const settingsStore = require('../services/settingsStore');
@@ -10,51 +10,6 @@ const templateStore = require('../services/templateStore');
 exports.showDashboard = async (req, res) => {
     const [pages, posts] = await Promise.all([pageStore.load(), postStore.load()]);
     res.render('dashboard', { pages, recentPosts: posts.slice(0, 5) });
-};
-
-// ── Group Post page ────────────────────────────
-exports.showGroupPost = async (req, res) => {
-    const pages = await pageStore.load();
-    res.render('grouppost', { pages });
-};
-
-exports.sendGroupsOnly = async (req, res) => {
-    const { message, feelingEmoji, feelingLabel, location } = req.body;
-    const uploadedImages = (req.files || []).map(f => f.filename);
-    const tplImages      = req.body.templateImages ? [].concat(req.body.templateImages) : [];
-    const images         = [...uploadedImages, ...tplImages];
-
-    if (!message || !message.trim())
-        return res.status(400).json({ error: 'กรุณากรอกข้อความ' });
-
-    let groupIds  = req.body.selectedGroups;
-    const groupPageId = req.body.selectedGroupPage;
-    if (groupIds) groupIds = [].concat(groupIds);
-
-    if (!groupIds || !groupIds.length || !groupPageId)
-        return res.status(400).json({ error: 'กรุณาเลือกกลุ่มอย่างน้อย 1 กลุ่ม' });
-
-    const [pages, cfg] = await Promise.all([pageStore.load(), settingsStore.load()]);
-    const page  = pages.find(p => p.pageId === groupPageId);
-    if (!page) return res.status(404).json({ error: 'ไม่พบเพจ' });
-
-    const token = cfg.groupToken || page.accessToken;
-    const groupMap = groupIds.map(gId => {
-        const group = (page.groups || []).find(g => g.groupId === gId);
-        return { groupId: gId, groupName: group?.groupName || gId, pageId: page.pageId, accessToken: token };
-    });
-
-    const feeling = feelingEmoji ? { emoji: feelingEmoji, label: feelingLabel } : null;
-    const results = await sendToGroups(message.trim(), groupMap, images);
-    const successCount = results.filter(r => r.status === 'success').length;
-
-    const post = await postStore.create({
-        message: message.trim(), feeling,
-        location: location || null, images, results,
-        successCount, failCount: results.length - successCount,
-    });
-
-    res.json({ id: post.id });
 };
 
 // ── Send post ──────────────────────────────────
@@ -70,24 +25,14 @@ exports.sendPost = async (req, res) => {
     let pageIds = req.body.selectedPages;
     if (pageIds) pageIds = [].concat(pageIds);
 
-    let groupIds     = req.body.selectedGroups;
-    const groupPageId = req.body.selectedGroupPage;
-    if (groupIds) groupIds = [].concat(groupIds);
-
     const feeling = feelingEmoji ? { emoji: feelingEmoji, label: feelingLabel } : null;
     const results = await sendToPages(message.trim(), pageIds || null, images);
     const successCount = results.filter(r => r.status === 'success').length;
-
-    let shareGroups = [];
-    if (req.body.shareGroups) {
-        try { shareGroups = JSON.parse(req.body.shareGroups); } catch {}
-    }
 
     const post = await postStore.create({
         message: message.trim(), feeling,
         location: location || null, images, results,
         successCount, failCount: results.length - successCount,
-        shareGroups,
     });
 
     res.json({ id: post.id });
@@ -406,30 +351,6 @@ exports.toggleGroup = async (req, res) => {
     const { enabled } = req.body;
     const result = await pageStore.toggleGroup(pageId, groupId, enabled);
     res.json({ ok: true, groups: result?.groups || [] });
-};
-
-// ── Share post to groups ───────────────────────
-exports.showSharePost = async (req, res) => {
-    const pages = await pageStore.load();
-    const url = req.query.url || '';
-    res.render('share-post', { pages, url });
-};
-
-exports.shareToGroupHandler = async (req, res) => {
-    const { postUrl, message, groupId, pageId } = req.body;
-    if (!postUrl || !groupId || !pageId)
-        return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
-    const [pages, cfg] = await Promise.all([pageStore.load(), settingsStore.load()]);
-    const page  = pages.find(p => p.pageId === pageId);
-    if (!page) return res.status(404).json({ error: 'ไม่พบเพจ' });
-    const token = cfg.groupToken || page.accessToken;
-    if (!token) return res.status(400).json({ error: 'ไม่มี Token สำหรับโพสต์กลุ่ม' });
-    try {
-        const id = await shareToGroup(groupId, token, postUrl, message);
-        res.json({ ok: true, id });
-    } catch (err) {
-        res.status(400).json({ error: err.message });
-    }
 };
 
 // ── Page management ────────────────────────────

@@ -131,50 +131,6 @@ async function refreshPostAnalytics(fbPostId, accessToken) {
     };
 }
 
-async function sendToGroups(message, groupMap, images = []) {
-    const results = [];
-    for (const { groupId, groupName, pageId, accessToken } of groupMap) {
-        const timestamp = new Date().toISOString();
-        try {
-            if (!accessToken) throw new Error('ไม่มี Access Token');
-            const params = new URLSearchParams({ message, access_token: accessToken });
-            if (images.length > 0) {
-                const photoIds = [];
-                for (const filename of images) {
-                    try {
-                        // Upload photo directly to the group (not the page) using user token
-                        const id = await uploadPhoto(groupId, accessToken, filename);
-                        if (id) photoIds.push(id);
-                    } catch (e) {
-                        console.warn('[sendToGroups] image skip:', filename, e.message);
-                    }
-                }
-                if (photoIds.length > 0)
-                    params.set('attached_media', JSON.stringify(photoIds.map(id => ({ media_fbid: id }))));
-            }
-            const res  = await fetch(`${FB_API}/${groupId}/feed`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: params,
-            });
-            const data = await res.json();
-            if (data.error) throw new Error(data.error.message);
-            results.push({
-                timestamp, pageId, pageName: groupName, groupId, type: 'group',
-                message, status: 'success', fbPostId: data.id,
-                postUrl: `https://www.facebook.com/groups/${groupId}`,
-                analytics: null,
-            });
-        } catch (err) {
-            results.push({
-                timestamp, pageId, pageName: groupName, groupId, type: 'group',
-                message, status: 'failed', error: err.message, analytics: null,
-            });
-        }
-    }
-    return results;
-}
-
 async function fetchPageGroups(pageId, accessToken) {
     // Try /me/groups with the page token (works if token has groups_access_member_info)
     const url  = `${FB_API}/me/groups?fields=id,name&access_token=${encodeURIComponent(accessToken)}`;
@@ -190,20 +146,4 @@ async function fetchPageGroups(pageId, accessToken) {
     return { groups: (data.data || []).map(g => ({ groupId: g.id, groupName: g.name })), notSupported: false };
 }
 
-async function shareToGroup(groupId, accessToken, postUrl, message) {
-    // Facebook API no longer supports `link` param for groups — embed URL in message instead
-    const text = message && message.trim()
-        ? `${message.trim()}\n\n${postUrl}`
-        : postUrl;
-    const params = new URLSearchParams({ message: text, access_token: accessToken });
-    const res = await fetch(`${FB_API}/${groupId}/feed`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: params,
-    });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error.message);
-    return data.id;
-}
-
-module.exports = { sendToPages, sendToGroups, fetchPagesFromToken, refreshPostAnalytics, fetchPageGroups, shareToGroup };
+module.exports = { sendToPages, fetchPagesFromToken, refreshPostAnalytics, fetchPageGroups };

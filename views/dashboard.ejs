@@ -29,11 +29,9 @@
   <!-- Sidebar -->
   <aside class="sidebar">
     <a href="/" class="sidebar-item active"><i class="fa-solid fa-house"></i><span>หน้าหลัก</span></a>
-    <a href="/group-post" class="sidebar-item"><i class="fa-solid fa-people-group"></i><span>โพสต์กลุ่ม</span></a>
     <a href="/overview" class="sidebar-item"><i class="fa-solid fa-chart-line"></i><span>ภาพรวม</span></a>
     <a href="/history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพสต์</span></a>
     <a href="/pages" class="sidebar-item"><i class="fa-brands fa-facebook"></i><span>จัดการเพจ</span></a>
-    <a href="/share-post" class="sidebar-item"><i class="fa-solid fa-share-nodes"></i><span>แชร์โพสลงกลุ่ม</span></a>
 
     <div class="sidebar-divider"></div>
     <div class="sidebar-label">เพจของคุณ</div>
@@ -127,27 +125,6 @@
         </button>
         <% } %>
       </div>
-
-      <!-- Share-to-groups selector: all groups from all pages, shown directly -->
-      <%
-        const allEnabledGroups = [];
-        pages.forEach(p => (p.groups||[]).filter(g => g.enabled!==false).forEach(g => {
-          allEnabledGroups.push({ groupId: g.groupId, groupName: g.groupName, pageId: p.pageId });
-        }));
-      %>
-      <% if (allEnabledGroups.length > 0) { %>
-      <div class="page-selector" style="border-top:1px dashed #e4e6eb;padding-top:.5rem">
-        <span class="page-selector-label"><i class="fa-solid fa-people-group" style="color:#42b72a"></i> กลุ่ม:</span>
-        <% allEnabledGroups.forEach(g => { %>
-        <button class="page-sel-chip share-group-chip"
-          data-group-id="<%= g.groupId %>" data-group-name="<%= g.groupName.replace(/"/g,'&quot;') %>"
-          onclick="toggleShareGroupChip(this)">
-          <i class="fa-solid fa-people-group" style="font-size:.6rem;color:#42b72a;flex-shrink:0"></i>
-          <%= g.groupName %>
-        </button>
-        <% }); %>
-      </div>
-      <% } %>
 
       <!-- Template image previews (loaded from template) -->
       <div id="tplImagePreview" class="image-preview-grid" style="display:none"></div>
