@@ -599,14 +599,14 @@ function onStFileChange(inp) {
 }
 
 /* ── Edit template ── */
-let _tplKeepImages  = [];   // existing image filenames to keep
-let _tplEditNewFiles = [];  // new files picked in edit dialog
+let _etKeep = [];   // existing filenames to keep
+let _etNew  = [];   // new File objects picked in edit dialog
 
 async function openEditTpl(id) {
   const t = _templates.find(t => t.id === id);
   if (!t) return;
-  _tplKeepImages   = [...(t.images || [])];
-  _tplEditNewFiles = [];
+  _etKeep = [...(t.images || [])];
+  _etNew  = [];
 
   const { value } = await Swal.fire({
     title: '<i class="fa-solid fa-pen" style="color:#1877f2"></i> แก้ไขโพสต์',
@@ -620,14 +620,12 @@ async function openEditTpl(id) {
           style="width:100%;padding:.48rem .75rem;border:1.5px solid #dbe0e6;border-radius:8px;font-family:inherit;font-size:.84rem;outline:none;box-sizing:border-box">
         <label style="font-size:.82rem;color:#65676b;display:block;margin:.55rem 0 .3rem">รูปภาพ (สูงสุด 10 รูป):</label>
         <div id="etImgPrev" style="display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.4rem"></div>
-        <div onclick="document.getElementById('etFileInp').click()"
-          style="border:2px dashed #dbe0e6;border-radius:8px;padding:.6rem;text-align:center;cursor:pointer;color:#8a8d91;font-size:.8rem;transition:border-color .15s"
-          onmouseover="this.style.borderColor='#1877f2'" onmouseout="this.style.borderColor='#dbe0e6'">
+        <input type="file" id="etFileInp" multiple accept="image/*" style="display:none">
+        <div id="etAddBtn"
+          style="border:2px dashed #dbe0e6;border-radius:8px;padding:.6rem;text-align:center;cursor:pointer;color:#8a8d91;font-size:.8rem">
           <i class="fa-solid fa-cloud-arrow-up" style="font-size:1.1rem;display:block;margin-bottom:.2rem"></i>
           คลิกเพื่อเพิ่มรูปภาพ
         </div>
-        <input type="file" id="etFileInp" multiple accept="image/*" style="display:none"
-          onchange="onEtFileChange(this)">
       </div>`,
     showCancelButton: true,
     confirmButtonColor: '#1877f2',
@@ -635,7 +633,21 @@ async function openEditTpl(id) {
     cancelButtonText: 'ยกเลิก',
     width: 480,
     focusConfirm: false,
-    didOpen: () => renderEtImgs(),
+    didOpen: () => {
+      _etRender();
+      const fileInp = document.getElementById('etFileInp');
+      const addBtn  = document.getElementById('etAddBtn');
+      addBtn.addEventListener('click', () => fileInp.click());
+      addBtn.addEventListener('mouseover', () => addBtn.style.borderColor = '#1877f2');
+      addBtn.addEventListener('mouseout',  () => addBtn.style.borderColor = '#dbe0e6');
+      fileInp.addEventListener('change', function() {
+        Array.from(this.files).forEach(f => {
+          if (_etKeep.length + _etNew.length < 10) _etNew.push(f);
+        });
+        this.value = '';
+        _etRender();
+      });
+    },
     preConfirm: () => {
       const msg = document.getElementById('etMsg')?.value.trim();
       if (!msg) { Swal.showValidationMessage('กรุณากรอกข้อความ'); return false; }
@@ -643,56 +655,52 @@ async function openEditTpl(id) {
     },
   });
 
-  if (!value) { _tplKeepImages = []; _tplEditNewFiles = []; openTemplateModal(); return; }
+  if (!value) { _etKeep = []; _etNew = []; openTemplateModal(); return; }
 
   const fd = new FormData();
   fd.append('message', value.message);
   fd.append('name',    value.name);
-  _tplKeepImages.forEach(n => fd.append('keepImages', n));
-  _tplEditNewFiles.forEach(f => fd.append('images', f));
-  _tplKeepImages   = [];
-  _tplEditNewFiles = [];
+  _etKeep.forEach(n => fd.append('keepImages', n));
+  _etNew.forEach(f  => fd.append('images', f));
+  _etKeep = []; _etNew = [];
 
   const res  = await fetch(`/api/templates/${id}`, { method: 'PUT', body: fd });
   const data = await res.json();
   if (data.ok) {
     const idx = _templates.findIndex(x => x.id === id);
-    if (idx >= 0) _templates[idx] = { ..._templates[idx], ...data.template };
+    if (idx >= 0) _templates[idx] = data.template;
     openTemplateModal();
   }
 }
 
-function renderEtImgs() {
+function _etRender() {
   const el = document.getElementById('etImgPrev');
   if (!el) return;
-  const keepHtml = _tplKeepImages.map((name, i) => `
-    <div style="position:relative">
+  const keepHtml = _etKeep.map((name, i) => `
+    <div style="position:relative" id="etk-${i}">
       <img src="/uploads/${name}" style="width:54px;height:54px;object-fit:cover;border-radius:6px"
-           onerror="etRemoveKeep(${i})">
-      <button onclick="etRemoveKeep(${i})" type="button"
-        style="position:absolute;top:-4px;right:-4px;background:#c62828;color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:.55rem;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">
-        <i class="fa-solid fa-xmark"></i>
+           onerror="document.getElementById('etk-${i}').remove();_etKeep.splice(${i},1)">
+      <button data-ki="${i}" type="button"
+        style="position:absolute;top:-4px;right:-4px;background:#c62828;color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:.55rem;cursor:pointer;padding:0">
+        ×
       </button>
     </div>`).join('');
-  const newHtml = _tplEditNewFiles.map((f, i) => `
-    <div style="position:relative">
+  const newHtml = _etNew.map((f, i) => `
+    <div style="position:relative" id="etn-${i}">
       <img src="${URL.createObjectURL(f)}" style="width:54px;height:54px;object-fit:cover;border-radius:6px">
-      <button onclick="_tplEditNewFiles.splice(${i},1);renderEtImgs()" type="button"
-        style="position:absolute;top:-4px;right:-4px;background:#c62828;color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:.55rem;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">
-        <i class="fa-solid fa-xmark"></i>
+      <button data-ni="${i}" type="button"
+        style="position:absolute;top:-4px;right:-4px;background:#c62828;color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:.55rem;cursor:pointer;padding:0">
+        ×
       </button>
     </div>`).join('');
   el.innerHTML = keepHtml + newHtml;
-}
-
-function etRemoveKeep(i) { _tplKeepImages.splice(i, 1); renderEtImgs(); }
-
-function onEtFileChange(inp) {
-  Array.from(inp.files).forEach(f => {
-    if (_tplKeepImages.length + _tplEditNewFiles.length < 10) _tplEditNewFiles.push(f);
+  // attach remove handlers after render
+  el.querySelectorAll('[data-ki]').forEach(btn => {
+    btn.addEventListener('click', () => { _etKeep.splice(+btn.dataset.ki, 1); _etRender(); });
   });
-  inp.value = '';
-  renderEtImgs();
+  el.querySelectorAll('[data-ni]').forEach(btn => {
+    btn.addEventListener('click', () => { _etNew.splice(+btn.dataset.ni, 1); _etRender(); });
+  });
 }
 
 /* ── Delete template ── */
