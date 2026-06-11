@@ -36,9 +36,33 @@
 
   <main class="feed">
 
-    <div class="card" style="padding:.85rem 1.25rem">
-      <div class="card-title" style="font-size:1.05rem">
-        <i class="fa-solid fa-robot"></i> Desktop Agent
+    <!-- Download card -->
+    <div class="card" style="padding:1.25rem 1.5rem">
+      <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+        <div style="flex:1;min-width:200px">
+          <div style="font-size:1rem;font-weight:700;color:var(--text-primary);margin-bottom:.35rem">
+            <i class="fa-solid fa-robot" style="color:#1877f2"></i> MultiPost Desktop Agent
+            <span style="font-size:.75rem;font-weight:500;color:var(--text-secondary);margin-left:.4rem">v2.0.0</span>
+          </div>
+          <div style="font-size:.83rem;color:var(--text-secondary);line-height:1.55">
+            โปรแกรมสำหรับโพสต์ Facebook กลุ่ม — ติดตั้งบนเครื่อง Windows ของคุณ<br>
+            <span style="color:#f7b928"><i class="fa-solid fa-triangle-exclamation" style="font-size:.75rem"></i> ต้องมี <strong><a href="https://nodejs.org" target="_blank" style="color:#f7b928">Node.js LTS</a></strong> ก่อนติดตั้ง</span>
+          </div>
+        </div>
+        <a href="/downloads/agent.zip" download="multipost-agent.zip"
+           style="display:inline-flex;align-items:center;gap:.5rem;background:#1877f2;color:#fff;padding:.65rem 1.4rem;border-radius:8px;font-weight:700;font-size:.92rem;text-decoration:none;white-space:nowrap;flex-shrink:0"
+           onmouseover="this.style.background='#1461c8'" onmouseout="this.style.background='#1877f2'">
+          <i class="fa-solid fa-download"></i> ดาวน์โหลด Agent
+        </a>
+      </div>
+
+      <hr style="border:none;border-top:1px solid #e4e6eb;margin:.9rem 0">
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.5rem .75rem;font-size:.82rem;color:var(--text-secondary)">
+        <div><span style="color:#42b72a;font-weight:700">① </span>แตกไฟล์ zip</div>
+        <div><span style="color:#42b72a;font-weight:700">② </span>ดับเบิลคลิก <code>ติดตั้ง.bat</code> (ครั้งแรกเท่านั้น)</div>
+        <div><span style="color:#42b72a;font-weight:700">③ </span>ดับเบิลคลิก <code>เปิด Agent.bat</code></div>
+        <div><span style="color:#42b72a;font-weight:700">④ </span>ไปที่แท็บ Accounts → Login</div>
       </div>
     </div>
 
