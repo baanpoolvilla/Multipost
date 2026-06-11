@@ -371,11 +371,20 @@ function renderTplImagePreviews() {
   el.style.display = 'grid';
   el.innerHTML = _tplLoadedImages.map((name, i) => `
     <div class="img-thumb">
-      <img src="/uploads/${name}" alt="">
+      <img src="/uploads/${name}" alt=""
+           onerror="tplImgBroken('${name}', this)">
       <button class="img-thumb-remove" type="button" onclick="removeTplImage(${i})">
         <i class="fa-solid fa-xmark"></i>
       </button>
     </div>`).join('');
+}
+
+function tplImgBroken(name, img) {
+  _tplLoadedImages = _tplLoadedImages.filter(n => n !== name);
+  const thumb = img.closest('.img-thumb');
+  if (thumb) thumb.remove();
+  const el = document.getElementById('tplImagePreview');
+  if (el && !el.querySelector('.img-thumb')) el.style.display = 'none';
 }
 
 function removeTplImage(idx) { _tplLoadedImages.splice(idx, 1); renderTplImagePreviews(); }
@@ -459,7 +468,7 @@ function renderTplCard(t, num) {
   const imgs = (t.images || []);
   const imgHtml = imgs.length ? `
     <div style="display:flex;gap:3px;margin-top:.45rem;flex-wrap:wrap">
-      ${imgs.slice(0, 4).map(img => `<img src="/uploads/${img}" style="width:42px;height:42px;object-fit:cover;border-radius:5px;flex-shrink:0">`).join('')}
+      ${imgs.slice(0, 4).map(img => `<img src="/uploads/${img}" style="width:42px;height:42px;object-fit:cover;border-radius:5px;flex-shrink:0" onerror="this.style.display='none'">`).join('')}
       ${imgs.length > 4 ? `<div style="width:42px;height:42px;background:#e4e6eb;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:.7rem;color:#65676b">+${imgs.length-4}</div>` : ''}
     </div>` : '';
 

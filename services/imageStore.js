@@ -56,9 +56,18 @@ async function getBuffer(filename) {
     return null;
 }
 
+async function exists(filename) {
+    try {
+        await connect();
+        const count = await Image.countDocuments({ _id: filename });
+        if (count > 0) return true;
+    } catch {}
+    return fs.existsSync(path.join(UPLOADS_DIR, filename));
+}
+
 async function remove(filename) {
     try { await connect(); await Image.findByIdAndDelete(filename); } catch {}
     try { fs.unlinkSync(path.join(UPLOADS_DIR, filename)); } catch {}
 }
 
-module.exports = { save, getBuffer, remove };
+module.exports = { save, getBuffer, exists, remove };
