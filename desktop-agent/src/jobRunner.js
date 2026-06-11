@@ -1,3 +1,6 @@
+const fs         = require('fs');
+const imgStore   = require('./agentImageStore');
+
 let _store   = null;
 let _bot     = null;
 let _accounts = null;
@@ -79,6 +82,25 @@ async function processJob(job) {
         sharedPageId = result?.pageId || null;
     }
 
+    // Download images from MongoDB to temp files (filenames → absolute paths)
+    let tempImagePaths = [];
+    const rawImages = job.images || [];
+    if (rawImages.length > 0) {
+        log(`📥 โหลดรูปภาพ ${rawImages.length} รูปจาก MongoDB...`);
+        for (const filename of rawImages) {
+            if (!filename) continue;
+            // Already an absolute path on disk → use directly
+            if (require('path').isAbsolute(filename) && fs.existsSync(filename)) {
+                tempImagePaths.push(filename);
+            } else {
+                const tmpPath = await imgStore.downloadToTemp(filename);
+                if (tmpPath) tempImagePaths.push(tmpPath);
+                else log(`   ⚠️ โหลดรูปไม่ได้: ${filename}`);
+            }
+        }
+        log(`   ✅ พร้อมแนบ ${tempImagePaths.length} รูป`);
+    }
+
     const results = [];
     let ok = 0;
 
@@ -88,7 +110,7 @@ async function processJob(job) {
         log(`➡️ [${i+1}/${job.groups.length}] ${g.groupName}`);
         _emit?.('jobs:progress', { groupName:g.groupName, status:'posting', current:i+1, total:job.groups.length });
 
-        const res = await _bot.postToGroup(acc.id, g.groupId, g.groupName, job.message, job.postAsPage||null, (m)=>log(`   ${m}`), sharedPage, sharedPageId, job.images||[]);
+        const res = await _bot.postToGroup(acc.id, g.groupId, g.groupName, job.message, job.postAsPage||null, (m)=>log(`   ${m}`), sharedPage, sharedPageId, tempImagePaths);
         results.push({ groupId:g.groupId, groupName:g.groupName, status:res.ok?'success':'failed', error:res.error||null, timestamp:new Date().toISOString() });
 
         if (res.ok) { ok++; log(`   ✅ สำเร็จ`); _emit?.('jobs:progress', { groupName:g.groupName, status:'success' }); }
@@ -103,6 +125,11 @@ async function processJob(job) {
     // Switch back to personal and close the shared page
     if (sharedPage) {
         await _bot.switchBackOnPage(sharedPage, (m) => log(`   ${m}`), job.postAsPage).catch(()=>{});
+    }
+
+    // Clean up temp image files
+    for (const p of tempImagePaths) {
+        try { if (p.startsWith(require('os').tmpdir())) fs.unlinkSync(p); } catch {}
     }
 
     const status = ok>0 ? 'done' : 'failed';

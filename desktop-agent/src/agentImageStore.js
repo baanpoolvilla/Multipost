@@ -1,5 +1,7 @@
 const mongoose = require('mongoose');
 const path     = require('path');
+const fs       = require('fs');
+const os       = require('os');
 const { connect } = require('./jobStore');
 
 const MIME = { '.jpg':'image/jpeg', '.jpeg':'image/jpeg', '.png':'image/png', '.gif':'image/gif', '.webp':'image/webp' };
@@ -30,6 +32,18 @@ async function getDataUrl(filename) {
     } catch { return null; }
 }
 
+// Download image from MongoDB to a temp file, return absolute path (or null)
+async function downloadToTemp(filename) {
+    try {
+        await connect();
+        const doc = await Image.findById(filename).lean();
+        if (!doc?.data) return null;
+        const tmpPath = path.join(os.tmpdir(), filename);
+        fs.writeFileSync(tmpPath, Buffer.from(doc.data, 'base64'));
+        return tmpPath;
+    } catch { return null; }
+}
+
 async function remove(filename) {
     try {
         await connect();
@@ -37,4 +51,4 @@ async function remove(filename) {
     } catch {}
 }
 
-module.exports = { save, getDataUrl, remove };
+module.exports = { save, getDataUrl, downloadToTemp, remove };
