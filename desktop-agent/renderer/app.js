@@ -138,7 +138,7 @@ function updateAccountSelect() {
     const sel = document.getElementById('jobAccount');
     if (!sel) return;
     const prev = sel.value;
-    sel.innerHTML = '<option value="">Auto (account ที่ login อยู่)</option>';
+    sel.innerHTML = '<option value="">— เลือก Account —</option>';
     _accounts.forEach(a => {
         const opt = document.createElement('option');
         opt.value = a.id; opt.textContent = a.email;
@@ -224,8 +224,8 @@ function renderGroupsInline() {
     const show = _groups.slice(0, 5);
     el.innerHTML = show.map((g, i) => `
       <div class="pick-item" onclick="togGrp(${i})">
-        <input type="checkbox" id="g_${i}" ${_selected[i]?'checked':''} onchange="_selected[${i}]=this.checked">
         <label for="g_${i}">${esc(g.groupName)}</label>
+        <input type="checkbox" id="g_${i}" ${_selected[i]?'checked':''} onchange="_selected[${i}]=this.checked">
       </div>`).join('');
     const moreBtn = document.getElementById('showMoreGroupsBtn');
     if (_groups.length > 5) {
@@ -241,8 +241,8 @@ function renderGroupsModal() {
     if (!el) return;
     el.innerHTML = _groups.map((g, i) => `
       <div class="pick-item" onclick="togGrpM(${i})">
-        <input type="checkbox" id="gm_${i}" ${_selected[i]?'checked':''} onchange="_selected[${i}]=this.checked;_syncInline(${i})">
         <label for="gm_${i}">${esc(g.groupName)}</label>
+        <input type="checkbox" id="gm_${i}" ${_selected[i]?'checked':''} onchange="_selected[${i}]=this.checked;_syncInline(${i})">
       </div>`).join('');
 }
 
