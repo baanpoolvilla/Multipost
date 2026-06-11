@@ -631,7 +631,10 @@ async function openEditTpl(id) {
         <label style="font-size:.82rem;color:#65676b;display:block;margin:.55rem 0 .3rem">ชื่อ Template:</label>
         <input id="etName" type="text" value="${t.name||''}"
           style="width:100%;padding:.48rem .75rem;border:1.5px solid #dbe0e6;border-radius:8px;font-family:inherit;font-size:.84rem;outline:none;box-sizing:border-box">
-        <label style="font-size:.82rem;color:#65676b;display:block;margin:.55rem 0 .3rem">รูปภาพ (สูงสุด 10 รูป):</label>
+        <label style="font-size:.82rem;color:#65676b;display:block;margin:.55rem 0 .3rem">
+          รูปภาพ (สูงสุด 10 รูป):
+          ${(t.images||[]).length ? `<span style="margin-left:.4rem;background:#e7f3ff;color:#1877f2;padding:.1rem .5rem;border-radius:4px;font-size:.75rem"><i class="fa-solid fa-image"></i> มีอยู่แล้ว ${t.images.length} รูป</span>` : ''}
+        </label>
         <div id="etImgPrev" style="display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.4rem"></div>
         <input type="file" id="etFileInp" multiple accept="image/*" style="display:none">
         <div id="etAddBtn"

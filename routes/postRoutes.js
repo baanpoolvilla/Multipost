@@ -37,9 +37,13 @@ router.get('/uploads/:filename', async (req, res) => {
     res.send(result.buffer);
 });
 
-// Upload images (returns filenames stored in MongoDB)
-router.post('/api/upload-images', upload.array('images', 10), saveUploadedFiles, (req, res) => {
+// Upload images — save to MongoDB, verify retrieval, return confirmed filenames
+router.post('/api/upload-images', upload.array('images', 10), saveUploadedFiles, async (req, res) => {
     const filenames = (req.files || []).map(f => f.filename);
+    if (!filenames.length) return res.json({ ok: true, filenames: [] });
+    // Verify at least the first file is retrievable before returning success
+    const ok = await imageStore.exists(filenames[0]);
+    if (!ok) return res.status(500).json({ ok: false, error: 'บันทึกรูปไม่สำเร็จ — กรุณาตรวจสอบ MongoDB connection' });
     res.json({ ok: true, filenames });
 });
 
