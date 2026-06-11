@@ -4,34 +4,48 @@ const multer     = require('multer');
 const path       = require('path');
 const ctrl       = require('../controllers/postController');
 const agentCtrl  = require('../controllers/agentController');
+const imageStore = require('../services/imageStore');
 
-const UPLOADS_DIR = process.env.VERCEL ? '/tmp/uploads' : path.join(__dirname, '../public/uploads');
-
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        try { require('fs').mkdirSync(UPLOADS_DIR, { recursive: true }); } catch {}
-        cb(null, UPLOADS_DIR);
-    },
-    filename: (req, file, cb) => {
-        const ext = path.extname(file.originalname).toLowerCase();
-        cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
-    },
-});
+// Use memory storage — files are saved to MongoDB (and local disk) by saveUploadedFiles
 const upload = multer({
-    storage,
+    storage: multer.memoryStorage(),
     limits: { fileSize: 10 * 1024 * 1024 },
     fileFilter: (req, file, cb) => cb(null, /\.(jpe?g|png|gif|webp)$/i.test(file.originalname)),
 });
 
+// Assign filenames and persist buffers to MongoDB (+ local disk)
+async function saveUploadedFiles(req, res, next) {
+    if (!req.files || req.files.length === 0) return next();
+    try {
+        for (const file of req.files) {
+            const ext = path.extname(file.originalname).toLowerCase();
+            file.filename = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+            await imageStore.save(file.filename, file.buffer, file.mimetype);
+        }
+        next();
+    } catch (err) {
+        next(err);
+    }
+}
+
+// Serve uploaded images from MongoDB (works on Vercel where /tmp is ephemeral)
+router.get('/uploads/:filename', async (req, res) => {
+    const result = await imageStore.getBuffer(req.params.filename);
+    if (!result) return res.status(404).send('Not found');
+    res.set('Content-Type', result.contentType);
+    res.set('Cache-Control', 'public, max-age=31536000, immutable');
+    res.send(result.buffer);
+});
+
 // Templates
 router.get('/api/templates',        ctrl.getTemplates);
-router.post('/api/templates',       upload.array('images', 10), ctrl.createTemplate);
+router.post('/api/templates',       upload.array('images', 10), saveUploadedFiles, ctrl.createTemplate);
 router.put('/api/templates/:id',    ctrl.updateTemplate);
 router.delete('/api/templates/:id', ctrl.deleteTemplate);
 
 // Posts
 router.get('/',               ctrl.showDashboard);
-router.post('/send',          upload.array('images', 10), ctrl.sendPost);
+router.post('/send',          upload.array('images', 10), saveUploadedFiles, ctrl.sendPost);
 router.get('/result/:id',     ctrl.showResult);
 router.get('/history',        ctrl.showHistory);
 router.delete('/history/:id', ctrl.deletePost);

@@ -5,9 +5,9 @@ const fs = require('fs');
 const app = express();
 const IS_VERCEL = !!process.env.VERCEL;
 
-// Ensure writable dirs exist (use /tmp on Vercel, local paths otherwise)
+// Ensure writable dirs exist
 const dirs = IS_VERCEL
-    ? ['/tmp/uploads', '/tmp']
+    ? ['/tmp']
     : [path.join(__dirname, 'public/uploads'), path.join(__dirname, 'data'), path.join(__dirname, 'logs')];
 dirs.forEach(d => { try { fs.mkdirSync(d, { recursive: true }); } catch {} });
 
@@ -18,14 +18,10 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
 
-// On Vercel, serve uploaded images from /tmp/uploads
-if (IS_VERCEL) {
-    app.use('/uploads', express.static('/tmp/uploads'));
-}
-
+// Routes before static — /uploads/:filename is served from MongoDB (persistent on Vercel)
 app.use('/', require('./routes/postRoutes'));
+app.use(express.static(path.join(__dirname, 'public')));
 
 module.exports = app;
 if (require.main === module) {

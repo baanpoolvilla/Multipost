@@ -1,23 +1,14 @@
-const fs       = require('fs');
-const path     = require('path');
-const pageStore = require('./pageStore');
+const pageStore  = require('./pageStore');
+const imageStore = require('./imageStore');
 
-const FB_API     = 'https://graph.facebook.com/v21.0';
-const UPLOADS_DIR = process.env.VERCEL
-    ? '/tmp/uploads'
-    : path.join(__dirname, '../public/uploads');
-
-const MIME_MAP = { jpg:'image/jpeg', jpeg:'image/jpeg', png:'image/png', gif:'image/gif', webp:'image/webp' };
+const FB_API = 'https://graph.facebook.com/v21.0';
 
 async function uploadPhoto(targetId, accessToken, filename) {
-    const filePath = path.join(UPLOADS_DIR, filename);
-    if (!fs.existsSync(filePath)) return null;   // skip missing files (Vercel /tmp cleanup)
-    const buffer = fs.readFileSync(filePath);
-    const ext    = path.extname(filename).slice(1).toLowerCase();
-    const mime   = MIME_MAP[ext] || 'image/jpeg';
+    const result = await imageStore.getBuffer(filename);
+    if (!result) return null;   // image not found in MongoDB or disk
 
     const form = new FormData();
-    form.append('source', new Blob([buffer], { type: mime }), filename);
+    form.append('source', new Blob([result.buffer], { type: result.contentType }), filename);
     form.append('published', 'false');
     form.append('access_token', accessToken);
 

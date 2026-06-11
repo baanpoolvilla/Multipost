@@ -1,6 +1,5 @@
-const fs   = require('fs');
-const path = require('path');
 const { sendToPages, fetchPagesFromToken, refreshPostAnalytics, fetchPageGroups } = require('../services/facebookService');
+const imageStore    = require('../services/imageStore');
 const postStore     = require('../services/postStore');
 const pageStore     = require('../services/pageStore');
 const settingsStore = require('../services/settingsStore');
@@ -53,10 +52,9 @@ exports.showHistory = async (req, res) => {
 exports.deletePost = async (req, res) => {
     const post = await postStore.remove(req.params.id);
     if (post?.images) {
-        const uploadsDir = process.env.VERCEL ? '/tmp/uploads' : path.join(__dirname, '../public/uploads');
-        post.images.forEach(img => {
-            try { fs.unlinkSync(path.join(uploadsDir, img)); } catch {}
-        });
+        for (const img of post.images) {
+            if (!img.startsWith('http')) await imageStore.remove(img);
+        }
     }
     res.json({ success: !!post });
 };
