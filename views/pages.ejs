@@ -714,20 +714,91 @@ async function exchangeToken(pageId, pageName, btn) {
       body: JSON.stringify({ pageId }),
     });
     const data = await res.json();
-
     if (!data.ok) throw new Error(data.error);
 
     const msg = data.neverExpires
       ? '✅ ได้ Page Token แบบ <strong>ไม่มีวันหมดอายุ</strong>'
       : `✅ Token ใหม่หมดอายุ <strong>${new Date(data.expiryDate).toLocaleDateString('th-TH', {year:'numeric',month:'long',day:'numeric'})}</strong>`;
-
     await Swal.fire({ icon: 'success', title: 'ต่ออายุสำเร็จ', html: msg, confirmButtonColor: '#1877f2' });
     location.reload();
   } catch (err) {
-    Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.message });
     btn.disabled = false;
     btn.innerHTML = '<i class="fa-solid fa-rotate"></i>';
+
+    // Offer direct token paste as fallback
+    Swal.fire({
+      icon: 'warning',
+      title: 'ต่ออายุอัตโนมัติไม่ได้',
+      html: `
+        <p style="font-size:.84rem;color:#555;margin:.2rem 0 .8rem;text-align:left">
+          <b style="color:#c62828">สาเหตุ:</b> ${err.message}
+        </p>
+        <p style="font-size:.82rem;color:#555;margin:0 0 .5rem;text-align:left">
+          วาง <b>Token ใหม่</b> จาก
+          <a href="https://developers.facebook.com/tools/explorer/" target="_blank"
+             style="color:#1877f2">Graph API Explorer</a>
+          แล้วระบบจะบันทึกและลองต่ออายุให้อัตโนมัติ:
+        </p>
+        <textarea id="fallback-token-${pageId}"
+          placeholder="วาง Page Access Token ใหม่ที่นี่..."
+          style="width:100%;height:72px;padding:.55rem .7rem;border:1.5px solid #dbe0e6;border-radius:8px;font-family:monospace;font-size:.75rem;resize:none;outline:none;box-sizing:border-box"></textarea>
+        <button type="button" onclick="applyNewToken('${pageId}')"
+          style="margin-top:.5rem;width:100%;padding:.52rem;background:#1877f2;color:#fff;border:none;border-radius:8px;font-size:.86rem;cursor:pointer;font-family:inherit;font-weight:700;display:flex;align-items:center;justify-content:center;gap:.4rem">
+          <i class="fa-solid fa-floppy-disk"></i> บันทึก Token ใหม่และต่ออายุ
+        </button>`,
+      showCancelButton: true,
+      showConfirmButton: false,
+      cancelButtonText: 'ปิด',
+      cancelButtonColor: '#65676b',
+      width: 500,
+    });
   }
+}
+
+async function applyNewToken(pageId) {
+  const inp   = document.getElementById(`fallback-token-${pageId}`);
+  const token = inp?.value.trim();
+  if (!token) { inp?.focus(); return; }
+
+  // Show spinner in button
+  const applyBtn = inp?.nextElementSibling;
+  if (applyBtn) { applyBtn.disabled = true; applyBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังบันทึก...'; }
+
+  // Save the new token to the page record
+  const saveRes  = await fetch(`/pages/${pageId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ accessToken: token }),
+  });
+  const saveData = await saveRes.json();
+  if (!saveData.ok) {
+    Swal.fire({ icon: 'error', title: 'บันทึกไม่สำเร็จ', confirmButtonColor: '#1877f2' });
+    return;
+  }
+
+  // Now try to exchange for long-lived token
+  const exchRes  = await fetch('/api/exchange-token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pageId }),
+  });
+  const exchData = await exchRes.json();
+
+  Swal.close();
+
+  if (exchData.ok) {
+    const msg = exchData.neverExpires
+      ? '✅ ได้ Page Token แบบ <strong>ไม่มีวันหมดอายุ</strong>'
+      : `✅ Token ใหม่หมดอายุ <strong>${new Date(exchData.expiryDate).toLocaleDateString('th-TH', {year:'numeric',month:'long',day:'numeric'})}</strong>`;
+    await Swal.fire({ icon: 'success', title: 'ต่ออายุสำเร็จ!', html: msg, confirmButtonColor: '#1877f2' });
+  } else {
+    await Swal.fire({
+      icon: 'success', title: 'บันทึก Token ใหม่แล้ว',
+      text: 'บันทึกสำเร็จ (ต่ออายุอัตโนมัติไม่ได้ แต่ใช้งานได้ปกติ)',
+      confirmButtonColor: '#1877f2',
+    });
+  }
+  location.reload();
 }
 
 /* ── Import from Token ── */
