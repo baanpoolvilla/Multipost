@@ -579,14 +579,19 @@ async function openCreateTemplate() {
 
   if (!value) { openTemplateModal(); return; }
 
-  const images = await _uploadImages(_tplNewFiles);
-  _tplNewFiles = [];
-
-  const data = await _saveTemplate('/api/templates', 'POST', { message: value.message, name: value.name, images });
-  if (data.ok) {
+  try {
+    Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, showConfirmButton: false, didOpen: () => Swal.showLoading() });
+    const images = await _uploadImages(_tplNewFiles);
+    if (_tplNewFiles.length > 0 && images.length === 0) throw new Error('อัปโหลดรูปไม่สำเร็จ');
+    _tplNewFiles = [];
+    const data = await _saveTemplate('/api/templates', 'POST', { message: value.message, name: value.name, images });
+    if (!data.ok) throw new Error(data.error || 'บันทึกไม่สำเร็จ');
+    await Swal.fire({ icon: 'success', title: 'บันทึกแล้ว!', timer: 1200, showConfirmButton: false });
     openTemplateModal();
-  } else {
-    Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: data.error });
+  } catch (err) {
+    _tplNewFiles = [];
+    Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.message });
+    openTemplateModal();
   }
 }
 
@@ -665,14 +670,25 @@ async function openEditTpl(id) {
 
   if (!value) { _etKeep = []; _etNew = []; openTemplateModal(); return; }
 
-  const newFilenames = await _uploadImages(_etNew);
-  const images = [..._etKeep, ...newFilenames];
-  _etKeep = []; _etNew = [];
+  try {
+    Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, showConfirmButton: false, didOpen: () => Swal.showLoading() });
 
-  const data = await _saveTemplate(`/api/templates/${id}`, 'PUT', { message: value.message, name: value.name, images });
-  if (data.ok) {
+    const newFilenames = await _uploadImages(_etNew);
+    if (_etNew.length > 0 && newFilenames.length === 0) throw new Error('อัปโหลดรูปไม่สำเร็จ');
+
+    const images = [..._etKeep, ...newFilenames];
+    _etKeep = []; _etNew = [];
+
+    const data = await _saveTemplate(`/api/templates/${id}`, 'PUT', { message: value.message, name: value.name, images });
+    if (!data.ok) throw new Error(data.error || 'บันทึกไม่สำเร็จ');
+
     const idx = _templates.findIndex(x => x.id === id);
     if (idx >= 0) _templates[idx] = data.template;
+    await Swal.fire({ icon: 'success', title: 'บันทึกแล้ว!', timer: 1200, showConfirmButton: false });
+    openTemplateModal();
+  } catch (err) {
+    _etKeep = []; _etNew = [];
+    Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.message });
     openTemplateModal();
   }
 }
@@ -683,7 +699,7 @@ function _etRender() {
   const keepHtml = _etKeep.map((name, i) => `
     <div style="position:relative" id="etk-${i}">
       <img src="/uploads/${name}" style="width:54px;height:54px;object-fit:cover;border-radius:6px"
-           onerror="document.getElementById('etk-${i}').remove();_etKeep.splice(${i},1)">
+           onerror="this.closest('div').style.display='none'">
       <button data-ki="${i}" type="button"
         style="position:absolute;top:-4px;right:-4px;background:#c62828;color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:.55rem;cursor:pointer;padding:0">
         ×
@@ -766,13 +782,15 @@ async function saveCurrentAsTemplate() {
   });
   if (!isConfirmed) return;
 
-  const newFilenames = await _uploadImages(selectedFiles);
-  const images = [..._tplLoadedImages, ...newFilenames];
-
-  const data = await _saveTemplate('/api/templates', 'POST', { message: msg, name: name || '', images });
-  if (data.ok) {
+  try {
+    Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, showConfirmButton: false, didOpen: () => Swal.showLoading() });
+    const newFilenames = await _uploadImages(selectedFiles);
+    if (selectedFiles.length > 0 && newFilenames.length === 0) throw new Error('อัปโหลดรูปไม่สำเร็จ');
+    const images = [..._tplLoadedImages, ...newFilenames];
+    const data = await _saveTemplate('/api/templates', 'POST', { message: msg, name: name || '', images });
+    if (!data.ok) throw new Error(data.error || 'บันทึกไม่สำเร็จ');
     Swal.fire({ icon: 'success', title: 'บันทึกแล้ว!', timer: 1400, showConfirmButton: false });
-  } else {
-    Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: data.error });
+  } catch (err) {
+    Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.message });
   }
 }
