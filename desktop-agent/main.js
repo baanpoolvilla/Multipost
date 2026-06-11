@@ -34,7 +34,7 @@ app.whenReady().then(async () => {
     // Init stores
     accountStore.init(userDataDir);
     facebookBot.init(userDataDir);
-    jobTemplateStore.init(userDataDir);
+    // jobTemplateStore now uses MongoDB — no local init needed
     await jobStore.connect().catch(() => {});
 
     // Start local API
