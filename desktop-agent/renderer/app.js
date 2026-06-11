@@ -25,6 +25,7 @@ window.addEventListener('DOMContentLoaded', async () => {
             renderJobs();
         }
     }, 8000);
+    setInterval(refreshGroupsSilent, 10000);
 });
 
 // ── Tab navigation ────────────────────────────────────────────
@@ -189,6 +190,20 @@ async function loadGroups() {
     _selected = _groups.map(() => true);
     renderGroupsInline();
     updateGroupCount();
+}
+
+// Smart refresh — preserves current selections, only re-renders on change
+async function refreshGroupsSilent() {
+    const fresh = await agent.getGroups();
+    if (fresh.length === _groups.length &&
+        fresh.every((g, i) => g.groupId === _groups[i]?.groupId)) return;
+    const prevMap = new Map(_groups.map((g, i) => [g.groupId, _selected[i]]));
+    _groups   = fresh;
+    _selected = fresh.map(g => prevMap.has(g.groupId) ? prevMap.get(g.groupId) : true);
+    renderGroupsInline();
+    renderGroupsModal();
+    updateGroupCount();
+}
 }
 
 function renderGroupsInline() {
