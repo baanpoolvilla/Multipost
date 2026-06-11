@@ -24,6 +24,7 @@ const pageSchema = new mongoose.Schema({
     pageName:    String,
     accessToken: String,
     tokenExpiry: String,
+    enabled:     { type: Boolean, default: true },
     groups:      { type: [groupSchema], default: [] },
 }, { versionKey: false });
 

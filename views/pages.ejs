@@ -124,7 +124,7 @@
     <div id="pageList">
       <% const colors = ['purple','green','orange','blue','red']; %>
       <% pages.forEach((p, i) => { %>
-      <div class="card page-manage-card" id="pcard-<%= p.pageId %>" data-expiry="<%= p.tokenExpiry || '' %>">
+      <div class="card page-manage-card" id="pcard-<%= p.pageId %>" data-expiry="<%= p.tokenExpiry || '' %>" data-enabled="<%= p.enabled === false ? 'false' : 'true' %>" style="<%= p.enabled === false ? 'opacity:.55' : '' %>">
         <div class="page-manage-header">
           <div class="avatar avatar-<%= colors[i%5] %>"><%= p.pageName.slice(-1) %></div>
           <div class="page-manage-info">
@@ -137,6 +137,12 @@
             <div class="page-manage-id">Page ID: <code><%= p.pageId %></code></div>
           </div>
           <div class="page-manage-actions">
+            <button class="icon-btn toggle-page-btn" title="เปิด/ปิดใช้งานเพจนี้"
+              id="tbtn-<%= p.pageId %>" data-id="<%= p.pageId %>"
+              onclick="togglePage(this.dataset.id)"
+              style="<%= p.enabled === false ? 'color:#8a8d91;border-color:#ccc' : 'color:#1877f2;border-color:#90caf9' %>">
+              <i class="fa-solid <%= p.enabled === false ? 'fa-toggle-off' : 'fa-toggle-on' %>"></i>
+            </button>
             <button class="icon-btn" title="ต่ออายุ Token 60 วัน"
               data-id="<%= p.pageId %>" data-name="<%= p.pageName %>"
               onclick="exchangeToken(this.dataset.id, this.dataset.name, this)"
@@ -484,6 +490,27 @@ async function openEditPage(pageId, pageName, token, expiry) {
   if (!data.ok) { Swal.fire({ icon:'error', title:'ไม่สามารถอัปเดตได้' }); return; }
   Swal.fire({ icon:'success', title:'บันทึกสำเร็จ', timer:1200, showConfirmButton:false });
   setTimeout(() => location.reload(), 1200);
+}
+
+async function togglePage(pageId) {
+  const card = document.getElementById(`pcard-${pageId}`);
+  const btn  = document.getElementById(`tbtn-${pageId}`);
+  const currentEnabled = card.dataset.enabled !== 'false';
+  const newEnabled = !currentEnabled;
+
+  const res = await fetch(`/pages/${pageId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled: newEnabled }),
+  });
+  if (!res.ok) return;
+
+  card.dataset.enabled = newEnabled ? 'true' : 'false';
+  card.style.opacity   = newEnabled ? '' : '.55';
+  btn.style.color       = newEnabled ? '#1877f2' : '#8a8d91';
+  btn.style.borderColor = newEnabled ? '#90caf9' : '#ccc';
+  btn.querySelector('i').className = `fa-solid ${newEnabled ? 'fa-toggle-on' : 'fa-toggle-off'}`;
+  btn.title = newEnabled ? 'เปิดใช้งานอยู่ — คลิกเพื่อปิด' : 'ปิดใช้งานอยู่ — คลิกเพื่อเปิด';
 }
 
 async function deletePage(pageId, pageName, btn) {
