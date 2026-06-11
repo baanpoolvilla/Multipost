@@ -295,7 +295,8 @@ exports.importPagesFromToken = async (req, res) => {
     const { token } = req.query;
     if (!token) return res.status(400).json({ error: 'กรุณาใส่ Token' });
     try {
-        const pages = await fetchPagesFromToken(token);
+        const cfg   = await settingsStore.load();
+        const pages = await fetchPagesFromToken(token, cfg.fbAppId, cfg.fbAppSecret);
         res.json({ pages });
     } catch (err) {
         res.status(400).json({ error: err.message });

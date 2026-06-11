@@ -71,9 +71,20 @@ async function sendToPages(message, pageIds = null, images = []) {
     return results;
 }
 
-async function fetchPagesFromToken(accessToken) {
+async function fetchPagesFromToken(accessToken, appId, appSecret) {
+    // If App credentials available, exchange user token → long-lived first.
+    // This makes the returned Page Access Tokens PERMANENT (never expire).
+    let tokenToUse = accessToken;
+    if (appId && appSecret) {
+        try {
+            const exchUrl  = `${FB_API}/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${encodeURIComponent(accessToken)}`;
+            const exchData = await (await fetch(exchUrl)).json();
+            if (!exchData.error && exchData.access_token) tokenToUse = exchData.access_token;
+        } catch {}
+    }
+
     // Try User Access Token first → returns all managed pages
-    const url  = `${FB_API}/me/accounts?fields=id,name,access_token&access_token=${encodeURIComponent(accessToken)}`;
+    const url  = `${FB_API}/me/accounts?fields=id,name,access_token&access_token=${encodeURIComponent(tokenToUse)}`;
     const res  = await fetch(url);
     const data = await res.json();
 
@@ -81,10 +92,10 @@ async function fetchPagesFromToken(accessToken) {
 
     // Fallback: might be a Page Access Token → fetch the page itself
     if (data.error.code === 100 || data.error.code === 200) {
-        const r2   = await fetch(`${FB_API}/me?fields=id,name&access_token=${encodeURIComponent(accessToken)}`);
+        const r2   = await fetch(`${FB_API}/me?fields=id,name&access_token=${encodeURIComponent(tokenToUse)}`);
         const d2   = await r2.json();
         if (d2.error) throw new Error(d2.error.message);
-        return [{ id: d2.id, name: d2.name, access_token: accessToken }];
+        return [{ id: d2.id, name: d2.name, access_token: tokenToUse }];
     }
 
     throw new Error(data.error.message);

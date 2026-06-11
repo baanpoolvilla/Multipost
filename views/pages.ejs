@@ -174,16 +174,12 @@
         </div>
 
         <div class="token-status-row">
-          <% if (p.tokenExpiry) { %>
-          <div class="token-status-badge" data-expiry="<%= p.tokenExpiry %>">
+          <div class="token-status-badge" data-expiry="<%= p.tokenExpiry || '' %>">
             <!-- filled by JS -->
           </div>
+          <% if (p.tokenExpiry) { %>
           <div class="token-expiry-date" style="font-size:.75rem;color:#8a8d91">
             หมดอายุ: <%= new Date(p.tokenExpiry).toLocaleDateString('th-TH', {year:'numeric',month:'long',day:'numeric'}) %>
-          </div>
-          <% } else { %>
-          <div class="token-status-badge" style="background:#f0f2f5;color:#8a8d91;padding:.25rem .7rem;border-radius:999px;font-size:.8rem;font-weight:600;display:inline-flex;align-items:center;gap:.3rem">
-            <i class="fa-solid fa-circle-question"></i> ไม่ระบุวันหมดอายุ
           </div>
           <% } %>
         </div>
@@ -306,11 +302,11 @@ function getDaysLeft(expiryISO) {
 }
 
 function statusConfig(days) {
-  if (days === null) return { cls: 'token-unknown',   icon: 'fa-circle-question', color: '#8a8d91', bg: '#f0f2f5', label: 'ไม่ระบุ' };
-  if (days < 0)     return { cls: 'token-expired',    icon: 'fa-circle-xmark',    color: '#c62828', bg: '#fdecea', label: `หมดอายุแล้ว ${Math.abs(days)} วัน` };
-  if (days <= 7)    return { cls: 'token-critical',   icon: 'fa-triangle-exclamation', color: '#c62828', bg: '#fdecea', label: `หมดใน ${days} วัน ⚠️` };
-  if (days <= 30)   return { cls: 'token-warning',    icon: 'fa-clock',           color: '#e65100', bg: '#fff3e0', label: `หมดใน ${days} วัน` };
-  return           { cls: 'token-active',    icon: 'fa-circle-check',    color: '#2e7d32', bg: '#e8f5e9', label: `ปกติ · ${days} วัน` };
+  if (days === null) return { cls: 'token-permanent', icon: 'fa-infinity',        color: '#1565c0', bg: '#e3f2fd', label: 'ถาวร ✓' };
+  if (days < 0)     return { cls: 'token-expired',   icon: 'fa-circle-xmark',    color: '#c62828', bg: '#fdecea', label: `หมดอายุแล้ว ${Math.abs(days)} วัน` };
+  if (days <= 7)    return { cls: 'token-critical',  icon: 'fa-triangle-exclamation', color: '#c62828', bg: '#fdecea', label: `หมดใน ${days} วัน ⚠️` };
+  if (days <= 30)   return { cls: 'token-warning',   icon: 'fa-clock',           color: '#e65100', bg: '#fff3e0', label: `หมดใน ${days} วัน` };
+  return            { cls: 'token-active',   icon: 'fa-circle-check',    color: '#2e7d32', bg: '#e8f5e9', label: `ปกติ · ${days} วัน` };
 }
 
 function renderTokenBadge(el, expiryISO) {
@@ -324,10 +320,9 @@ function updateAll() {
   let active = 0, warning = 0, expired = 0;
   document.querySelectorAll('.token-status-badge[data-expiry]').forEach(el => {
     const expiry = el.dataset.expiry;
-    if (!expiry) return;
-    renderTokenBadge(el, expiry);
-    const days = getDaysLeft(expiry);
-    if (days === null) return;
+    renderTokenBadge(el, expiry || null);
+    const days = getDaysLeft(expiry || null);
+    if (days === null) { active++; return; }   // null = permanent → count as active
     if (days < 0)    expired++;
     else if (days <= 30) warning++;
     else             active++;
