@@ -618,14 +618,15 @@ async function saveTemplate() {
     const postAs = _selectedPage || null;
     const imgs   = _selectedImages.map(i => i.path).filter(Boolean);
     if (!msg && !grps.length) { alert('กรุณากรอกข้อความหรือเลือกกลุ่มก่อน'); return; }
-    _templates = await agent.saveTemplate({ name, message:msg, groups:grps, delaySeconds:del, postAsPage:postAs||undefined, images:imgs });
+    _templates = await agent.saveTemplate({ name, message:msg, groups:grps, delaySeconds:del, postAsPage:postAs||undefined, images: imgs });
     renderTemplates();
     document.getElementById('templateName').value = '';
     appendLog(`[💾] บันทึก Template: "${name}"${imgs.length ? ` · ${imgs.length} รูป` : ''}`);
 }
 
-function applyTemplate(id) {
-    const t = _templates.find(x=>x.id===id);
+async function applyTemplate(id) {
+    // Fetch full template with image data URLs from MongoDB
+    const t = await agent.getTemplate(id) || _templates.find(x => x.id === id || x._id === id);
     if (!t) return;
     document.getElementById('jobMsg').value   = t.message || '';
     document.getElementById('jobDelay').value = t.delaySeconds || 5;
@@ -653,9 +654,11 @@ function applyTemplate(id) {
     _selected = _groups.map(g => (t.groups||[]).some(tg=>tg.groupId===g.groupId));
     renderGroupsInline();
     updateGroupCount();
-    // Restore images
+    // Restore images from MongoDB data URLs (works on any machine)
     _selectedImages.forEach(i => { try { URL.revokeObjectURL(i.url); } catch {} });
-    _selectedImages = (t.images || []).filter(Boolean).map(p => ({ path: p, url: `file://${p}`, name: p.split(/[/\\]/).pop() }));
+    _selectedImages = (t.imageDataUrls || [])
+        .filter(x => x.dataUrl)
+        .map(x => ({ path: x.filename, url: x.dataUrl, name: x.filename }));
     renderImagePreviews();
     // Show create form if hidden
     const f = document.getElementById('createJobForm');

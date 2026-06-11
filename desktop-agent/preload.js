@@ -27,6 +27,7 @@ contextBridge.exposeInMainWorld('agent', {
     // Templates
     listTemplates:   ()         => ipcRenderer.invoke('templates:list'),
     saveTemplate:    (tpl)      => ipcRenderer.invoke('templates:save', tpl),
+    getTemplate:     (id)       => ipcRenderer.invoke('templates:get', id),
     deleteTemplate:  (id)       => ipcRenderer.invoke('templates:delete', id),
 
     // Push events → renderer
