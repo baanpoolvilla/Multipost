@@ -19,10 +19,12 @@ const schema = new mongoose.Schema({
 
 const Tpl = mongoose.models.AgentTpl || mongoose.model('AgentTpl', schema, 'agenttemplates');
 
+function _normalize(t) { return t ? { ...t, id: t._id?.toString() ?? t._id } : t; }
+
 async function list() {
     try {
         await connect();
-        return Tpl.find().sort({ createdAt: -1 }).lean();
+        return (await Tpl.find().sort({ createdAt: -1 }).lean()).map(_normalize);
     } catch { return []; }
 }
 
@@ -53,7 +55,7 @@ async function save({ id, name, message, groups, delaySeconds, postAsPage, image
         { $set: { _id: tplId, name, message, groups, delaySeconds, postAsPage: postAsPage || null, images: filenames, createdAt: new Date().toISOString() } },
         { upsert: true }
     );
-    return Tpl.find().sort({ createdAt: -1 }).lean();
+    return (await Tpl.find().sort({ createdAt: -1 }).lean()).map(_normalize);
 }
 
 // Returns template with images as base64 data URLs for the renderer
@@ -67,7 +69,7 @@ async function getWithImages(id) {
             const dataUrl = await imgStore.getDataUrl(filename);
             imageDataUrls.push({ filename, dataUrl });
         }
-        return { ...tpl, imageDataUrls };
+        return { ..._normalize(tpl), imageDataUrls };
     } catch { return null; }
 }
 
@@ -80,7 +82,7 @@ async function remove(id) {
         }
     }
     await Tpl.findByIdAndDelete(id);
-    return Tpl.find().sort({ createdAt: -1 }).lean();
+    return (await Tpl.find().sort({ createdAt: -1 }).lean()).map(_normalize);
 }
 
 module.exports = { list, save, getWithImages, remove };
