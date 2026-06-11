@@ -9,9 +9,16 @@ const imageStore = require('../services/imageStore');
 // Use memory storage — files are saved to MongoDB (and local disk) by saveUploadedFiles
 const upload = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 10 * 1024 * 1024 },
+    limits: { fileSize: 10 * 1024 * 1024, files: 30 },
     fileFilter: (req, file, cb) => cb(null, /\.(jpe?g|png|gif|webp)$/i.test(file.originalname)),
 });
+
+// Return JSON error instead of HTML for multer errors
+function multerErrorHandler(err, req, res, next) {
+    if (err && err.code && err.code.startsWith('LIMIT_'))
+        return res.status(400).json({ ok: false, error: `อัปโหลดไม่สำเร็จ: ${err.message}` });
+    next(err);
+}
 
 // Assign filenames and persist buffers to MongoDB (+ local disk)
 async function saveUploadedFiles(req, res, next) {
@@ -37,13 +44,10 @@ router.get('/uploads/:filename', async (req, res) => {
     res.send(result.buffer);
 });
 
-// Upload images — save to MongoDB, verify retrieval, return confirmed filenames
-router.post('/api/upload-images', upload.array('images', 10), saveUploadedFiles, async (req, res) => {
+// Upload images — save to MongoDB, return confirmed filenames
+router.post('/api/upload-images', upload.array('images', 30), multerErrorHandler, saveUploadedFiles, async (req, res) => {
     const filenames = (req.files || []).map(f => f.filename);
     if (!filenames.length) return res.json({ ok: true, filenames: [] });
-    // Verify at least the first file is retrievable before returning success
-    const ok = await imageStore.exists(filenames[0]);
-    if (!ok) return res.status(500).json({ ok: false, error: 'บันทึกรูปไม่สำเร็จ — กรุณาตรวจสอบ MongoDB connection' });
     res.json({ ok: true, filenames });
 });
 
@@ -55,7 +59,7 @@ router.delete('/api/templates/:id', ctrl.deleteTemplate);
 
 // Posts
 router.get('/',               ctrl.showDashboard);
-router.post('/send',          upload.array('images', 10), saveUploadedFiles, ctrl.sendPost);
+router.post('/send',          upload.array('images', 30), multerErrorHandler, saveUploadedFiles, ctrl.sendPost);
 router.get('/result/:id',     ctrl.showResult);
 router.get('/history',        ctrl.showHistory);
 router.delete('/history/:id', ctrl.deletePost);
