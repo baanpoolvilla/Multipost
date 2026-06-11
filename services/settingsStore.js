@@ -21,16 +21,16 @@ async function load() {
         await connect();
         const s = await Settings.findById('main').lean();
         return {
-            fbAppId:    fromEnv.fbAppId    || (s && s.fbAppId)    || '',
-            fbAppSecret: fromEnv.fbAppSecret || (s && s.fbAppSecret) || '',
-            groupToken: (s && s.groupToken) || '',
+            fbAppId:     (s && s.fbAppId)     || fromEnv.fbAppId     || '',
+            fbAppSecret: (s && s.fbAppSecret) || fromEnv.fbAppSecret || '',
+            groupToken:  (s && s.groupToken)  || '',
         };
     } catch {
         const f = fLoad();
         return {
-            fbAppId:    fromEnv.fbAppId    || f.fbAppId    || '',
-            fbAppSecret: fromEnv.fbAppSecret || f.fbAppSecret || '',
-            groupToken: f.groupToken || '',
+            fbAppId:     f.fbAppId     || fromEnv.fbAppId     || '',
+            fbAppSecret: f.fbAppSecret || fromEnv.fbAppSecret || '',
+            groupToken:  f.groupToken  || '',
         };
     }
 }
