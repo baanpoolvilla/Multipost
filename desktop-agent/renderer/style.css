@@ -142,10 +142,12 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent)}
 .fb-textarea:focus{outline:none;border:none}
 .fb-textarea::placeholder{color:var(--text3);font-size:14.5px}
 
-.fb-toolbar{display:flex;align-items:center;padding:.4rem .75rem;gap:.4rem;border-top:1px solid var(--border)}
-.fb-tool-btn{background:none;border:none;color:var(--text2);font-size:12px;font-family:inherit;cursor:pointer;padding:.3rem .55rem;border-radius:7px;display:flex;align-items:center;gap:.35rem;transition:background .1s}
-.fb-tool-btn:hover{background:var(--bg3);color:var(--text)}
-.fb-delay-input{width:48px;padding:.2rem .35rem;font-size:12px;border-radius:6px;background:var(--bg3);border:1px solid var(--border);color:var(--text);text-align:center}
+.fb-toolbar{display:flex;align-items:center;padding:.45rem .75rem;gap:.4rem;border-top:1px solid var(--border);flex-wrap:wrap}
+.fb-tool-btn{background:var(--bg3);border:1.5px solid var(--border);color:var(--text2);font-size:11.5px;font-family:inherit;cursor:pointer;padding:.28rem .7rem;border-radius:999px;display:flex;align-items:center;gap:.3rem;transition:all .15s;font-weight:500;white-space:nowrap}
+.fb-tool-btn:hover{background:var(--bg4);border-color:var(--text3);color:var(--text)}
+.fb-tool-btn.active{background:rgba(24,119,242,.18);border-color:var(--accent);color:#fff}
+.fb-delay-wrap{margin-left:auto;display:flex;align-items:center;gap:.3rem;font-size:11px;color:var(--text2)}
+.fb-delay-input{width:44px;padding:.2rem .3rem;font-size:12px;border-radius:6px;background:var(--bg3);border:1px solid var(--border);color:var(--text);text-align:center}
 
 .fb-groups{padding:.65rem .9rem}
 .fb-groups-hd{display:flex;align-items:center;gap:.45rem;margin-bottom:.45rem;font-size:12px;font-weight:600;color:var(--text)}
@@ -164,26 +166,6 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent)}
 .fb-photo-thumb .rm-btn:hover{background:rgba(250,82,82,.85)}
 .fb-photo-add-btn{width:72px;height:72px;border-radius:8px;border:2px dashed var(--border);background:none;color:var(--text2);font-size:22px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s}
 .fb-photo-add-btn:hover{border-color:var(--accent);color:var(--accent)}
-
-/* ── Location tag ── */
-.fb-location-tag{display:flex;align-items:center;gap:.45rem;padding:.4rem .9rem;font-size:12.5px;color:var(--accent);background:rgba(24,119,242,.08);border-top:1px solid var(--border)}
-.fb-location-tag .rm-loc{background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;margin-left:auto;padding:.1rem .3rem;border-radius:4px}
-.fb-location-tag .rm-loc:hover{color:var(--red)}
-
-/* ── Map modal ── */
-.map-modal-box{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);width:620px;max-width:95vw;max-height:90vh;box-shadow:0 8px 40px rgba(0,0,0,.6);display:flex;flex-direction:column;overflow:hidden}
-.map-search-row{display:flex;align-items:center;gap:.4rem;padding:.5rem .75rem;border-bottom:1px solid var(--border)}
-.map-search-icon{font-size:14px;color:var(--text2);flex-shrink:0}
-.map-search-input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-size:13px;font-family:inherit;padding:.3rem 0}
-.map-search-input::placeholder{color:var(--text3)}
-.map-search-results{border-bottom:1px solid var(--border);max-height:200px;overflow-y:auto;background:var(--bg2)}
-.map-result-item{padding:.45rem .85rem;cursor:pointer;font-size:12.5px;color:var(--text);border-bottom:1px solid var(--border)}
-.map-result-item:last-child{border-bottom:none}.map-result-item:hover{background:var(--bg3)}
-.map-result-name{font-weight:600;color:#fff}
-.map-result-sub{font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.map-container{flex:1;min-height:270px;background:#2a2a2a}
-.map-footer{display:flex;align-items:center;gap:.6rem;padding:.6rem .85rem;border-top:1px solid var(--border)}
-.map-selected-label{flex:1;font-size:12px;color:var(--text2)}
 
 /* ── Job mode tag ── */
 .job-mode-tag{display:inline-block;font-size:10px;font-weight:700;border-radius:4px;padding:.05rem .4rem;background:rgba(24,119,242,.18);color:var(--accent);vertical-align:middle;margin-right:.2rem;flex-shrink:0}

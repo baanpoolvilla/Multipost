@@ -5,10 +5,6 @@ let _statusInterval = null;
 let _selectedPage = null;
 let _recentLoaded = false;
 let _selectedImages = [];   // array of { path, url } (path = fs path, url = objectURL)
-let _selectedLocation = null; // { name, lat, lng }
-let _map = null;
-let _mapMarker = null;
-let _mapSearchTimer = null;
 
 // ── Init ─────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', async () => {
@@ -379,22 +375,19 @@ async function createJob() {
     if (!msg)         { alert('กรุณากรอกข้อความ'); return; }
     if (!groups.length){ alert('กรุณาเลือกอย่างน้อย 1 กลุ่ม'); return; }
 
-    // Append location to message text if selected
-    const fullMsg = _selectedLocation ? `${msg}\n\n📍 ${_selectedLocation.name}` : msg;
     const imagePaths = _selectedImages.map(i => i.path).filter(Boolean);
 
-    const job = await agent.createJob({ message:fullMsg, groups, delaySeconds:delay, accountId:accId||undefined, postAsPage:postAs||undefined, images:imagePaths });
+    const job = await agent.createJob({ message:msg, groups, delaySeconds:delay, accountId:accId||undefined, postAsPage:postAs||undefined, images:imagePaths });
     if (job) {
         _jobs.unshift(job); renderJobs();
         document.getElementById('jobMsg').value = '';
         // Reset attachments
         _selectedImages.forEach(i => URL.revokeObjectURL(i.url));
-        _selectedImages = []; _selectedLocation = null;
+        _selectedImages = [];
         document.getElementById('photoPreviewRow').style.display = 'none';
-        document.getElementById('fbLocationTag').style.display = 'none';
         toggleCreateJob();
         const info = [groups.length + ' กลุ่ม', postAs ? postAs : null, imagePaths.length ? imagePaths.length+' รูป' : null].filter(Boolean).join(' · ');
-        appendLog(`[📋] สร้าง Job: "${fullMsg.slice(0,40)}..." → ${info}`);
+        appendLog(`[📋] สร้าง Job: "${msg.slice(0,40)}..." → ${info}`);
     }
 }
 
@@ -459,9 +452,11 @@ function updateGroupCount() {
 }
 
 function toggleRecentPosts() {
-    const p = document.getElementById('recentPostsPanel');
+    const p   = document.getElementById('recentPostsPanel');
+    const btn = document.getElementById('btnRecentPosts');
     const open = p.style.display === '';
     p.style.display = open ? 'none' : '';
+    btn?.classList.toggle('active', !open);
     if (!open && !_recentLoaded) { _recentLoaded = true; loadRecentPosts(); }
 }
 
@@ -495,118 +490,6 @@ function renderImagePreviews() {
         <button class="rm-btn" onclick="removeImage(${i})" title="ลบ">✕</button>
       </div>`).join('') +
       `<button class="fb-photo-add-btn" onclick="openImagePicker()" title="เพิ่มรูปอีก">+</button>`;
-}
-
-// ── Map / check-in ────────────────────────────────────────────
-function openMapModal() {
-    document.getElementById('mapModal').style.display = 'flex';
-    if (!_map) {
-        _map = L.map('mapContainer').setView([13.75, 100.51], 6);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            maxZoom: 19,
-        }).addTo(_map);
-        _map.on('click', onMapClick);
-    }
-    setTimeout(() => _map.invalidateSize(), 150);
-    if (_selectedLocation) _setMapMarker(_selectedLocation.lat, _selectedLocation.lng, _selectedLocation.name);
-}
-
-function closeMapModal(e) {
-    if (!e || e.target === document.getElementById('mapModal'))
-        document.getElementById('mapModal').style.display = 'none';
-}
-
-async function onMapClick(e) {
-    const { lat, lng } = e.latlng;
-    try {
-        const res  = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=th`);
-        const data = await res.json();
-        const name = data.address?.city || data.address?.town || data.address?.village || data.address?.suburb
-                  || data.display_name?.split(',')[0] || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-        _setMapMarker(lat, lng, name);
-    } catch {
-        _setMapMarker(lat, lng, `${lat.toFixed(4)}, ${lng.toFixed(4)}`);
-    }
-}
-
-function _setMapMarker(lat, lng, name) {
-    if (_mapMarker) _mapMarker.remove();
-    _mapMarker = L.marker([lat, lng]).addTo(_map).bindPopup(name).openPopup();
-    document.getElementById('mapSelectedLabel').textContent = `📍 ${name}`;
-    document.getElementById('mapSelectedLabel').style.color = '#fff';
-    // Store pending selection (confirmed on button press)
-    _map._pendingLoc = { lat, lng, name };
-}
-
-function confirmLocation() {
-    if (!_map?._pendingLoc && !_selectedLocation) { alert('กรุณาเลือกสถานที่บนแผนที่'); return; }
-    const loc = _map?._pendingLoc || _selectedLocation;
-    _selectedLocation = loc;
-    const tag = document.getElementById('fbLocationTag');
-    tag.innerHTML = `<span>📍 ${esc(loc.name)}</span><button class="rm-loc" onclick="removeLocation()" title="ลบ">✕</button>`;
-    tag.style.display = 'flex';
-    closeMapModal();
-}
-
-function removeLocation() {
-    _selectedLocation = null;
-    if (_map) { _map._pendingLoc = null; document.getElementById('mapSelectedLabel').textContent = 'คลิกบนแผนที่หรือค้นหาสถานที่'; }
-    document.getElementById('fbLocationTag').style.display = 'none';
-}
-
-function locateMe() {
-    if (!_map) return;
-    _map.locate({ setView: true, maxZoom: 15 });
-    _map.once('locationfound', async e => {
-        try {
-            const res  = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${e.latlng.lat}&lon=${e.latlng.lng}&accept-language=th`);
-            const data = await res.json();
-            const name = data.address?.city || data.address?.town || data.address?.suburb
-                      || data.display_name?.split(',')[0] || 'ตำแหน่งของฉัน';
-            _setMapMarker(e.latlng.lat, e.latlng.lng, name);
-        } catch {
-            _setMapMarker(e.latlng.lat, e.latlng.lng, 'ตำแหน่งของฉัน');
-        }
-    });
-    _map.once('locationerror', () => alert('ไม่สามารถระบุตำแหน่งได้'));
-}
-
-function onMapSearchInput() {
-    clearTimeout(_mapSearchTimer);
-    const q = document.getElementById('mapSearchInput').value.trim();
-    if (!q) { document.getElementById('mapSearchResults').style.display = 'none'; return; }
-    _mapSearchTimer = setTimeout(() => doMapSearch(), 500);
-}
-
-async function doMapSearch() {
-    const q = document.getElementById('mapSearchInput').value.trim();
-    if (!q) return;
-    try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5&accept-language=th`);
-        const results = await res.json();
-        const el = document.getElementById('mapSearchResults');
-        if (!results.length) { el.innerHTML = '<div class="map-result-item" style="color:var(--text2)">ไม่พบสถานที่</div>'; el.style.display = ''; return; }
-        el.style.display = '';
-        el.innerHTML = results.map(r => {
-            const parts = r.display_name.split(',');
-            return `<div class="map-result-item" data-lat="${r.lat}" data-lon="${r.lon}" data-name="${esc(parts[0])}">
-              <div class="map-result-name">${esc(parts[0])}</div>
-              <div class="map-result-sub">${esc(parts.slice(1,3).join(','))}</div>
-            </div>`;
-        }).join('');
-        el.querySelectorAll('.map-result-item').forEach(item => {
-            item.addEventListener('click', () =>
-                pickSearchResult(parseFloat(item.dataset.lat), parseFloat(item.dataset.lon), item.dataset.name));
-        });
-    } catch {}
-}
-
-function pickSearchResult(lat, lng, name) {
-    document.getElementById('mapSearchResults').style.display = 'none';
-    document.getElementById('mapSearchInput').value = name;
-    _map.setView([lat, lng], 14);
-    _setMapMarker(lat, lng, name);
 }
 
 // ── Templates ─────────────────────────────────────────────────
@@ -729,8 +612,11 @@ function _parseJobMsg(msg) {
 }
 
 function togglePostingHelp() {
-    const el = document.getElementById('postingHelpPanel');
-    el.style.display = el.style.display === 'none' ? '' : 'none';
+    const el  = document.getElementById('postingHelpPanel');
+    const btn = document.getElementById('btnPostingHelp');
+    const open = el.style.display === '';
+    el.style.display = open ? 'none' : '';
+    btn?.classList.toggle('active', !open);
 }
 
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }

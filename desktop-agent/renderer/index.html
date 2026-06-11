@@ -2,9 +2,7 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: blob: https://*.tile.openstreetmap.org; connect-src 'self' https://nominatim.openstreetmap.org">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:">
   <title>MultiPost – Desktop Agent</title>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -164,20 +162,15 @@
         <!-- Message textarea -->
         <textarea id="jobMsg" class="fb-textarea" placeholder="คุณกำลังคิดอะไรอยู่?" rows="4"></textarea>
 
-        <!-- Toolbar: photo / map / recent posts / delay -->
+        <!-- Toolbar: photo / recent posts / posting help / delay -->
         <div class="fb-toolbar">
-          <button class="fb-tool-btn" onclick="openImagePicker()" title="เพิ่มรูปภาพ">
-            📷 <span>รูปภาพ</span>
-          </button>
-          <button class="fb-tool-btn" onclick="openMapModal()" title="เช็คอินสถานที่">
-            📍 <span>สถานที่</span>
-          </button>
-          <button class="fb-tool-btn" onclick="toggleRecentPosts()">📝 โพสต์ล่าสุด</button>
-          <button class="fb-tool-btn" onclick="togglePostingHelp()" title="วิธีการโพส">❓ วิธีโพส</button>
-          <div style="margin-left:auto;display:flex;align-items:center;gap:.35rem">
-            <span style="font-size:11px;color:var(--text2)">⏱ Delay</span>
+          <button class="fb-tool-btn" onclick="openImagePicker()">📷 รูปภาพ</button>
+          <button class="fb-tool-btn" id="btnRecentPosts" onclick="toggleRecentPosts()">📝 โพสต์ล่าสุด</button>
+          <button class="fb-tool-btn" id="btnPostingHelp" onclick="togglePostingHelp()">❓ วิธีโพส</button>
+          <div class="fb-delay-wrap">
+            <span>⏱</span>
             <input type="number" id="jobDelay" value="5" min="1" max="120" class="fb-delay-input">
-            <span style="font-size:11px;color:var(--text2)">วิ</span>
+            <span>วิ</span>
           </div>
         </div>
 
@@ -186,9 +179,6 @@
 
         <!-- Photo preview strip (shown when images selected) -->
         <div id="photoPreviewRow" class="fb-photo-row" style="display:none"></div>
-
-        <!-- Location tag (shown when location selected) -->
-        <div id="fbLocationTag" class="fb-location-tag" style="display:none"></div>
 
         <!-- Recent posts panel (collapsible) -->
         <div id="recentPostsPanel" style="display:none">
@@ -270,32 +260,6 @@
 </div>
 
 <script src="app.js"></script>
-
-<!-- Map / check-in modal -->
-<div id="mapModal" class="modal-overlay" style="display:none" onclick="closeMapModal(event)">
-  <div class="modal-box map-modal-box" onclick="event.stopPropagation()">
-    <div class="modal-header">
-      <span>📍 เช็คอินสถานที่</span>
-      <button class="btn-link ml-auto" style="font-size:15px;color:var(--text2)" onclick="closeMapModal()">✕</button>
-    </div>
-    <!-- Search bar -->
-    <div class="map-search-row">
-      <span class="map-search-icon">🔍</span>
-      <input id="mapSearchInput" class="map-search-input" placeholder="ค้นหาสถานที่... เช่น ภูเก็ต, สุวรรณภูมิ"
-        oninput="onMapSearchInput()" onkeydown="if(event.key==='Enter')doMapSearch()">
-      <button class="btn-link" onclick="locateMe()" title="ตำแหน่งของฉัน" style="font-size:18px;padding:.1rem .4rem">🎯</button>
-    </div>
-    <!-- Search results dropdown -->
-    <div id="mapSearchResults" class="map-search-results" style="display:none"></div>
-    <!-- Leaflet map -->
-    <div id="mapContainer" class="map-container"></div>
-    <!-- Footer -->
-    <div class="map-footer">
-      <span class="map-selected-label" id="mapSelectedLabel">คลิกบนแผนที่หรือค้นหาสถานที่</span>
-      <button class="btn btn-primary" style="padding:.4rem 1rem;font-size:13px;font-weight:600" onclick="confirmLocation()">✓ ยืนยัน</button>
-    </div>
-  </div>
-</div>
 
 <!-- Groups modal (all groups) -->
 <div id="groupsModal" class="modal-overlay" style="display:none" onclick="closeGroupsModal(event)">
