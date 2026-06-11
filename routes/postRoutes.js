@@ -40,7 +40,7 @@ router.get('/uploads/:filename', async (req, res) => {
 // Templates
 router.get('/api/templates',        ctrl.getTemplates);
 router.post('/api/templates',       upload.array('images', 10), saveUploadedFiles, ctrl.createTemplate);
-router.put('/api/templates/:id',    ctrl.updateTemplate);
+router.put('/api/templates/:id',    upload.array('images', 10), saveUploadedFiles, ctrl.updateTemplate);
 router.delete('/api/templates/:id', ctrl.deleteTemplate);
 
 // Posts

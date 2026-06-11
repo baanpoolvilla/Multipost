@@ -598,10 +598,16 @@ function onStFileChange(inp) {
     </div>`).join('');
 }
 
-/* ── Edit template (text only) ── */
+/* ── Edit template ── */
+let _tplKeepImages  = [];   // existing image filenames to keep
+let _tplEditNewFiles = [];  // new files picked in edit dialog
+
 async function openEditTpl(id) {
   const t = _templates.find(t => t.id === id);
   if (!t) return;
+  _tplKeepImages   = [...(t.images || [])];
+  _tplEditNewFiles = [];
+
   const { value } = await Swal.fire({
     title: '<i class="fa-solid fa-pen" style="color:#1877f2"></i> แก้ไขโพสต์',
     html: `
@@ -612,13 +618,24 @@ async function openEditTpl(id) {
         <label style="font-size:.82rem;color:#65676b;display:block;margin:.55rem 0 .3rem">ชื่อ Template:</label>
         <input id="etName" type="text" value="${t.name||''}"
           style="width:100%;padding:.48rem .75rem;border:1.5px solid #dbe0e6;border-radius:8px;font-family:inherit;font-size:.84rem;outline:none;box-sizing:border-box">
+        <label style="font-size:.82rem;color:#65676b;display:block;margin:.55rem 0 .3rem">รูปภาพ (สูงสุด 10 รูป):</label>
+        <div id="etImgPrev" style="display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.4rem"></div>
+        <div onclick="document.getElementById('etFileInp').click()"
+          style="border:2px dashed #dbe0e6;border-radius:8px;padding:.6rem;text-align:center;cursor:pointer;color:#8a8d91;font-size:.8rem;transition:border-color .15s"
+          onmouseover="this.style.borderColor='#1877f2'" onmouseout="this.style.borderColor='#dbe0e6'">
+          <i class="fa-solid fa-cloud-arrow-up" style="font-size:1.1rem;display:block;margin-bottom:.2rem"></i>
+          คลิกเพื่อเพิ่มรูปภาพ
+        </div>
+        <input type="file" id="etFileInp" multiple accept="image/*" style="display:none"
+          onchange="onEtFileChange(this)">
       </div>`,
     showCancelButton: true,
     confirmButtonColor: '#1877f2',
     confirmButtonText: 'บันทึก',
     cancelButtonText: 'ยกเลิก',
-    width: 460,
+    width: 480,
     focusConfirm: false,
+    didOpen: () => renderEtImgs(),
     preConfirm: () => {
       const msg = document.getElementById('etMsg')?.value.trim();
       if (!msg) { Swal.showValidationMessage('กรุณากรอกข้อความ'); return false; }
@@ -626,18 +643,56 @@ async function openEditTpl(id) {
     },
   });
 
-  if (!value) { openTemplateModal(); return; }
+  if (!value) { _tplKeepImages = []; _tplEditNewFiles = []; openTemplateModal(); return; }
 
-  const res  = await fetch(`/api/templates/${id}`, {
-    method: 'PUT', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(value),
-  });
+  const fd = new FormData();
+  fd.append('message', value.message);
+  fd.append('name',    value.name);
+  _tplKeepImages.forEach(n => fd.append('keepImages', n));
+  _tplEditNewFiles.forEach(f => fd.append('images', f));
+  _tplKeepImages   = [];
+  _tplEditNewFiles = [];
+
+  const res  = await fetch(`/api/templates/${id}`, { method: 'PUT', body: fd });
   const data = await res.json();
   if (data.ok) {
     const idx = _templates.findIndex(x => x.id === id);
-    if (idx >= 0) _templates[idx] = { ..._templates[idx], ...value };
+    if (idx >= 0) _templates[idx] = { ..._templates[idx], ...data.template };
     openTemplateModal();
   }
+}
+
+function renderEtImgs() {
+  const el = document.getElementById('etImgPrev');
+  if (!el) return;
+  const keepHtml = _tplKeepImages.map((name, i) => `
+    <div style="position:relative">
+      <img src="/uploads/${name}" style="width:54px;height:54px;object-fit:cover;border-radius:6px"
+           onerror="etRemoveKeep(${i})">
+      <button onclick="etRemoveKeep(${i})" type="button"
+        style="position:absolute;top:-4px;right:-4px;background:#c62828;color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:.55rem;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>`).join('');
+  const newHtml = _tplEditNewFiles.map((f, i) => `
+    <div style="position:relative">
+      <img src="${URL.createObjectURL(f)}" style="width:54px;height:54px;object-fit:cover;border-radius:6px">
+      <button onclick="_tplEditNewFiles.splice(${i},1);renderEtImgs()" type="button"
+        style="position:absolute;top:-4px;right:-4px;background:#c62828;color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:.55rem;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>`).join('');
+  el.innerHTML = keepHtml + newHtml;
+}
+
+function etRemoveKeep(i) { _tplKeepImages.splice(i, 1); renderEtImgs(); }
+
+function onEtFileChange(inp) {
+  Array.from(inp.files).forEach(f => {
+    if (_tplKeepImages.length + _tplEditNewFiles.length < 10) _tplEditNewFiles.push(f);
+  });
+  inp.value = '';
+  renderEtImgs();
 }
 
 /* ── Delete template ── */
