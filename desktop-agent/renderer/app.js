@@ -18,14 +18,26 @@ window.addEventListener('DOMContentLoaded', async () => {
     await loadJobs();
     loadGroups();
     _statusInterval = setInterval(refreshStatus, 5000);
+
+    let _jobRefreshing = false;
     setInterval(async () => {
-        const fresh = await agent.listJobs();
-        if (JSON.stringify(fresh.map(j=>j._id+j.status)) !== JSON.stringify(_jobs.map(j=>j._id+j.status))) {
-            _jobs = fresh;
-            renderJobs();
-        }
+        if (_jobRefreshing) return;
+        _jobRefreshing = true;
+        try {
+            const fresh = await agent.listJobs();
+            if (JSON.stringify(fresh.map(j=>j._id+j.status)) !== JSON.stringify(_jobs.map(j=>j._id+j.status))) {
+                _jobs = fresh;
+                renderJobs();
+            }
+        } catch {} finally { _jobRefreshing = false; }
     }, 8000);
-    setInterval(refreshGroupsSilent, 10000);
+
+    let _grpRefreshing = false;
+    setInterval(async () => {
+        if (_grpRefreshing) return;
+        _grpRefreshing = true;
+        try { await refreshGroupsSilent(); } catch {} finally { _grpRefreshing = false; }
+    }, 12000);
 });
 
 // ── Tab navigation ────────────────────────────────────────────
@@ -201,7 +213,6 @@ async function refreshGroupsSilent() {
     _groups   = fresh;
     _selected = fresh.map(g => prevMap.has(g.groupId) ? prevMap.get(g.groupId) : true);
     renderGroupsInline();
-    renderGroupsModal();
     updateGroupCount();
 }
 }
