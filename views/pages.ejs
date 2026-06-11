@@ -225,17 +225,23 @@
       <div id="importPageList" style="max-height:320px;overflow-y:auto;border-radius:8px"></div>
     </div>
     <div class="map-modal-footer" id="importFooter" style="display:none">
-      <span id="importSelectCount" style="font-size:.85rem;color:#65676b">เลือก 0 เพจ</span>
-      <button class="btn-post" onclick="doImportPages()" style="padding:.5rem 1.1rem">
-        <i class="fa-solid fa-file-import"></i> นำเข้าเพจที่เลือก
-      </button>
+      <span id="importSelectCount" style="font-size:.85rem;color:#65676b">เพิ่มใหม่ 0 เพจ</span>
+      <div style="display:flex;gap:.5rem">
+        <button id="refreshAllTokensBtn" onclick="refreshAllTokens()" style="display:none;padding:.5rem 1rem;background:#2e7d32;color:#fff;border:none;border-radius:8px;font-size:.84rem;cursor:pointer;align-items:center;gap:.4rem;font-family:inherit">
+          <i class="fa-solid fa-rotate"></i> รีเฟรช Token เพจที่มีอยู่
+        </button>
+        <button class="btn-post" onclick="doImportPages()" style="padding:.5rem 1.1rem">
+          <i class="fa-solid fa-file-import"></i> นำเข้าเพจใหม่
+        </button>
+      </div>
     </div>
   </div>
 </div>
 
 <script>
-/* ── Pre-loaded groups data from server ── */
+/* ── Pre-loaded data from server ── */
 const _pageGroupsData = {};
+const EXISTING_PAGE_IDS = new Set([<%- pages.map(p=>`'${p.pageId}'`).join(',') %>]);
 <% pages.forEach(p => { %>
 _pageGroupsData['<%= p.pageId %>'] = <%- JSON.stringify(p.groups || []) %>;
 <% }); %>
@@ -847,37 +853,49 @@ function renderImportList(pages) {
     return;
   }
 
-  const colors = ['purple','green','orange','blue','red'];
-  list.innerHTML = pages.map((p, i) => `
-    <label style="display:flex;align-items:center;gap:.75rem;padding:.65rem .4rem;cursor:pointer;border-bottom:1px solid #f0f2f5">
-      <input type="checkbox" class="import-chk" data-idx="${i}" onchange="updateImportCount()"
-        style="width:16px;height:16px;cursor:pointer;accent-color:#1877f2">
+  const colors  = ['purple','green','orange','blue','red'];
+  const existing = pages.filter(p => EXISTING_PAGE_IDS.has(p.id));
+  const newPages = pages.filter(p => !EXISTING_PAGE_IDS.has(p.id));
+
+  list.innerHTML = pages.map((p, i) => {
+    const isExisting = EXISTING_PAGE_IDS.has(p.id);
+    return `
+    <div style="display:flex;align-items:center;gap:.75rem;padding:.65rem .4rem;border-bottom:1px solid #f0f2f5">
+      ${isExisting
+        ? `<span style="font-size:.72rem;background:#e7f3ff;color:#1877f2;padding:.2rem .5rem;border-radius:4px;flex-shrink:0;white-space:nowrap"><i class="fa-solid fa-rotate"></i> มีอยู่แล้ว</span>`
+        : `<input type="checkbox" class="import-chk" data-idx="${i}" onchange="updateImportCount()" checked
+             style="width:16px;height:16px;cursor:pointer;accent-color:#1877f2;flex-shrink:0">`}
       <div class="avatar avatar-${colors[i%5]}" style="flex-shrink:0">${p.name.slice(-1)}</div>
       <div style="flex:1;min-width:0">
         <div style="font-weight:600;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
         <div style="font-size:.78rem;color:#65676b">ID: ${p.id}</div>
       </div>
-      ${p.access_token ? '<span style="font-size:.75rem;color:#2e7d32;background:#e8f5e9;padding:.15rem .5rem;border-radius:4px"><i class="fa-solid fa-key"></i> มี Token</span>' : ''}
-    </label>
-  `).join('');
+      ${p.access_token ? '<span style="font-size:.72rem;color:#2e7d32;background:#e8f5e9;padding:.15rem .5rem;border-radius:4px"><i class="fa-solid fa-key"></i> มี Token</span>' : ''}
+    </div>`;
+  }).join('');
 
   footer.style.display = 'flex';
-  // select all by default
-  document.querySelectorAll('.import-chk').forEach(c => c.checked = true);
   updateImportCount();
+
+  // Show "refresh all" button if there are existing pages
+  const refreshBtn = document.getElementById('refreshAllTokensBtn');
+  if (refreshBtn) refreshBtn.style.display = existing.length ? 'inline-flex' : 'none';
 }
 
 function updateImportCount() {
   const n = document.querySelectorAll('.import-chk:checked').length;
-  document.getElementById('importSelectCount').textContent = `เลือก ${n} เพจ`;
+  document.getElementById('importSelectCount').textContent = `เพิ่มใหม่ ${n} เพจ`;
 }
 
 async function doImportPages() {
   const selected = [...document.querySelectorAll('.import-chk:checked')]
     .map(el => _importCandidates[+el.dataset.idx]);
-  if (!selected.length) return;
+  if (!selected.length) {
+    Swal.fire({ icon: 'warning', title: 'ไม่มีเพจใหม่ที่เลือก', timer: 1500, showConfirmButton: false });
+    return;
+  }
 
-  let imported = 0, skipped = 0;
+  let imported = 0, failed = 0;
   for (const p of selected) {
     const res  = await fetch('/pages', {
       method: 'POST',
@@ -885,16 +903,46 @@ async function doImportPages() {
       body: JSON.stringify({ pageId: p.id, pageName: p.name, accessToken: p.access_token || '', tokenExpiry: null }),
     });
     const data = await res.json();
-    if (data.ok) imported++;
-    else skipped++;
+    if (data.ok) imported++; else failed++;
   }
 
   closeImportModal();
   await Swal.fire({
     icon: 'success',
-    title: `นำเข้าสำเร็จ ${imported} เพจ` + (skipped ? ` (ข้าม ${skipped} เพจซ้ำ)` : ''),
-    timer: 2000,
-    showConfirmButton: false,
+    title: `นำเข้าสำเร็จ ${imported} เพจ` + (failed ? ` (ผิดพลาด ${failed})` : ''),
+    timer: 2000, showConfirmButton: false,
+  });
+  location.reload();
+}
+
+async function refreshAllTokens() {
+  const existing = _importCandidates.filter(p => EXISTING_PAGE_IDS.has(p.id) && p.access_token);
+  if (!existing.length) {
+    Swal.fire({ icon: 'warning', title: 'ไม่พบเพจที่ต้องอัปเดต', timer: 1500, showConfirmButton: false });
+    return;
+  }
+
+  const btn = document.getElementById('refreshAllTokensBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังรีเฟรช...';
+
+  let updated = 0, failed = 0;
+  for (const p of existing) {
+    const res  = await fetch(`/pages/${p.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accessToken: p.access_token, tokenExpiry: null }),
+    });
+    const data = await res.json();
+    if (data.ok) updated++; else failed++;
+  }
+
+  closeImportModal();
+  await Swal.fire({
+    icon: 'success',
+    title: `รีเฟรช Token สำเร็จ ${updated} เพจ` + (failed ? ` (ผิดพลาด ${failed})` : ''),
+    html: '<small style="color:#65676b">Token ใหม่เป็นแบบถาวร (ดึงจาก Long-lived Token)</small>',
+    confirmButtonColor: '#1877f2',
   });
   location.reload();
 }
