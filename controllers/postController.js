@@ -17,12 +17,8 @@ exports.sendPost = async (req, res) => {
     const { message, feelingEmoji, feelingLabel, location } = req.body;
     const uploadedImages = (req.files || []).map(f => f.filename);
     const tplRaw         = req.body.templateImages ? [].concat(req.body.templateImages) : [];
-    // Only keep template images that actually exist (dead filenames → skipped)
-    const validTplImages = [];
-    for (const name of tplRaw) {
-        if (await imageStore.exists(name)) validTplImages.push(name);
-    }
-    const images = [...uploadedImages, ...validTplImages];
+    // Pass template images directly — uploadPhoto() handles missing files gracefully
+    const images = [...uploadedImages, ...tplRaw];
 
     if (!message || !message.trim())
         return res.status(400).json({ error: 'กรุณากรอกข้อความ' });

@@ -380,11 +380,9 @@ function renderTplImagePreviews() {
 }
 
 function tplImgBroken(name, img) {
-  _tplLoadedImages = _tplLoadedImages.filter(n => n !== name);
+  // Hide the broken thumbnail in UI only — keep filename in _tplLoadedImages so it's still sent
   const thumb = img.closest('.img-thumb');
-  if (thumb) thumb.remove();
-  const el = document.getElementById('tplImagePreview');
-  if (el && !el.querySelector('.img-thumb')) el.style.display = 'none';
+  if (thumb) thumb.style.display = 'none';
 }
 
 function removeTplImage(idx) { _tplLoadedImages.splice(idx, 1); renderTplImagePreviews(); }
