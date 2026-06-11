@@ -745,6 +745,7 @@ async function saveCurrentAsTemplate() {
   const fd = new FormData();
   fd.append('message', msg);
   fd.append('name', name || '');
+  _tplLoadedImages.forEach(n => fd.append('keepImages', n));
   selectedFiles.forEach(f => fd.append('images', f));
 
   const res  = await fetch('/api/templates', { method: 'POST', body: fd });

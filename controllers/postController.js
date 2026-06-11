@@ -391,8 +391,10 @@ exports.getTemplates = async (req, res) => {
 exports.createTemplate = async (req, res) => {
     const { name, message } = req.body;
     if (!message?.trim()) return res.status(400).json({ error: 'กรุณากรอกข้อความ' });
-    const images   = (req.files || []).map(f => f.filename);
-    const template = await templateStore.create({ name: name?.trim() || '', message: message.trim(), images });
+    const keepImages = req.body.keepImages ? [].concat(req.body.keepImages) : [];
+    const newImages  = (req.files || []).map(f => f.filename);
+    const images     = [...keepImages, ...newImages];
+    const template   = await templateStore.create({ name: name?.trim() || '', message: message.trim(), images });
     res.json({ ok: true, template });
 };
 
