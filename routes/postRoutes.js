@@ -2,6 +2,7 @@ const express    = require('express');
 const router     = express.Router();
 const multer     = require('multer');
 const path       = require('path');
+const AdmZip     = require('adm-zip');
 const ctrl       = require('../controllers/postController');
 const agentCtrl  = require('../controllers/agentController');
 const imageStore = require('../services/imageStore');
@@ -86,6 +87,23 @@ router.get('/pages',          ctrl.showPages);
 router.post('/pages',         ctrl.addPage);
 router.put('/pages/:id',      ctrl.updatePage);
 router.delete('/pages/:id',   ctrl.deletePage);
+
+// Agent download — injects .env with MONGODB_URI so DB connects on first run
+router.get('/download/agent', (req, res) => {
+    try {
+        const mongoUri = process.env.MONGODB_URI || '';
+        const zipPath  = path.join(__dirname, '../public/downloads/agent.zip');
+        const zip      = new AdmZip(zipPath);
+        zip.addFile('multipost-agent/.env', Buffer.from(`MONGODB_URI=${mongoUri}\n`));
+        const buf = zip.toBuffer();
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader('Content-Disposition', 'attachment; filename="multipost-agent.zip"');
+        res.setHeader('Content-Length', buf.length);
+        res.send(buf);
+    } catch (e) {
+        res.status(500).send('ไม่สามารถสร้างไฟล์ดาวน์โหลดได้');
+    }
+});
 
 // Agent / Groups / Job Queue pages
 router.get('/agent',     agentCtrl.showAgent);
