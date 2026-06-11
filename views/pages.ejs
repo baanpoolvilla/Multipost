@@ -729,29 +729,32 @@ async function exchangeToken(pageId, pageName, btn) {
     // Offer direct token paste as fallback
     Swal.fire({
       icon: 'warning',
-      title: 'ต่ออายุอัตโนมัติไม่ได้',
+      title: 'ต้องใส่ Token ใหม่',
       html: `
-        <p style="font-size:.84rem;color:#555;margin:.2rem 0 .8rem;text-align:left">
-          <b style="color:#c62828">สาเหตุ:</b> ${err.message}
-        </p>
-        <p style="font-size:.82rem;color:#555;margin:0 0 .5rem;text-align:left">
-          วาง <b>Token ใหม่</b> จาก
-          <a href="https://developers.facebook.com/tools/explorer/" target="_blank"
-             style="color:#1877f2">Graph API Explorer</a>
-          แล้วระบบจะบันทึกและลองต่ออายุให้อัตโนมัติ:
-        </p>
-        <textarea id="fallback-token-${pageId}"
-          placeholder="วาง Page Access Token ใหม่ที่นี่..."
-          style="width:100%;height:72px;padding:.55rem .7rem;border:1.5px solid #dbe0e6;border-radius:8px;font-family:monospace;font-size:.75rem;resize:none;outline:none;box-sizing:border-box"></textarea>
-        <button type="button" onclick="applyNewToken('${pageId}')"
-          style="margin-top:.5rem;width:100%;padding:.52rem;background:#1877f2;color:#fff;border:none;border-radius:8px;font-size:.86rem;cursor:pointer;font-family:inherit;font-weight:700;display:flex;align-items:center;justify-content:center;gap:.4rem">
-          <i class="fa-solid fa-floppy-disk"></i> บันทึก Token ใหม่และต่ออายุ
-        </button>`,
+        <div style="text-align:left;font-size:.83rem;color:#444">
+          <div style="background:#fff3e0;border-radius:6px;padding:.55rem .7rem;margin-bottom:.7rem;color:#e65100">
+            <b>สาเหตุ:</b> ${err.message}
+          </div>
+          <b>วิธีได้ Token ใหม่:</b>
+          <ol style="margin:.35rem 0 .7rem;padding-left:1.3rem;line-height:1.8">
+            <li>เปิด <a href="https://developers.facebook.com/tools/explorer/" target="_blank" style="color:#1877f2;font-weight:600">Graph API Explorer</a></li>
+            <li>เลือก App ที่ตรงกับ App ID ในการตั้งค่า</li>
+            <li>กด <b>"Generate Access Token"</b></li>
+            <li>Copy token แล้ววางด้านล่าง</li>
+          </ol>
+          <textarea id="fallback-token-${pageId}"
+            placeholder="วาง User Access Token ที่ copy มา..."
+            style="width:100%;height:68px;padding:.55rem .7rem;border:1.5px solid #dbe0e6;border-radius:8px;font-family:monospace;font-size:.74rem;resize:none;outline:none;box-sizing:border-box"></textarea>
+          <button type="button" id="applyTokenBtn-${pageId}" onclick="applyNewToken('${pageId}')"
+            style="margin-top:.45rem;width:100%;padding:.55rem;background:#1877f2;color:#fff;border:none;border-radius:8px;font-size:.86rem;cursor:pointer;font-family:inherit;font-weight:700;display:flex;align-items:center;justify-content:center;gap:.4rem">
+            <i class="fa-solid fa-floppy-disk"></i> บันทึกและต่ออายุ
+          </button>
+        </div>`,
       showCancelButton: true,
       showConfirmButton: false,
       cancelButtonText: 'ปิด',
       cancelButtonColor: '#65676b',
-      width: 500,
+      width: 520,
     });
   }
 }
@@ -759,10 +762,15 @@ async function exchangeToken(pageId, pageName, btn) {
 async function applyNewToken(pageId) {
   const inp   = document.getElementById(`fallback-token-${pageId}`);
   const token = inp?.value.trim();
-  if (!token) { inp?.focus(); return; }
+  if (!token) {
+    inp?.focus();
+    inp && (inp.style.borderColor = '#c62828');
+    setTimeout(() => inp && (inp.style.borderColor = '#dbe0e6'), 2000);
+    return;
+  }
 
   // Show spinner in button
-  const applyBtn = inp?.nextElementSibling;
+  const applyBtn = document.getElementById(`applyTokenBtn-${pageId}`) || inp?.nextElementSibling;
   if (applyBtn) { applyBtn.disabled = true; applyBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังบันทึก...'; }
 
   // Save the new token to the page record
