@@ -217,7 +217,6 @@ async function refreshGroupsSilent() {
     renderGroupsInline();
     updateGroupCount();
 }
-}
 
 function renderGroupsInline() {
     const el    = document.getElementById('groupPickList');
