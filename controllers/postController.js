@@ -389,23 +389,21 @@ exports.getTemplates = async (req, res) => {
 };
 
 exports.createTemplate = async (req, res) => {
-    const { name, message } = req.body;
+    const { name, message, images } = req.body;
     if (!message?.trim()) return res.status(400).json({ error: 'กรุณากรอกข้อความ' });
-    const keepImages = req.body.keepImages ? [].concat(req.body.keepImages) : [];
-    const newImages  = (req.files || []).map(f => f.filename);
-    const images     = [...keepImages, ...newImages];
-    const template   = await templateStore.create({ name: name?.trim() || '', message: message.trim(), images });
+    const template = await templateStore.create({
+        name: name?.trim() || '', message: message.trim(),
+        images: Array.isArray(images) ? images : [],
+    });
     res.json({ ok: true, template });
 };
 
 exports.updateTemplate = async (req, res) => {
-    const { name, message } = req.body;
+    const { name, message, images } = req.body;
     if (!message?.trim()) return res.status(400).json({ error: 'กรุณากรอกข้อความ' });
-    const keepImages = req.body.keepImages ? [].concat(req.body.keepImages) : [];
-    const newImages  = (req.files || []).map(f => f.filename);
-    const images     = [...keepImages, ...newImages];
     const updated = await templateStore.update(req.params.id, {
-        name: name?.trim() || '', message: message.trim(), images,
+        name: name?.trim() || '', message: message.trim(),
+        images: Array.isArray(images) ? images : [],
     });
     if (!updated) return res.status(404).json({ error: 'ไม่พบ Template' });
     res.json({ ok: true, template: updated });

@@ -544,14 +544,13 @@ async function openCreateTemplate() {
         <input id="stName" type="text" placeholder="เช่น โปรโมชั่น A"
           style="width:100%;padding:.48rem .75rem;border:1.5px solid #dbe0e6;border-radius:8px;font-family:inherit;font-size:.84rem;outline:none;box-sizing:border-box">
         <label style="font-size:.82rem;color:#65676b;display:block;margin:.55rem 0 .3rem">รูปภาพ (สูงสุด 10 รูป):</label>
-        <div onclick="document.getElementById('stFileInp').click()"
+        <div id="stImgPrev" style="display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.4rem"></div>
+        <input type="file" id="stFileInp" multiple accept="image/*" style="display:none">
+        <div id="stAddBtn"
           style="border:2px dashed #dbe0e6;border-radius:8px;padding:.85rem;text-align:center;cursor:pointer;color:#8a8d91;font-size:.82rem">
           <i class="fa-solid fa-cloud-arrow-up" style="font-size:1.4rem;display:block;margin-bottom:.3rem"></i>
           คลิกเพื่อเลือกรูปภาพ
         </div>
-        <input type="file" id="stFileInp" multiple accept="image/*" style="display:none"
-          onchange="onStFileChange(this)">
-        <div id="stImgPrev" style="display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.4rem"></div>
       </div>`,
     showCancelButton: true,
     confirmButtonColor: '#1a1a1a',
@@ -559,6 +558,18 @@ async function openCreateTemplate() {
     cancelButtonText: 'ยกเลิก',
     width: 480,
     focusConfirm: false,
+    didOpen: () => {
+      const fileInp = document.getElementById('stFileInp');
+      const addBtn  = document.getElementById('stAddBtn');
+      addBtn.addEventListener('click', () => fileInp.click());
+      addBtn.addEventListener('mouseover', () => addBtn.style.borderColor = '#1877f2');
+      addBtn.addEventListener('mouseout',  () => addBtn.style.borderColor = '#dbe0e6');
+      fileInp.addEventListener('change', function() {
+        Array.from(this.files).forEach(f => { if (_tplNewFiles.length < 10) _tplNewFiles.push(f); });
+        this.value = '';
+        _stRender();
+      });
+    },
     preConfirm: () => {
       const msg = document.getElementById('stMsg')?.value.trim();
       if (!msg) { Swal.showValidationMessage('กรุณากรอกข้อความ'); return false; }
@@ -568,14 +579,10 @@ async function openCreateTemplate() {
 
   if (!value) { openTemplateModal(); return; }
 
-  const fd = new FormData();
-  fd.append('message', value.message);
-  fd.append('name',    value.name);
-  _tplNewFiles.forEach(f => fd.append('images', f));
+  const images = await _uploadImages(_tplNewFiles);
   _tplNewFiles = [];
 
-  const res  = await fetch('/api/templates', { method: 'POST', body: fd });
-  const data = await res.json();
+  const data = await _saveTemplate('/api/templates', 'POST', { message: value.message, name: value.name, images });
   if (data.ok) {
     openTemplateModal();
   } else {
@@ -583,19 +590,20 @@ async function openCreateTemplate() {
   }
 }
 
-function onStFileChange(inp) {
-  Array.from(inp.files).forEach(f => { if (_tplNewFiles.length < 10) _tplNewFiles.push(f); });
-  inp.value = '';
+function _stRender() {
   const el = document.getElementById('stImgPrev');
   if (!el) return;
   el.innerHTML = _tplNewFiles.map((f, i) => `
-    <div style="position:relative">
+    <div style="position:relative" id="stn-${i}">
       <img src="${URL.createObjectURL(f)}" style="width:54px;height:54px;object-fit:cover;border-radius:6px">
-      <button onclick="_tplNewFiles.splice(${i},1);onStFileChange({files:[],value:''})" type="button"
-        style="position:absolute;top:-4px;right:-4px;background:#c62828;color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:.55rem;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;line-height:1">
-        <i class="fa-solid fa-xmark"></i>
+      <button data-si="${i}" type="button"
+        style="position:absolute;top:-4px;right:-4px;background:#c62828;color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:.55rem;cursor:pointer;padding:0">
+        ×
       </button>
     </div>`).join('');
+  el.querySelectorAll('[data-si]').forEach(btn => {
+    btn.addEventListener('click', () => { _tplNewFiles.splice(+btn.dataset.si, 1); _stRender(); });
+  });
 }
 
 /* ── Edit template ── */
@@ -657,15 +665,11 @@ async function openEditTpl(id) {
 
   if (!value) { _etKeep = []; _etNew = []; openTemplateModal(); return; }
 
-  const fd = new FormData();
-  fd.append('message', value.message);
-  fd.append('name',    value.name);
-  _etKeep.forEach(n => fd.append('keepImages', n));
-  _etNew.forEach(f  => fd.append('images', f));
+  const newFilenames = await _uploadImages(_etNew);
+  const images = [..._etKeep, ...newFilenames];
   _etKeep = []; _etNew = [];
 
-  const res  = await fetch(`/api/templates/${id}`, { method: 'PUT', body: fd });
-  const data = await res.json();
+  const data = await _saveTemplate(`/api/templates/${id}`, 'PUT', { message: value.message, name: value.name, images });
   if (data.ok) {
     const idx = _templates.findIndex(x => x.id === id);
     if (idx >= 0) _templates[idx] = data.template;
@@ -723,6 +727,26 @@ async function deleteTpl(id) {
   renderTemplates();
 }
 
+/* ── Upload helper: upload File[] → return filename[] from MongoDB ── */
+async function _uploadImages(files) {
+  if (!files.length) return [];
+  const fd = new FormData();
+  files.forEach(f => fd.append('images', f));
+  const res  = await fetch('/api/upload-images', { method: 'POST', body: fd });
+  const data = await res.json();
+  return data.ok ? data.filenames : [];
+}
+
+/* ── Save JSON to template endpoint ── */
+async function _saveTemplate(url, method, body) {
+  const res  = await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return res.json();
+}
+
 /* ── Save current composer as template ── */
 async function saveCurrentAsTemplate() {
   const msg = messageEl?.value.trim();
@@ -742,14 +766,10 @@ async function saveCurrentAsTemplate() {
   });
   if (!isConfirmed) return;
 
-  const fd = new FormData();
-  fd.append('message', msg);
-  fd.append('name', name || '');
-  _tplLoadedImages.forEach(n => fd.append('keepImages', n));
-  selectedFiles.forEach(f => fd.append('images', f));
+  const newFilenames = await _uploadImages(selectedFiles);
+  const images = [..._tplLoadedImages, ...newFilenames];
 
-  const res  = await fetch('/api/templates', { method: 'POST', body: fd });
-  const data = await res.json();
+  const data = await _saveTemplate('/api/templates', 'POST', { message: msg, name: name || '', images });
   if (data.ok) {
     Swal.fire({ icon: 'success', title: 'บันทึกแล้ว!', timer: 1400, showConfirmButton: false });
   } else {

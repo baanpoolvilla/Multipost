@@ -37,10 +37,16 @@ router.get('/uploads/:filename', async (req, res) => {
     res.send(result.buffer);
 });
 
-// Templates
+// Upload images (returns filenames stored in MongoDB)
+router.post('/api/upload-images', upload.array('images', 10), saveUploadedFiles, (req, res) => {
+    const filenames = (req.files || []).map(f => f.filename);
+    res.json({ ok: true, filenames });
+});
+
+// Templates — accept JSON body (images already uploaded via /api/upload-images)
 router.get('/api/templates',        ctrl.getTemplates);
-router.post('/api/templates',       upload.array('images', 10), saveUploadedFiles, ctrl.createTemplate);
-router.put('/api/templates/:id',    upload.array('images', 10), saveUploadedFiles, ctrl.updateTemplate);
+router.post('/api/templates',       ctrl.createTemplate);
+router.put('/api/templates/:id',    ctrl.updateTemplate);
 router.delete('/api/templates/:id', ctrl.deleteTemplate);
 
 // Posts
