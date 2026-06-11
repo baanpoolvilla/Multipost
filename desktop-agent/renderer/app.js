@@ -18,6 +18,13 @@ window.addEventListener('DOMContentLoaded', async () => {
     await loadJobs();
     loadGroups();
     _statusInterval = setInterval(refreshStatus, 5000);
+    setInterval(async () => {
+        const fresh = await agent.listJobs();
+        if (JSON.stringify(fresh.map(j=>j._id+j.status)) !== JSON.stringify(_jobs.map(j=>j._id+j.status))) {
+            _jobs = fresh;
+            renderJobs();
+        }
+    }, 8000);
 });
 
 // ── Tab navigation ────────────────────────────────────────────
@@ -288,10 +295,11 @@ function renderJobs() {
         const pageTag = j.postAsPage ? ` · 🏢 ${esc(j.postAsPage)}` : '';
         const meta = (j.status==='done'||j.status==='failed') ? `${ok}/${tot} กลุ่ม${pageTag}` : `${tot} กลุ่ม · ${j.delaySeconds}s${pageTag}`;
         const { display, modeTag } = _parseJobMsg(j.message);
+        const imgBadge = (j.images||[]).length > 0 ? `<span style="font-size:10px;background:#e7f3ff;color:#1877f2;border-radius:4px;padding:.05rem .4rem;margin-left:.3rem">📸 ${j.images.length}</span>` : '';
         return `<div class="job-item">
           <div class="job-icon">${icons[j.status]||'❓'}</div>
           <div class="job-body">
-            <div class="job-msg">${modeTag ? `<span class="job-mode-tag">${modeTag}</span> ` : ''}${esc(display)}</div>
+            <div class="job-msg">${modeTag ? `<span class="job-mode-tag">${modeTag}</span> ` : ''}${esc(display)}${imgBadge}</div>
             <div class="job-meta">${meta} · ${fmtDate(j.createdAt)}</div>
           </div>
           <span class="job-status ${j.status}">${statusJobTH(j.status)}</span>
@@ -608,11 +616,12 @@ async function saveTemplate() {
     const grps   = selectedGroups();
     const del    = parseInt(document.getElementById('jobDelay').value)||5;
     const postAs = _selectedPage || null;
+    const imgs   = _selectedImages.map(i => i.path).filter(Boolean);
     if (!msg && !grps.length) { alert('กรุณากรอกข้อความหรือเลือกกลุ่มก่อน'); return; }
-    _templates = await agent.saveTemplate({ name, message:msg, groups:grps, delaySeconds:del, postAsPage:postAs||undefined });
+    _templates = await agent.saveTemplate({ name, message:msg, groups:grps, delaySeconds:del, postAsPage:postAs||undefined, images:imgs });
     renderTemplates();
     document.getElementById('templateName').value = '';
-    appendLog(`[💾] บันทึก Template: "${name}"`);
+    appendLog(`[💾] บันทึก Template: "${name}"${imgs.length ? ` · ${imgs.length} รูป` : ''}`);
 }
 
 function applyTemplate(id) {
@@ -644,11 +653,15 @@ function applyTemplate(id) {
     _selected = _groups.map(g => (t.groups||[]).some(tg=>tg.groupId===g.groupId));
     renderGroupsInline();
     updateGroupCount();
+    // Restore images
+    _selectedImages.forEach(i => { try { URL.revokeObjectURL(i.url); } catch {} });
+    _selectedImages = (t.images || []).filter(Boolean).map(p => ({ path: p, url: `file://${p}`, name: p.split(/[/\\]/).pop() }));
+    renderImagePreviews();
     // Show create form if hidden
     const f = document.getElementById('createJobForm');
     if (f.style.display==='none') f.style.display='';
     document.getElementById('templatesPanel').style.display='none';
-    appendLog(`[📁] โหลด Template: "${t.name}"`);
+    appendLog(`[📁] โหลด Template: "${t.name}"${_selectedImages.length ? ` · ${_selectedImages.length} รูป` : ''}`);
 }
 
 async function removeTemplate(id) {

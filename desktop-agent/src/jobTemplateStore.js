@@ -11,9 +11,9 @@ function list() {
     try { return JSON.parse(fs.readFileSync(_file, 'utf-8')); } catch { return []; }
 }
 
-function save({ id, name, message, groups, delaySeconds }) {
+function save({ id, name, message, groups, delaySeconds, images, postAsPage }) {
     const templates = list();
-    const tpl = { id: id || Date.now().toString(), name, message, groups, delaySeconds };
+    const tpl = { id: id || Date.now().toString(), name, message, groups, delaySeconds, images: images || [], postAsPage: postAsPage || null };
     const idx = templates.findIndex(t => t.id === tpl.id);
     if (idx !== -1) templates[idx] = tpl; else templates.push(tpl);
     fs.writeFileSync(_file, JSON.stringify(templates, null, 2));
