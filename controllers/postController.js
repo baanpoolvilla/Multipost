@@ -7,7 +7,8 @@ const templateStore = require('../services/templateStore');
 
 // ── Dashboard ──────────────────────────────────
 exports.showDashboard = async (req, res) => {
-    const [pages, posts] = await Promise.all([pageStore.load(), postStore.load()]);
+    const [allPages, posts] = await Promise.all([pageStore.load(), postStore.load()]);
+    const pages = allPages.filter(p => p.enabled !== false);
     res.render('dashboard', { pages, recentPosts: posts.slice(0, 5) });
 };
 
