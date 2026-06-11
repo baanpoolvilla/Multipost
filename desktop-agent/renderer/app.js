@@ -1,4 +1,5 @@
 // ── State ────────────────────────────────────────────────────
+const _timeout = ms => new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms));
 let _accounts = [], _groups = [], _selected = [], _jobs = [], _jobFilter = 'all', _jobsVisible = 20;
 let _statusInterval = null;
 let _selectedPage = null;
@@ -13,11 +14,12 @@ let _mapSearchTimer = null;
 window.addEventListener('DOMContentLoaded', async () => {
     setupTabs();
     setupPushEvents();
-    await refreshStatus();
-    await loadAccounts();
-    await loadJobs();
-    loadGroups();
-    _statusInterval = setInterval(refreshStatus, 5000);
+    // Run each init step independently — a hanging IPC must not block the others
+    try { await Promise.race([refreshStatus(), _timeout(4000)]); } catch {}
+    try { await Promise.race([loadAccounts(),  _timeout(5000)]); } catch {}
+    try { await Promise.race([loadJobs(),      _timeout(5000)]); } catch {}
+    try { loadGroups(); } catch {}
+    _statusInterval = setInterval(() => { refreshStatus().catch(()=>{}); }, 5000);
 
     let _jobRefreshing = false;
     setInterval(async () => {
