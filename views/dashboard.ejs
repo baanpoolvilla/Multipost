@@ -6,7 +6,6 @@
   <title>Multi Post System</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <link rel="stylesheet" href="/css/style.css">
 </head>
@@ -92,7 +91,6 @@
       <!-- Hidden inputs -->
       <input type="hidden" id="feelingEmoji">
       <input type="hidden" id="feelingLabel">
-      <input type="hidden" id="locationVal">
       <input type="file" id="fileInput" multiple accept="image/jpeg,image/png,image/gif,image/webp" style="display:none">
 
       <!-- Textarea area -->
@@ -139,9 +137,6 @@
         </button>
         <button type="button" class="action-chip" onclick="openFeelingPicker()">
           <i class="fa-solid fa-face-smile" style="color:#f7b928"></i><span>ความรู้สึก</span>
-        </button>
-        <button type="button" class="action-chip" onclick="openMapModal()">
-          <i class="fa-solid fa-location-dot" style="color:#f5533d"></i><span>เช็คอิน</span>
         </button>
         <button type="button" class="action-chip" onclick="openTemplateModal()">
           <i class="fa-solid fa-layer-group" style="color:#1877f2"></i><span>โพสต์บันทึก</span>
@@ -258,45 +253,9 @@
   </div>
 </div>
 
-<!-- ── Map Modal ── -->
-<div id="mapModal" class="map-modal-overlay" style="display:none" onclick="closeMapOnBg(event)">
-  <div class="map-modal-box">
-    <div class="map-modal-header">
-      <span><i class="fa-solid fa-location-dot" style="color:#f5533d"></i> เช็คอินสถานที่</span>
-      <button class="map-close-btn" onclick="closeMapModal()"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-    <div class="map-modal-body">
-      <div style="display:flex;gap:.5rem;align-items:center">
-        <div class="map-search-wrap" style="flex:1">
-          <i class="fa-solid fa-magnifying-glass map-search-icon"></i>
-          <input id="mapSearchInput" type="text" class="map-search-input"
-                 placeholder="ค้นหาสถานที่... เช่น ภูเก็ต, สุวรรณภูมิ"
-                 oninput="debounceSearch()" autocomplete="off">
-          <div id="mapResults" class="map-results"></div>
-        </div>
-        <button class="my-location-btn" onclick="goToMyLocation()" title="ตำแหน่งของฉัน" id="myLocBtn">
-          <i class="fa-solid fa-location-crosshairs"></i>
-          <span>ของฉัน</span>
-        </button>
-      </div>
-      <div id="leafletMap"></div>
-    </div>
-    <div class="map-modal-footer">
-      <div id="selectedLocLabel" class="selected-loc-label">
-        <i class="fa-solid fa-circle-dot" style="color:#bcc0c4"></i>
-        <span>คลิกบนแผนที่หรือค้นหาสถานที่</span>
-      </div>
-      <button id="confirmLocBtn" class="btn-post" onclick="confirmMapLocation()" disabled>
-        <i class="fa-solid fa-check"></i> ยืนยัน
-      </button>
-    </div>
-  </div>
-</div>
-
 <script>
   const ALL_PAGES = <%- JSON.stringify(pages) %>;
 </script>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="/js/app.js"></script>
 </body>
 </html>

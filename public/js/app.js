@@ -232,16 +232,13 @@ function updateTagsBar() {
   if (!tagsBar) return;
   const fe = document.getElementById('feelingEmoji')?.value;
   const fl = document.getElementById('feelingLabel')?.value;
-  const lv = document.getElementById('locationVal')?.value;
   let html = '';
   if (fe) html += `<span class="composer-tag">${fe} รู้สึก${fl}<button onclick="clearFeeling()" type="button"><i class="fa-solid fa-xmark"></i></button></span>`;
-  if (lv) html += `<span class="composer-tag"><i class="fa-solid fa-location-dot" style="color:#f5533d"></i> ${lv}<button onclick="clearLocation()" type="button"><i class="fa-solid fa-xmark"></i></button></span>`;
   tagsBar.innerHTML = html;
   tagsBar.style.display = html ? 'flex' : 'none';
 }
 
 function clearFeeling()  { document.getElementById('feelingEmoji').value = ''; document.getElementById('feelingLabel').value = ''; updateTagsBar(); }
-function clearLocation() { document.getElementById('locationVal').value  = ''; updateTagsBar(); }
 
 /* ── Feeling picker ── */
 const FEELINGS = [
@@ -276,141 +273,6 @@ function chooseFeel(e, l) {
 }
 
 /* ═══════════════════════════════════════════
-   Map / Check-in  (Leaflet + Nominatim OSM)
-═══════════════════════════════════════════ */
-let leafletMap = null, leafletMarker = null, pendingLocation = null;
-let searchTimer = null;
-
-function openMapModal() {
-  document.getElementById('mapModal').style.display = 'flex';
-  document.body.style.overflow = 'hidden';
-
-  // Init Leaflet after modal is visible
-  setTimeout(() => {
-    if (!leafletMap) {
-      leafletMap = L.map('leafletMap').setView([13.75, 100.52], 6);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors', maxZoom: 19,
-      }).addTo(leafletMap);
-
-      leafletMap.on('click', (e) => {
-        const { lat, lng } = e.latlng;
-        placeMarker(lat, lng);
-        reverseGeocode(lat, lng);
-      });
-    } else {
-      leafletMap.invalidateSize();
-    }
-  }, 150);
-}
-
-function closeMapModal() {
-  document.getElementById('mapModal').style.display = 'none';
-  document.body.style.overflow = '';
-  document.getElementById('mapResults').innerHTML = '';
-  document.getElementById('mapSearchInput').value = '';
-}
-
-function closeMapOnBg(e) {
-  if (e.target.id === 'mapModal') closeMapModal();
-}
-
-function placeMarker(lat, lng) {
-  if (leafletMarker) leafletMarker.remove();
-  leafletMarker = L.marker([lat, lng]).addTo(leafletMap);
-  leafletMap.setView([lat, lng], Math.max(leafletMap.getZoom(), 14));
-}
-
-async function reverseGeocode(lat, lng) {
-  try {
-    const res  = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=th`, { headers: {'Accept-Language': 'th'} });
-    const data = await res.json();
-    const name = data.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-    setPendingLocation(name, lat, lng);
-  } catch {
-    setPendingLocation(`${lat.toFixed(5)}, ${lng.toFixed(5)}`, lat, lng);
-  }
-}
-
-function setPendingLocation(name, lat, lng) {
-  pendingLocation = { name, lat, lng };
-  const label = document.getElementById('selectedLocLabel');
-  label.innerHTML = `<i class="fa-solid fa-location-dot" style="color:#f5533d"></i><span title="${name}">${name}</span>`;
-  document.getElementById('confirmLocBtn').disabled = false;
-}
-
-/* Nominatim search with 500ms debounce */
-function debounceSearch() {
-  clearTimeout(searchTimer);
-  searchTimer = setTimeout(searchLocation, 500);
-}
-
-async function searchLocation() {
-  const q = document.getElementById('mapSearchInput').value.trim();
-  const resultsEl = document.getElementById('mapResults');
-  if (q.length < 2) { resultsEl.innerHTML = ''; return; }
-
-  try {
-    const res  = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=6&accept-language=th`);
-    const data = await res.json();
-    if (!data.length) { resultsEl.innerHTML = '<div class="map-result-item" style="color:#8a8d91">ไม่พบสถานที่</div>'; return; }
-    resultsEl.innerHTML = data.map(r => `
-      <div class="map-result-item" onclick="selectSearchResult(${r.lat},${r.lon},\`${r.display_name.replace(/`/g,"'")}\`)">
-        <i class="fa-solid fa-location-dot"></i>
-        <span>${r.display_name}</span>
-      </div>`).join('');
-  } catch { resultsEl.innerHTML = '<div class="map-result-item" style="color:#8a8d91">เกิดข้อผิดพลาด</div>'; }
-}
-
-function selectSearchResult(lat, lon, name) {
-  document.getElementById('mapResults').innerHTML = '';
-  document.getElementById('mapSearchInput').value = '';
-  placeMarker(parseFloat(lat), parseFloat(lon));
-  setPendingLocation(name, parseFloat(lat), parseFloat(lon));
-}
-
-/* ── ตำแหน่งปัจจุบัน ── */
-function goToMyLocation() {
-  if (!navigator.geolocation) {
-    Swal.fire({ icon: 'error', title: 'เบราว์เซอร์ไม่รองรับ GPS', confirmButtonColor: '#1877f2' });
-    return;
-  }
-  const btn = document.getElementById('myLocBtn');
-  btn.classList.add('loading');
-  btn.querySelector('span').textContent = 'กำลังหา...';
-
-  navigator.geolocation.getCurrentPosition(
-    async ({ coords }) => {
-      const { latitude: lat, longitude: lng } = coords;
-      placeMarker(lat, lng);
-      await reverseGeocode(lat, lng);
-      btn.classList.remove('loading');
-      btn.querySelector('span').textContent = 'ของฉัน';
-    },
-    (err) => {
-      btn.classList.remove('loading');
-      btn.querySelector('span').textContent = 'ของฉัน';
-      const msg = err.code === 1
-        ? 'กรุณาอนุญาตให้เข้าถึงตำแหน่งในเบราว์เซอร์'
-        : 'ไม่สามารถระบุตำแหน่งได้';
-      Swal.fire({ icon: 'warning', title: 'ไม่พบตำแหน่ง', text: msg, confirmButtonColor: '#1877f2' });
-    },
-    { enableHighAccuracy: true, timeout: 10000 }
-  );
-}
-
-function confirmMapLocation() {
-  if (!pendingLocation) return;
-  // Trim to first meaningful part (city/district)
-  const parts = pendingLocation.name.split(',');
-  const shortName = parts.slice(0, 2).join(',').trim();
-  document.getElementById('locationVal').value = shortName;
-  updateTagsBar();
-  closeMapModal();
-  pendingLocation = null;
-}
-
-/* ═══════════════════════════════════════════
    Submit
 ═══════════════════════════════════════════ */
 async function submitPost() {
@@ -435,7 +297,6 @@ async function submitPost() {
   fd.append('message',      msg);
   fd.append('feelingEmoji', document.getElementById('feelingEmoji')?.value || '');
   fd.append('feelingLabel', document.getElementById('feelingLabel')?.value || '');
-  fd.append('location',     document.getElementById('locationVal')?.value  || '');
   selectedPageIds.forEach(id => fd.append('selectedPages', id));
   selectedFiles.forEach(f => fd.append('images', f));
   _tplLoadedImages.forEach(name => fd.append('templateImages', name));
