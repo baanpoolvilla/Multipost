@@ -298,10 +298,10 @@ async function submitPost() {
   fd.append('feelingEmoji', document.getElementById('feelingEmoji')?.value || '');
   fd.append('feelingLabel', document.getElementById('feelingLabel')?.value || '');
   selectedPageIds.forEach(id => fd.append('selectedPages', id));
-  selectedFiles.forEach(f => fd.append('images', f));
   _tplLoadedImages.forEach(name => fd.append('templateImages', name));
   if (_shareGroupsData.length > 0)
     fd.append('shareGroups', JSON.stringify(_shareGroupsData));
+  selectedFiles.forEach(f => fd.append('images', f));
 
   try {
     const res  = await fetch('/send', { method: 'POST', body: fd });
