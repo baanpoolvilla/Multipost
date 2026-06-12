@@ -1,8 +1,7 @@
-@chcp 65001 >nul
 @echo off
+chcp 65001 >nul 2>&1
 cd /d "%~dp0"
-echo กำลังเปิด MultiPost Desktop Agent...
+powershell -NoProfile -Command "Write-Host 'กำลังเปิด MultiPost Desktop Agent...' -ForegroundColor Cyan"
 npm start
-echo.
-echo Agent ปิดแล้ว (code: %errorlevel%)
+powershell -NoProfile -Command "Write-Host 'Agent ปิดแล้ว' -ForegroundColor Gray"
 pause
