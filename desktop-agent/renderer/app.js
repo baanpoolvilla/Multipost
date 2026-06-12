@@ -69,14 +69,14 @@ async function refreshStatus() {
     document.getElementById('statApi').textContent     = `port ${s.apiPort}`;
     document.getElementById('statDb').textContent      = s.dbConnected ? 'Connected' : 'Offline';
     document.getElementById('statUptime').textContent  = fmtUptime(s.uptime);
-    document.getElementById('statRunner').textContent  = s.running ? 'กำลังทำงาน' : 'หยุด';
+    document.getElementById('statRunner').textContent  = s.running ? 'กำลังโพสอยู่' : 'หยุด';
 
     setDot('dotApi',    true);
     setDot('dotDb',     s.dbConnected);
     setDot('dotRunner', s.running);
     document.getElementById('lblApi').textContent    = `API: :${s.apiPort}`;
-    document.getElementById('lblDb').textContent     = s.dbConnected ? 'DB: Connected' : 'DB: Offline';
-    document.getElementById('lblRunner').textContent = s.running ? 'Runner: กำลังทำ' : 'Runner: หยุด';
+    document.getElementById('lblDb').textContent     = s.dbConnected ? 'DB: เชื่อมต่อแล้ว' : 'DB: ออฟไลน์';
+    document.getElementById('lblRunner').textContent = s.running ? 'ระบบ: กำลังโพส' : 'ระบบ: หยุด';
 
     setRunnerUI(s.running);
 }
@@ -90,12 +90,12 @@ function setDot(id, ok) {
 async function startRunner() {
     await agent.startRunner();
     setRunnerUI(true);
-    appendLog('[▶] Runner เริ่มทำงาน');
+    appendLog('[▶] ระบบโพสอัตโนมัติเริ่มทำงานแล้ว');
 }
 async function stopRunner() {
     await agent.stopRunner();
     setRunnerUI(false);
-    appendLog('[⏹] Runner หยุดแล้ว');
+    appendLog('[⏹] ระบบโพสอัตโนมัติหยุดแล้ว');
 }
 function setRunnerUI(running) {
     document.getElementById('btnStart').disabled = running;
@@ -112,7 +112,7 @@ async function loadAccounts() {
 function renderAccounts() {
     const el = document.getElementById('accountsList');
     document.getElementById('accCount').textContent = _accounts.length;
-    if (!_accounts.length) { el.innerHTML='<div class="empty-state">ยังไม่มี Account</div>'; return; }
+    if (!_accounts.length) { el.innerHTML='<div class="empty-state">ยังไม่มีบัญชี — กด "+ เพิ่มบัญชี" ด้านบน</div>'; return; }
     el.innerHTML = _accounts.map(a => {
         const init = a.email[0].toUpperCase();
         const ts   = a.loginedAt ? fmtDate(a.loginedAt) : '—';
@@ -121,15 +121,15 @@ function renderAccounts() {
             <div class="acc-avatar">${init}</div>
             <div class="acc-info">
               <div class="acc-email">${esc(a.email)}</div>
-              <div class="acc-meta">Login: ${ts}</div>
+              <div class="acc-meta">เข้าสู่ระบบล่าสุด: ${ts}</div>
             </div>
             <span class="acc-status ${a.status}">${statusAccTH(a.status)}</span>
             <button class="btn btn-primary" style="font-size:11px;padding:.3rem .65rem;margin-left:.4rem"
-              onclick="loginAcc('${a.id}')">Login</button>
+              onclick="loginAcc('${a.id}')">เข้าสู่ระบบ</button>
             <button class="btn btn-secondary" style="font-size:11px;padding:.3rem .65rem"
-              onclick="logoutAcc('${a.id}')" ${a.status!=='logged_in'?'disabled':''}>Logout</button>
+              onclick="logoutAcc('${a.id}')" ${a.status!=='logged_in'?'disabled':''}>ออกจากระบบ</button>
             <button class="btn btn-secondary" style="font-size:11px;padding:.3rem .5rem;color:var(--red)"
-              onclick="removeAcc('${a.id}')">🗑</button>
+              onclick="removeAcc('${a.id}')" title="ลบบัญชี">🗑</button>
           </div>`;
     }).join('');
 }
@@ -138,7 +138,7 @@ function updateAccountSelect() {
     const sel = document.getElementById('jobAccount');
     if (!sel) return;
     const prev = sel.value;
-    sel.innerHTML = '<option value="">— เลือก Account —</option>';
+    sel.innerHTML = '<option value="">— เลือกบัญชี Facebook —</option>';
     _accounts.forEach(a => {
         const opt = document.createElement('option');
         opt.value = a.id; opt.textContent = a.email;
@@ -162,34 +162,34 @@ function toggleAddAccount() {
 async function addAccount() {
     const email = document.getElementById('accEmail').value.trim();
     const pass  = document.getElementById('accPassword').value;
-    if (!email||!pass) { alert('กรุณากรอกข้อมูลให้ครบ'); return; }
+    if (!email||!pass) { alert('กรุณากรอก Email และรหัสผ่านให้ครบ'); return; }
     const res = await agent.addAccount(email, pass);
     if (res.error) { alert(res.error); return; }
     document.getElementById('accEmail').value = '';
     document.getElementById('accPassword').value = '';
     toggleAddAccount();
     await loadAccounts();
-    appendLog(`[✅] เพิ่ม Account: ${email}`);
+    appendLog(`[✅] เพิ่มบัญชีแล้ว: ${email}`);
 }
 
 async function removeAcc(id) {
-    if (!confirm('ลบ account นี้?')) return;
+    if (!confirm('ต้องการลบบัญชีนี้ออกหรือไม่?')) return;
     await agent.removeAccount(id);
     await loadAccounts();
 }
 
 async function loginAcc(id) {
-    appendLog('[🔑] กำลัง Login...');
+    appendLog('[🔑] กำลังเข้าสู่ระบบ Facebook...');
     const res = await agent.loginAccount(id);
     if (res.ok) appendLog('[✅] '+res.message);
-    else appendLog('[❌] '+(res.error||'Login ไม่สำเร็จ'));
+    else appendLog('[❌] '+(res.error||'เข้าสู่ระบบไม่สำเร็จ'));
     await loadAccounts();
 }
 
 async function logoutAcc(id) {
     await agent.logoutAccount(id);
     await loadAccounts();
-    appendLog('[⏹] Logout แล้ว');
+    appendLog('[⏹] ออกจากระบบแล้ว');
 }
 
 // ── Groups ────────────────────────────────────────────────────
@@ -217,7 +217,7 @@ async function refreshGroupsSilent() {
 function renderGroupsInline() {
     const el    = document.getElementById('groupPickList');
     if (!_groups.length) {
-        el.innerHTML = '<div class="empty-list">ไม่มีกลุ่ม — เพิ่มในเว็บก่อน</div>';
+        el.innerHTML = '<div class="empty-list">ยังไม่มีกลุ่ม — กรุณาเพิ่มกลุ่มในเว็บแอปก่อน</div>';
         document.getElementById('showMoreGroupsBtn').style.display = 'none';
         return;
     }
@@ -263,7 +263,7 @@ async function loadRecentPosts() {
     const el = document.getElementById('recentPostsList');
     el.innerHTML = '<div class="loading">กำลังโหลด...</div>';
     const posts = await agent.getRecentPosts();
-    if (!posts.length) { el.innerHTML='<div class="empty-list">ยังไม่มีโพสต์</div>'; return; }
+    if (!posts.length) { el.innerHTML='<div class="empty-list">ยังไม่มีประวัติโพส</div>'; return; }
     el.dataset.posts = JSON.stringify(posts);
     el.innerHTML = posts.map((p,i)=>{
         const msg = p.message.length>55 ? p.message.slice(0,55)+'...' : p.message;
@@ -309,7 +309,7 @@ function renderJobs() {
     if (pending>0) { badge.textContent=pending; badge.style.display=''; }
     else badge.style.display='none';
 
-    if (!filtered.length) { el.innerHTML='<div class="empty-state">ไม่มี Job</div>'; return; }
+    if (!filtered.length) { el.innerHTML='<div class="empty-state">ยังไม่มีรายการโพส</div>'; return; }
     const icons = { pending:'⏳', running:'🔄', done:'✅', failed:'❌' };
     const shown = filtered.slice(0, _jobsVisible);
     let html = shown.map(j=>{
@@ -349,13 +349,13 @@ async function deleteAllJobs() {
     if (!n) return;
     const running = _jobs.filter(j=>j.status==='pending'||j.status==='running').length;
     const msg = running
-        ? `มี Job ที่รอ/กำลังทำอยู่ ${running} รายการ\nต้องการลบ Job ทั้งหมด ${n} รายการหรือไม่?`
-        : `ลบ Job ทั้งหมด ${n} รายการ?`;
+        ? `มีรายการที่รอ/กำลังโพสอยู่ ${running} รายการ\nต้องการลบคิวทั้งหมด ${n} รายการหรือไม่?`
+        : `ต้องการลบรายการโพสทั้งหมด ${n} รายการหรือไม่?`;
     if (!confirm(msg)) return;
     await agent.deleteAllJobs();
     _jobs = []; _jobsVisible = 20;
     renderJobs();
-    appendLog('[🗑] ลบ Job ทั้งหมดแล้ว');
+    appendLog('[🗑] ลบรายการโพสทั้งหมดแล้ว');
 }
 
 function toggleCreateJob() {
@@ -372,11 +372,11 @@ async function createJob() {
     const accId  = document.getElementById('jobAccount').value||null;
     const postAs = _selectedPage || null;
 
-    if (!msg)         { alert('กรุณากรอกข้อความ'); return; }
-    if (!groups.length){ alert('กรุณาเลือกอย่างน้อย 1 กลุ่ม'); return; }
-    if (!accId)        { alert('กรุณาเลือก Account ก่อนโพส'); return; }
+    if (!msg)         { alert('กรุณากรอกข้อความที่ต้องการโพส'); return; }
+    if (!groups.length){ alert('กรุณาเลือกกลุ่มที่จะโพสอย่างน้อย 1 กลุ่ม'); return; }
+    if (!accId)        { alert('กรุณาเลือกบัญชี Facebook ก่อนโพส'); return; }
     const _selAcc = _accounts.find(a => a.id === accId);
-    if (_selAcc && _selAcc.status !== 'logged_in') { alert(`Account "${_selAcc.email}" ยังไม่ได้ Login\nกรุณา Login ก่อนโพส`); return; }
+    if (_selAcc && _selAcc.status !== 'logged_in') { alert(`บัญชี "${_selAcc.email}" ยังไม่ได้เข้าสู่ระบบ\nกรุณากด "เข้าสู่ระบบ" ที่หน้าบัญชีก่อน`); return; }
 
     const imagePaths = _selectedImages.map(i => i.path).filter(Boolean);
 
@@ -390,7 +390,7 @@ async function createJob() {
         document.getElementById('photoPreviewRow').style.display = 'none';
         toggleCreateJob();
         const info = [groups.length + ' กลุ่ม', postAs ? postAs : null, imagePaths.length ? imagePaths.length+' รูป' : null].filter(Boolean).join(' · ');
-        appendLog(`[📋] สร้าง Job: "${msg.slice(0,40)}..." → ${info}`);
+        appendLog(`[📋] สร้างคิวโพสแล้ว: "${msg.slice(0,40)}..." → ${info}`);
     }
 }
 
@@ -403,13 +403,13 @@ async function deleteJob(id) {
 // ── Page chips + account change ───────────────────────────────
 async function fetchAccountPages() {
     const accId = document.getElementById('jobAccount').value;
-    if (!accId) { alert('กรุณาเลือก Account ก่อน'); return; }
+    if (!accId) { alert('กรุณาเลือกบัญชี Facebook ก่อน'); return; }
     const btn = document.getElementById('fetchPagesBtn');
     btn.textContent = '⏳'; btn.disabled = true;
     try {
         const pages = await agent.getAccountPages(accId);
         renderPageChips(pages);
-        appendLog(pages.length ? `[📄] พบ ${pages.length} Page` : '[⚠️] ไม่พบเพจ — account อาจยังไม่ได้ Login');
+        appendLog(pages.length ? `[📄] พบ ${pages.length} เพจ` : '[⚠️] ไม่พบเพจ — บัญชีนี้อาจยังไม่ได้เข้าสู่ระบบ');
     } finally {
         btn.textContent = '🔄'; btn.disabled = false;
     }
@@ -428,7 +428,7 @@ function renderPageChips(pages) {
         btn.addEventListener('click', () => selectPageChip(btn, name));
         el.appendChild(btn);
     };
-    addChip('', 'ตัวเอง');
+    addChip('', 'บัญชีส่วนตัว');
     pages.forEach(p => addChip(p.name, p.name));
 }
 
@@ -451,7 +451,7 @@ async function onAccountChange() {
 function updateGroupCount() {
     const n  = _selected.filter(Boolean).length;
     const el = document.getElementById('fbGroupCount');
-    if (el) el.textContent = `เลือก ${n} กลุ่ม`;
+    if (el) el.textContent = `เลือกแล้ว ${n} กลุ่ม`;
 }
 
 function toggleRecentPosts() {
@@ -505,15 +505,15 @@ async function loadTemplates() {
 
 function renderTemplates() {
     const el = document.getElementById('templatesList');
-    if (!_templates.length) { el.innerHTML='<div class="empty-state">ยังไม่มี Template</div>'; return; }
+    if (!_templates.length) { el.innerHTML='<div class="empty-state">ยังไม่มีรูปแบบโพสที่บันทึก</div>'; return; }
     el.innerHTML = _templates.map(t => `
       <div class="tpl-item">
         <div class="tpl-info">
           <div class="tpl-name">${esc(t.name||'ไม่มีชื่อ')}</div>
-          <div class="tpl-meta">${(t.groups||[]).length} กลุ่ม · delay ${t.delaySeconds}s</div>
+          <div class="tpl-meta">${(t.groups||[]).length} กลุ่ม · หน่วง ${t.delaySeconds} วิ/กลุ่ม</div>
         </div>
-        <button class="btn btn-primary" style="font-size:11px;padding:.3rem .6rem" onclick="applyTemplate('${t.id}')">ใช้</button>
-        <button class="btn btn-secondary" style="font-size:11px;padding:.3rem .5rem;color:var(--red)" onclick="removeTemplate('${t.id}')">🗑</button>
+        <button class="btn btn-primary" style="font-size:11px;padding:.3rem .6rem" onclick="applyTemplate('${t.id}')">ใช้รูปแบบนี้</button>
+        <button class="btn btn-secondary" style="font-size:11px;padding:.3rem .5rem;color:var(--red)" onclick="removeTemplate('${t.id}')" title="ลบรูปแบบนี้">🗑</button>
       </div>`).join('');
 }
 
@@ -530,11 +530,11 @@ async function saveTemplate() {
     const del    = parseInt(document.getElementById('jobDelay').value)||5;
     const postAs = _selectedPage || null;
     const imgs   = _selectedImages.map(i => i.path).filter(Boolean);
-    if (!msg && !grps.length) { alert('กรุณากรอกข้อความหรือเลือกกลุ่มก่อน'); return; }
+    if (!msg && !grps.length) { alert('กรุณากรอกข้อความหรือเลือกกลุ่มก่อนบันทึกรูปแบบ'); return; }
     _templates = await agent.saveTemplate({ name, message:msg, groups:grps, delaySeconds:del, postAsPage:postAs||undefined, images: imgs });
     renderTemplates();
     document.getElementById('templateName').value = '';
-    appendLog(`[💾] บันทึก Template: "${name}"${imgs.length ? ` · ${imgs.length} รูป` : ''}`);
+    appendLog(`[💾] บันทึกรูปแบบโพส: "${name}"${imgs.length ? ` · ${imgs.length} รูป` : ''}`);
 }
 
 async function applyTemplate(id) {
@@ -577,11 +577,11 @@ async function applyTemplate(id) {
     const f = document.getElementById('createJobForm');
     if (f.style.display==='none') f.style.display='';
     document.getElementById('templatesPanel').style.display='none';
-    appendLog(`[📁] โหลด Template: "${t.name}"${_selectedImages.length ? ` · ${_selectedImages.length} รูป` : ''}`);
+    appendLog(`[📁] โหลดรูปแบบโพส: "${t.name}"${_selectedImages.length ? ` · ${_selectedImages.length} รูป` : ''}`);
 }
 
 async function removeTemplate(id) {
-    if (!confirm('ลบ Template นี้?')) return;
+    if (!confirm('ต้องการลบรูปแบบโพสนี้หรือไม่?')) return;
     _templates = await agent.deleteTemplate(id);
     renderTemplates();
 }
@@ -625,5 +625,5 @@ function togglePostingHelp() {
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function fmtDate(iso){ try{ return new Date(iso).toLocaleString('th-TH',{timeZone:'Asia/Bangkok',hour12:false,dateStyle:'short',timeStyle:'short'}); }catch{return iso||'';} }
 function fmtUptime(s){ if(!s)return'—'; const h=Math.floor(s/3600),m=Math.floor((s%3600)/60); return h?`${h}h ${m}m`:`${m}m`; }
-function statusAccTH(s){ return {logged_in:'Login แล้ว',logged_out:'Logout',error:'Error'}[s]||s; }
-function statusJobTH(s){ return {pending:'รอ',running:'กำลังทำ',done:'เสร็จ',failed:'ล้มเหลว'}[s]||s; }
+function statusAccTH(s){ return {logged_in:'เข้าสู่ระบบแล้ว',logged_out:'ออกจากระบบ',error:'มีข้อผิดพลาด'}[s]||s; }
+function statusJobTH(s){ return {pending:'รอดำเนินการ',running:'กำลังโพส',done:'สำเร็จ',failed:'ล้มเหลว'}[s]||s; }

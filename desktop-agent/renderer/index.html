@@ -13,13 +13,13 @@
   <div class="sidenav-brand">🤖 Agent v2</div>
 
   <button class="nav-item active" data-tab="status">
-    <span class="nav-icon">📊</span><span>สถานะ</span>
+    <span class="nav-icon">📊</span><span>ภาพรวม</span>
   </button>
   <button class="nav-item" data-tab="accounts">
-    <span class="nav-icon">👤</span><span>Accounts</span>
+    <span class="nav-icon">👤</span><span>บัญชี Facebook</span>
   </button>
   <button class="nav-item" data-tab="jobs">
-    <span class="nav-icon">📋</span><span>Job Queue</span>
+    <span class="nav-icon">📋</span><span>คิวโพส</span>
     <span class="nav-badge" id="pendingBadge" style="display:none">0</span>
   </button>
 
@@ -34,7 +34,7 @@
     </div>
     <div class="status-row">
       <span class="dot" id="dotRunner"></span>
-      <span id="lblRunner">Runner: หยุด</span>
+      <span id="lblRunner">ระบบ: หยุด</span>
     </div>
   </div>
 </nav>
@@ -45,9 +45,9 @@
   <!-- ── TAB: STATUS ── -->
   <section id="tab-status" class="tab active">
     <div class="tab-header">
-      <h1>📊 สถานะ Agent</h1>
+      <h1>📊 ภาพรวม</h1>
       <div style="display:flex;gap:.5rem">
-        <button class="btn btn-green" id="btnStart" onclick="startRunner()">▶ เริ่ม Runner</button>
+        <button class="btn btn-green" id="btnStart" onclick="startRunner()">▶ เริ่มโพสอัตโนมัติ</button>
         <button class="btn btn-red"   id="btnStop"  onclick="stopRunner()" disabled>⏹ หยุด</button>
       </div>
     </div>
@@ -58,23 +58,23 @@
         <div class="stat-val" id="statApi">—</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Database</div>
+        <div class="stat-label">ฐานข้อมูล</div>
         <div class="stat-val" id="statDb">—</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Runner</div>
+        <div class="stat-label">ระบบโพสอัตโนมัติ</div>
         <div class="stat-val" id="statRunner">—</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Uptime</div>
+        <div class="stat-label">เปิดมาแล้ว</div>
         <div class="stat-val" id="statUptime">—</div>
       </div>
     </div>
 
     <div class="card log-card">
       <div class="card-title">
-        📄 Log
-        <button class="btn-link ml-auto" onclick="clearLog()">ล้าง</button>
+        📄 ประวัติการทำงาน
+        <button class="btn-link ml-auto" onclick="clearLog()">ล้างประวัติ</button>
       </div>
       <div class="log-output" id="logOutput"></div>
     </div>
@@ -83,34 +83,34 @@
   <!-- ── TAB: ACCOUNTS ── -->
   <section id="tab-accounts" class="tab">
     <div class="tab-header">
-      <h1>👤 Account Manager</h1>
-      <button class="btn btn-primary" onclick="toggleAddAccount()">+ เพิ่ม Account</button>
+      <h1>👤 บัญชี Facebook</h1>
+      <button class="btn btn-primary" onclick="toggleAddAccount()">+ เพิ่มบัญชี</button>
     </div>
 
     <!-- Add form -->
     <div class="card" id="addAccountForm" style="display:none">
-      <div class="card-title">เพิ่ม Facebook Account</div>
+      <div class="card-title">เพิ่มบัญชี Facebook</div>
       <div class="form-row">
         <div class="form-col">
-          <label class="field-label">Email / Phone</label>
+          <label class="field-label">Email / เบอร์โทร</label>
           <input type="text"     id="accEmail"    placeholder="email@example.com">
         </div>
         <div class="form-col">
-          <label class="field-label">Password</label>
+          <label class="field-label">รหัสผ่าน Facebook</label>
           <input type="password" id="accPassword" placeholder="รหัสผ่าน">
         </div>
       </div>
       <div style="display:flex;gap:.5rem;margin-top:.5rem">
-        <button class="btn btn-primary" onclick="addAccount()">บันทึก</button>
+        <button class="btn btn-primary" onclick="addAccount()">เพิ่มบัญชี</button>
         <button class="btn btn-secondary" onclick="toggleAddAccount()">ยกเลิก</button>
       </div>
     </div>
 
     <!-- Account list -->
     <div class="card">
-      <div class="card-title">Accounts <span class="badge" id="accCount">0</span></div>
+      <div class="card-title">บัญชีทั้งหมด <span class="badge" id="accCount">0</span></div>
       <div id="accountsList">
-        <div class="empty-state">ยังไม่มี Account — กด "เพิ่ม Account" ด้านบน</div>
+        <div class="empty-state">ยังไม่มีบัญชี — กด "+ เพิ่มบัญชี" ด้านบน</div>
       </div>
     </div>
   </section>
@@ -118,20 +118,20 @@
   <!-- ── TAB: JOB QUEUE ── -->
   <section id="tab-jobs" class="tab">
     <div class="tab-header">
-      <h1>📋 Job Queue</h1>
+      <h1>📋 คิวโพส</h1>
       <div style="display:flex;gap:.4rem">
-        <button class="btn btn-secondary" onclick="toggleTemplates()" title="Templates ที่บันทึกไว้">📁 Templates</button>
-        <button class="btn btn-primary" onclick="toggleCreateJob()">+ สร้าง Job</button>
+        <button class="btn btn-secondary" onclick="toggleTemplates()" title="รูปแบบโพสที่บันทึกไว้">📁 รูปแบบโพส</button>
+        <button class="btn btn-primary" onclick="toggleCreateJob()">+ โพสใหม่</button>
       </div>
     </div>
 
     <!-- Templates panel -->
     <div id="templatesPanel" style="display:none">
       <div class="card">
-        <div class="card-title">📁 Templates ที่บันทึกไว้
+        <div class="card-title">📁 รูปแบบโพสที่บันทึกไว้
           <button class="btn-link ml-auto" onclick="toggleTemplates()">ปิด</button>
         </div>
-        <div id="templatesList"><div class="empty-state">ยังไม่มี Template</div></div>
+        <div id="templatesList"><div class="empty-state">ยังไม่มีรูปแบบโพสที่บันทึก</div></div>
       </div>
     </div>
 
@@ -144,12 +144,12 @@
           <div class="fb-avatar" id="fbAvatar">?</div>
           <div class="fb-header-body">
             <select id="jobAccount" class="fb-acct-sel" onchange="onAccountChange()">
-              <option value="">— เลือก Account —</option>
+              <option value="">— เลือกบัญชี Facebook —</option>
             </select>
             <div class="fb-page-row">
               <span class="fb-page-label">โพสในนาม</span>
               <div id="pageChips" class="page-chips">
-                <button class="page-chip active" data-page="" onclick="selectPageChip(this,'')">ตัวเอง</button>
+                <button class="page-chip active" data-page="" onclick="selectPageChip(this,'')">บัญชีส่วนตัว</button>
               </div>
               <button class="btn-link" id="fetchPagesBtn" onclick="fetchAccountPages()" title="โหลดเพจจาก Facebook" style="font-size:13px;padding:0 .25rem">🔄</button>
             </div>
@@ -160,17 +160,17 @@
         <div class="fb-divider"></div>
 
         <!-- Message textarea -->
-        <textarea id="jobMsg" class="fb-textarea" placeholder="คุณกำลังคิดอะไรอยู่?" rows="4"></textarea>
+        <textarea id="jobMsg" class="fb-textarea" placeholder="พิมพ์ข้อความที่ต้องการโพส..." rows="4"></textarea>
 
         <!-- Toolbar: photo / recent posts / posting help / delay -->
         <div class="fb-toolbar">
-          <button class="fb-tool-btn" onclick="openImagePicker()">📷 รูปภาพ</button>
-          <button class="fb-tool-btn" id="btnRecentPosts" onclick="toggleRecentPosts()">📝 โพสต์ล่าสุด</button>
-          <button class="fb-tool-btn" id="btnPostingHelp" onclick="togglePostingHelp()">❓ วิธีโพส</button>
+          <button class="fb-tool-btn" onclick="openImagePicker()">📷 เพิ่มรูป</button>
+          <button class="fb-tool-btn" id="btnRecentPosts" onclick="toggleRecentPosts()">📝 โพสก่อนหน้า</button>
+          <button class="fb-tool-btn" id="btnPostingHelp" onclick="togglePostingHelp()">❓ วิธีใช้งาน</button>
           <div class="fb-delay-wrap">
             <span>⏱</span>
             <input type="number" id="jobDelay" value="5" min="1" max="120" class="fb-delay-input">
-            <span>วิ</span>
+            <span>วิ/กลุ่ม</span>
           </div>
         </div>
 
@@ -183,7 +183,7 @@
         <!-- Recent posts panel (collapsible) -->
         <div id="recentPostsPanel" style="display:none">
           <div id="recentPostsList" class="pick-list" style="max-height:110px;border-radius:0;border-left:none;border-right:none;border-top:none">
-            <div class="empty-list">กด "โพสต์ล่าสุด" เพื่อโหลด</div>
+            <div class="empty-list">กด "โพสก่อนหน้า" เพื่อดูประวัติ</div>
           </div>
         </div>
 
@@ -193,7 +193,7 @@
             <div class="posting-help-title">วิธีการโพส</div>
             <div class="posting-help-row">
               <span class="phmode">ข้อความปกติ</span>
-              <span class="phdesc">พิมพ์ข้อความแล้วกด <b>โพสต์ทุกกลุ่ม</b> ได้เลย</span>
+              <span class="phdesc">พิมพ์ข้อความแล้วกด <b>โพสทุกกลุ่ม</b> ได้เลย</span>
             </div>
             <div class="posting-help-row">
               <span class="phmode">🔗 ข้อความ + ลิงก์</span>
@@ -211,16 +211,16 @@
         <!-- Groups section -->
         <div class="fb-groups">
           <div class="fb-groups-hd">
-            <span>📌 กลุ่มที่จะโพสต์</span>
-            <button class="btn-link" onclick="selAll()">ทั้งหมด</button>
-            <button class="btn-link" onclick="selNone()">ยกเลิก</button>
+            <span>📌 เลือกกลุ่มที่จะโพส</span>
+            <button class="btn-link" onclick="selAll()">เลือกทั้งหมด</button>
+            <button class="btn-link" onclick="selNone()">ยกเลิกทั้งหมด</button>
             <button class="btn-link" onclick="loadGroups()" title="รีเฟรชรายการกลุ่ม" style="margin-left:auto">🔄</button>
           </div>
           <div id="groupPickList" class="pick-list" style="max-height:150px">
             <div class="loading">กำลังโหลด...</div>
           </div>
           <button id="showMoreGroupsBtn" class="btn btn-secondary" style="display:none;width:100%;font-size:11.5px;margin-top:.35rem;padding:.3rem" onclick="openGroupsModal()">
-            ดูทั้งหมด <span id="showMoreCount"></span> กลุ่ม
+            ดูกลุ่มทั้งหมด <span id="showMoreCount"></span> กลุ่ม
           </button>
         </div>
 
@@ -228,11 +228,11 @@
 
         <!-- Footer: group count + template save + post button -->
         <div class="fb-footer">
-          <span class="fb-count" id="fbGroupCount">เลือก 0 กลุ่ม</span>
+          <span class="fb-count" id="fbGroupCount">เลือกแล้ว 0 กลุ่ม</span>
           <div class="fb-footer-actions">
-            <input id="templateName" placeholder="ชื่อ Template" class="fb-tpl-input">
-            <button class="btn btn-secondary" style="padding:.35rem .55rem;font-size:12px" onclick="saveTemplate()" title="บันทึก Template">💾</button>
-            <button class="btn btn-primary fb-post-btn" onclick="createJob()">โพส</button>
+            <input id="templateName" placeholder="ตั้งชื่อรูปแบบ" class="fb-tpl-input">
+            <button class="btn btn-secondary" style="padding:.35rem .55rem;font-size:12px" onclick="saveTemplate()" title="บันทึกรูปแบบโพส">💾</button>
+            <button class="btn btn-primary fb-post-btn" onclick="createJob()">โพสทุกกลุ่ม</button>
           </div>
         </div>
 
@@ -242,16 +242,16 @@
     <!-- Jobs list -->
     <div class="card">
       <div class="card-title">
-        Jobs
+        รายการโพส
         <div class="status-filter" style="margin-left:.75rem">
           <button class="filter-btn active" data-filter="all"     onclick="filterJobs(this,'all')">ทั้งหมด</button>
-          <button class="filter-btn"        data-filter="pending" onclick="filterJobs(this,'pending')">รอ</button>
-          <button class="filter-btn"        data-filter="running" onclick="filterJobs(this,'running')">กำลังทำ</button>
-          <button class="filter-btn"        data-filter="done"    onclick="filterJobs(this,'done')">เสร็จ</button>
+          <button class="filter-btn"        data-filter="pending" onclick="filterJobs(this,'pending')">รอดำเนินการ</button>
+          <button class="filter-btn"        data-filter="running" onclick="filterJobs(this,'running')">กำลังโพส</button>
+          <button class="filter-btn"        data-filter="done"    onclick="filterJobs(this,'done')">สำเร็จ</button>
           <button class="filter-btn"        data-filter="failed"  onclick="filterJobs(this,'failed')">ล้มเหลว</button>
         </div>
         <button class="btn-link" style="color:var(--red)" onclick="deleteAllJobs()">🗑 ลบทั้งหมด</button>
-        <button class="btn-link ml-auto" onclick="loadJobs()">🔄 รีเฟรช</button>
+        <button class="btn-link ml-auto" onclick="loadJobs()">🔄 อัพเดต</button>
       </div>
       <div id="jobsList"></div>
     </div>
@@ -265,10 +265,10 @@
 <div id="groupsModal" class="modal-overlay" style="display:none" onclick="closeGroupsModal(event)">
   <div class="modal-box" onclick="event.stopPropagation()">
     <div class="modal-header">
-      <span>กลุ่มทั้งหมด</span>
+      <span>เลือกกลุ่มทั้งหมด</span>
       <div style="display:flex;gap:.5rem;margin-left:auto">
-        <button class="btn-link" onclick="selAll()">ทั้งหมด</button>
-        <button class="btn-link" onclick="selNone()">ยกเลิก</button>
+        <button class="btn-link" onclick="selAll()">เลือกทั้งหมด</button>
+        <button class="btn-link" onclick="selNone()">ยกเลิกทั้งหมด</button>
         <button class="btn-link" style="color:var(--text2)" onclick="closeGroupsModal()">✕</button>
       </div>
     </div>
