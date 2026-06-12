@@ -364,6 +364,66 @@
     if (cards.length === 0) location.reload();
   }
 
+  // ── Scheduled post polling ──────────────────
+  (function() {
+    const scheduled = _hPosts.filter(p => p.status === 'scheduled');
+    if (!scheduled.length) return;
+
+    let pollTimer = null;
+
+    async function pollScheduled() {
+      let anyChanged = false;
+      for (const p of scheduled) {
+        try {
+          const r = await fetch(`/api/post/${p.id}/status`);
+          const d = await r.json();
+          if (d.status && d.status !== 'scheduled') {
+            anyChanged = true;
+            const card = document.getElementById('card-' + p.id);
+            if (card) {
+              // อัพเดท badge สถานะ
+              const badge = card.querySelector('.fb-post-author span[style*="fff3cd"]');
+              if (badge) {
+                if (d.status === 'done') {
+                  badge.style.background = '#d1e7dd';
+                  badge.style.color = '#0a3622';
+                  badge.innerHTML = '<i class="fa-solid fa-check" style="font-size:.65rem"></i> โพสแล้ว';
+                } else if (d.status === 'failed') {
+                  badge.style.background = '#f8d7da';
+                  badge.style.color = '#842029';
+                  badge.innerHTML = '<i class="fa-solid fa-xmark" style="font-size:.65rem"></i> ล้มเหลว';
+                }
+              }
+              // เพิ่มปุ่ม รายงาน
+              const actions = card.querySelector('.history-actions');
+              if (actions && d.status === 'done' && !actions.querySelector('a[href*="/result/"]')) {
+                const a = document.createElement('a');
+                a.href = `/result/${p.id}`;
+                a.style = 'display:inline-flex;align-items:center;gap:.28rem;background:#e7f0fd;color:#1877f2;border:none;border-radius:7px;padding:.28rem .65rem;font-size:.78rem;font-weight:700;text-decoration:none';
+                a.title = 'ดูรายงานการโพส';
+                a.innerHTML = '<i class="fa-solid fa-chart-bar"></i> รายงาน';
+                actions.prepend(a);
+              }
+              // อัพเดทใน _hPosts array
+              p.status = d.status;
+            }
+          }
+        } catch {}
+      }
+      // ถ้ายังมี scheduled อยู่ ให้ poll ต่อ
+      const stillPending = scheduled.filter(p => p.status === 'scheduled');
+      if (stillPending.length) {
+        pollTimer = setTimeout(pollScheduled, 30000);
+      } else if (anyChanged) {
+        // reload page เพื่อแสดงผลสมบูรณ์
+        setTimeout(() => location.reload(), 2000);
+      }
+    }
+
+    // เริ่ม poll หลัง 30 วินาที
+    pollTimer = setTimeout(pollScheduled, 30000);
+  })();
+
   async function confirmClearAll() {
     const result = await Swal.fire({
       title: 'ล้างประวัติทั้งหมด?',

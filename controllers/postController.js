@@ -84,6 +84,20 @@ exports.runAllScheduled = async (req, res) => {
     }
 };
 
+// ── Post status (for polling) ──────────────────
+exports.getPostStatus = async (req, res) => {
+    const post = await postStore.getById(req.params.id);
+    if (!post) return res.status(404).json({ error: 'not found' });
+    res.json({
+        id:           post.id,
+        status:       post.status || 'done',
+        successCount: post.successCount || 0,
+        failCount:    post.failCount    || 0,
+        total:        (post.results || []).length,
+        scheduledAt:  post.scheduledAt || null,
+    });
+};
+
 // ── Result / History ───────────────────────────
 exports.showResult = async (req, res) => {
     const post = await postStore.getById(req.params.id);

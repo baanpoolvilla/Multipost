@@ -65,6 +65,7 @@ router.post('/api/cron/run-scheduled', ctrl.runAllScheduled);
 router.get('/',               ctrl.showDashboard);
 router.post('/send',          upload.array('images', 30), multerErrorHandler, saveUploadedFiles, ctrl.sendPost);
 router.get('/result/:id',     ctrl.showResult);
+router.get('/api/post/:id/status', ctrl.getPostStatus);
 router.get('/history',        ctrl.showHistory);
 router.delete('/history/:id', ctrl.deletePost);
 router.get('/overview',               ctrl.showOverview);
