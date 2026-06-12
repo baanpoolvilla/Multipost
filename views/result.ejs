@@ -260,7 +260,15 @@
 
     try {
       const resp = await fetch('/send', { method: 'POST', body: data });
-      const json = await resp.json();
+      let json;
+      try { json = await resp.json(); }
+      catch {
+        const errMsg = resp.status === 413
+          ? 'ขนาดไฟล์รวมใหญ่เกินไป กรุณาลดขนาดหรือจำนวนไฟล์แล้วลองใหม่'
+          : `เกิดข้อผิดพลาดจากเซิร์ฟเวอร์ (HTTP ${resp.status})`;
+        Swal.fire({ icon: 'error', title: 'ส่งไม่สำเร็จ', text: errMsg, confirmButtonColor: '#1877f2' });
+        return;
+      }
       if (!resp.ok) throw new Error(json.error || 'เกิดข้อผิดพลาด');
 
       if (json.scheduled) {

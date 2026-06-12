@@ -370,7 +370,7 @@ async function enablePage(pageId) {
       if (container) container.innerHTML = _buildAddPageHtml();
     }
   } catch {
-    alert('ไม่สามารถเพิ่มเพจได้ ลองใหม่อีกครั้ง');
+    Swal.fire({ icon: 'error', title: 'ไม่สามารถเพิ่มเพจได้', text: 'กรุณาลองใหม่อีกครั้ง', confirmButtonColor: '#1877f2' });
   }
 }
 

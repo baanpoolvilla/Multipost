@@ -345,15 +345,21 @@
     });
     if (!result.isConfirmed) return;
 
-    const res = await fetch(`/history/${id}`, { method: 'DELETE' });
-    const data = await res.json();
-    if (data.success) {
-      const card = document.getElementById(`card-${id}`);
-      card.style.transition = 'opacity .3s, transform .3s';
-      card.style.opacity = '0';
-      card.style.transform = 'translateX(30px)';
-      setTimeout(() => { card.remove(); updateCount(); }, 320);
-      Swal.fire({ icon: 'success', title: 'ลบแล้ว', timer: 1200, showConfirmButton: false });
+    try {
+      const res = await fetch(`/history/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        const card = document.getElementById(`card-${id}`);
+        card.style.transition = 'opacity .3s, transform .3s';
+        card.style.opacity = '0';
+        card.style.transform = 'translateX(30px)';
+        setTimeout(() => { card.remove(); updateCount(); }, 320);
+        Swal.fire({ icon: 'success', title: 'ลบแล้ว', timer: 1200, showConfirmButton: false });
+      } else {
+        Swal.fire({ icon: 'error', title: 'ลบไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง', confirmButtonColor: '#1877f2' });
+      }
+    } catch {
+      Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'ไม่สามารถลบได้ กรุณาลองใหม่', confirmButtonColor: '#1877f2' });
     }
   }
 

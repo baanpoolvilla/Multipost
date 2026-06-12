@@ -270,10 +270,15 @@ async function submitJob() {
 async function deleteJob(id) {
   const res = await Swal.fire({ title:'ลบ Job?', icon:'warning', showCancelButton:true, confirmButtonColor:'#fa5252', confirmButtonText:'ลบ', cancelButtonText:'ยกเลิก' });
   if (!res.isConfirmed) return;
-  await fetch(`/api/agent/jobs/${id}`, { method:'DELETE' });
-  document.getElementById(`job_${id}`)?.remove();
-  const cnt = document.querySelectorAll('[id^="job_"]').length;
-  document.getElementById('jobCount').textContent = cnt;
+  try {
+    const r = await fetch(`/api/agent/jobs/${id}`, { method:'DELETE' });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    document.getElementById(`job_${id}`)?.remove();
+    const cnt = document.querySelectorAll('[id^="job_"]').length;
+    document.getElementById('jobCount').textContent = cnt;
+  } catch (e) {
+    Swal.fire({ icon:'error', title:'ลบไม่สำเร็จ', text: e.message, confirmButtonColor:'#1877f2' });
+  }
 }
 
 async function checkAgent() {
