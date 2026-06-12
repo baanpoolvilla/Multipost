@@ -30,6 +30,9 @@
     <a href="/" class="sidebar-item"><i class="fa-solid fa-pen-to-square"></i><span>โพสใหม่</span></a>
     <a href="/overview" class="sidebar-item"><i class="fa-solid fa-chart-line"></i><span>ภาพรวม</span></a>
     <a href="/history" class="sidebar-item active"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพส</span></a>
+    <a href="#" class="sidebar-item" style="padding-left:2.5rem;font-size:.83rem;color:#8a8d91;pointer-events:none">
+      <i class="fa-solid fa-chart-bar" style="font-size:.78rem;color:#bbb"></i><span>รายงานการโพส</span>
+    </a>
     <a href="/pages" class="sidebar-item"><i class="fa-brands fa-facebook"></i><span>จัดการเพจ</span></a>
 
     <div class="sidebar-divider"></div>
@@ -69,12 +72,13 @@
           <option value="success">สำเร็จทั้งหมด</option>
           <option value="partial">มีล้มเหลวบางเพจ</option>
         </select>
-        <select id="hDate" onchange="applyFilters()" style="padding:.42rem .7rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.83rem;font-family:inherit;color:#444;background:#fff;cursor:pointer;outline:none">
-          <option value="">ทุกวัน</option>
-          <option value="today">วันนี้</option>
-          <option value="week">7 วันล่าสุด</option>
-          <option value="month">30 วันล่าสุด</option>
-        </select>
+        <div style="display:flex;align-items:center;gap:.3rem;flex-shrink:0">
+          <input type="date" id="hDateFrom" onchange="applyFilters()" title="ตั้งแต่วันที่"
+            style="padding:.42rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;color:#444;outline:none;cursor:pointer;min-width:0">
+          <span style="color:#bbb;font-size:.85rem">—</span>
+          <input type="date" id="hDateTo" onchange="applyFilters()" title="ถึงวันที่"
+            style="padding:.42rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;color:#444;outline:none;cursor:pointer;min-width:0">
+        </div>
         <select id="hPage" onchange="applyFilters()" style="padding:.42rem .7rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.83rem;font-family:inherit;color:#444;background:#fff;cursor:pointer;outline:none;max-width:160px">
           <option value="">ทุกเพจ</option>
         </select>
@@ -246,29 +250,32 @@
   })();
 
   function applyFilters() {
-    const q  = (document.getElementById('hSearch')?.value || '').toLowerCase().trim();
-    const st = document.getElementById('hStatus')?.value || '';
-    const dt = document.getElementById('hDate')?.value   || '';
-    const pg = document.getElementById('hPage')?.value   || '';
+    const q       = (document.getElementById('hSearch')?.value || '').toLowerCase().trim();
+    const st      = document.getElementById('hStatus')?.value   || '';
+    const fromVal = document.getElementById('hDateFrom')?.value || '';
+    const toVal   = document.getElementById('hDateTo')?.value   || '';
+    const pg      = document.getElementById('hPage')?.value     || '';
 
-    const MS = { today: 86400000, week: 7*86400000, month: 30*86400000 };
-    const now = Date.now();
+    const fromTs = fromVal ? new Date(fromVal).setHours(0,0,0,0)       : null;
+    const toTs   = toVal   ? new Date(toVal).setHours(23,59,59,999)    : null;
     let shown = 0;
 
     _hPosts.forEach(p => {
       const card = document.getElementById('card-' + p.id);
       if (!card) return;
       let ok = true;
-      if (q  && !p.msg.toLowerCase().includes(q))   ok = false;
-      if (st === 'success' && p.fail > 0)            ok = false;
-      if (st === 'partial' && p.fail === 0)          ok = false;
-      if (dt && MS[dt] && (now - new Date(p.at)) > MS[dt]) ok = false;
-      if (pg && !p.pages.includes(pg))               ok = false;
+      if (q  && !p.msg.toLowerCase().includes(q))  ok = false;
+      if (st === 'success' && p.fail > 0)           ok = false;
+      if (st === 'partial' && p.fail === 0)         ok = false;
+      const postTs = new Date(p.at).getTime();
+      if (fromTs !== null && postTs < fromTs)       ok = false;
+      if (toTs   !== null && postTs > toTs)         ok = false;
+      if (pg && !p.pages.includes(pg))              ok = false;
       card.style.display = ok ? '' : 'none';
       if (ok) shown++;
     });
 
-    const hasFilter = q || st || dt || pg;
+    const hasFilter = q || st || fromVal || toVal || pg;
     const info = document.getElementById('hFilterInfo');
     if (info) {
       info.style.display = hasFilter ? 'block' : 'none';
@@ -280,7 +287,7 @@
   }
 
   function clearFilters() {
-    ['hSearch','hStatus','hDate','hPage'].forEach(id => {
+    ['hSearch','hStatus','hDateFrom','hDateTo','hPage'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
