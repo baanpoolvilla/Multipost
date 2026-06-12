@@ -86,6 +86,10 @@ textarea::placeholder { color: #8a8d91; }
 .all-chip.active { background: #1877f2; color: #fff; border-color: #1877f2; }
 .more-pages-chip { border-style: dashed; color: #1877f2; border-color: #1877f2; background: #f8f9ff; }
 .more-pages-chip.has-selected { background: #e7f0fd; border-style: solid; }
+.chip-remove { display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;font-size:.8rem;line-height:1;opacity:.5;margin-left:.1rem;flex-shrink:0; }
+.chip-remove:hover { opacity:1;background:rgba(24,119,242,.18); }
+.add-page-chip { border-style:dashed;color:#1877f2;border-color:#1877f2;background:#f8f9ff;text-decoration:none; }
+.add-page-chip:hover { background:#e7f0fd;border-style:solid; }
 
 /* Mini more badges (history) */
 .mini-more-btn { background: none; border: 1.5px dashed #1877f2; border-radius: 999px; padding: .14rem .5rem; font-size: .72rem; font-weight: 700; color: #1877f2; cursor: pointer; font-family: inherit; transition: background .15s; }

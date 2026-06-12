@@ -124,6 +124,7 @@
         <button class="page-sel-chip active" data-page-id="<%= p.pageId %>" onclick="togglePage(this)">
           <div class="avatar avatar-<%= colors[i%5] %>" style="width:16px;height:16px;font-size:.55rem;flex-shrink:0"><%= p.pageName.slice(-1) %></div>
           <%= p.pageName %>
+          <span class="chip-remove" onclick="event.stopPropagation();removePage('<%= p.pageId %>',this.closest('.page-sel-chip'))" title="ปิดใช้งานเพจนี้">×</span>
         </button>
         <% }); %>
         <% if (pages.length > 8) { %>
@@ -132,6 +133,9 @@
           <span id="morePageChipLabel">+ <%= pages.length - 8 %> เพจ</span>
         </button>
         <% } %>
+        <a href="/pages" class="page-sel-chip add-page-chip" title="เพิ่ม/จัดการเพจ">
+          <i class="fa-solid fa-plus"></i>
+        </a>
       </div>
 
       <!-- Action buttons -->
@@ -154,7 +158,7 @@
           <i class="fa-solid fa-floppy-disk" style="color:#1877f2"></i> บันทึกเทมเพลต
         </button>
         <button type="button" id="submitBtn" class="btn-post" onclick="submitPost()">
-          <i class="fa-solid fa-paper-plane"></i> โพสต์ทุกเพจ
+          <i class="fa-solid fa-paper-plane"></i> โพสต์
         </button>
       </div>
     </div>

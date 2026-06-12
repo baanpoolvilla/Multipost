@@ -195,6 +195,26 @@ function updatePageCountLabel() {
   updateMoreChip();
 }
 
+async function removePage(pageId, chipEl) {
+  if (!confirm('ปิดใช้งานเพจนี้?\n(เปิดใหม่ได้ที่หน้า จัดการเพจ)')) return;
+  try {
+    const r = await fetch(`/pages/${pageId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: false }),
+    });
+    if (!r.ok) throw new Error();
+    chipEl.remove();
+    selectedPageIds.delete(pageId);
+    if (typeof ALL_PAGES !== 'undefined') {
+      const idx = ALL_PAGES.findIndex(p => p.pageId === pageId);
+      if (idx !== -1) ALL_PAGES.splice(idx, 1);
+    }
+    syncAllChip();
+    updatePageCountLabel();
+  } catch { alert('ไม่สามารถปิดใช้งานเพจได้ ลองใหม่อีกครั้ง'); }
+}
+
 /* ── Share-to-groups selector ── */
 let _shareGroupIds   = new Set();
 let _shareGroupsData = [];   // [{groupId, groupName}]
