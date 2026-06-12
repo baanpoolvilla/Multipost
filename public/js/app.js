@@ -26,16 +26,54 @@ function insertEmoji(emoji) {
   messageEl.focus();
 }
 
+/* ── File validation helper ── */
+const _ALLOWED_EXT = /\.(jpe?g|png|gif|webp|mp4|mov|avi|webm)$/i;
+const _MAX_SIZE_MB  = 100;
+
+function _checkFiles(incoming, alreadyHave, maxTotal) {
+  const valid = [], problems = [];
+
+  for (const f of incoming) {
+    if (!_ALLOWED_EXT.test(f.name)) {
+      problems.push(`<b>${f.name}</b><br><span style="color:#888;font-size:.8rem">ไม่รองรับไฟล์ประเภทนี้ — รองรับเฉพาะ JPG, PNG, GIF, WebP, MP4, MOV, AVI, WebM</span>`);
+    } else if (f.size > _MAX_SIZE_MB * 1024 * 1024) {
+      problems.push(`<b>${f.name}</b><br><span style="color:#888;font-size:.8rem">ขนาดใหญ่เกินไป (${(f.size / 1024 / 1024).toFixed(0)} MB) — สูงสุด ${_MAX_SIZE_MB} MB</span>`);
+    } else {
+      valid.push(f);
+    }
+  }
+
+  const room = maxTotal - alreadyHave;
+  if (valid.length > room) {
+    const skipped = valid.splice(room);
+    problems.push(`<b>${skipped.length} ไฟล์ถูกข้าม</b><br><span style="color:#888;font-size:.8rem">เกินจำนวนสูงสุด ${maxTotal} ไฟล์ต่อครั้ง</span>`);
+  }
+
+  if (problems.length) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'ไม่สามารถเพิ่มไฟล์บางรายการ',
+      html: `<ul style="text-align:left;margin:.25rem 0 0;padding-left:1.1rem;list-style:disc">${problems.map(p => `<li style="margin:.45rem 0">${p}</li>`).join('')}</ul>`,
+      confirmButtonColor: '#1877f2',
+      confirmButtonText: 'ตกลง',
+    });
+  }
+
+  return valid;
+}
+
 /* ── Image upload ── */
 function triggerImage() { fileInput?.click(); }
 
 if (fileInput) {
   fileInput.addEventListener('change', function () {
-    Array.from(this.files).forEach(file => {
+    const incoming = Array.from(this.files);
+    this.value = '';
+    const valid = _checkFiles(incoming, selectedFiles.length, 30);
+    valid.forEach(file => {
       if (!selectedFiles.some(f => f.name === file.name && f.size === file.size))
         selectedFiles.push(file);
     });
-    this.value = '';
     renderPreviews();
   });
 }
@@ -755,8 +793,10 @@ async function openCreateTemplate() {
       addBtn.addEventListener('mouseover', () => addBtn.style.borderColor = '#1877f2');
       addBtn.addEventListener('mouseout',  () => addBtn.style.borderColor = '#dbe0e6');
       fileInp.addEventListener('change', function() {
-        Array.from(this.files).forEach(f => { if (_tplNewFiles.length < 10) _tplNewFiles.push(f); });
+        const incoming = Array.from(this.files);
         this.value = '';
+        const valid = _checkFiles(incoming, _tplNewFiles.length, 10);
+        valid.forEach(f => _tplNewFiles.push(f));
         _stRender();
       });
     },
@@ -853,10 +893,10 @@ async function openEditTpl(id) {
       addBtn.addEventListener('mouseover', () => addBtn.style.borderColor = '#1877f2');
       addBtn.addEventListener('mouseout',  () => addBtn.style.borderColor = '#dbe0e6');
       fileInp.addEventListener('change', function() {
-        Array.from(this.files).forEach(f => {
-          if (_etKeep.length + _etNew.length < 10) _etNew.push(f);
-        });
+        const incoming = Array.from(this.files);
         this.value = '';
+        const valid = _checkFiles(incoming, _etKeep.length + _etNew.length, 10);
+        valid.forEach(f => _etNew.push(f));
         _etRender();
       });
     },
@@ -960,7 +1000,8 @@ async function _uploadImages(files) {
   files.forEach(f => fd.append('images', f));
   const res  = await fetch('/api/upload-images', { method: 'POST', body: fd });
   const data = await res.json();
-  return data.ok ? data.filenames : [];
+  if (!data.ok) throw new Error(data.error || 'อัปโหลดไฟล์ไม่สำเร็จ กรุณาลองใหม่');
+  return data.filenames;
 }
 
 /* ── Save JSON to template endpoint ── */

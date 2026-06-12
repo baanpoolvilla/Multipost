@@ -16,8 +16,14 @@ const upload = multer({
 
 // Return JSON error instead of HTML for multer errors
 function multerErrorHandler(err, req, res, next) {
-    if (err && err.code && err.code.startsWith('LIMIT_'))
-        return res.status(400).json({ ok: false, error: `อัปโหลดไม่สำเร็จ: ${err.message}` });
+    if (err && err.code) {
+        const msg = {
+            LIMIT_FILE_SIZE:       'ไฟล์มีขนาดใหญ่เกินไป (สูงสุด 100MB ต่อไฟล์)',
+            LIMIT_FILE_COUNT:      'จำนวนไฟล์มากเกินไป (สูงสุด 30 ไฟล์ต่อครั้ง)',
+            LIMIT_UNEXPECTED_FILE: 'ชื่อ field ไม่ถูกต้อง กรุณาลองใหม่',
+        }[err.code] || `อัปโหลดไม่สำเร็จ: ${err.message}`;
+        return res.status(400).json({ ok: false, error: msg });
+    }
     next(err);
 }
 
