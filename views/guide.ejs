@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>คู่มือการใช้งาน - Multi Post System</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-inner">
+    <div class="navbar-brand">
+      <div class="fb-logo"><i class="fa-brands fa-facebook"></i></div>
+      <span>Multi Post System</span>
+    </div>
+    <div class="navbar-right">
+      <a href="/" class="btn-back"><i class="fa-solid fa-plus"></i> โพสต์ใหม่</a>
+    </div>
+  </div>
+</nav>
+
+<div class="page-wrap">
+
+  <aside class="sidebar">
+    <div class="sidebar-label">โพสลงเพจ</div>
+    <a href="/" class="sidebar-item"><i class="fa-solid fa-pen-to-square"></i><span>โพสใหม่</span></a>
+    <a href="/overview" class="sidebar-item"><i class="fa-solid fa-chart-line"></i><span>ภาพรวม</span></a>
+    <a href="/history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพส</span></a>
+    <a href="/pages" class="sidebar-item"><i class="fa-brands fa-facebook"></i><span>จัดการเพจ</span></a>
+
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-label">โพส&amp;แชร์ ลงกลุ่ม</div>
+    <a href="/guide" class="sidebar-item active"><i class="fa-solid fa-book-open"></i><span>คู่มือการใช้งาน</span></a>
+    <a href="/groups" class="sidebar-item"><i class="fa-solid fa-users-rectangle"></i><span>จัดการกลุ่ม</span></a>
+    <a href="/agent" class="sidebar-item"><i class="fa-solid fa-robot"></i><span>ติดตั้ง Desktop Agent</span></a>
+    <a href="/job-queue" class="sidebar-item"><i class="fa-solid fa-list-check"></i><span>คิวโพส</span></a>
+  </aside>
+
+  <main class="feed">
+
+    <!-- Hero -->
+    <div class="card" style="background:linear-gradient(135deg,#1877f2 0%,#0d5dbf 100%);color:#fff;padding:1.5rem 1.75rem;border:none">
+      <div style="font-size:1.25rem;font-weight:700;margin-bottom:.4rem">
+        <i class="fa-solid fa-book-open"></i> คู่มือ: โพส&amp;แชร์ลงกลุ่ม Facebook
+      </div>
+      <div style="opacity:.88;font-size:.9rem;line-height:1.65">
+        ทำความเข้าใจการใช้งานทั้งหมดในหน้าเดียว — ตั้งแต่เริ่มต้นจนโพสสำเร็จ
+      </div>
+    </div>
+
+    <!-- What can it do -->
+    <div class="card">
+      <div class="card-title"><i class="fa-solid fa-circle-question"></i> ระบบนี้ทำอะไรได้บ้าง?</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-top:.65rem">
+        <div style="background:#f0fff4;border:1.5px solid #a3cfbb;border-radius:10px;padding:1rem 1.1rem">
+          <div style="font-weight:700;color:#0a3622;margin-bottom:.4rem;font-size:.92rem">
+            <i class="fa-solid fa-circle-check" style="color:#42b72a"></i> โพสลงเพจ
+          </div>
+          <div style="font-size:.82rem;color:#2d6a4f;line-height:1.7">
+            โพสข้อความ + รูปภาพไปยังเพจ Facebook ทุกเพจพร้อมกัน<br>
+            <strong>ใช้ได้เลยทันที</strong> ไม่ต้องติดตั้งอะไรเพิ่ม
+          </div>
+        </div>
+        <div style="background:#fff8e1;border:1.5px solid #f0c36d;border-radius:10px;padding:1rem 1.1rem">
+          <div style="font-weight:700;color:#856404;margin-bottom:.4rem;font-size:.92rem">
+            <i class="fa-solid fa-robot" style="color:#f7b928"></i> โพส&amp;แชร์ลงกลุ่ม
+          </div>
+          <div style="font-size:.82rem;color:#6b5005;line-height:1.7">
+            โพสหรือแชร์ลิงก์ไปยังกลุ่ม Facebook อัตโนมัติ<br>
+            ต้องมี <strong>Desktop Agent</strong> ติดตั้งบนเครื่อง Windows
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Steps -->
+    <div class="card">
+      <div class="card-title"><i class="fa-solid fa-list-ol"></i> ขั้นตอนการตั้งค่า (ทำครั้งแรกเท่านั้น)</div>
+
+      <!-- Step 1 -->
+      <div style="display:flex;gap:1rem;padding:1rem 0;border-bottom:1px solid var(--border-color)">
+        <div style="width:36px;height:36px;background:#1877f2;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.95rem;flex-shrink:0">1</div>
+        <div style="flex:1">
+          <div style="font-weight:700;color:var(--text-primary);margin-bottom:.3rem;font-size:.95rem">
+            เพิ่มกลุ่ม Facebook ที่ต้องการโพส
+          </div>
+          <div style="font-size:.83rem;color:var(--text-secondary);line-height:1.75;margin-bottom:.55rem">
+            ไปที่หน้า <strong>จัดการกลุ่ม</strong> → กด <strong>"+ เพิ่มกลุ่ม"</strong> → วาง URL กลุ่ม Facebook หรือ Group ID → ใส่ชื่อกลุ่ม → กด <strong>"เพิ่ม"</strong><br>
+            <span style="color:#8a8d91;font-size:.79rem">ทำซ้ำจนเพิ่มกลุ่มครบทุกกลุ่มที่ต้องการ</span>
+          </div>
+          <a href="/groups" style="display:inline-flex;align-items:center;gap:.4rem;background:#f0f2f5;color:#1877f2;padding:.38rem .85rem;border-radius:7px;font-weight:700;font-size:.82rem;text-decoration:none;border:1px solid #d0d7de">
+            <i class="fa-solid fa-users-rectangle"></i> ไปที่หน้าจัดการกลุ่ม
+          </a>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div style="display:flex;gap:1rem;padding:1rem 0;border-bottom:1px solid var(--border-color)">
+        <div style="width:36px;height:36px;background:#1877f2;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.95rem;flex-shrink:0">2</div>
+        <div style="flex:1">
+          <div style="font-weight:700;color:var(--text-primary);margin-bottom:.3rem;font-size:.95rem">
+            ดาวน์โหลด Desktop Agent
+            <span style="background:#d1e7dd;color:#0a3622;font-size:.72rem;font-weight:600;padding:.1rem .5rem;border-radius:4px;margin-left:.4rem">ติดตั้งครั้งเดียว</span>
+          </div>
+          <div style="font-size:.83rem;color:var(--text-secondary);line-height:1.75;margin-bottom:.55rem">
+            ดาวน์โหลดไฟล์ zip → แตกไฟล์ไปที่โฟลเดอร์ที่ต้องการ → ดับเบิลคลิก <code>ติดตั้ง.bat</code><br>
+            ระบบจะติดตั้ง Node.js และ Chromium ให้อัตโนมัติ รอจนขึ้นข้อความ <strong>"Setup complete!"</strong><br>
+            <span style="color:#42b72a;font-size:.79rem"><i class="fa-solid fa-circle-check"></i> ทำแค่ครั้งแรกครั้งเดียว ไม่ต้องทำซ้ำ</span>
+          </div>
+          <a href="/agent" style="display:inline-flex;align-items:center;gap:.4rem;background:#1877f2;color:#fff;padding:.38rem .85rem;border-radius:7px;font-weight:700;font-size:.82rem;text-decoration:none">
+            <i class="fa-solid fa-download"></i> ไปที่หน้าดาวน์โหลด Agent
+          </a>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div style="display:flex;gap:1rem;padding:1rem 0;border-bottom:1px solid var(--border-color)">
+        <div style="width:36px;height:36px;background:#1877f2;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.95rem;flex-shrink:0">3</div>
+        <div style="flex:1">
+          <div style="font-weight:700;color:var(--text-primary);margin-bottom:.3rem;font-size:.95rem">
+            เปิดโปรแกรมและ Login Facebook
+          </div>
+          <div style="font-size:.83rem;color:var(--text-secondary);line-height:1.75">
+            ดับเบิลคลิก <code>เปิด Agent.bat</code> → โปรแกรมเปิดขึ้นมา<br>
+            ไปที่แท็บ <strong>"บัญชี Facebook"</strong> → กรอกอีเมลและรหัสผ่าน Facebook → กด <strong>"เข้าสู่ระบบ"</strong><br>
+            รอจนสถานะแสดง <strong style="color:#42b72a">"เข้าสู่ระบบแล้ว"</strong> — เพียงเท่านี้ Agent พร้อมทำงาน<br>
+            <span style="color:#8a8d91;font-size:.79rem">ทิ้ง Agent ไว้เปิดอยู่เบื้องหลังขณะใช้งาน</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 4 -->
+      <div style="display:flex;gap:1rem;padding:1rem 0">
+        <div style="width:36px;height:36px;background:#42b72a;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.95rem;flex-shrink:0">
+          <i class="fa-solid fa-check" style="font-size:.85rem"></i>
+        </div>
+        <div style="flex:1">
+          <div style="font-weight:700;color:var(--text-primary);margin-bottom:.3rem;font-size:.95rem">
+            สร้างคิวโพสและรอ Agent ทำงาน
+          </div>
+          <div style="font-size:.83rem;color:var(--text-secondary);line-height:1.75;margin-bottom:.55rem">
+            กลับมาที่เว็บ → ไปหน้า <strong>คิวโพส</strong> → กด <strong>"+ เพิ่ม Job"</strong> → ใส่ข้อความ เลือกกลุ่ม → กด <strong>"เพิ่มลงคิว"</strong><br>
+            Agent จะรับงานและโพสทุกกลุ่มอัตโนมัติ ดูสถานะได้แบบ real-time ที่หน้านี้
+          </div>
+          <a href="/job-queue" style="display:inline-flex;align-items:center;gap:.4rem;background:#42b72a;color:#fff;padding:.38rem .85rem;border-radius:7px;font-weight:700;font-size:.82rem;text-decoration:none">
+            <i class="fa-solid fa-list-check"></i> ไปที่คิวโพส
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Daily use (after setup) -->
+    <div class="card">
+      <div class="card-title"><i class="fa-solid fa-rotate"></i> การใช้งานปกติหลังตั้งค่าแล้ว</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.6rem;margin-top:.65rem">
+        <div style="background:#f0f2f5;border-radius:8px;padding:.75rem .9rem;font-size:.83rem;color:var(--text-secondary);line-height:1.65">
+          <div style="font-weight:700;color:var(--text-primary);margin-bottom:.25rem"><i class="fa-solid fa-circle-play" style="color:#1877f2"></i> เปิดใช้งานทุกครั้ง</div>
+          ดับเบิลคลิก <code>เปิด Agent.bat</code> → ทิ้งไว้เปิดอยู่ → สั่งโพสจากเว็บได้เลย
+        </div>
+        <div style="background:#f0f2f5;border-radius:8px;padding:.75rem .9rem;font-size:.83rem;color:var(--text-secondary);line-height:1.65">
+          <div style="font-weight:700;color:var(--text-primary);margin-bottom:.25rem"><i class="fa-solid fa-globe" style="color:#1877f2"></i> สั่งงานจากเว็บ</div>
+          ไปหน้า <a href="/job-queue" style="color:#1877f2">คิวโพส</a> → สร้าง Job → Agent รับงานทันที ไม่ต้องแตะโปรแกรม
+        </div>
+        <div style="background:#f0f2f5;border-radius:8px;padding:.75rem .9rem;font-size:.83rem;color:var(--text-secondary);line-height:1.65">
+          <div style="font-weight:700;color:var(--text-primary);margin-bottom:.25rem"><i class="fa-solid fa-moon" style="color:#1877f2"></i> เสร็จแล้ว</div>
+          โพสครบทุกกลุ่มแล้วสามารถปิด Agent ได้ หรือทิ้งไว้เปิดก็ได้
+        </div>
+      </div>
+    </div>
+
+    <!-- FAQ -->
+    <div class="card">
+      <div class="card-title"><i class="fa-solid fa-circle-question"></i> คำถามที่พบบ่อย</div>
+      <div style="display:flex;flex-direction:column;gap:.1rem;margin-top:.5rem">
+
+        <details style="border-bottom:1px solid var(--border-color);padding:.65rem 0">
+          <summary style="cursor:pointer;font-weight:600;font-size:.88rem;color:var(--text-primary);list-style:none;display:flex;align-items:center;gap:.5rem">
+            <i class="fa-solid fa-chevron-right" style="font-size:.7rem;color:#aaa;transition:transform .2s" class="faq-arrow"></i>
+            ต้องเปิด Agent ไว้ตลอดเวลาไหม?
+          </summary>
+          <div style="font-size:.83rem;color:var(--text-secondary);padding:.5rem 0 .1rem 1.3rem;line-height:1.7">
+            ต้องเปิดเฉพาะ<strong>ตอนที่กำลังโพส</strong> เมื่อ Job ทำงานเสร็จทั้งหมดแล้วจะปิดก็ได้ หรือจะทิ้งไว้เปิดตลอดก็ได้เช่นกัน
+          </div>
+        </details>
+
+        <details style="border-bottom:1px solid var(--border-color);padding:.65rem 0">
+          <summary style="cursor:pointer;font-weight:600;font-size:.88rem;color:var(--text-primary);list-style:none;display:flex;align-items:center;gap:.5rem">
+            <i class="fa-solid fa-chevron-right" style="font-size:.7rem;color:#aaa"></i>
+            ถ้ามีอัปเดตเวอร์ชันใหม่ต้องทำอะไรบ้าง?
+          </summary>
+          <div style="font-size:.83rem;color:var(--text-secondary);padding:.5rem 0 .1rem 1.3rem;line-height:1.7">
+            ดาวน์โหลด Agent เวอร์ชันใหม่จากหน้า <a href="/agent" style="color:#1877f2">ติดตั้ง Desktop Agent</a> → แตกไฟล์ทับโฟลเดอร์เดิม → รัน <code>ติดตั้ง.bat</code> ใหม่อีกครั้ง<br>
+            <span style="color:#42b72a"><i class="fa-solid fa-circle-check" style="font-size:.75rem"></i> ข้อมูลกลุ่มและประวัติโพสทั้งหมดไม่หาย เพราะเก็บบน Cloud</span>
+          </div>
+        </details>
+
+        <details style="border-bottom:1px solid var(--border-color);padding:.65rem 0">
+          <summary style="cursor:pointer;font-weight:600;font-size:.88rem;color:var(--text-primary);list-style:none;display:flex;align-items:center;gap:.5rem">
+            <i class="fa-solid fa-chevron-right" style="font-size:.7rem;color:#aaa"></i>
+            ถ้าเปลี่ยนเครื่องหรือใช้เครื่องหลายเครื่องต้องทำอะไร?
+          </summary>
+          <div style="font-size:.83rem;color:var(--text-secondary);padding:.5rem 0 .1rem 1.3rem;line-height:1.7">
+            ดาวน์โหลด Agent และติดตั้งบนเครื่องใหม่ทุกเครื่องที่ต้องการใช้งาน กลุ่มที่เพิ่มไว้จะแสดงให้อัตโนมัติ (เพราะเก็บบน Cloud) แต่ต้อง Login Facebook ใหม่ในแต่ละเครื่อง
+          </div>
+        </details>
+
+        <details style="border-bottom:1px solid var(--border-color);padding:.65rem 0">
+          <summary style="cursor:pointer;font-weight:600;font-size:.88rem;color:var(--text-primary);list-style:none;display:flex;align-items:center;gap:.5rem">
+            <i class="fa-solid fa-chevron-right" style="font-size:.7rem;color:#aaa"></i>
+            ข้อมูลกลุ่มที่เพิ่มไว้จะหายไหมถ้าลบหรือติดตั้ง Agent ใหม่?
+          </summary>
+          <div style="font-size:.83rem;color:var(--text-secondary);padding:.5rem 0 .1rem 1.3rem;line-height:1.7">
+            <strong style="color:#42b72a">ไม่หาย</strong> ข้อมูลทั้งหมด (กลุ่ม, คิวโพส, ประวัติ) เก็บบน Cloud ไม่ได้เก็บในเครื่อง ลบหรือติดตั้ง Agent ใหม่ได้โดยไม่สูญเสียข้อมูล
+          </div>
+        </details>
+
+        <details style="padding:.65rem 0">
+          <summary style="cursor:pointer;font-weight:600;font-size:.88rem;color:var(--text-primary);list-style:none;display:flex;align-items:center;gap:.5rem">
+            <i class="fa-solid fa-chevron-right" style="font-size:.7rem;color:#aaa"></i>
+            ใช้งานได้บน Mac หรือ Linux ไหม?
+          </summary>
+          <div style="font-size:.83rem;color:var(--text-secondary);padding:.5rem 0 .1rem 1.3rem;line-height:1.7">
+            Desktop Agent รองรับ <strong>Windows เท่านั้น</strong> แต่หน้าเว็บ (โพสลงเพจ) ใช้ได้จากทุกอุปกรณ์และทุก OS
+          </div>
+        </details>
+
+      </div>
+    </div>
+
+    <!-- Quick links -->
+    <div class="card" style="background:#f8f9fa">
+      <div class="card-title" style="margin-bottom:.65rem"><i class="fa-solid fa-link"></i> ลิงก์ด่วน</div>
+      <div style="display:flex;flex-wrap:wrap;gap:.5rem">
+        <a href="/groups" style="display:inline-flex;align-items:center;gap:.4rem;background:#fff;border:1.5px solid #e4e6eb;color:var(--text-primary);padding:.42rem .9rem;border-radius:8px;font-size:.83rem;font-weight:600;text-decoration:none">
+          <i class="fa-solid fa-users-rectangle" style="color:#1877f2"></i> จัดการกลุ่ม
+        </a>
+        <a href="/agent" style="display:inline-flex;align-items:center;gap:.4rem;background:#fff;border:1.5px solid #e4e6eb;color:var(--text-primary);padding:.42rem .9rem;border-radius:8px;font-size:.83rem;font-weight:600;text-decoration:none">
+          <i class="fa-solid fa-robot" style="color:#1877f2"></i> ดาวน์โหลด Agent
+        </a>
+        <a href="/job-queue" style="display:inline-flex;align-items:center;gap:.4rem;background:#fff;border:1.5px solid #e4e6eb;color:var(--text-primary);padding:.42rem .9rem;border-radius:8px;font-size:.83rem;font-weight:600;text-decoration:none">
+          <i class="fa-solid fa-list-check" style="color:#1877f2"></i> คิวโพส
+        </a>
+        <a href="/" style="display:inline-flex;align-items:center;gap:.4rem;background:#fff;border:1.5px solid #e4e6eb;color:var(--text-primary);padding:.42rem .9rem;border-radius:8px;font-size:.83rem;font-weight:600;text-decoration:none">
+          <i class="fa-solid fa-pen-to-square" style="color:#1877f2"></i> โพสลงเพจ
+        </a>
+      </div>
+    </div>
+
+  </main>
+
+  <aside class="right-panel">
+    <div class="card stats-card">
+      <div class="stats-title"><i class="fa-solid fa-rocket"></i> เริ่มใช้งานเลย</div>
+      <div style="font-size:.83rem;color:var(--text-secondary);line-height:1.7;margin:.5rem 0 .75rem">
+        ทำตาม 4 ขั้นตอน ใช้เวลาประมาณ 5-10 นาทีในการตั้งค่าครั้งแรก
+      </div>
+      <a href="/groups" class="overview-btn-link" style="margin-bottom:.4rem">
+        <i class="fa-solid fa-circle-arrow-right"></i> เริ่มที่ขั้นตอนที่ 1
+      </a>
+    </div>
+    <div class="card" style="margin-top:.75rem;padding:1rem 1.1rem">
+      <div class="stats-title" style="margin-bottom:.5rem"><i class="fa-solid fa-shield-halved"></i> ข้อควรรู้</div>
+      <ul style="font-size:.81rem;color:var(--text-secondary);line-height:1.8;padding-left:1.1rem;margin:0">
+        <li>Agent ทำงานได้บน <strong>Windows เท่านั้น</strong></li>
+        <li>ต้องเปิด Agent ไว้ขณะโพส</li>
+        <li>ข้อมูลทั้งหมดเก็บบน Cloud ปลอดภัย</li>
+        <li>ติดตั้งครั้งเดียวใช้ได้เลย</li>
+      </ul>
+    </div>
+  </aside>
+
+</div>
+
+<style>
+code { background:#f0f2f5;padding:.1rem .4rem;border-radius:4px;font-size:.82rem;font-family:monospace }
+details summary::-webkit-details-marker { display:none }
+details[open] summary i.fa-chevron-right { transform:rotate(90deg) }
+</style>
+
+</body>
+</html>

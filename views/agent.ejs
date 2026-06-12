@@ -33,6 +33,7 @@
 
     <div class="sidebar-divider"></div>
     <div class="sidebar-label">โพส&amp;แชร์ ลงกลุ่ม</div>
+    <a href="/guide" class="sidebar-item"><i class="fa-solid fa-book-open"></i><span>คู่มือการใช้งาน</span></a>
     <a href="/groups" class="sidebar-item"><i class="fa-solid fa-users-rectangle"></i><span>จัดการกลุ่ม</span></a>
     <a href="/agent" class="sidebar-item active"><i class="fa-solid fa-robot"></i><span>ติดตั้ง Desktop Agent</span></a>
     <a href="/job-queue" class="sidebar-item"><i class="fa-solid fa-list-check"></i><span>คิวโพส</span></a>
@@ -48,7 +49,7 @@
             <i class="fa-solid fa-robot" style="color:#1877f2"></i> MultiPost Desktop Agent
             <span style="font-size:.75rem;font-weight:500;color:var(--text-secondary);margin-left:.4rem">v2.0.0</span>
           </div>
-          <div style="font-size:.83rem;color:var(--text-secondary);line-height:1.55">
+          <div style="font-size:.83rem;color:var(--text-secondary);line-height:1.65">
             โปรแกรมสำหรับโพสต์ Facebook กลุ่ม — ติดตั้งบนเครื่อง Windows ของคุณ<br>
             <span style="color:#42b72a"><i class="fa-solid fa-circle-check" style="font-size:.75rem"></i> ไม่ต้องติดตั้ง Node.js แยก — ตัวติดตั้งจัดการให้อัตโนมัติ</span>
           </div>
@@ -67,6 +68,27 @@
         <div><span style="color:#42b72a;font-weight:700">② </span>ดับเบิลคลิก <code>ติดตั้ง.bat</code> (ครั้งแรกเท่านั้น)</div>
         <div><span style="color:#42b72a;font-weight:700">③ </span>ดับเบิลคลิก <code>เปิด Agent.bat</code></div>
         <div><span style="color:#42b72a;font-weight:700">④ </span>ไปที่แท็บ บัญชี Facebook → เข้าสู่ระบบ</div>
+      </div>
+    </div>
+
+    <!-- Install once notice -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+      <div class="card" style="background:#f0fff4;border-color:#a3cfbb;padding:1rem 1.1rem">
+        <div style="font-weight:700;color:#0a3622;margin-bottom:.35rem;font-size:.88rem">
+          <i class="fa-solid fa-circle-check" style="color:#42b72a"></i> ติดตั้งครั้งเดียว ใช้ได้เลย
+        </div>
+        <div style="font-size:.8rem;color:#2d6a4f;line-height:1.7">
+          รัน <code>ติดตั้ง.bat</code> แค่ครั้งแรกครั้งเดียว — หลังจากนั้นแค่ดับเบิลคลิก <code>เปิด Agent.bat</code> ได้เลย ไม่ต้องทำซ้ำ
+        </div>
+      </div>
+      <div class="card" style="background:#fff8e1;border-color:#f0c36d;padding:1rem 1.1rem">
+        <div style="font-weight:700;color:#856404;margin-bottom:.35rem;font-size:.88rem">
+          <i class="fa-solid fa-rotate" style="color:#f7b928"></i> เมื่อมีการอัปเดตเวอร์ชันใหม่
+        </div>
+        <div style="font-size:.8rem;color:#6b5005;line-height:1.7">
+          ดาวน์โหลด Agent ใหม่ → แตกไฟล์ทับโฟลเดอร์เดิม → รัน <code>ติดตั้ง.bat</code> อีกครั้ง<br>
+          <span style="color:#42b72a"><i class="fa-solid fa-circle-check" style="font-size:.72rem"></i> ข้อมูลและกลุ่มทั้งหมดไม่หาย</span>
+        </div>
       </div>
     </div>
 

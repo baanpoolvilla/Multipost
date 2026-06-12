@@ -105,7 +105,8 @@ router.get('/download/agent', (req, res) => {
     }
 });
 
-// Agent / Groups / Job Queue pages
+// Agent / Groups / Job Queue / Guide pages
+router.get('/guide',     (req, res) => res.render('guide'));
 router.get('/agent',     agentCtrl.showAgent);
 router.get('/groups',    agentCtrl.showGroups);
 router.get('/job-queue', agentCtrl.showJobQueue);
