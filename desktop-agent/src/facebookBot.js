@@ -74,7 +74,16 @@ async function loginAccount(account, onLog) {
         log('เปิด Facebook...');
         await page.goto('https://www.facebook.com/login', { waitUntil: 'domcontentloaded', timeout: 30000 });
         await page.bringToFront();
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(1500);
+
+        // Dismiss cookie/consent popup before attempting to fill the form
+        try {
+            const consent = page.locator('[data-cookiebanner="accept_button"], [title="Allow all cookies"], [aria-label="Allow all cookies"], button:has-text("Allow all cookies"), button:has-text("ยอมรับ"), button:has-text("ยืนยัน")').first();
+            if (await consent.isVisible({ timeout: 3000 })) {
+                await consent.click();
+                await page.waitForTimeout(700);
+            }
+        } catch {}
 
         const urlAfterGoto = page.url();
 
@@ -91,15 +100,39 @@ async function loginAccount(account, onLog) {
             return ok ? { ok: true, message: 'Login สำเร็จ ✓' } : { ok: false, error: 'หมดเวลายืนยัน 2FA' };
         }
 
+        // Wait for form fields to be ready before filling
+        try {
+            await page.waitForSelector('#email', { state: 'visible', timeout: 10000 });
+        } catch {
+            await page.close();
+            return { ok: false, error: 'หน้า Login ไม่โหลด ลองใหม่' };
+        }
+
         log('กรอก Email/Password...');
+        await page.click('#email');
         await page.fill('#email', account.email);
+        await page.click('#pass');
         await page.fill('#pass',  account.password);
         await page.click('[name="login"]');
         log('รอผล Login...');
 
+        // Increased timeout to 90s — handles slow connections + security checks
         try {
-            await page.waitForURL(url => !url.toString().includes('/login'), { timeout: 25000 });
+            await page.waitForURL(url => !url.toString().includes('/login'), { timeout: 90000 });
         } catch {
+            // Timeout — check current URL before declaring failure
+            const cur = page.url();
+            if (_isLoggedIn(cur)) {
+                await page.close();
+                log('Login สำเร็จ ✓');
+                return { ok: true, message: 'Login สำเร็จ ✓' };
+            }
+            if (_is2FA(cur)) {
+                const ok = await _wait2FA(page, log);
+                await page.close();
+                if (ok) log('Login สำเร็จ ✓');
+                return ok ? { ok: true, message: 'Login สำเร็จ ✓' } : { ok: false, error: 'หมดเวลายืนยัน 2FA' };
+            }
             await page.close();
             return { ok: false, error: 'Email หรือ Password ไม่ถูกต้อง' };
         }

@@ -374,6 +374,9 @@ async function createJob() {
 
     if (!msg)         { alert('กรุณากรอกข้อความ'); return; }
     if (!groups.length){ alert('กรุณาเลือกอย่างน้อย 1 กลุ่ม'); return; }
+    if (!accId)        { alert('กรุณาเลือก Account ก่อนโพส'); return; }
+    const _selAcc = _accounts.find(a => a.id === accId);
+    if (_selAcc && _selAcc.status !== 'logged_in') { alert(`Account "${_selAcc.email}" ยังไม่ได้ Login\nกรุณา Login ก่อนโพส`); return; }
 
     const imagePaths = _selectedImages.map(i => i.path).filter(Boolean);
 
