@@ -41,19 +41,38 @@
 
   <main class="feed">
 
+    <!-- Agent status banner (top) -->
+    <div id="agentBanner" style="display:none"></div>
+
     <!-- Header -->
     <div class="card" style="padding:.85rem 1.25rem;display:flex;align-items:center;justify-content:space-between">
       <div class="card-title" style="font-size:1.05rem">
-        <i class="fa-solid fa-list-check"></i> Job Queue
+        <i class="fa-solid fa-list-check"></i> คิวโพสลงกลุ่ม
         <span style="background:#e4e6ea;padding:.15rem .55rem;border-radius:999px;font-size:.8rem;margin-left:.4rem" id="jobCount"><%= jobs.length %></span>
       </div>
     </div>
 
     <% if (groups.length === 0) { %>
-    <div class="card empty-state">
-      <i class="fa-solid fa-users-rectangle" style="font-size:2rem;color:#c5c8d0;margin-bottom:.5rem"></i>
-      <h3>ยังไม่มีกลุ่ม</h3>
-      <p>เพิ่มกลุ่มก่อนที่ <a href="/pages">จัดการเพจ</a> จึงจะสร้าง Job ได้</p>
+    <div class="card" style="background:linear-gradient(135deg,#e8f4ff 0%,#f0f7ff 100%);border-color:#b3d4f9;padding:1.25rem 1.5rem;text-align:center">
+      <i class="fa-solid fa-robot" style="font-size:2.5rem;color:#1877f2;margin-bottom:.65rem;display:block"></i>
+      <div style="font-weight:700;font-size:1rem;color:var(--text-primary);margin-bottom:.4rem">ยังไม่มีกลุ่ม Facebook</div>
+      <div style="font-size:.87rem;color:var(--text-secondary);line-height:1.75;margin-bottom:1rem">
+        หากต้องการโพสหรือแชร์ลงกลุ่ม Facebook<br>
+        ต้องทำตามขั้นตอนนี้ก่อน:
+      </div>
+      <div style="display:inline-flex;flex-direction:column;gap:.5rem;text-align:left;font-size:.85rem;color:var(--text-secondary);margin-bottom:1.25rem;line-height:1.7">
+        <div><span style="background:#1877f2;color:#fff;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;margin-right:.4rem">1</span>ไปที่ <a href="/groups" style="color:#1877f2;font-weight:600">จัดการกลุ่ม</a> แล้วเพิ่มกลุ่มที่ต้องการ</div>
+        <div><span style="background:#1877f2;color:#fff;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;margin-right:.4rem">2</span>ดาวน์โหลด Desktop Agent ติดตั้งบนเครื่อง Windows</div>
+        <div><span style="background:#1877f2;color:#fff;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;margin-right:.4rem">3</span>เปิด Agent → Login Facebook → กลับมาสั่งโพสที่หน้านี้</div>
+      </div>
+      <div style="display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap">
+        <a href="/groups" style="display:inline-flex;align-items:center;gap:.45rem;background:#f0f2f5;color:#1c1e21;padding:.5rem 1.1rem;border-radius:8px;font-weight:700;font-size:.85rem;text-decoration:none">
+          <i class="fa-solid fa-users-rectangle"></i> เพิ่มกลุ่ม
+        </a>
+        <a href="/agent" style="display:inline-flex;align-items:center;gap:.45rem;background:#1877f2;color:#fff;padding:.5rem 1.1rem;border-radius:8px;font-weight:700;font-size:.85rem;text-decoration:none">
+          <i class="fa-solid fa-download"></i> ดาวน์โหลด Agent
+        </a>
+      </div>
     </div>
     <% } else { %>
 
@@ -161,11 +180,6 @@
       <% } %>
     </div>
 
-    <!-- Agent status hint -->
-    <div class="card" style="background:#f0f7ff;border-color:#b3d4f9;font-size:.85rem;color:#1877f2;line-height:1.8" id="agentHint">
-      กำลังตรวจสอบ Agent...
-    </div>
-
     <% } %>
 
   </main>
@@ -241,17 +255,37 @@ async function deleteJob(id) {
 }
 
 async function checkAgent() {
-  const hint = document.getElementById('agentHint');
-  if (!hint) return;
+  const banner = document.getElementById('agentBanner');
+  if (!banner) return;
   try {
     const r = await fetch('http://localhost:3001/api/status', { signal: AbortSignal.timeout(3000) });
     const d = await r.json();
-    hint.style.background   = '#d1e7dd';
-    hint.style.borderColor  = '#a3cfbb';
-    hint.style.color        = '#0a3622';
-    hint.innerHTML = `<i class="fa-solid fa-robot"></i> <strong>Agent ออนไลน์</strong> · Runner: ${d.running?'กำลังทำงาน ▶':'หยุด ⏹'} · <a href="/agent" style="color:inherit">ดูรายละเอียด</a>`;
+    banner.style.display = 'block';
+    banner.innerHTML = `<div class="card" style="background:#d1e7dd;border-color:#a3cfbb;font-size:.85rem;color:#0a3622;padding:.7rem 1.1rem;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
+      <i class="fa-solid fa-robot"></i>
+      <strong>Desktop Agent ออนไลน์</strong>
+      <span style="opacity:.7">·</span>
+      <span>Runner: ${d.running ? '<strong>กำลังโพส ▶</strong>' : 'หยุด ⏹'}</span>
+      <a href="/agent" style="color:#0a3622;margin-left:auto;font-size:.8rem">ดูรายละเอียด →</a>
+    </div>`;
   } catch {
-    hint.innerHTML = '<i class="fa-solid fa-robot"></i> Agent <strong>ออฟไลน์</strong> — เปิด <strong>desktop-agent/เปิด Agent.bat</strong> เพื่อประมวลผล Job';
+    banner.style.display = 'block';
+    banner.innerHTML = `<div class="card" style="background:#fff8e1;border-color:#f0c36d;padding:.85rem 1.25rem">
+      <div style="display:flex;align-items:center;gap:.9rem;flex-wrap:wrap">
+        <div style="flex:1;min-width:180px">
+          <div style="font-weight:700;color:#856404;margin-bottom:.3rem;font-size:.9rem">
+            <i class="fa-solid fa-triangle-exclamation"></i> Desktop Agent ยังไม่ได้เปิด
+          </div>
+          <div style="font-size:.82rem;color:#6b5005;line-height:1.7">
+            Job ที่สร้างไว้จะรอจนกว่า Agent จะออนไลน์<br>
+            ดาวน์โหลดและติดตั้ง Agent แล้วเปิดไว้เพื่อให้ระบบทำงานได้
+          </div>
+        </div>
+        <a href="/agent" style="display:inline-flex;align-items:center;gap:.45rem;background:#f7b928;color:#1c1e21;padding:.48rem 1rem;border-radius:8px;font-weight:700;font-size:.83rem;text-decoration:none;flex-shrink:0;white-space:nowrap">
+          <i class="fa-solid fa-download"></i> ดาวน์โหลด / เปิด Agent
+        </a>
+      </div>
+    </div>`;
   }
 }
 checkAgent();
