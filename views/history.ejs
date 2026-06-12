@@ -46,7 +46,7 @@
       <div class="card-title">
         <i class="fa-solid fa-clock-rotate-left"></i>
         ประวัติการโพสต์
-        <span style="background:#e4e6ea;padding:.15rem .55rem;border-radius:999px;font-size:.8rem;margin-left:.4rem"><%= posts.length %></span>
+        <span id="historyCount" style="background:#e4e6ea;padding:.15rem .55rem;border-radius:999px;font-size:.8rem;margin-left:.4rem"><%= posts.length %></span>
       </div>
       <% if (posts.length > 0) { %>
       <button class="btn-danger-sm" onclick="confirmClearAll()">
@@ -54,6 +54,40 @@
       </button>
       <% } %>
     </div>
+
+    <% if (posts.length > 0) { %>
+    <!-- Filter bar -->
+    <div class="card" style="padding:.75rem 1.1rem">
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
+        <div style="position:relative;flex:2;min-width:160px">
+          <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:.6rem;top:50%;transform:translateY(-50%);color:#aaa;font-size:.78rem;pointer-events:none"></i>
+          <input id="hSearch" type="text" placeholder="ค้นหาในข้อความ..." oninput="applyFilters()"
+            style="width:100%;padding:.42rem .7rem .42rem 2rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.83rem;font-family:inherit;outline:none;box-sizing:border-box">
+        </div>
+        <select id="hStatus" onchange="applyFilters()" style="padding:.42rem .7rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.83rem;font-family:inherit;color:#444;background:#fff;cursor:pointer;outline:none">
+          <option value="">สถานะทั้งหมด</option>
+          <option value="success">สำเร็จทั้งหมด</option>
+          <option value="partial">มีล้มเหลวบางเพจ</option>
+        </select>
+        <select id="hDate" onchange="applyFilters()" style="padding:.42rem .7rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.83rem;font-family:inherit;color:#444;background:#fff;cursor:pointer;outline:none">
+          <option value="">ทุกวัน</option>
+          <option value="today">วันนี้</option>
+          <option value="week">7 วันล่าสุด</option>
+          <option value="month">30 วันล่าสุด</option>
+        </select>
+        <select id="hPage" onchange="applyFilters()" style="padding:.42rem .7rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.83rem;font-family:inherit;color:#444;background:#fff;cursor:pointer;outline:none;max-width:160px">
+          <option value="">ทุกเพจ</option>
+        </select>
+        <button onclick="clearFilters()"
+          style="background:#f0f2f5;border:none;border-radius:8px;padding:.42rem .8rem;font-size:.82rem;font-family:inherit;color:#65676b;cursor:pointer;font-weight:600;white-space:nowrap">
+          <i class="fa-solid fa-rotate-left"></i> ล้างตัวกรอง
+        </button>
+      </div>
+      <div id="hFilterInfo" style="display:none;margin-top:.45rem;font-size:.79rem;color:#8a8d91">
+        แสดง <strong id="hShown" style="color:#1877f2">0</strong> จาก <strong><%= posts.length %></strong> โพสต์
+      </div>
+    </div>
+    <% } %>
 
     <% if (posts.length === 0) { %>
     <div class="card empty-state">
@@ -89,8 +123,11 @@
           </div>
         </div>
         <div class="history-actions">
-          <a href="/result/<%= post.id %>" class="icon-btn" title="ดูรายละเอียด">
-            <i class="fa-solid fa-eye"></i>
+          <a href="/result/<%= post.id %>"
+             style="display:inline-flex;align-items:center;gap:.28rem;background:#e7f0fd;color:#1877f2;border:none;border-radius:7px;padding:.28rem .65rem;font-size:.78rem;font-weight:700;text-decoration:none;transition:background .15s"
+             onmouseover="this.style.background='#cfe2ff'" onmouseout="this.style.background='#e7f0fd'"
+             title="ดูรายงานการโพส">
+            <i class="fa-solid fa-chart-bar"></i> รายงาน
           </a>
           <button class="icon-btn danger" title="ลบ" onclick="deletePost('<%= post.id %>', this)">
             <i class="fa-solid fa-trash"></i>
@@ -186,6 +223,70 @@
 </div>
 
 <script>
+  // Embedded post data for client-side filtering
+  const _hPosts = <%- JSON.stringify(posts.map(p => ({
+    id: p.id,
+    msg: p.message || '',
+    at: p.createdAt,
+    fail: p.failCount || 0,
+    pages: (p.results || []).map(r => r.pageName)
+  }))) %>;
+
+  // Populate page select
+  (function() {
+    const sel = document.getElementById('hPage');
+    if (!sel) return;
+    const pgs = new Set();
+    _hPosts.forEach(p => p.pages.forEach(pg => pgs.add(pg)));
+    [...pgs].sort().forEach(pg => {
+      const o = document.createElement('option');
+      o.value = o.textContent = pg;
+      sel.appendChild(o);
+    });
+  })();
+
+  function applyFilters() {
+    const q  = (document.getElementById('hSearch')?.value || '').toLowerCase().trim();
+    const st = document.getElementById('hStatus')?.value || '';
+    const dt = document.getElementById('hDate')?.value   || '';
+    const pg = document.getElementById('hPage')?.value   || '';
+
+    const MS = { today: 86400000, week: 7*86400000, month: 30*86400000 };
+    const now = Date.now();
+    let shown = 0;
+
+    _hPosts.forEach(p => {
+      const card = document.getElementById('card-' + p.id);
+      if (!card) return;
+      let ok = true;
+      if (q  && !p.msg.toLowerCase().includes(q))   ok = false;
+      if (st === 'success' && p.fail > 0)            ok = false;
+      if (st === 'partial' && p.fail === 0)          ok = false;
+      if (dt && MS[dt] && (now - new Date(p.at)) > MS[dt]) ok = false;
+      if (pg && !p.pages.includes(pg))               ok = false;
+      card.style.display = ok ? '' : 'none';
+      if (ok) shown++;
+    });
+
+    const hasFilter = q || st || dt || pg;
+    const info = document.getElementById('hFilterInfo');
+    if (info) {
+      info.style.display = hasFilter ? 'block' : 'none';
+      const el = document.getElementById('hShown');
+      if (el) el.textContent = shown;
+    }
+    const cnt = document.getElementById('historyCount');
+    if (cnt) cnt.textContent = hasFilter ? shown : _hPosts.length;
+  }
+
+  function clearFilters() {
+    ['hSearch','hStatus','hDate','hPage'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    applyFilters();
+  }
+
   function viewImage(src) {
     Swal.fire({ imageUrl: src, imageAlt: 'รูปภาพ', showConfirmButton: false, showCloseButton: true, width: 'auto' });
   }
