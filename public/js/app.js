@@ -411,7 +411,10 @@ function chooseFeel(e, l) {
    Submit
 ═══════════════════════════════════════════ */
 async function submitPost() {
-  const msg = messageEl?.value.trim();
+  const msg     = messageEl?.value.trim();
+  const schedAt = document.getElementById('scheduledAt')?.value || '';
+  const delay   = parseInt(document.getElementById('postDelay')?.value) || 0;
+
   if (!msg) {
     Swal.fire({ icon: 'warning', title: 'ยังไม่ได้กรอกข้อความ', confirmButtonColor: '#1877f2', confirmButtonText: 'ตกลง' });
     return;
@@ -420,10 +423,18 @@ async function submitPost() {
     Swal.fire({ icon: 'warning', title: 'กรุณาเลือกเพจอย่างน้อย 1 เพจ', confirmButtonColor: '#1877f2', confirmButtonText: 'ตกลง' });
     return;
   }
+  if (schedAt && new Date(schedAt) <= new Date()) {
+    Swal.fire({ icon: 'warning', title: 'กรุณาเลือกเวลาในอนาคต', confirmButtonColor: '#1877f2' });
+    return;
+  }
+
+  const isScheduling = schedAt && new Date(schedAt) > new Date();
+  const delayLabel   = delay > 0 ? ` (หน่วง ${delay}วิ/เพจ)` : '';
+
   Swal.fire({
-    title: 'กำลังส่งโพสต์...',
+    title: isScheduling ? 'กำลังตั้งเวลาโพส...' : 'กำลังส่งโพสต์...',
     html: `<i class="fa-brands fa-facebook" style="font-size:2rem;color:#1877f2"></i>
-           <p style="margin-top:.7rem;color:#65676b">กำลังโพสต์ไปยัง ${selectedPageIds.size} เพจ</p>`,
+           <p style="margin-top:.7rem;color:#65676b">${isScheduling ? 'บันทึกตั้งเวลา...' : `กำลังโพสต์ไปยัง ${selectedPageIds.size} เพจ${delayLabel}`}</p>`,
     allowOutsideClick: false, allowEscapeKey: false, showConfirmButton: false,
     didOpen: () => Swal.showLoading(),
   });
@@ -437,15 +448,45 @@ async function submitPost() {
   if (_shareGroupsData.length > 0)
     fd.append('shareGroups', JSON.stringify(_shareGroupsData));
   selectedFiles.forEach(f => fd.append('images', f));
+  if (schedAt) fd.append('scheduledAt', schedAt);
+  if (delay > 0) fd.append('postDelay', delay);
 
   try {
     const res  = await fetch('/send', { method: 'POST', body: fd });
     const data = await res.json();
-    if (data.id) window.location.href = `/result/${data.id}`;
-    else Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: data.error || 'ลองใหม่อีกครั้ง' });
+    if (data.scheduled) {
+      const dt = new Date(data.scheduledAt).toLocaleString('th-TH', { timeZone:'Asia/Bangkok', dateStyle:'short', timeStyle:'short' });
+      const r2 = await Swal.fire({
+        icon: 'success', title: 'ตั้งเวลาโพสแล้ว!',
+        html: `<p style="color:#65676b">จะโพสต์อัตโนมัติวันที่ <strong>${dt}</strong></p>`,
+        showCancelButton: true, confirmButtonText: 'ดูประวัติ',
+        cancelButtonText: 'โพสต์ต่อ', confirmButtonColor: '#1877f2',
+      });
+      if (r2.isConfirmed) window.location.href = '/history';
+      else { messageEl.value = ''; selectedFiles = []; document.getElementById('imagePreview').style.display='none'; }
+    } else if (data.id) {
+      window.location.href = `/result/${data.id}`;
+    } else {
+      Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: data.error || 'ลองใหม่อีกครั้ง' });
+    }
   } catch (err) {
     Swal.fire({ icon: 'error', title: 'ไม่สามารถส่งได้', text: err.message });
   }
+}
+
+function toggleSchedule() {
+  const inp = document.getElementById('scheduledAt');
+  const btn = document.getElementById('scheduleToggleBtn');
+  const show = inp.style.display === 'none';
+  inp.style.display = show ? 'inline-block' : 'none';
+  btn.style.background = show ? '#e7f0fd' : '#f0f2f5';
+  btn.style.color      = show ? '#1877f2'  : '#65676b';
+  if (show && !inp.value) {
+    const d = new Date(Date.now() + 3600000);
+    d.setSeconds(0, 0);
+    inp.value = d.toISOString().slice(0, 16);
+  }
+  if (!show) inp.value = '';
 }
 
 /* ═══════════════════════════════════════════

@@ -1,5 +1,11 @@
 {
   "version": 2,
+  "crons": [
+    {
+      "path": "/api/cron/run-scheduled",
+      "schedule": "* * * * *"
+    }
+  ],
   "builds": [
     {
       "src": "server.js",

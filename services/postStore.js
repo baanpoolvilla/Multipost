@@ -14,6 +14,9 @@ const schema = new mongoose.Schema({
     feeling: mongoose.Schema.Types.Mixed, location: String,
     images: [String], results: [mongoose.Schema.Types.Mixed],
     successCount: Number, failCount: Number,
+    status:          { type: String, default: 'done' },
+    scheduledAt:     { type: String, default: null },
+    selectedPageIds: { type: [String], default: null },
 }, { versionKey: false });
 const Post = mongoose.models.Post || mongoose.model('Post', schema);
 
@@ -69,4 +72,28 @@ async function saveAll(posts) {
     } catch { fSave(posts); }
 }
 
-module.exports = { load, create, getById, remove, saveAll };
+async function getDueScheduled() {
+    const now = new Date().toISOString();
+    try {
+        await connect();
+        const posts = await Post.find({ status: 'scheduled', scheduledAt: { $lte: now } }).lean();
+        return posts.map(p => ({ ...p, id: p._id }));
+    } catch {
+        return fLoad().filter(p => p.status === 'scheduled' && p.scheduledAt && p.scheduledAt <= now);
+    }
+}
+
+async function updateOne(id, data) {
+    try {
+        await connect();
+        const p = await Post.findByIdAndUpdate(id, { $set: data }, { new: true }).lean();
+        return p ? { ...p, id: p._id } : null;
+    } catch {
+        const posts = fLoad();
+        const post  = posts.find(p => p.id === id);
+        if (post) { Object.assign(post, data); fSave(posts); }
+        return post;
+    }
+}
+
+module.exports = { load, create, getById, remove, saveAll, getDueScheduled, updateOne };

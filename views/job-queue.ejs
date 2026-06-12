@@ -107,10 +107,21 @@
         </div>
       </div>
 
-      <div style="display:flex;gap:1rem;align-items:flex-end;margin-bottom:.75rem">
+      <div style="display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:.75rem">
         <div>
           <label class="form-label">Delay ระหว่างกลุ่ม (วินาที)</label>
           <input type="number" id="fDelay" value="5" min="1" max="120" style="width:90px">
+        </div>
+        <div>
+          <label class="form-label">ตั้งเวลาโพส (ไม่บังคับ)</label>
+          <div style="display:flex;align-items:center;gap:.4rem">
+            <input type="datetime-local" id="fScheduledAt"
+              style="padding:.4rem .6rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.83rem;font-family:inherit;color:#444;outline:none">
+            <button type="button" onclick="document.getElementById('fScheduledAt').value=''"
+              style="background:#f0f2f5;border:none;border-radius:7px;padding:.4rem .6rem;font-size:.78rem;cursor:pointer;color:#65676b" title="ล้าง">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -158,6 +169,9 @@
           <div style="font-size:.78rem;color:var(--text-secondary);margin-top:.2rem">
             <%= (j.groups||[]).length %> กลุ่ม · delay <%= j.delaySeconds %>s ·
             <%= new Date(j.createdAt).toLocaleString('th-TH',{timeZone:'Asia/Bangkok',hour12:false,dateStyle:'short',timeStyle:'short'}) %>
+            <% if (j.scheduledAt) { %>
+            · <span style="color:#856404;font-weight:600"><i class="fa-solid fa-clock" style="font-size:.7rem"></i> โพส <%= new Date(j.scheduledAt).toLocaleString('th-TH',{timeZone:'Asia/Bangkok',hour12:false,dateStyle:'short',timeStyle:'short'}) %></span>
+            <% } %>
             <% if (j.status==='done'||j.status==='failed') { %>
             · <strong><%= (j.results||[]).filter(r=>r.status==='success').length %>/<%= (j.groups||[]).length %></strong> สำเร็จ
             <% } %>
@@ -222,22 +236,31 @@ function selAll()  { document.querySelectorAll('[id^="gc_"]').forEach(c=>c.check
 function selNone() { document.querySelectorAll('[id^="gc_"]').forEach(c=>c.checked=false); }
 
 async function submitJob() {
-  const msg   = document.getElementById('fMsg').value.trim();
-  const delay = parseInt(document.getElementById('fDelay').value) || 5;
-  const sel   = _groups.filter((_,i)=>document.getElementById(`gc_${i}`)?.checked);
+  const msg     = document.getElementById('fMsg').value.trim();
+  const delay   = parseInt(document.getElementById('fDelay').value) || 5;
+  const schedAt = document.getElementById('fScheduledAt')?.value || '';
+  const sel     = _groups.filter((_,i)=>document.getElementById(`gc_${i}`)?.checked);
 
   if (!msg)       { Swal.fire({ icon:'warning', title:'กรุณากรอกข้อความ', confirmButtonColor:'#1877f2' }); return; }
   if (!sel.length){ Swal.fire({ icon:'warning', title:'กรุณาเลือกกลุ่ม', confirmButtonColor:'#1877f2' }); return; }
+
+  if (schedAt && new Date(schedAt) <= new Date()) {
+    Swal.fire({ icon:'warning', title:'กรุณาเลือกเวลาในอนาคต', confirmButtonColor:'#1877f2' });
+    return;
+  }
 
   try {
     const r = await fetch('/api/agent/jobs', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ message:msg, groups:sel, delaySeconds:delay }),
+      body: JSON.stringify({ message:msg, groups:sel, delaySeconds:delay, scheduledAt: schedAt || null }),
     });
     const d = await r.json();
     if (!d.ok) throw new Error(d.error||'เกิดข้อผิดพลาด');
-    await Swal.fire({ icon:'success', title:'เพิ่ม Job สำเร็จ', timer:1500, showConfirmButton:false });
+    const schedMsg = schedAt
+      ? `ตั้งเวลาไว้ที่ ${new Date(schedAt).toLocaleString('th-TH',{timeZone:'Asia/Bangkok',dateStyle:'short',timeStyle:'short'})}`
+      : 'Job จะเริ่มทันทีที่ Agent ออนไลน์';
+    await Swal.fire({ icon:'success', title:'เพิ่ม Job สำเร็จ', text: schedMsg, timer:2000, showConfirmButton:false });
     location.reload();
   } catch(e) {
     Swal.fire({ icon:'error', title:'เกิดข้อผิดพลาด', text:e.message, confirmButtonColor:'#1877f2' });

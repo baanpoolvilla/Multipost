@@ -11,6 +11,7 @@ const groupJobSchema = new mongoose.Schema({
     }],
     delaySeconds: { type: Number, default: 5 },
     accountId:    { type: String, default: null },
+    scheduledAt:  { type: String, default: null },
     status:       { type: String, enum: ['pending','running','done','failed'], default: 'pending' },
     results:      [{
         groupId:   String,

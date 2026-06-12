@@ -45,14 +45,17 @@ async function fbPost(pageId, accessToken, message, imageFiles) {
     return data.id; // format: "pageId_postId"
 }
 
-async function sendToPages(message, pageIds = null, images = []) {
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function sendToPages(message, pageIds = null, images = [], delaySeconds = 0) {
     const all   = await pageStore.load();
     const pages = pageIds
         ? all.filter(p => pageIds.includes(p.pageId))
         : all.filter(p => p.enabled !== false);
     const results = [];
 
-    for (const page of pages) {
+    for (let i = 0; i < pages.length; i++) {
+        const page      = pages[i];
         const timestamp = new Date().toISOString();
         try {
             if (!page.accessToken) throw new Error('ไม่มี Access Token สำหรับเพจนี้');
@@ -68,6 +71,9 @@ async function sendToPages(message, pageIds = null, images = []) {
                 timestamp, pageId: page.pageId, pageName: page.pageName,
                 message, status: 'failed', error: err.message, analytics: null,
             });
+        }
+        if (i < pages.length - 1 && delaySeconds > 0) {
+            await sleep(delaySeconds * 1000);
         }
     }
     return results;

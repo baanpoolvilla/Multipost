@@ -15,11 +15,10 @@ exports.showDashboard = async (req, res) => {
 
 // ── Send post ──────────────────────────────────
 exports.sendPost = async (req, res) => {
-    const { message, feelingEmoji, feelingLabel, location } = req.body;
+    const { message, feelingEmoji, feelingLabel, location, scheduledAt, postDelay } = req.body;
     const uploadedImages = (req.files || []).map(f => f.filename);
     const tplRaw         = req.body.templateImages ? [].concat(req.body.templateImages) : [];
-    // Pass template images directly — uploadPhoto() handles missing files gracefully
-    const images = [...uploadedImages, ...tplRaw];
+    const images         = [...uploadedImages, ...tplRaw];
 
     if (!message || !message.trim())
         return res.status(400).json({ error: 'กรุณากรอกข้อความ' });
@@ -27,17 +26,62 @@ exports.sendPost = async (req, res) => {
     let pageIds = req.body.selectedPages;
     if (pageIds) pageIds = [].concat(pageIds);
 
-    const feeling = feelingEmoji ? { emoji: feelingEmoji, label: feelingLabel } : null;
-    const results = await sendToPages(message.trim(), pageIds || null, images);
+    const feeling      = feelingEmoji ? { emoji: feelingEmoji, label: feelingLabel } : null;
+    const delaySeconds = Math.min(Math.max(parseInt(postDelay) || 0, 0), 120);
+
+    if (scheduledAt) {
+        const schedDate = new Date(scheduledAt);
+        if (schedDate > new Date()) {
+            const post = await postStore.create({
+                message: message.trim(), feeling,
+                location: location || null, images,
+                results: [], successCount: 0, failCount: 0,
+                status: 'scheduled',
+                scheduledAt: schedDate.toISOString(),
+                selectedPageIds: pageIds || null,
+            });
+            return res.json({ id: post.id, scheduled: true, scheduledAt: post.scheduledAt });
+        }
+    }
+
+    const results      = await sendToPages(message.trim(), pageIds || null, images, delaySeconds);
     const successCount = results.filter(r => r.status === 'success').length;
 
     const post = await postStore.create({
         message: message.trim(), feeling,
         location: location || null, images, results,
         successCount, failCount: results.length - successCount,
+        status: 'done',
     });
 
     res.json({ id: post.id });
+};
+
+// ── Scheduled post runner (Vercel Cron) ────────
+exports.runAllScheduled = async (req, res) => {
+    try {
+        const due = await postStore.getDueScheduled();
+        let executed = 0;
+        for (const post of due) {
+            try {
+                await postStore.updateOne(post.id, { status: 'running' });
+                const pageIds  = post.selectedPageIds?.length ? post.selectedPageIds : null;
+                const results  = await sendToPages(post.message, pageIds, post.images || []);
+                const success  = results.filter(r => r.status === 'success').length;
+                await postStore.updateOne(post.id, {
+                    status: 'done', results,
+                    successCount: success, failCount: results.length - success,
+                });
+                executed++;
+            } catch (e) {
+                console.error('[scheduler] error:', e.message);
+                await postStore.updateOne(post.id, { status: 'failed' });
+            }
+        }
+        res.json({ ok: true, executed });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
 };
 
 // ── Result / History ───────────────────────────

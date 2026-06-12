@@ -58,6 +58,9 @@ router.post('/api/templates',       ctrl.createTemplate);
 router.put('/api/templates/:id',    ctrl.updateTemplate);
 router.delete('/api/templates/:id', ctrl.deleteTemplate);
 
+// Cron / Scheduler
+router.post('/api/cron/run-scheduled', ctrl.runAllScheduled);
+
 // Posts
 router.get('/',               ctrl.showDashboard);
 router.post('/send',          upload.array('images', 30), multerErrorHandler, saveUploadedFiles, ctrl.sendPost);

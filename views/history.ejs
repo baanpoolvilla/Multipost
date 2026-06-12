@@ -71,6 +71,7 @@
           <option value="">สถานะทั้งหมด</option>
           <option value="success">สำเร็จทั้งหมด</option>
           <option value="partial">มีล้มเหลวบางเพจ</option>
+          <option value="scheduled">รอโพส (ตั้งเวลา)</option>
         </select>
         <div style="display:flex;align-items:center;gap:.3rem;flex-shrink:0">
           <input type="date" id="hDateFrom" onchange="applyFilters()" title="ตั้งแต่วันที่"
@@ -106,33 +107,47 @@
 
     <% const colors = ['purple','green','orange','blue','red']; %>
     <% posts.forEach(post => { %>
+    <% const isScheduled = post.status === 'scheduled'; %>
     <div class="card history-card" id="card-<%= post.id %>">
 
       <!-- Card header -->
       <div class="fb-post-header">
-        <div class="avatar avatar-blue"><i class="fa-solid fa-building"></i></div>
+        <div class="avatar avatar-<%= isScheduled ? 'orange' : 'blue' %>">
+          <i class="fa-solid fa-<%= isScheduled ? 'clock' : 'building' %>"></i>
+        </div>
         <div style="flex:1">
           <div class="fb-post-author">
             Admin
-            <% if (post.feeling) { %>
+            <% if (isScheduled) { %>
+            <span style="background:#fff3cd;color:#856404;border-radius:999px;font-size:.7rem;padding:.1rem .45rem;font-weight:700;margin-left:.35rem">
+              <i class="fa-solid fa-clock" style="font-size:.65rem"></i> รอโพส
+            </span>
+            <% } else if (post.feeling) { %>
             <span class="inline-feeling">รู้สึก <%= post.feeling.emoji %> <%= post.feeling.label %></span>
             <% } %>
           </div>
           <div class="fb-post-time">
+            <% if (isScheduled) { %>
+            <i class="fa-solid fa-calendar-clock"></i>
+            โพสอัตโนมัติ <%= new Date(post.scheduledAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', dateStyle:'short', timeStyle:'short' }) %>
+            <% } else { %>
             <i class="fa-solid fa-earth-asia"></i>
             <%= new Date(post.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) %>
             <% if (post.location) { %>
             &nbsp;·&nbsp;<i class="fa-solid fa-location-dot" style="color:#f5533d"></i> <%= post.location %>
             <% } %>
+            <% } %>
           </div>
         </div>
         <div class="history-actions">
+          <% if (!isScheduled) { %>
           <a href="/result/<%= post.id %>"
              style="display:inline-flex;align-items:center;gap:.28rem;background:#e7f0fd;color:#1877f2;border:none;border-radius:7px;padding:.28rem .65rem;font-size:.78rem;font-weight:700;text-decoration:none;transition:background .15s"
              onmouseover="this.style.background='#cfe2ff'" onmouseout="this.style.background='#e7f0fd'"
              title="ดูรายงานการโพส">
             <i class="fa-solid fa-chart-bar"></i> รายงาน
           </a>
+          <% } %>
           <button class="icon-btn danger" title="ลบ" onclick="deletePost('<%= post.id %>', this)">
             <i class="fa-solid fa-trash"></i>
           </button>
@@ -168,7 +183,7 @@
       <% } %>
 
       <!-- Footer stats -->
-      <div class="history-footer">
+      <div class="history-footer" <% if (isScheduled) { %>style="opacity:.5"<% } %>>
         <div class="history-pages" style="flex:1">
           <% const MAX_B = 8; %>
           <% post.results.slice(0, MAX_B).forEach((r, i) => { %>
@@ -231,8 +246,9 @@
   const _hPosts = <%- JSON.stringify(posts.map(p => ({
     id: p.id,
     msg: p.message || '',
-    at: p.createdAt,
+    at: p.status === 'scheduled' ? p.scheduledAt : p.createdAt,
     fail: p.failCount || 0,
+    status: p.status || 'done',
     pages: (p.results || []).map(r => r.pageName)
   }))) %>;
 
@@ -264,9 +280,10 @@
       const card = document.getElementById('card-' + p.id);
       if (!card) return;
       let ok = true;
-      if (q  && !p.msg.toLowerCase().includes(q))  ok = false;
-      if (st === 'success' && p.fail > 0)           ok = false;
-      if (st === 'partial' && p.fail === 0)         ok = false;
+      if (q  && !p.msg.toLowerCase().includes(q))       ok = false;
+      if (st === 'success'   && p.fail > 0)              ok = false;
+      if (st === 'partial'   && p.fail === 0)            ok = false;
+      if (st === 'scheduled' && p.status !== 'scheduled') ok = false;
       const postTs = new Date(p.at).getTime();
       if (fromTs !== null && postTs < fromTs)       ok = false;
       if (toTs   !== null && postTs > toTs)         ok = false;

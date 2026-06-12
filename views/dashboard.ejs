@@ -151,6 +151,24 @@
         </button>
       </div>
 
+      <!-- Delay + Schedule row -->
+      <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;padding:.55rem 0;border-top:1px solid var(--border-color);margin-top:.1rem">
+        <div style="display:flex;align-items:center;gap:.35rem">
+          <i class="fa-solid fa-stopwatch" style="color:#8a8d91;font-size:.8rem"></i>
+          <span style="font-size:.78rem;color:#65676b;white-space:nowrap">หน่วงเวลา/เพจ</span>
+          <input type="number" id="postDelay" value="0" min="0" max="120"
+            style="width:54px;padding:.28rem .4rem;border:1.5px solid #e4e6eb;border-radius:7px;font-size:.82rem;font-family:inherit;outline:none;text-align:center">
+          <span style="font-size:.78rem;color:#8a8d91">วิ</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:.35rem">
+          <button type="button" id="scheduleToggleBtn" onclick="toggleSchedule()"
+            style="display:inline-flex;align-items:center;gap:.3rem;background:#f0f2f5;border:none;border-radius:7px;padding:.28rem .65rem;font-size:.78rem;cursor:pointer;font-family:inherit;color:#65676b;transition:background .15s">
+            <i class="fa-solid fa-clock"></i> ตั้งเวลา
+          </button>
+          <input type="datetime-local" id="scheduledAt" style="display:none;padding:.28rem .55rem;border:1.5px solid #1877f2;border-radius:7px;font-size:.82rem;font-family:inherit;color:#444;outline:none">
+        </div>
+      </div>
+
       <div class="composer-submit-row">
         <div class="pages-badge">
           <i class="fa-solid fa-layer-group"></i>

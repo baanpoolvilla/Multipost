@@ -40,15 +40,17 @@ exports.listJobs = async (req, res) => {
 };
 
 exports.createJob = async (req, res) => {
-    const { message, groups, delaySeconds, accountId } = req.body;
+    const { message, groups, delaySeconds, accountId, scheduledAt } = req.body;
     if (!message?.trim()) return res.status(400).json({ error: 'กรุณากรอกข้อความ' });
     if (!Array.isArray(groups) || !groups.length) return res.status(400).json({ error: 'กรุณาเลือกกลุ่ม' });
     try {
+        const schedDate = scheduledAt ? new Date(scheduledAt) : null;
         const job = await groupJobStore.create({
             message: message.trim(),
             groups,
             delaySeconds: delaySeconds || 5,
             accountId: accountId || null,
+            scheduledAt: (schedDate && schedDate > new Date()) ? schedDate.toISOString() : null,
         });
         res.json({ ok: true, job });
     } catch(e) {
