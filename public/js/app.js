@@ -448,7 +448,7 @@ async function submitPost() {
   if (_shareGroupsData.length > 0)
     fd.append('shareGroups', JSON.stringify(_shareGroupsData));
   selectedFiles.forEach(f => fd.append('images', f));
-  if (schedAt) fd.append('scheduledAt', new Date(schedAt).toISOString());
+  if (schedAt) fd.append('scheduledAt', new Date(schedAt.slice(0,16) + ':00+07:00').toISOString());
   if (delay > 0) fd.append('postDelay', delay);
 
   try {
@@ -482,11 +482,15 @@ function toggleSchedule() {
   btn.style.background = show ? '#e7f0fd' : '#f0f2f5';
   btn.style.color      = show ? '#1877f2'  : '#65676b';
   if (show && !inp.value) {
-    const d = new Date(Date.now() + 3600000);
-    d.setSeconds(0, 0);
-    inp.value = d.toISOString().slice(0, 16);
+    // Default: 1 ชั่วโมงข้างหน้า แสดงเป็นเวลาไทย (UTC+7)
+    inp.value = _toBkkLocal(new Date(Date.now() + 3600000));
   }
   if (!show) inp.value = '';
+}
+
+function _toBkkLocal(date) {
+  // คืนค่า "YYYY-MM-DDTHH:mm" ในเวลาไทย สำหรับ datetime-local input
+  return date.toLocaleString('sv', { timeZone: 'Asia/Bangkok' }).replace(' ', 'T').slice(0, 16);
 }
 
 /* ═══════════════════════════════════════════

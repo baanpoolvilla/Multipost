@@ -253,7 +253,7 @@ async function submitJob() {
     const r = await fetch('/api/agent/jobs', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ message:msg, groups:sel, delaySeconds:delay, scheduledAt: schedAt ? new Date(schedAt).toISOString() : null }),
+      body: JSON.stringify({ message:msg, groups:sel, delaySeconds:delay, scheduledAt: schedAt ? new Date(schedAt.slice(0,16) + ':00+07:00').toISOString() : null }),
     });
     const d = await r.json();
     if (!d.ok) throw new Error(d.error||'เกิดข้อผิดพลาด');
