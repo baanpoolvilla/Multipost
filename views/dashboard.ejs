@@ -27,18 +27,16 @@
 
   <!-- Sidebar -->
   <aside class="sidebar">
-    <a href="/" class="sidebar-item active"><i class="fa-solid fa-house"></i><span>หน้าหลัก</span></a>
+        <div class="sidebar-label">โพสลงเพจ</div>
+    <a href="/" class="sidebar-item active"><i class="fa-solid fa-pen-to-square"></i><span>โพสใหม่</span></a>
     <a href="/overview" class="sidebar-item"><i class="fa-solid fa-chart-line"></i><span>ภาพรวม</span></a>
     <a href="/history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพส</span></a>
-
-    <div class="sidebar-divider"></div>
-    <div class="sidebar-label">แชร์ลงเพจ</div>
     <a href="/pages" class="sidebar-item"><i class="fa-brands fa-facebook"></i><span>จัดการเพจ</span></a>
 
     <div class="sidebar-divider"></div>
-    <div class="sidebar-label">โพสลงกลุ่ม</div>
+    <div class="sidebar-label">โพส&amp;แชร์ ลงกลุ่ม</div>
     <a href="/groups" class="sidebar-item"><i class="fa-solid fa-users-rectangle"></i><span>จัดการกลุ่ม</span></a>
-    <a href="/agent" class="sidebar-item"><i class="fa-solid fa-robot"></i><span>Desktop Agent</span></a>
+    <a href="/agent" class="sidebar-item"><i class="fa-solid fa-robot"></i><span>ติดตั้ง Desktop Agent</span></a>
     <a href="/job-queue" class="sidebar-item"><i class="fa-solid fa-list-check"></i><span>คิวโพส</span></a>
 
     <div class="sidebar-divider"></div>
@@ -101,7 +99,7 @@
 
       <!-- Textarea area -->
       <div class="composer-textarea-wrap">
-        <textarea id="message" placeholder="คุณกำลังคิดอะไรอยู่?" rows="4"></textarea>
+        <textarea id="message" placeholder="พิมพ์ข้อความที่ต้องการโพส..." rows="4"></textarea>
         <div class="emoji-strip">
           <% ['😊','🔥','❤️','👍','🎉','✨','📣','💎','🏖️','🌟'].forEach(e => { %>
           <button type="button" class="emoji-btn" onclick="insertEmoji('<%= e %>')"><%= e %></button>
@@ -142,18 +140,18 @@
           <i class="fa-solid fa-image" style="color:#45bd62"></i><span>รูปภาพ/วิดีโอ</span>
         </button>
 <button type="button" class="action-chip" onclick="openTemplateModal()">
-          <i class="fa-solid fa-layer-group" style="color:#1877f2"></i><span>โพสต์บันทึก</span>
+          <i class="fa-solid fa-layer-group" style="color:#1877f2"></i><span>เทมเพลต</span>
         </button>
       </div>
 
       <div class="composer-submit-row">
         <div class="pages-badge">
           <i class="fa-solid fa-layer-group"></i>
-          <span id="pageCountLabel">โพสต์ไปยัง <%= pages.length %> เพจ</span>
+          <span id="pageCountLabel">โพสไปยัง <%= pages.length %> เพจ</span>
         </div>
         <button type="button" class="action-chip" onclick="saveCurrentAsTemplate()"
           style="background:#f0f2f5;border:none;margin-right:.35rem;padding:.42rem .8rem;font-size:.78rem;color:#1c1e21">
-          <i class="fa-solid fa-floppy-disk" style="color:#1877f2"></i> บันทึก
+          <i class="fa-solid fa-floppy-disk" style="color:#1877f2"></i> บันทึกเทมเพลต
         </button>
         <button type="button" id="submitBtn" class="btn-post" onclick="submitPost()">
           <i class="fa-solid fa-paper-plane"></i> โพสต์ทุกเพจ
@@ -164,7 +162,7 @@
     <!-- Recent posts card -->
     <div class="card">
       <div class="card-title" style="margin-bottom:.65rem">
-        <i class="fa-solid fa-clock-rotate-left"></i> โพสต์ล่าสุด
+        <i class="fa-solid fa-clock-rotate-left"></i> โพสล่าสุด
         <a href="/pages" class="manage-pages-link" style="margin-left:auto">
           <i class="fa-brands fa-facebook"></i> จัดการเพจ
         </a>
