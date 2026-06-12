@@ -28,16 +28,26 @@ function insertEmoji(emoji) {
 
 /* ── File validation helper ── */
 const _ALLOWED_EXT = /\.(jpe?g|png|gif|webp|mp4|mov|avi|webm)$/i;
-const _MAX_SIZE_MB  = 100;
+const _IS_VID_EXT  = /\.(mp4|mov|avi|webm)$/i;
+const _IMG_MAX_MB  = 4;    // Facebook Graph API photo limit
+const _VID_MAX_MB  = 100;  // Server cap (Facebook allows up to 1 GB)
+const _MAX_SIZE_MB = 100;  // legacy alias
 
 function _checkFiles(incoming, alreadyHave, maxTotal) {
   const valid = [], problems = [];
 
   for (const f of incoming) {
+    const isVid   = _IS_VID_EXT.test(f.name) || f.type.startsWith('video/');
+    const sizeMB  = f.size / 1024 / 1024;
+    const limitMB = isVid ? _VID_MAX_MB : _IMG_MAX_MB;
+
     if (!_ALLOWED_EXT.test(f.name)) {
       problems.push(`<b>${f.name}</b><br><span style="color:#888;font-size:.8rem">ไม่รองรับไฟล์ประเภทนี้ — รองรับเฉพาะ JPG, PNG, GIF, WebP, MP4, MOV, AVI, WebM</span>`);
-    } else if (f.size > _MAX_SIZE_MB * 1024 * 1024) {
-      problems.push(`<b>${f.name}</b><br><span style="color:#888;font-size:.8rem">ขนาดใหญ่เกินไป (${(f.size / 1024 / 1024).toFixed(0)} MB) — สูงสุด ${_MAX_SIZE_MB} MB</span>`);
+    } else if (f.size > limitMB * 1024 * 1024) {
+      const note = isVid
+        ? `วิดีโอ: เซิร์ฟเวอร์จำกัดที่ ${_VID_MAX_MB} MB (Facebook รับสูงสุด 1 GB)`
+        : `รูปภาพ: Facebook รับสูงสุด ${_IMG_MAX_MB} MB ต่อไฟล์`;
+      problems.push(`<b>${f.name}</b> <span style="color:#e65100;font-weight:700">${sizeMB.toFixed(1)} MB</span><br><span style="color:#888;font-size:.8rem">เกินขนาดที่รับได้ — ${note}</span>`);
     } else {
       valid.push(f);
     }
@@ -53,7 +63,10 @@ function _checkFiles(incoming, alreadyHave, maxTotal) {
     Swal.fire({
       icon: 'warning',
       title: 'ไม่สามารถเพิ่มไฟล์บางรายการ',
-      html: `<ul style="text-align:left;margin:.25rem 0 0;padding-left:1.1rem;list-style:disc">${problems.map(p => `<li style="margin:.45rem 0">${p}</li>`).join('')}</ul>`,
+      html: `<ul style="text-align:left;margin:.25rem 0 0;padding-left:1.1rem;list-style:disc">${problems.map(p => `<li style="margin:.45rem 0">${p}</li>`).join('')}</ul>
+             <p style="margin-top:.75rem;font-size:.8rem;color:#65676b;border-top:1px solid #e4e6ea;padding-top:.6rem">
+               📌 ขีดจำกัด Facebook: รูปภาพ <b>4 MB</b>/ไฟล์ · วิดีโอ <b>1 GB</b>/ไฟล์
+             </p>`,
       confirmButtonColor: '#1877f2',
       confirmButtonText: 'ตกลง',
     });
@@ -501,10 +514,21 @@ async function submitPost() {
     let data;
     try { data = await res.json(); }
     catch {
-      const errMsg = res.status === 413
-        ? 'ขนาดไฟล์รวมใหญ่เกินไป กรุณาลดขนาดหรือจำนวนไฟล์แล้วลองใหม่'
-        : `เกิดข้อผิดพลาดจากเซิร์ฟเวอร์ (HTTP ${res.status}) กรุณาลองใหม่`;
-      Swal.fire({ icon: 'error', title: 'ส่งไม่สำเร็จ', text: errMsg, confirmButtonColor: '#1877f2' });
+      let errHtml;
+      if (res.status === 413) {
+        const totalMB = selectedFiles.reduce((s, f) => s + f.size, 0) / 1024 / 1024;
+        const fileRows = selectedFiles.length
+          ? `<ul style="text-align:left;margin:.35rem 0 0;padding-left:1.1rem;list-style:disc;font-size:.85rem">${selectedFiles.map(f => `<li>${f.name} — <b>${(f.size/1024/1024).toFixed(1)} MB</b></li>`).join('')}</ul>`
+          : '';
+        errHtml = `<p>ขนาดไฟล์รวม <b>${totalMB.toFixed(1)} MB</b> ใหญ่เกินไป กรุณาลดขนาดหรือจำนวนไฟล์</p>
+                   ${fileRows}
+                   <p style="margin-top:.6rem;font-size:.82rem;color:#65676b;border-top:1px solid #e4e6ea;padding-top:.5rem">
+                     📌 ขีดจำกัด Facebook: รูปภาพ <b>4 MB</b>/ไฟล์ · วิดีโอ <b>1 GB</b>/ไฟล์
+                   </p>`;
+      } else {
+        errHtml = `เกิดข้อผิดพลาดจากเซิร์ฟเวอร์ (HTTP ${res.status}) กรุณาลองใหม่`;
+      }
+      Swal.fire({ icon: 'error', title: 'ส่งไม่สำเร็จ', html: errHtml, confirmButtonColor: '#1877f2' });
       return;
     }
 

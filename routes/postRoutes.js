@@ -18,7 +18,7 @@ const upload = multer({
 function multerErrorHandler(err, req, res, next) {
     if (!err) return next();
     const msg = {
-        LIMIT_FILE_SIZE:       'ไฟล์มีขนาดใหญ่เกินไป (สูงสุด 100MB ต่อไฟล์)',
+        LIMIT_FILE_SIZE:       'ไฟล์มีขนาดใหญ่เกินไป — รูปภาพ Facebook รับสูงสุด 4 MB/ไฟล์ · วิดีโอสูงสุด 1 GB/ไฟล์ (เซิร์ฟเวอร์จำกัดที่ 100 MB/ไฟล์)',
         LIMIT_FILE_COUNT:      'จำนวนไฟล์มากเกินไป (สูงสุด 30 ไฟล์ต่อครั้ง)',
         LIMIT_UNEXPECTED_FILE: 'ชื่อ field ไม่ถูกต้อง กรุณาลองใหม่',
     }[err.code] || err.message || 'อัปโหลดไม่สำเร็จ กรุณาลองใหม่';

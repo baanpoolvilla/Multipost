@@ -276,10 +276,13 @@
       let json;
       try { json = await resp.json(); }
       catch {
-        const errMsg = resp.status === 413
-          ? 'ขนาดไฟล์รวมใหญ่เกินไป กรุณาลดขนาดหรือจำนวนไฟล์แล้วลองใหม่'
+        const errHtml = resp.status === 413
+          ? `<p>ขนาดไฟล์รวมใหญ่เกินไป กรุณาลดขนาดหรือจำนวนไฟล์แล้วลองใหม่</p>
+             <p style="margin-top:.5rem;font-size:.82rem;color:#65676b;border-top:1px solid #e4e6ea;padding-top:.5rem">
+               📌 ขีดจำกัด Facebook: รูปภาพ <b>4 MB</b>/ไฟล์ · วิดีโอ <b>1 GB</b>/ไฟล์
+             </p>`
           : `เกิดข้อผิดพลาดจากเซิร์ฟเวอร์ (HTTP ${resp.status})`;
-        Swal.fire({ icon: 'error', title: 'ส่งไม่สำเร็จ', text: errMsg, confirmButtonColor: '#1877f2' });
+        Swal.fire({ icon: 'error', title: 'ส่งไม่สำเร็จ', html: errHtml, confirmButtonColor: '#1877f2' });
         return;
       }
       if (!resp.ok) throw new Error(json.error || 'เกิดข้อผิดพลาด');
