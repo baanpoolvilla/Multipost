@@ -422,9 +422,9 @@
       }
     }
 
-    // trigger ทันทีที่โหลดหน้า แล้วค่อย poll ทุก 30 วิ
+    // trigger ทันทีที่โหลดหน้า แล้ว poll ครั้งแรกหลัง 5 วิ (และ 30 วิ ในรอบต่อๆ ไป)
     triggerScheduler();
-    pollTimer = setTimeout(pollScheduled, 30000);
+    pollTimer = setTimeout(pollScheduled, 5000);
   })();
 
   async function confirmClearAll() {

@@ -157,9 +157,9 @@
     </div>
 
     <div style="text-align:center;margin-top:1rem;display:flex;gap:.75rem;justify-content:center">
-      <a href="/" class="btn-post" style="text-decoration:none">
+      <button onclick="repostAgain()" class="btn-post">
         <i class="fa-solid fa-paper-plane"></i> โพสต์อีกครั้ง
-      </a>
+      </button>
       <a href="/history" class="btn-post" style="text-decoration:none;background:#65676b">
         <i class="fa-solid fa-clock-rotate-left"></i> ดูประวัติ
       </a>
@@ -179,6 +179,14 @@
 </div>
 
 <script>
+  const _POST_DATA = <%- JSON.stringify({
+    message:         post.message,
+    feeling:         post.feeling  || null,
+    location:        post.location || null,
+    images:          post.images   || [],
+    selectedPageIds: post.selectedPageIds || null,
+  }) %>;
+
   function viewImage(src) {
     Swal.fire({ imageUrl: src, imageAlt: 'รูปภาพ', showConfirmButton: false, showCloseButton: true, width: 'auto' });
   }
@@ -190,6 +198,91 @@
     btn.innerHTML = isHidden
       ? '<i class="fa-solid fa-chevron-up"></i> ซ่อน'
       : `<i class="fa-solid fa-chevron-down"></i> ดูเพิ่มเติม ${hidden.length} เพจ`;
+  }
+
+  async function repostAgain() {
+    const choice = await Swal.fire({
+      title: 'โพสต์อีกครั้ง',
+      text: 'เลือกวิธีโพสต์เนื้อหาเดิม',
+      showConfirmButton: true,
+      showDenyButton: true,
+      showCancelButton: true,
+      confirmButtonText: '<i class="fa-solid fa-paper-plane"></i> โพสเลย',
+      denyButtonText: '<i class="fa-solid fa-clock"></i> ตั้งเวลา',
+      cancelButtonText: 'ยกเลิก',
+      confirmButtonColor: '#1877f2',
+      denyButtonColor: '#f59e0b',
+    });
+
+    if (choice.isDismissed) return;
+
+    let scheduledAt = null;
+    if (choice.isDenied) {
+      // Default to now + 10 min as a convenience
+      const pad = n => String(n).padStart(2, '0');
+      const def = new Date(Date.now() + 10 * 60000);
+      const defStr = `${def.getFullYear()}-${pad(def.getMonth()+1)}-${pad(def.getDate())}T${pad(def.getHours())}:${pad(def.getMinutes())}`;
+
+      const picker = await Swal.fire({
+        title: 'เลือกเวลาที่จะโพสต์',
+        input: 'datetime-local',
+        inputValue: defStr,
+        showCancelButton: true,
+        confirmButtonText: 'ยืนยัน',
+        cancelButtonText: 'กลับ',
+        confirmButtonColor: '#1877f2',
+        inputValidator: v => {
+          if (!v) return 'กรุณาเลือกวันและเวลา';
+          if (new Date(v) <= new Date()) return 'กรุณาเลือกเวลาในอนาคต';
+        },
+      });
+      if (!picker.isConfirmed) return;
+      scheduledAt = picker.value;
+    }
+
+    const data = new FormData();
+    data.append('message', _POST_DATA.message);
+    if (_POST_DATA.feeling) {
+      data.append('feelingEmoji', _POST_DATA.feeling.emoji);
+      data.append('feelingLabel', _POST_DATA.feeling.label);
+    }
+    if (_POST_DATA.location) data.append('location', _POST_DATA.location);
+    if (scheduledAt)         data.append('scheduledAt', scheduledAt);
+    (_POST_DATA.images || []).forEach(img => data.append('templateImages', img));
+    if (_POST_DATA.selectedPageIds) {
+      _POST_DATA.selectedPageIds.forEach(id => data.append('selectedPages', id));
+    }
+
+    Swal.fire({
+      title: scheduledAt ? 'กำลังตั้งเวลา...' : 'กำลังโพสต์...',
+      allowOutsideClick: false,
+      showConfirmButton: false,
+      didOpen: () => Swal.showLoading(),
+    });
+
+    try {
+      const resp = await fetch('/send', { method: 'POST', body: data });
+      const json = await resp.json();
+      if (!resp.ok) throw new Error(json.error || 'เกิดข้อผิดพลาด');
+
+      if (json.scheduled) {
+        const d = new Date(json.scheduledAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' });
+        const done = await Swal.fire({
+          icon: 'success',
+          title: 'ตั้งเวลาสำเร็จ!',
+          text: 'จะโพสต์ในวันที่ ' + d,
+          confirmButtonText: 'ดูประวัติ',
+          showCancelButton: true,
+          cancelButtonText: 'อยู่หน้านี้',
+          confirmButtonColor: '#1877f2',
+        });
+        if (done.isConfirmed) location.href = '/history';
+      } else {
+        location.href = '/result/' + json.id;
+      }
+    } catch (e) {
+      Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: e.message });
+    }
   }
 </script>
 <script src="/js/app.js"></script>
