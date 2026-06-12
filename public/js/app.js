@@ -44,13 +44,19 @@ function renderPreviews() {
   if (!imagePreview) return;
   if (!selectedFiles.length) { imagePreview.style.display = 'none'; imagePreview.innerHTML = ''; return; }
   imagePreview.style.display = 'grid';
-  imagePreview.innerHTML = selectedFiles.map((f, i) => `
+  imagePreview.innerHTML = selectedFiles.map((f, i) => {
+    const isVid = f.type.startsWith('video/');
+    const thumb = isVid
+      ? `<video src="${URL.createObjectURL(f)}" style="width:100%;height:100%;object-fit:cover" muted playsinline></video>`
+      : `<img src="${URL.createObjectURL(f)}" alt="">`;
+    return `
     <div class="img-thumb">
-      <img src="${URL.createObjectURL(f)}" alt="">
+      ${thumb}
       <button class="img-thumb-remove" type="button" onclick="removeImage(${i})">
         <i class="fa-solid fa-xmark"></i>
       </button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function removeImage(idx) { selectedFiles.splice(idx, 1); renderPreviews(); }
@@ -548,14 +554,19 @@ function renderTplImagePreviews() {
   if (!el) return;
   if (!_tplLoadedImages.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
   el.style.display = 'grid';
-  el.innerHTML = _tplLoadedImages.map((name, i) => `
+  el.innerHTML = _tplLoadedImages.map((name, i) => {
+    const isVid = /\.(mp4|mov|avi|webm)$/i.test(name);
+    const thumb = isVid
+      ? `<video src="/uploads/${name}" style="width:100%;height:100%;object-fit:cover" muted playsinline></video>`
+      : `<img src="/uploads/${name}" alt="" onerror="tplImgBroken('${name}', this)">`;
+    return `
     <div class="img-thumb">
-      <img src="/uploads/${name}" alt=""
-           onerror="tplImgBroken('${name}', this)">
+      ${thumb}
       <button class="img-thumb-remove" type="button" onclick="removeTplImage(${i})">
         <i class="fa-solid fa-xmark"></i>
       </button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function tplImgBroken(name, img) {
@@ -645,7 +656,9 @@ function renderTplCard(t, num) {
   const imgs = (t.images || []);
   const imgHtml = imgs.length ? `
     <div style="display:flex;gap:3px;margin-top:.45rem;flex-wrap:wrap">
-      ${imgs.slice(0, 4).map(img => `<img src="/uploads/${img}" style="width:42px;height:42px;object-fit:cover;border-radius:5px;flex-shrink:0" onerror="this.style.display='none'">`).join('')}
+      ${imgs.slice(0, 4).map(img => /\.(mp4|mov|avi|webm)$/i.test(img)
+        ? `<div style="width:42px;height:42px;background:#1c1e21;border-radius:5px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="fa-solid fa-film" style="color:#fff;font-size:.8rem"></i></div>`
+        : `<img src="/uploads/${img}" style="width:42px;height:42px;object-fit:cover;border-radius:5px;flex-shrink:0" onerror="this.style.display='none'">`).join('')}
       ${imgs.length > 4 ? `<div style="width:42px;height:42px;background:#e4e6eb;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:.7rem;color:#65676b">+${imgs.length-4}</div>` : ''}
     </div>` : '';
 
@@ -684,7 +697,7 @@ function renderTplListRow(t, num) {
         <div style="font-weight:700;font-size:.8rem;color:#1c1e21">โพสต์ #${num}${t.name ? ' — ' + t.name : ''}</div>
         <div style="font-size:.79rem;color:#65676b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${msg}</div>
       </div>
-      ${(t.images||[]).length ? `<span style="font-size:.7rem;color:#1877f2;background:#e7f3ff;padding:.1rem .4rem;border-radius:4px;flex-shrink:0"><i class="fa-solid fa-image"></i> ${t.images.length}</span>` : ''}
+      ${(t.images||[]).length ? `<span style="font-size:.7rem;color:#1877f2;background:#e7f3ff;padding:.1rem .4rem;border-radius:4px;flex-shrink:0"><i class="fa-solid fa-${(t.images||[]).some(f => /\.(mp4|mov|avi|webm|gif)$/i.test(f)) ? 'film' : 'image'}"></i> ${t.images.length}</span>` : ''}
       <div style="display:flex;gap:.25rem;flex-shrink:0" onclick="event.stopPropagation()">
         <button onclick="openEditTpl('${t.id}')" style="background:none;border:none;color:#8a8d91;cursor:pointer;font-size:.75rem;padding:.1rem .28rem"><i class="fa-solid fa-pen"></i></button>
         <button onclick="deleteTpl('${t.id}')" style="background:none;border:none;color:#c62828;cursor:pointer;font-size:.75rem;padding:.1rem .28rem"><i class="fa-solid fa-trash"></i></button>
@@ -720,9 +733,9 @@ async function openCreateTemplate() {
         <label style="font-size:.82rem;color:#65676b;display:block;margin:.55rem 0 .3rem">ชื่อ Template (ไม่บังคับ):</label>
         <input id="stName" type="text" placeholder="เช่น โปรโมชั่น A"
           style="width:100%;padding:.48rem .75rem;border:1.5px solid #dbe0e6;border-radius:8px;font-family:inherit;font-size:.84rem;outline:none;box-sizing:border-box">
-        <label style="font-size:.82rem;color:#65676b;display:block;margin:.55rem 0 .3rem">รูปภาพ (สูงสุด 10 รูป):</label>
+        <label style="font-size:.82rem;color:#65676b;display:block;margin:.55rem 0 .3rem">รูปภาพ/วิดีโอ (สูงสุด 10 ไฟล์):</label>
         <div id="stImgPrev" style="display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.4rem"></div>
-        <input type="file" id="stFileInp" multiple accept="image/*" style="display:none">
+        <input type="file" id="stFileInp" multiple accept="image/*,video/mp4,video/quicktime,video/x-msvideo,video/webm" style="display:none">
         <div id="stAddBtn"
           style="border:2px dashed #dbe0e6;border-radius:8px;padding:.85rem;text-align:center;cursor:pointer;color:#8a8d91;font-size:.82rem">
           <i class="fa-solid fa-cloud-arrow-up" style="font-size:1.4rem;display:block;margin-bottom:.3rem"></i>
@@ -775,14 +788,20 @@ async function openCreateTemplate() {
 function _stRender() {
   const el = document.getElementById('stImgPrev');
   if (!el) return;
-  el.innerHTML = _tplNewFiles.map((f, i) => `
+  el.innerHTML = _tplNewFiles.map((f, i) => {
+    const isVid = f.type.startsWith('video/');
+    const thumb = isVid
+      ? `<video src="${URL.createObjectURL(f)}" style="width:54px;height:54px;object-fit:cover;border-radius:6px" muted playsinline></video>`
+      : `<img src="${URL.createObjectURL(f)}" style="width:54px;height:54px;object-fit:cover;border-radius:6px">`;
+    return `
     <div style="position:relative" id="stn-${i}">
-      <img src="${URL.createObjectURL(f)}" style="width:54px;height:54px;object-fit:cover;border-radius:6px">
+      ${thumb}
       <button data-si="${i}" type="button"
         style="position:absolute;top:-4px;right:-4px;background:#c62828;color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:.55rem;cursor:pointer;padding:0">
         ×
       </button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   el.querySelectorAll('[data-si]').forEach(btn => {
     btn.addEventListener('click', () => { _tplNewFiles.splice(+btn.dataset.si, 1); _stRender(); });
   });
@@ -813,7 +832,7 @@ async function openEditTpl(id) {
           ${(t.images||[]).length ? `<span style="margin-left:.4rem;background:#e7f3ff;color:#1877f2;padding:.1rem .5rem;border-radius:4px;font-size:.75rem"><i class="fa-solid fa-image"></i> มีอยู่แล้ว ${t.images.length} รูป</span>` : ''}
         </label>
         <div id="etImgPrev" style="display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.4rem"></div>
-        <input type="file" id="etFileInp" multiple accept="image/*" style="display:none">
+        <input type="file" id="etFileInp" multiple accept="image/*,video/mp4,video/quicktime,video/x-msvideo,video/webm" style="display:none">
         <div id="etAddBtn"
           style="border:2px dashed #dbe0e6;border-radius:8px;padding:.6rem;text-align:center;cursor:pointer;color:#8a8d91;font-size:.8rem">
           <i class="fa-solid fa-cloud-arrow-up" style="font-size:1.1rem;display:block;margin-bottom:.2rem"></i>
@@ -876,23 +895,34 @@ async function openEditTpl(id) {
 function _etRender() {
   const el = document.getElementById('etImgPrev');
   if (!el) return;
-  const keepHtml = _etKeep.map((name, i) => `
+  const keepHtml = _etKeep.map((name, i) => {
+    const isVid = /\.(mp4|mov|avi|webm)$/i.test(name);
+    const thumb = isVid
+      ? `<video src="/uploads/${name}" style="width:54px;height:54px;object-fit:cover;border-radius:6px" muted playsinline></video>`
+      : `<img src="/uploads/${name}" style="width:54px;height:54px;object-fit:cover;border-radius:6px" onerror="this.closest('div').style.display='none'">`;
+    return `
     <div style="position:relative" id="etk-${i}">
-      <img src="/uploads/${name}" style="width:54px;height:54px;object-fit:cover;border-radius:6px"
-           onerror="this.closest('div').style.display='none'">
+      ${thumb}
       <button data-ki="${i}" type="button"
         style="position:absolute;top:-4px;right:-4px;background:#c62828;color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:.55rem;cursor:pointer;padding:0">
         ×
       </button>
-    </div>`).join('');
-  const newHtml = _etNew.map((f, i) => `
+    </div>`;
+  }).join('');
+  const newHtml = _etNew.map((f, i) => {
+    const isVid = f.type.startsWith('video/');
+    const thumb = isVid
+      ? `<video src="${URL.createObjectURL(f)}" style="width:54px;height:54px;object-fit:cover;border-radius:6px" muted playsinline></video>`
+      : `<img src="${URL.createObjectURL(f)}" style="width:54px;height:54px;object-fit:cover;border-radius:6px">`;
+    return `
     <div style="position:relative" id="etn-${i}">
-      <img src="${URL.createObjectURL(f)}" style="width:54px;height:54px;object-fit:cover;border-radius:6px">
+      ${thumb}
       <button data-ni="${i}" type="button"
         style="position:absolute;top:-4px;right:-4px;background:#c62828;color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:.55rem;cursor:pointer;padding:0">
         ×
       </button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   el.innerHTML = keepHtml + newHtml;
   // attach remove handlers after render
   el.querySelectorAll('[data-ki]').forEach(btn => {

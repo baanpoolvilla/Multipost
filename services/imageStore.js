@@ -7,7 +7,10 @@ const UPLOADS_DIR = process.env.VERCEL
     ? '/tmp/uploads'
     : path.join(__dirname, '../public/uploads');
 
-const MIME = { jpg:'image/jpeg', jpeg:'image/jpeg', png:'image/png', gif:'image/gif', webp:'image/webp' };
+const MIME = {
+    jpg:'image/jpeg', jpeg:'image/jpeg', png:'image/png', gif:'image/gif', webp:'image/webp',
+    mp4:'video/mp4', mov:'video/quicktime', avi:'video/x-msvideo', webm:'video/webm',
+};
 
 // Store data as base64 string to avoid BSON Binary encoding issues
 const schema = new mongoose.Schema(

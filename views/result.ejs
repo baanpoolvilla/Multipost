@@ -218,11 +218,8 @@
 
     let scheduledAt = null;
     if (choice.isDenied) {
-      // Default to tomorrow 08:00 Bangkok time
-      const pad = n => String(n).padStart(2, '0');
-      const tomorrow = new Date(new Date().toLocaleString('en-CA', { timeZone: 'Asia/Bangkok' }));
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const defStr = `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth()+1)}-${pad(tomorrow.getDate())}T08:00`;
+      // Default to current Bangkok time (same approach as main post page)
+      const defStr = new Date().toLocaleString('sv', { timeZone: 'Asia/Bangkok' }).replace(' ', 'T').slice(0, 16);
 
       const picker = await Swal.fire({
         title: 'เลือกเวลาที่จะโพสต์',

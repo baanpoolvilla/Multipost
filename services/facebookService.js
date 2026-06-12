@@ -3,9 +3,13 @@ const imageStore = require('./imageStore');
 
 const FB_API = 'https://graph.facebook.com/v21.0';
 
+function isVideoFile(filename) {
+    return /\.(mp4|mov|avi|webm|gif)$/i.test(filename);
+}
+
 async function uploadPhoto(targetId, accessToken, filename) {
     const result = await imageStore.getBuffer(filename);
-    if (!result) return null;   // image not found in MongoDB or disk
+    if (!result) return null;
 
     const form = new FormData();
     form.append('source', new Blob([result.buffer], { type: result.contentType }), filename);
@@ -18,12 +22,39 @@ async function uploadPhoto(targetId, accessToken, filename) {
     return data.id;
 }
 
-async function fbPost(pageId, accessToken, message, imageFiles) {
-    const params = new URLSearchParams({ message, access_token: accessToken });
+async function uploadVideo(pageId, accessToken, message, filename) {
+    const result = await imageStore.getBuffer(filename);
+    if (!result) throw new Error(`ไม่พบไฟล์วิดีโอ: ${filename}`);
 
-    if (imageFiles.length > 0) {
+    const form = new FormData();
+    form.append('source', new Blob([result.buffer], { type: result.contentType }), filename);
+    form.append('description', message);
+    form.append('access_token', accessToken);
+
+    const res  = await fetch(`${FB_API}/${pageId}/videos`, { method: 'POST', body: form });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    return data.id;
+}
+
+async function fbPost(pageId, accessToken, message, mediaFiles) {
+    const videoFiles = mediaFiles.filter(f => isVideoFile(f));
+    const photoFiles = mediaFiles.filter(f => !isVideoFile(f));
+
+    // Video/GIF post → use /videos endpoint (first video; Facebook doesn't support multi-video in one post)
+    if (videoFiles.length > 0) {
+        const videoId = await uploadVideo(pageId, accessToken, message, videoFiles[0]);
+        return {
+            fbPostId: `${pageId}_${videoId}`,
+            postUrl:  `https://www.facebook.com/${pageId}/videos/${videoId}`,
+        };
+    }
+
+    // Photo post → use /feed with attached_media
+    const params = new URLSearchParams({ message, access_token: accessToken });
+    if (photoFiles.length > 0) {
         const photoIds = [];
-        for (const filename of imageFiles) {
+        for (const filename of photoFiles) {
             try {
                 const id = await uploadPhoto(pageId, accessToken, filename);
                 if (id) photoIds.push(id);
@@ -42,7 +73,11 @@ async function fbPost(pageId, accessToken, message, imageFiles) {
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error.message);
-    return data.id; // format: "pageId_postId"
+    const [pgId, pId] = data.id.split('_');
+    return {
+        fbPostId: data.id,
+        postUrl:  `https://www.facebook.com/${pgId}/posts/${pId}`,
+    };
 }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -59,12 +94,10 @@ async function sendToPages(message, pageIds = null, images = [], delaySeconds = 
         const timestamp = new Date().toISOString();
         try {
             if (!page.accessToken) throw new Error('ไม่มี Access Token สำหรับเพจนี้');
-            const fbId = await fbPost(page.pageId, page.accessToken, message, images);
-            const [pgId, pId] = fbId.split('_');
-            const postUrl = `https://www.facebook.com/${pgId}/posts/${pId}`;
+            const { fbPostId, postUrl } = await fbPost(page.pageId, page.accessToken, message, images);
             results.push({
                 timestamp, pageId: page.pageId, pageName: page.pageName,
-                message, status: 'success', fbPostId: fbId, postUrl, analytics: null,
+                message, status: 'success', fbPostId, postUrl, analytics: null,
             });
         } catch (err) {
             results.push({

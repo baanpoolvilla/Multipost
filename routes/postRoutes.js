@@ -10,8 +10,8 @@ const imageStore = require('../services/imageStore');
 // Use memory storage — files are saved to MongoDB (and local disk) by saveUploadedFiles
 const upload = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 10 * 1024 * 1024, files: 30 },
-    fileFilter: (req, file, cb) => cb(null, /\.(jpe?g|png|gif|webp)$/i.test(file.originalname)),
+    limits: { fileSize: 100 * 1024 * 1024, files: 30 },
+    fileFilter: (req, file, cb) => cb(null, /\.(jpe?g|png|gif|webp|mp4|mov|avi|webm)$/i.test(file.originalname)),
 });
 
 // Return JSON error instead of HTML for multer errors
