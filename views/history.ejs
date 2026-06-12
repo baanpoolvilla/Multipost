@@ -364,14 +364,21 @@
     if (cards.length === 0) location.reload();
   }
 
-  // ── Scheduled post polling ──────────────────
+  // ── Scheduled post polling + auto-trigger ──────────────────
   (function() {
     const scheduled = _hPosts.filter(p => p.status === 'scheduled');
     if (!scheduled.length) return;
 
     let pollTimer = null;
 
+    async function triggerScheduler() {
+      try { await fetch('/api/cron/run-scheduled', { method: 'POST' }); } catch {}
+    }
+
     async function pollScheduled() {
+      // trigger scheduler ก่อนดูสถานะ
+      await triggerScheduler();
+
       let anyChanged = false;
       for (const p of scheduled) {
         try {
@@ -381,7 +388,6 @@
             anyChanged = true;
             const card = document.getElementById('card-' + p.id);
             if (card) {
-              // อัพเดท badge สถานะ
               const badge = card.querySelector('.fb-post-author span[style*="fff3cd"]');
               if (badge) {
                 if (d.status === 'done') {
@@ -394,7 +400,6 @@
                   badge.innerHTML = '<i class="fa-solid fa-xmark" style="font-size:.65rem"></i> ล้มเหลว';
                 }
               }
-              // เพิ่มปุ่ม รายงาน
               const actions = card.querySelector('.history-actions');
               if (actions && d.status === 'done' && !actions.querySelector('a[href*="/result/"]')) {
                 const a = document.createElement('a');
@@ -404,23 +409,21 @@
                 a.innerHTML = '<i class="fa-solid fa-chart-bar"></i> รายงาน';
                 actions.prepend(a);
               }
-              // อัพเดทใน _hPosts array
               p.status = d.status;
             }
           }
         } catch {}
       }
-      // ถ้ายังมี scheduled อยู่ ให้ poll ต่อ
       const stillPending = scheduled.filter(p => p.status === 'scheduled');
       if (stillPending.length) {
         pollTimer = setTimeout(pollScheduled, 30000);
       } else if (anyChanged) {
-        // reload page เพื่อแสดงผลสมบูรณ์
         setTimeout(() => location.reload(), 2000);
       }
     }
 
-    // เริ่ม poll หลัง 30 วินาที
+    // trigger ทันทีที่โหลดหน้า แล้วค่อย poll ทุก 30 วิ
+    triggerScheduler();
     pollTimer = setTimeout(pollScheduled, 30000);
   })();
 

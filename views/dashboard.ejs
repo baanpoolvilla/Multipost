@@ -303,6 +303,10 @@
 <script>
   const ALL_PAGES = <%- JSON.stringify(pages) %>;
   let DISABLED_PAGES = <%- JSON.stringify(disabledPages) %>;
+  <% if (recentPosts.some(p => p.status === 'scheduled')) { %>
+  // มี scheduled post — trigger scheduler ทันที
+  fetch('/api/cron/run-scheduled', { method: 'POST' }).catch(() => {});
+  <% } %>
 </script>
 <script src="/js/app.js"></script>
 </body>
