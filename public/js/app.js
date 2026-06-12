@@ -68,7 +68,7 @@ function togglePage(btn) {
 }
 
 function toggleAllPages(btn) {
-  const chips = [...document.querySelectorAll('.page-sel-chip:not(.all-chip)')];
+  const chips = [...document.querySelectorAll('.page-sel-chip[data-page-id]')];
   const allActive = btn.classList.contains('active');
   if (allActive) {
     selectedPageIds.clear();
@@ -180,7 +180,7 @@ function updateMoreChip() {
 }
 
 function syncAllChip() {
-  const total = document.querySelectorAll('.page-sel-chip:not(.all-chip)').length;
+  const total = document.querySelectorAll('.page-sel-chip[data-page-id]').length;
   const allChip = document.querySelector('.all-chip');
   if (!allChip) return;
   allChip.classList.toggle('active', selectedPageIds.size === total);
@@ -196,7 +196,7 @@ function updatePageCountLabel() {
 }
 
 async function removePage(pageId, chipEl) {
-  if (!confirm('ปิดใช้งานเพจนี้?\n(เปิดใหม่ได้ที่หน้า จัดการเพจ)')) return;
+  if (!confirm('ปิดใช้งานเพจนี้?\n(เปิดใหม่ได้ที่ปุ่ม +)')) return;
   try {
     const r = await fetch(`/pages/${pageId}`, {
       method: 'PUT',
@@ -208,11 +208,84 @@ async function removePage(pageId, chipEl) {
     selectedPageIds.delete(pageId);
     if (typeof ALL_PAGES !== 'undefined') {
       const idx = ALL_PAGES.findIndex(p => p.pageId === pageId);
-      if (idx !== -1) ALL_PAGES.splice(idx, 1);
+      if (idx !== -1) {
+        const [removed] = ALL_PAGES.splice(idx, 1);
+        if (typeof DISABLED_PAGES !== 'undefined') DISABLED_PAGES.push(removed);
+      }
     }
     syncAllChip();
     updatePageCountLabel();
   } catch { alert('ไม่สามารถปิดใช้งานเพจได้ ลองใหม่อีกครั้ง'); }
+}
+
+function _buildAddPageHtml() {
+  if (!DISABLED_PAGES.length)
+    return '<p style="text-align:center;color:#8a8d91;padding:1.2rem 0">เพจทั้งหมดเปิดใช้งานอยู่แล้ว</p>';
+  const colors = ['#7b2ff7','#2e7d32','#e65100','#1877f2','#c62828'];
+  return `<div style="display:flex;flex-direction:column;gap:.4rem;max-height:320px;overflow-y:auto;padding-right:2px">
+    ${DISABLED_PAGES.map((p, i) => `
+      <div style="display:flex;align-items:center;gap:.65rem;padding:.5rem .65rem;border-radius:8px;background:#f8f9fa;border:1.5px solid #e4e6ea">
+        <div style="width:28px;height:28px;border-radius:50%;background:${colors[i%5]};display:flex;align-items:center;justify-content:center;color:#fff;font-size:.72rem;font-weight:700;flex-shrink:0">${p.pageName.slice(-1)}</div>
+        <span style="flex:1;font-weight:600;font-size:.88rem;text-align:left">${p.pageName}</span>
+        <button onclick="enablePage('${p.pageId}')"
+          style="background:#1877f2;color:#fff;border:none;border-radius:7px;padding:.32rem .75rem;font-size:.78rem;cursor:pointer;font-family:inherit;font-weight:700;flex-shrink:0">
+          <i class="fa-solid fa-plus"></i> เพิ่ม
+        </button>
+      </div>`).join('')}
+  </div>`;
+}
+
+function openAddPagePopup() {
+  if (typeof DISABLED_PAGES === 'undefined') return;
+  Swal.fire({
+    title: '<i class="fa-solid fa-layer-group" style="color:#1877f2"></i> เพิ่มเพจ',
+    html: _buildAddPageHtml(),
+    showConfirmButton: false,
+    showCloseButton: true,
+    width: 420,
+  });
+}
+
+function _addPageChip(page) {
+  const addChip = document.querySelector('.add-page-chip');
+  if (!addChip) return;
+  const colors = ['purple','green','orange','blue','red'];
+  const colorClass = colors[(ALL_PAGES.length - 1) % 5];
+  const chip = document.createElement('button');
+  chip.type = 'button';
+  chip.className = 'page-sel-chip active';
+  chip.dataset.pageId = page.pageId;
+  chip.onclick = function() { togglePage(this); };
+  chip.innerHTML = `<div class="avatar avatar-${colorClass}" style="width:16px;height:16px;font-size:.55rem;flex-shrink:0">${page.pageName.slice(-1)}</div>${page.pageName}<span class="chip-remove" onclick="event.stopPropagation();removePage('${page.pageId}',this.closest('.page-sel-chip'))" title="ปิดใช้งานเพจนี้">×</span>`;
+  addChip.parentNode.insertBefore(chip, addChip);
+  selectedPageIds.add(page.pageId);
+  syncAllChip();
+  updatePageCountLabel();
+}
+
+async function enablePage(pageId) {
+  try {
+    const r = await fetch(`/pages/${pageId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: true }),
+    });
+    if (!r.ok) throw new Error();
+    const idx = DISABLED_PAGES.findIndex(p => p.pageId === pageId);
+    if (idx !== -1) {
+      const [page] = DISABLED_PAGES.splice(idx, 1);
+      ALL_PAGES.push(page);
+      _addPageChip(page);
+    }
+    if (DISABLED_PAGES.length === 0) {
+      Swal.fire({ icon: 'success', title: 'เพิ่มเพจแล้ว!', timer: 1200, showConfirmButton: false });
+    } else {
+      const container = Swal.getHtmlContainer();
+      if (container) container.innerHTML = _buildAddPageHtml();
+    }
+  } catch {
+    alert('ไม่สามารถเพิ่มเพจได้ ลองใหม่อีกครั้ง');
+  }
 }
 
 /* ── Share-to-groups selector ── */

@@ -133,9 +133,9 @@
           <span id="morePageChipLabel">+ <%= pages.length - 8 %> เพจ</span>
         </button>
         <% } %>
-        <a href="/pages" class="page-sel-chip add-page-chip" title="เพิ่ม/จัดการเพจ">
+        <button type="button" class="page-sel-chip add-page-chip" onclick="openAddPagePopup()" title="เพิ่มเพจ">
           <i class="fa-solid fa-plus"></i>
-        </a>
+        </button>
       </div>
 
       <!-- Action buttons -->
@@ -260,6 +260,7 @@
 
 <script>
   const ALL_PAGES = <%- JSON.stringify(pages) %>;
+  let DISABLED_PAGES = <%- JSON.stringify(disabledPages) %>;
 </script>
 <script src="/js/app.js"></script>
 </body>

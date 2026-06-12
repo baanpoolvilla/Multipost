@@ -8,8 +8,9 @@ const templateStore = require('../services/templateStore');
 // ── Dashboard ──────────────────────────────────
 exports.showDashboard = async (req, res) => {
     const [allPages, posts] = await Promise.all([pageStore.load(), postStore.load()]);
-    const pages = allPages.filter(p => p.enabled !== false);
-    res.render('dashboard', { pages, recentPosts: posts.slice(0, 5) });
+    const pages         = allPages.filter(p => p.enabled !== false);
+    const disabledPages = allPages.filter(p => p.enabled === false);
+    res.render('dashboard', { pages, disabledPages, recentPosts: posts.slice(0, 5) });
 };
 
 // ── Send post ──────────────────────────────────
