@@ -448,7 +448,7 @@ async function submitPost() {
   if (_shareGroupsData.length > 0)
     fd.append('shareGroups', JSON.stringify(_shareGroupsData));
   selectedFiles.forEach(f => fd.append('images', f));
-  if (schedAt) fd.append('scheduledAt', schedAt);
+  if (schedAt) fd.append('scheduledAt', new Date(schedAt).toISOString());
   if (delay > 0) fd.append('postDelay', delay);
 
   try {
