@@ -1,7 +1,8 @@
+@chcp 65001 >nul
 @echo off
 cd /d "%~dp0"
-echo Starting MultiPost Desktop Agent...
+echo กำลังเปิด MultiPost Desktop Agent...
 npm start
 echo.
-echo Agent exited (code: %errorlevel%)
+echo Agent ปิดแล้ว (code: %errorlevel%)
 pause
