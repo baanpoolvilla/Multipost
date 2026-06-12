@@ -248,7 +248,7 @@
         },
       });
       if (!picker.isConfirmed) return;
-      scheduledAt = picker.value;
+      scheduledAt = new Date(picker.value + ':00+07:00').toISOString();
     }
 
     const data = new FormData();
