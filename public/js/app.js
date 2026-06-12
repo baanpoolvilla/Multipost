@@ -482,8 +482,7 @@ function toggleSchedule() {
   btn.style.background = show ? '#e7f0fd' : '#f0f2f5';
   btn.style.color      = show ? '#1877f2'  : '#65676b';
   if (show && !inp.value) {
-    // Default: 1 ชั่วโมงข้างหน้า แสดงเป็นเวลาไทย (UTC+7)
-    inp.value = _toBkkLocal(new Date(Date.now() + 3600000));
+    inp.value = _toBkkLocal(new Date());
   }
   if (!show) inp.value = '';
 }
