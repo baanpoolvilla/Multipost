@@ -496,8 +496,18 @@ async function submitPost() {
   if (delay > 0) fd.append('postDelay', delay);
 
   try {
-    const res  = await fetch('/send', { method: 'POST', body: fd });
-    const data = await res.json();
+    const res = await fetch('/send', { method: 'POST', body: fd });
+
+    let data;
+    try { data = await res.json(); }
+    catch {
+      const errMsg = res.status === 413
+        ? 'ขนาดไฟล์รวมใหญ่เกินไป กรุณาลดขนาดหรือจำนวนไฟล์แล้วลองใหม่'
+        : `เกิดข้อผิดพลาดจากเซิร์ฟเวอร์ (HTTP ${res.status}) กรุณาลองใหม่`;
+      Swal.fire({ icon: 'error', title: 'ส่งไม่สำเร็จ', text: errMsg, confirmButtonColor: '#1877f2' });
+      return;
+    }
+
     if (data.scheduled) {
       const dt = new Date(data.scheduledAt).toLocaleString('th-TH', { timeZone:'Asia/Bangkok', dateStyle:'short', timeStyle:'short' });
       const r2 = await Swal.fire({
@@ -511,10 +521,10 @@ async function submitPost() {
     } else if (data.id) {
       window.location.href = `/result/${data.id}`;
     } else {
-      Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: data.error || 'ลองใหม่อีกครั้ง' });
+      Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: data.error || 'ลองใหม่อีกครั้ง', confirmButtonColor: '#1877f2' });
     }
   } catch (err) {
-    Swal.fire({ icon: 'error', title: 'ไม่สามารถส่งได้', text: err.message });
+    Swal.fire({ icon: 'error', title: 'ไม่สามารถส่งได้', text: err.message, confirmButtonColor: '#1877f2' });
   }
 }
 

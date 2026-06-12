@@ -14,17 +14,15 @@ const upload = multer({
     fileFilter: (req, file, cb) => cb(null, /\.(jpe?g|png|gif|webp|mp4|mov|avi|webm)$/i.test(file.originalname)),
 });
 
-// Return JSON error instead of HTML for multer errors
+// Return JSON error instead of HTML for multer errors (and any other upload-route errors)
 function multerErrorHandler(err, req, res, next) {
-    if (err && err.code) {
-        const msg = {
-            LIMIT_FILE_SIZE:       'ไฟล์มีขนาดใหญ่เกินไป (สูงสุด 100MB ต่อไฟล์)',
-            LIMIT_FILE_COUNT:      'จำนวนไฟล์มากเกินไป (สูงสุด 30 ไฟล์ต่อครั้ง)',
-            LIMIT_UNEXPECTED_FILE: 'ชื่อ field ไม่ถูกต้อง กรุณาลองใหม่',
-        }[err.code] || `อัปโหลดไม่สำเร็จ: ${err.message}`;
-        return res.status(400).json({ ok: false, error: msg });
-    }
-    next(err);
+    if (!err) return next();
+    const msg = {
+        LIMIT_FILE_SIZE:       'ไฟล์มีขนาดใหญ่เกินไป (สูงสุด 100MB ต่อไฟล์)',
+        LIMIT_FILE_COUNT:      'จำนวนไฟล์มากเกินไป (สูงสุด 30 ไฟล์ต่อครั้ง)',
+        LIMIT_UNEXPECTED_FILE: 'ชื่อ field ไม่ถูกต้อง กรุณาลองใหม่',
+    }[err.code] || err.message || 'อัปโหลดไม่สำเร็จ กรุณาลองใหม่';
+    res.status(400).json({ ok: false, error: msg });
 }
 
 // Assign filenames and persist buffers to MongoDB (+ local disk)
