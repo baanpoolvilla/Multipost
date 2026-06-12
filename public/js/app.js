@@ -196,7 +196,17 @@ function updatePageCountLabel() {
 }
 
 async function removePage(pageId, chipEl) {
-  if (!confirm('ปิดใช้งานเพจนี้?\n(เปิดใหม่ได้ที่ปุ่ม +)')) return;
+  const { isConfirmed } = await Swal.fire({
+    title: 'ปิดใช้งานเพจนี้?',
+    text: 'เปิดใหม่ได้ที่ปุ่ม +',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#c62828',
+    cancelButtonColor: '#65676b',
+    confirmButtonText: 'ปิดใช้งาน',
+    cancelButtonText: 'ยกเลิก',
+  });
+  if (!isConfirmed) return;
   try {
     const r = await fetch(`/pages/${pageId}`, {
       method: 'PUT',
@@ -215,7 +225,38 @@ async function removePage(pageId, chipEl) {
     }
     syncAllChip();
     updatePageCountLabel();
-  } catch { alert('ไม่สามารถปิดใช้งานเพจได้ ลองใหม่อีกครั้ง'); }
+    _renderSidebarPages();
+  } catch { Swal.fire({ icon: 'error', title: 'ไม่สามารถปิดใช้งานเพจได้', confirmButtonColor: '#1877f2', confirmButtonText: 'ตกลง' }); }
+}
+
+function _renderSidebarPages() {
+  const container = document.getElementById('sidebarPagesList');
+  if (!container || typeof ALL_PAGES === 'undefined') return;
+  const colors  = ['purple','green','orange','blue','red'];
+  const visible = ALL_PAGES.slice(0, 5);
+  const extra   = ALL_PAGES.slice(5);
+
+  const pageItem = (p, i) => `
+    <div class="sidebar-item">
+      <div class="avatar avatar-${colors[i%5]} avatar-xs">${p.pageName.slice(-1)}</div>
+      <span style="flex:1">${p.pageName}</span>
+      ${(p.groups||[]).length > 0 ? `<span style="background:#e7f3ff;color:#1877f2;border-radius:999px;font-size:.65rem;padding:.05rem .38rem;font-weight:700;flex-shrink:0">${p.groups.length}กลุ่ม</span>` : ''}
+    </div>`;
+
+  let html = visible.map((p, i) => pageItem(p, i)).join('');
+
+  if (extra.length > 0) {
+    html += `
+      <div class="sidebar-item" id="showMoreBtn" onclick="toggleMorePages()" style="color:#65676b">
+        <i class="fa-solid fa-chevron-down" id="moreChevron"></i>
+        <span>เพิ่มเติม ${extra.length} เพจ</span>
+      </div>
+      <div id="morePagesList" style="display:none">
+        ${extra.map((p, i) => pageItem(p, i + 5)).join('')}
+      </div>`;
+  }
+
+  container.innerHTML = html;
 }
 
 function _buildAddPageHtml() {
@@ -276,6 +317,7 @@ async function enablePage(pageId) {
       const [page] = DISABLED_PAGES.splice(idx, 1);
       ALL_PAGES.push(page);
       _addPageChip(page);
+      _renderSidebarPages();
     }
     if (DISABLED_PAGES.length === 0) {
       Swal.fire({ icon: 'success', title: 'เพิ่มเพจแล้ว!', timer: 1200, showConfirmButton: false });

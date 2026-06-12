@@ -41,7 +41,7 @@
 
     <div class="sidebar-divider"></div>
     <div class="sidebar-label">เพจของคุณ</div>
-
+    <div id="sidebarPagesList">
     <% const colors = ['purple','green','orange','blue','red']; %>
     <% pages.slice(0, 5).forEach((p, i) => { %>
     <div class="sidebar-item">
@@ -70,6 +70,7 @@
       <% }); %>
     </div>
     <% } %>
+    </div>
   </aside>
 
   <!-- Feed -->
