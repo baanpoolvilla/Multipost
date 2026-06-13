@@ -141,7 +141,7 @@ groups.forEach(g => {
       </div>
     </div>
 
-    <!-- ── Filter tabs ── -->
+    <!-- ── Filter tabs (max 4 visible, rest in dropdown) ── -->
     <% if (cats.length > 0) { %>
     <div class="card" style="padding:.55rem 1rem;display:flex;gap:.4rem;flex-wrap:wrap;align-items:center">
       <span style="font-size:.78rem;color:var(--text-secondary);font-weight:600;margin-right:.2rem;flex-shrink:0">
@@ -150,12 +150,30 @@ groups.forEach(g => {
       <button class="filter-tab active" data-cat="__all__" onclick="filterCat('__all__')">
         ทั้งหมด <span class="tab-count"><%= groups.length %></span>
       </button>
-      <% cats.forEach(cat => { %>
+      <% cats.slice(0, 4).forEach(cat => { %>
       <button class="filter-tab" data-cat="<%= cat %>" onclick="filterCat(this.dataset.cat)">
         <i class="fa-solid fa-location-dot" style="font-size:.68rem;color:#1877f2"></i>
         <%= cat %> <span class="tab-count"><%= catMap[cat].length %></span>
       </button>
       <% }); %>
+      <% if (cats.length > 4) { %>
+      <div style="position:relative" id="moreTabsWrap">
+        <button class="filter-tab" id="moreTabsBtn" onclick="toggleMoreTabs(event)"
+                style="background:#f0f2f5;gap:.3rem">
+          <i class="fa-solid fa-ellipsis"></i> อีก <%= cats.length - 4 %> หมวด
+          <i class="fa-solid fa-chevron-down" style="font-size:.65rem"></i>
+        </button>
+        <div id="moreTabsMenu" style="display:none;position:absolute;top:calc(100% + 4px);left:0;background:#fff;border:1px solid var(--border-color);border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:50;min-width:150px;padding:.3rem;overflow:hidden">
+          <% cats.slice(4).forEach(cat => { %>
+          <button class="more-tab-item" data-cat="<%= cat %>"
+                  onclick="filterCat(this.dataset.cat);closeMoreTabs()">
+            <i class="fa-solid fa-location-dot" style="color:#1877f2;font-size:.72rem"></i>
+            <%= cat %> <span style="margin-left:auto;font-size:.73rem;color:#aaa"><%= catMap[cat].length %></span>
+          </button>
+          <% }); %>
+        </div>
+      </div>
+      <% } %>
     </div>
     <% } %>
 
@@ -187,9 +205,11 @@ groups.forEach(g => {
         <% } else { %>
         <span class="cat-badge" style="background:#fff0f0;color:#c0392b">ว่าง</span>
         <% } %>
-        <button class="cat-action-btn" data-cat="<%= cat %>" onclick="addGroupToCat(this.dataset.cat)" title="เพิ่มกลุ่มในหมวดนี้">
+        <% if (cat !== 'ทั่วไป') { %>
+        <button class="cat-action-btn" data-cat="<%= cat %>" onclick="openGroupPicker(this.dataset.cat)" title="เพิ่มกลุ่มจากกลุ่มที่มีอยู่">
           <i class="fa-solid fa-plus"></i> เพิ่มกลุ่ม
         </button>
+        <% } %>
         <button class="cat-action-btn" data-cat="<%= cat %>" onclick="renameCategory(this.dataset.cat)" title="เปลี่ยนชื่อหมวด">
           <i class="fa-solid fa-pen"></i>
         </button>
@@ -211,10 +231,14 @@ groups.forEach(g => {
         <div style="padding:.9rem 1rem;font-size:.87rem;color:var(--text-secondary);display:flex;align-items:center;gap:.6rem">
           <i class="fa-solid fa-circle-info" style="color:#b3d4f9"></i>
           ยังไม่มีกลุ่มในหมวดนี้ —
-          <button data-cat="<%= cat %>" onclick="addGroupToCat(this.dataset.cat)"
+          <% if (cat !== 'ทั่วไป') { %>
+          <button data-cat="<%= cat %>" onclick="openGroupPicker(this.dataset.cat)"
                   style="background:none;border:none;color:#1877f2;cursor:pointer;font-weight:600;font-size:.87rem;font-family:inherit;padding:0">
             คลิกเพื่อเพิ่มกลุ่ม
           </button>
+          <% } else { %>
+          <span style="color:#1877f2;font-weight:600">กด "+ เพิ่มกลุ่ม" ด้านบนเพื่อเพิ่มกลุ่มใหม่</span>
+          <% } %>
         </div>
         <% } %>
         <% catMap[cat].forEach((g, gi) => { %>
@@ -325,11 +349,21 @@ groups.forEach(g => {
 }
 .row-btn:hover { color:#1877f2;background:#e7f3ff }
 .row-btn-danger:hover { color:#fa5252 !important;background:#fff0f0 !important }
+
+/* More tabs dropdown */
+.more-tab-item {
+  display:flex;align-items:center;gap:.45rem;width:100%;
+  background:none;border:none;cursor:pointer;
+  padding:.38rem .65rem;border-radius:7px;font-size:.83rem;font-family:inherit;
+  color:#444;text-align:left;transition:background .1s;white-space:nowrap
+}
+.more-tab-item:hover { background:#f0f7ff;color:#1877f2 }
 </style>
 
 <script>
-const _cats = <%- JSON.stringify(cats) %>;
+const _cats    = <%- JSON.stringify(cats) %>;
 const _dbCatMap = <%- JSON.stringify(dbCatMap) %>;
+const _allGroups = <%- JSON.stringify(groups) %>;
 
 /* ── Toggle forms ── */
 function toggleCreateCatForm() {
@@ -358,20 +392,96 @@ function toggleAddGroupForm(preselect) {
   }
 }
 
-function addGroupToCat(cat) {
-  const f = document.getElementById('addGroupForm');
-  document.getElementById('createCatForm').style.display = 'none';
-  // Always show (don't toggle) and pre-select this category
-  f.style.display = '';
-  const sel = document.getElementById('fGroupCat');
-  if (sel) for (let i = 0; i < sel.options.length; i++) {
-    if (sel.options[i].value === cat) { sel.selectedIndex = i; break; }
+/* ── More tabs dropdown ── */
+function toggleMoreTabs(e) {
+  e && e.stopPropagation();
+  const menu = document.getElementById('moreTabsMenu');
+  if (!menu) return;
+  menu.style.display = menu.style.display === 'none' ? '' : 'none';
+}
+function closeMoreTabs() {
+  const menu = document.getElementById('moreTabsMenu');
+  if (menu) menu.style.display = 'none';
+}
+document.addEventListener('click', e => {
+  const wrap = document.getElementById('moreTabsWrap');
+  if (wrap && !wrap.contains(e.target)) closeMoreTabs();
+});
+
+/* ── Group picker modal (เลือกจากกลุ่มที่มีอยู่) ── */
+function escH(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function openGroupPicker(targetCat) {
+  // Groups NOT already in targetCat
+  const available = _allGroups.filter(g => (g.category || 'ทั่วไป') !== targetCat);
+
+  if (!available.length) {
+    Swal.fire({ icon:'info', title:'ไม่มีกลุ่มที่จะเพิ่ม',
+      text:'กลุ่มทั้งหมดอยู่ในหมวดนี้แล้ว หรือยังไม่มีกลุ่มในระบบ',
+      confirmButtonColor:'#1877f2' });
+    return;
   }
-  // Reset inputs
-  document.getElementById('fGroupUrl').value = '';
-  document.getElementById('fGroupName').value = '';
-  document.getElementById('fGroupUrl').focus();
-  f.scrollIntoView({ behavior:'smooth', block:'nearest' });
+
+  // Group available groups by their current category
+  const bycat = {};
+  available.forEach(g => {
+    const c = g.category || 'ทั่วไป';
+    if (!bycat[c]) bycat[c] = [];
+    bycat[c].push(g);
+  });
+
+  const html = Object.entries(bycat).map(([c, gs]) => `
+    <div style="margin-bottom:.5rem">
+      <div style="font-size:.75rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.05em;padding:.3rem .5rem .1rem">
+        <i class="fa-solid fa-location-dot" style="color:#1877f2;font-size:.7rem"></i> ${escH(c)}
+      </div>
+      ${gs.map((g, i) => `
+        <label style="display:flex;align-items:center;gap:.55rem;padding:.38rem .55rem;cursor:pointer;border-radius:7px;font-size:.87rem;transition:background .1s" onmouseover="this.style.background='#f0f7ff'" onmouseout="this.style.background=''">
+          <input type="checkbox" data-gid="${escH(String(g._id))}" style="accent-color:#1877f2;width:15px;height:15px;flex-shrink:0">
+          <div style="min-width:0">
+            <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(g.groupName)}</div>
+            <div style="font-size:.71rem;color:#aaa;font-family:monospace">${escH(g.groupId)}</div>
+          </div>
+        </label>`).join('')}
+    </div>`).join('<hr style="border:none;border-top:1px solid #f0f2f5;margin:.3rem 0">');
+
+  const { isConfirmed, value: selectedIds } = await Swal.fire({
+    title: `เพิ่มกลุ่มเข้า "${targetCat}"`,
+    html: `
+      <div style="text-align:left;margin-bottom:.5rem;display:flex;gap:.5rem">
+        <button onclick="document.querySelectorAll('#swGroupList input[type=checkbox]').forEach(c=>c.checked=true)"
+                style="background:#f0f2f5;border:none;border-radius:6px;padding:.28rem .7rem;font-size:.8rem;cursor:pointer;font-family:inherit">เลือกทั้งหมด</button>
+        <button onclick="document.querySelectorAll('#swGroupList input[type=checkbox]').forEach(c=>c.checked=false)"
+                style="background:#f0f2f5;border:none;border-radius:6px;padding:.28rem .7rem;font-size:.8rem;cursor:pointer;font-family:inherit">ยกเลิก</button>
+      </div>
+      <div id="swGroupList" style="text-align:left;max-height:320px;overflow-y:auto;border:1px solid #e4e6ea;border-radius:10px;padding:.3rem">${html}</div>`,
+    showCancelButton: true,
+    confirmButtonText: '<i class="fa-solid fa-right-left"></i> ย้ายเข้าหมวดนี้',
+    cancelButtonText: 'ยกเลิก',
+    confirmButtonColor: '#1877f2',
+    width: 480,
+    preConfirm: () => {
+      const checked = [...document.querySelectorAll('#swGroupList input[type=checkbox]:checked')];
+      if (!checked.length) { Swal.showValidationMessage('กรุณาเลือกอย่างน้อย 1 กลุ่ม'); return false; }
+      return checked.map(c => c.dataset.gid);
+    },
+  });
+
+  if (!isConfirmed || !selectedIds) return;
+
+  try {
+    await Promise.all(selectedIds.map(id =>
+      fetch(`/api/agent/groups/${id}/category`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category: targetCat }),
+      })
+    ));
+    location.reload();
+  } catch(e) {
+    Swal.fire({ icon:'error', title:'เกิดข้อผิดพลาด', text:e.message, confirmButtonColor:'#1877f2' });
+  }
 }
 
 /* ── Create Category ── */
