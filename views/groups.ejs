@@ -215,28 +215,28 @@ groups.forEach(g => {
           </button>
         </div>
         <% } %>
-        <% catMap[cat].forEach(g => { %>
-        <div class="group-row" id="gr_<%= g._id %>">
-          <div class="group-row-indent"></div>
-          <i class="fa-solid fa-users" style="color:#1877f2;width:15px;text-align:center;flex-shrink:0;font-size:.88rem"></i>
+        <% catMap[cat].forEach((g, gi) => { %>
+        <div class="group-row" id="gr_<%= g._id %>" style="background:<%= gi % 2 === 0 ? '#fff' : '#fafbfc' %>">
+          <span style="width:1.5rem;text-align:right;font-size:.73rem;color:#c0c4cc;flex-shrink:0;margin-left:.85rem;font-weight:500;font-family:monospace"><%= gi + 1 %></span>
+          <div style="width:2px;height:1.8rem;background:#e8eaed;margin:0 .5rem;flex-shrink:0;border-radius:1px"></div>
+          <i class="fa-solid fa-users" style="color:#1877f2;width:14px;text-align:center;flex-shrink:0;font-size:.85rem"></i>
           <div style="flex:1;min-width:0">
-            <div style="font-weight:600;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><%= g.groupName %></div>
-            <div style="font-size:.72rem;color:var(--text-secondary);font-family:monospace"><%= g.groupId %></div>
+            <div style="font-weight:600;font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><%= g.groupName %></div>
+            <div style="font-size:.71rem;color:var(--text-secondary);font-family:monospace;margin-top:.05rem"><%= g.groupId %></div>
           </div>
-          <% if (cats.length > 1) { %>
-          <button class="cat-action-btn" style="color:#6c757d;font-size:.75rem"
-                  onclick="moveGroup('<%= g._id %>', <%- JSON.stringify(g.groupName) %>, <%- JSON.stringify(cat) %>)" title="ย้ายไปหมวดอื่น">
-            <i class="fa-solid fa-right-left"></i>
-          </button>
-          <% } %>
-          <a href="https://www.facebook.com/groups/<%= g.groupId %>" target="_blank"
-             style="color:var(--text-secondary);font-size:.8rem;text-decoration:none;padding:.15rem .25rem;flex-shrink:0" title="เปิดใน Facebook">
-            <i class="fa-solid fa-arrow-up-right-from-square"></i>
-          </a>
-          <button onclick="deleteGroup('<%= g._id %>')"
-                  style="background:none;border:none;cursor:pointer;color:#c5c8d0;font-size:.92rem;padding:.15rem .3rem;border-radius:4px;flex-shrink:0" title="ลบ">
-            <i class="fa-solid fa-trash"></i>
-          </button>
+          <div class="group-actions">
+            <% if (cats.length > 1) { %>
+            <button class="row-btn" onclick="moveGroup('<%= g._id %>', <%- JSON.stringify(g.groupName) %>, <%- JSON.stringify(cat) %>)" title="ย้ายไปหมวดอื่น">
+              <i class="fa-solid fa-right-left"></i>
+            </button>
+            <% } %>
+            <a href="https://www.facebook.com/groups/<%= g.groupId %>" target="_blank" class="row-btn" title="เปิดใน Facebook">
+              <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            </a>
+            <button class="row-btn row-btn-danger" onclick="deleteGroup('<%= g._id %>')" title="ลบ">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
         </div>
         <% }); %>
       </div>
@@ -302,15 +302,25 @@ groups.forEach(g => {
 /* Group rows */
 .cat-body { background:#fff }
 .group-row {
-  display:flex;align-items:center;gap:.6rem;
-  padding:.5rem .9rem .5rem 0;
-  border-bottom:1px solid var(--border-color)
+  display:flex;align-items:center;gap:.5rem;
+  padding:.42rem .75rem .42rem 0;
+  border-bottom:1px solid #f0f2f5;
+  transition:background .1s
 }
-.group-row-indent {
-  width:1.4rem;flex-shrink:0;
-  border-left:2px solid #e4e6ea;
-  height:2rem;margin-left:.9rem
+.group-row:hover { background:#f0f7ff !important }
+.group-actions {
+  display:flex;align-items:center;gap:.15rem;
+  opacity:0;transition:opacity .15s;flex-shrink:0
 }
+.group-row:hover .group-actions { opacity:1 }
+.row-btn {
+  background:none;border:none;cursor:pointer;color:#adb5bd;
+  font-size:.82rem;padding:.22rem .32rem;border-radius:5px;
+  text-decoration:none;display:inline-flex;align-items:center;
+  transition:color .12s, background .12s
+}
+.row-btn:hover { color:#1877f2;background:#e7f3ff }
+.row-btn-danger:hover { color:#fa5252 !important;background:#fff0f0 !important }
 </style>
 
 <script>
@@ -345,7 +355,19 @@ function toggleAddGroupForm(preselect) {
 }
 
 function addGroupToCat(cat) {
-  toggleAddGroupForm(cat);
+  const f = document.getElementById('addGroupForm');
+  document.getElementById('createCatForm').style.display = 'none';
+  // Always show (don't toggle) and pre-select this category
+  f.style.display = '';
+  const sel = document.getElementById('fGroupCat');
+  if (sel) for (let i = 0; i < sel.options.length; i++) {
+    if (sel.options[i].value === cat) { sel.selectedIndex = i; break; }
+  }
+  // Reset inputs
+  document.getElementById('fGroupUrl').value = '';
+  document.getElementById('fGroupName').value = '';
+  document.getElementById('fGroupUrl').focus();
+  f.scrollIntoView({ behavior:'smooth', block:'nearest' });
 }
 
 /* ── Create Category ── */
