@@ -95,37 +95,49 @@
           <label class="form-label">ข้อความ <span style="color:#fa5252">*</span></label>
           <textarea id="fMsg" rows="6" placeholder="พิมพ์ข้อความที่ต้องการโพสต์..." style="width:100%"></textarea>
         </div>
-        <!-- Right: groups by category -->
+        <!-- Right: groups by category with master checkbox -->
         <div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem">
-            <label class="form-label" style="margin-bottom:0">กลุ่ม <span style="color:#fa5252">*</span></label>
+            <label class="form-label" style="margin-bottom:0">กลุ่ม <span style="color:#fa5252">*</span>
+              <span id="selCount" style="font-size:.75rem;color:#1877f2;font-weight:700;margin-left:.4rem;text-transform:none;letter-spacing:0"></span>
+            </label>
             <span>
               <button class="btn-link-sm" onclick="selAll()">ทั้งหมด</button>
               <button class="btn-link-sm" onclick="selNone()">ยกเลิก</button>
             </span>
           </div>
-          <div style="border:1px solid var(--border-color);border-radius:8px;max-height:220px;overflow-y:auto">
+          <div style="border:1.5px solid var(--border-color);border-radius:10px;max-height:260px;overflow-y:auto">
             <% jqCats.forEach((cat, ci) => { %>
-            <!-- Category header (sticky) -->
-            <div style="background:#f7f8fa;padding:.32rem .65rem;display:flex;align-items:center;gap:.4rem;border-bottom:1px solid var(--border-color);position:sticky;top:0;z-index:1;cursor:pointer"
-                 onclick="toggleJqCat(<%= ci %>)">
-              <i class="fa-solid fa-location-dot" style="color:#1877f2;font-size:.75rem;flex-shrink:0"></i>
-              <span style="font-weight:700;font-size:.82rem;flex:1"><%= cat %></span>
-              <span style="font-size:.72rem;color:var(--text-secondary);margin-right:.1rem"><%= jqCatMap[cat].length %></span>
-              <button class="btn-link-sm" style="font-size:.73rem" onclick="event.stopPropagation();selCat(<%= ci %>)">ทั้งหมด</button>
-              <button class="btn-link-sm" style="font-size:.73rem" onclick="event.stopPropagation();deselCat(<%= ci %>)">ยกเลิก</button>
-              <i class="fa-solid fa-chevron-down" id="jqChev_<%= ci %>" style="font-size:.72rem;color:#bbb;transition:transform .2s;flex-shrink:0"></i>
+
+            <!-- ── Category row (master checkbox + collapse) ── -->
+            <div class="jq-cat-hd" id="jqCatHd_<%= ci %>">
+              <label style="display:flex;align-items:center;gap:.5rem;flex:1;cursor:pointer;min-width:0" onclick="event.stopPropagation()">
+                <input type="checkbox" id="catcb_<%= ci %>"
+                       style="accent-color:#1877f2;width:15px;height:15px;cursor:pointer;flex-shrink:0"
+                       onchange="toggleCatAll(<%= ci %>, this.checked)" checked>
+                <i class="fa-solid fa-location-dot" style="color:#1877f2;font-size:.78rem;flex-shrink:0"></i>
+                <span style="font-weight:700;font-size:.85rem;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><%= cat %></span>
+                <span style="font-size:.74rem;color:var(--text-secondary);white-space:nowrap;margin-right:.2rem"><%= jqCatMap[cat].length %> กลุ่ม</span>
+              </label>
+              <button style="background:none;border:none;cursor:pointer;color:#aaa;padding:.15rem .3rem;flex-shrink:0"
+                      onclick="toggleJqCat(<%= ci %>)" title="ยุบ/ขยาย">
+                <i class="fa-solid fa-chevron-down" id="jqChev_<%= ci %>" style="font-size:.74rem;transition:transform .2s"></i>
+              </button>
             </div>
-            <!-- Groups in this category -->
+
+            <!-- ── Group checkboxes in this category ── -->
             <div id="jqCatBody_<%= ci %>">
               <% jqCatMap[cat].forEach(g => { %>
-              <label data-cat="<%= ci %>" style="display:flex;align-items:center;gap:.5rem;padding:.38rem .65rem;cursor:pointer;border-bottom:1px solid var(--border-color);font-size:.87rem"
-                     id="glabel_<%= g._idx %>">
-                <input type="checkbox" id="gc_<%= g._idx %>" value="<%= g._idx %>" style="accent-color:#1877f2" checked>
-                <span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><%= g.groupName %></span>
+              <label class="jq-group-row" id="glabel_<%= g._idx %>">
+                <span class="jq-indent"></span>
+                <input type="checkbox" id="gc_<%= g._idx %>" value="<%= g._idx %>" data-cat="<%= ci %>"
+                       style="accent-color:#1877f2;flex-shrink:0" checked
+                       onchange="onGroupCbChange(<%= ci %>)">
+                <span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.87rem"><%= g.groupName %></span>
               </label>
               <% }); %>
             </div>
+
             <% }); %>
           </div>
         </div>
@@ -230,6 +242,26 @@
 .badge-blue   { background:#cfe2ff; color:#084298 }
 .badge-green  { background:#d1e7dd; color:#0a3622 }
 .badge-red    { background:#f8d7da; color:#842029 }
+
+/* Job Queue - group picker */
+.jq-cat-hd {
+  background:#f0f2f5;padding:.38rem .65rem;
+  display:flex;align-items:center;gap:.35rem;
+  border-bottom:1px solid var(--border-color);
+  position:sticky;top:0;z-index:1
+}
+.jq-group-row {
+  display:flex;align-items:center;gap:.45rem;
+  padding:.35rem .65rem .35rem 0;
+  cursor:pointer;border-bottom:1px solid var(--border-color);
+  transition:background .1s
+}
+.jq-group-row:hover { background:#f7f8fa }
+.jq-indent {
+  width:1.6rem;flex-shrink:0;
+  border-left:2px solid #dde1e7;
+  height:1.6rem;margin-left:.9rem
+}
 </style>
 
 <script>
@@ -258,15 +290,58 @@ function toggleForm() {
   f.style.display = f.style.display === '' ? 'none' : '';
 }
 
-function selAll()  { document.querySelectorAll('[id^="gc_"]').forEach(c=>c.checked=true); }
-function selNone() { document.querySelectorAll('[id^="gc_"]').forEach(c=>c.checked=false); }
+/* ── Selection counter ── */
+function updateSelCount() {
+  const total = document.querySelectorAll('[id^="gc_"]').length;
+  const checked = document.querySelectorAll('[id^="gc_"]:checked').length;
+  const el = document.getElementById('selCount');
+  if (el) el.textContent = checked > 0 ? `(เลือก ${checked}/${total})` : '';
+}
 
-function selCat(ci) {
-  (_catIdxMap[ci]||[]).forEach(i => { const el=document.getElementById(`gc_${i}`); if(el) el.checked=true; });
+/* ── Global select/deselect ── */
+function selAll() {
+  document.querySelectorAll('[id^="gc_"]').forEach(c => c.checked = true);
+  Object.keys(_catIdxMap).forEach(ci => syncCatCb(parseInt(ci)));
+  updateSelCount();
 }
-function deselCat(ci) {
-  (_catIdxMap[ci]||[]).forEach(i => { const el=document.getElementById(`gc_${i}`); if(el) el.checked=false; });
+function selNone() {
+  document.querySelectorAll('[id^="gc_"]').forEach(c => c.checked = false);
+  Object.keys(_catIdxMap).forEach(ci => syncCatCb(parseInt(ci)));
+  updateSelCount();
 }
+
+/* ── Master category checkbox ── */
+function toggleCatAll(ci, checked) {
+  (_catIdxMap[ci]||[]).forEach(i => {
+    const el = document.getElementById(`gc_${i}`);
+    if (el) el.checked = checked;
+  });
+  updateSelCount();
+}
+
+/* Called when individual group checkbox changes */
+function onGroupCbChange(ci) {
+  syncCatCb(ci);
+  updateSelCount();
+}
+
+/* Sync category master checkbox state (checked / indeterminate / unchecked) */
+function syncCatCb(ci) {
+  const indices = _catIdxMap[ci] || [];
+  const cbs = indices.map(i => document.getElementById(`gc_${i}`)).filter(Boolean);
+  const checkedN = cbs.filter(c => c.checked).length;
+  const catCb = document.getElementById(`catcb_${ci}`);
+  if (!catCb) return;
+  if (checkedN === 0) {
+    catCb.checked = false; catCb.indeterminate = false;
+  } else if (checkedN === cbs.length) {
+    catCb.checked = true;  catCb.indeterminate = false;
+  } else {
+    catCb.checked = false; catCb.indeterminate = true;
+  }
+}
+
+/* ── Collapse/expand category ── */
 function toggleJqCat(ci) {
   const body = document.getElementById(`jqCatBody_${ci}`);
   const chev = document.getElementById(`jqChev_${ci}`);
@@ -275,6 +350,12 @@ function toggleJqCat(ci) {
   body.style.display = hidden ? '' : 'none';
   if (chev) chev.style.transform = hidden ? '' : 'rotate(-90deg)';
 }
+
+/* ── Init on page load ── */
+(function init() {
+  Object.keys(_catIdxMap).forEach(ci => syncCatCb(parseInt(ci)));
+  updateSelCount();
+})();
 
 async function submitJob() {
   const msg     = document.getElementById('fMsg').value.trim();

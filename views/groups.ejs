@@ -21,7 +21,6 @@
 </nav>
 
 <%
-// Precompute category map server-side
 const catMap = {};
 groups.forEach(g => {
   const cat = g.category || 'ทั่วไป';
@@ -38,7 +37,6 @@ const cats = Object.keys(catMap).sort();
     <a href="/overview" class="sidebar-item"><i class="fa-solid fa-chart-line"></i><span>ภาพรวม</span></a>
     <a href="/history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพส</span></a>
     <a href="/pages" class="sidebar-item"><i class="fa-brands fa-facebook"></i><span>จัดการเพจ</span></a>
-
     <div class="sidebar-divider"></div>
     <div class="sidebar-label">โพส&amp;แชร์ ลงกลุ่ม</div>
     <a href="/guide" class="sidebar-item"><i class="fa-solid fa-book-open"></i><span>คู่มือการใช้งาน</span></a>
@@ -72,12 +70,12 @@ const cats = Object.keys(catMap).sort();
     </div>
 
     <!-- Header -->
-    <div class="card" style="padding:.85rem 1.25rem;display:flex;align-items:center;justify-content:space-between">
+    <div class="card" style="padding:.85rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">
       <div class="card-title" style="font-size:1.05rem">
         <i class="fa-solid fa-users-rectangle"></i> กลุ่ม Facebook
-        <span style="background:#e4e6ea;padding:.15rem .55rem;border-radius:999px;font-size:.8rem;margin-left:.4rem" id="groupCount"><%= groups.length %></span>
+        <span style="background:#e4e6ea;padding:.15rem .55rem;border-radius:999px;font-size:.8rem;margin-left:.4rem"><%= groups.length %></span>
         <% if (cats.length > 0) { %>
-        <span style="font-size:.78rem;color:var(--text-secondary);font-weight:400;margin-left:.5rem"><%= cats.length %> หมวด</span>
+        <span style="font-size:.78rem;color:var(--text-secondary);font-weight:400;margin-left:.4rem"><%= cats.length %> หมวด</span>
         <% } %>
       </div>
       <button class="btn-post" style="font-size:.82rem;padding:.4rem .9rem" onclick="toggleAddForm()">
@@ -101,13 +99,13 @@ const cats = Object.keys(catMap).sort();
       <div style="margin-bottom:.75rem">
         <label class="form-label">หมวด / พื้นที่ <span style="color:#fa5252">*</span></label>
         <div style="display:flex;gap:.5rem;align-items:flex-start;flex-wrap:wrap">
-          <select id="fCat" onchange="onCatChange()" style="padding:.42rem .6rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.87rem;font-family:inherit;color:#444;outline:none;min-width:180px">
+          <select id="fCat" onchange="onCatChange()" style="padding:.42rem .65rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.87rem;font-family:inherit;color:#444;outline:none;min-width:180px">
             <% if (!cats.length) { %><option value="ทั่วไป">ทั่วไป</option><% } %>
-            <% cats.forEach(cat => { %><option value="<%= cat %>"><%= cat %></option><% }); %>
+            <% cats.forEach(cat => { %><option value="<%= cat %>"><i class="fa-solid fa-location-dot"></i> <%= cat %></option><% }); %>
             <option value="__new__">+ สร้างหมวดใหม่...</option>
           </select>
           <div id="fCatNewWrap" style="display:none;flex:1;min-width:160px">
-            <input type="text" id="fCatNew" placeholder="ชื่อหมวดใหม่ เช่น บางแสน, พัทยา" style="width:100%">
+            <input type="text" id="fCatNew" placeholder="ชื่อหมวดใหม่ เช่น บางแสน, พัทยา">
           </div>
         </div>
       </div>
@@ -119,53 +117,73 @@ const cats = Object.keys(catMap).sort();
       </div>
     </div>
 
+    <!-- Filter tabs (only show when groups exist) -->
+    <% if (groups.length > 0) { %>
+    <div class="card" style="padding:.6rem 1rem;display:flex;gap:.4rem;flex-wrap:wrap;align-items:center">
+      <span style="font-size:.78rem;color:var(--text-secondary);font-weight:600;margin-right:.2rem;flex-shrink:0">
+        <i class="fa-solid fa-filter" style="font-size:.73rem"></i> ดูหมวด:
+      </span>
+      <button class="filter-tab active" data-cat="__all__" onclick="filterCat('__all__')">
+        ทั้งหมด <span class="tab-count"><%= groups.length %></span>
+      </button>
+      <% cats.forEach(cat => { %>
+      <button class="filter-tab" data-cat="<%= cat %>" onclick="filterCat(<%- JSON.stringify(cat) %>)">
+        <i class="fa-solid fa-location-dot" style="font-size:.68rem;color:#1877f2"></i>
+        <%= cat %> <span class="tab-count"><%= catMap[cat].length %></span>
+      </button>
+      <% }); %>
+    </div>
+    <% } %>
+
     <!-- Empty state -->
     <% if (!groups.length) { %>
-    <div class="card" style="text-align:center;padding:2rem;color:var(--text-secondary);font-size:.92rem">
-      <i class="fa-solid fa-users-rectangle" style="font-size:2rem;margin-bottom:.65rem;display:block;opacity:.35"></i>
-      ยังไม่มีกลุ่ม — กด "+ เพิ่มกลุ่ม" ด้านบน
+    <div class="card" style="text-align:center;padding:2.5rem;color:var(--text-secondary)">
+      <i class="fa-solid fa-users-rectangle" style="font-size:2.2rem;margin-bottom:.75rem;display:block;opacity:.3"></i>
+      <div style="font-weight:600;margin-bottom:.3rem">ยังไม่มีกลุ่ม</div>
+      <div style="font-size:.87rem">กด "+ เพิ่มกลุ่ม" ด้านบนเพื่อเริ่มต้น</div>
     </div>
 
     <% } else { %>
 
     <!-- Category sections -->
     <% cats.forEach((cat, ci) => { %>
-    <div class="card" style="padding:0;overflow:hidden" id="catsec_<%= ci %>">
+    <div class="card cat-section" data-cat="<%= cat %>" style="padding:0;overflow:hidden">
 
       <!-- Category header -->
-      <div style="background:#f7f8fa;padding:.7rem 1rem;display:flex;align-items:center;gap:.55rem;border-bottom:1px solid var(--border-color)">
-        <i class="fa-solid fa-location-dot" style="color:#1877f2;font-size:.85rem;flex-shrink:0"></i>
-        <span style="font-weight:700;font-size:.95rem;flex:1"><%= cat %></span>
-        <span style="background:#e4e6ea;padding:.1rem .5rem;border-radius:999px;font-size:.77rem;margin-right:.2rem"><%= catMap[cat].length %> กลุ่ม</span>
-        <button onclick="addGroupInCat(<%- JSON.stringify(cat) %>)" title="เพิ่มกลุ่มในหมวดนี้"
-                style="background:none;border:none;cursor:pointer;color:#1877f2;padding:.18rem .4rem;border-radius:5px;font-size:.82rem;display:flex;align-items:center;gap:.25rem">
-          <i class="fa-solid fa-plus"></i>
+      <div class="cat-header">
+        <i class="fa-solid fa-location-dot" style="color:#1877f2;font-size:.88rem;flex-shrink:0"></i>
+        <span style="font-weight:700;font-size:.97rem;flex:1"><%= cat %></span>
+        <span class="cat-badge"><%= catMap[cat].length %> กลุ่ม</span>
+        <button class="cat-action-btn" onclick="addGroupInCat(<%- JSON.stringify(cat) %>)" title="เพิ่มกลุ่มในหมวดนี้">
+          <i class="fa-solid fa-plus"></i> เพิ่ม
         </button>
-        <button onclick="renameCategory(<%- JSON.stringify(cat) %>)" title="เปลี่ยนชื่อหมวด"
-                style="background:none;border:none;cursor:pointer;color:#8a8d91;padding:.18rem .4rem;border-radius:5px;font-size:.82rem">
+        <button class="cat-action-btn" onclick="renameCategory(<%- JSON.stringify(cat) %>)" title="เปลี่ยนชื่อหมวด">
           <i class="fa-solid fa-pen"></i>
         </button>
-        <button onclick="toggleCatSection(<%= ci %>)" title="ยุบ/ขยาย"
-                style="background:none;border:none;cursor:pointer;color:#8a8d91;padding:.18rem .4rem;border-radius:5px;font-size:.82rem">
+        <button class="cat-toggle-btn" onclick="toggleCatSection(<%= ci %>)" title="ยุบ/ขยาย">
           <i class="fa-solid fa-chevron-down" id="chevron_<%= ci %>" style="transition:transform .2s"></i>
         </button>
       </div>
 
-      <!-- Groups in this category -->
-      <div id="catbody_<%= ci %>">
-        <% catMap[cat].forEach(g => { %>
-        <div style="display:flex;align-items:center;gap:.75rem;padding:.55rem .9rem;border-bottom:1px solid var(--border-color)" id="gr_<%= g._id %>">
-          <i class="fa-solid fa-users" style="color:#1877f2;width:16px;text-align:center;flex-shrink:0"></i>
+      <!-- Groups inside this category -->
+      <div id="catbody_<%= ci %>" class="cat-body">
+        <% catMap[cat].forEach((g, gi) => { %>
+        <div class="group-row" id="gr_<%= g._id %>">
+          <div class="group-row-indent"></div>
+          <i class="fa-solid fa-users" style="color:#1877f2;width:15px;text-align:center;flex-shrink:0;font-size:.88rem"></i>
           <div style="flex:1;min-width:0">
             <div style="font-weight:600;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><%= g.groupName %></div>
-            <div style="font-size:.73rem;color:var(--text-secondary);font-family:monospace"><%= g.groupId %></div>
+            <div style="font-size:.72rem;color:var(--text-secondary);font-family:monospace"><%= g.groupId %></div>
           </div>
+          <button class="cat-action-btn" style="color:#6c757d;font-size:.75rem" onclick="moveGroup('<%= g._id %>', <%- JSON.stringify(g.groupName) %>, <%- JSON.stringify(cat) %>)" title="ย้ายหมวด">
+            <i class="fa-solid fa-right-left"></i>
+          </button>
           <a href="https://www.facebook.com/groups/<%= g.groupId %>" target="_blank"
-             style="color:var(--text-secondary);font-size:.8rem;text-decoration:none;flex-shrink:0" title="เปิดในFacebook">
+             style="color:var(--text-secondary);font-size:.8rem;text-decoration:none;padding:.15rem .25rem;flex-shrink:0" title="เปิดใน Facebook">
             <i class="fa-solid fa-arrow-up-right-from-square"></i>
           </a>
           <button onclick="deleteGroup('<%= g._id %>')"
-                  style="background:none;border:none;cursor:pointer;color:#c5c8d0;font-size:.95rem;padding:.15rem .35rem;border-radius:4px;flex-shrink:0" title="ลบ">
+                  style="background:none;border:none;cursor:pointer;color:#c5c8d0;font-size:.92rem;padding:.15rem .3rem;border-radius:4px;flex-shrink:0" title="ลบ">
             <i class="fa-solid fa-trash"></i>
           </button>
         </div>
@@ -186,14 +204,62 @@ const cats = Object.keys(catMap).sort();
 
 <style>
 .form-label { display:block;font-size:.8rem;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.3rem }
+
+/* Filter tabs */
+.filter-tab {
+  background:#f0f2f5;border:1.5px solid transparent;border-radius:999px;
+  padding:.28rem .7rem;font-size:.82rem;cursor:pointer;font-family:inherit;
+  color:#555;font-weight:500;transition:all .15s;display:inline-flex;align-items:center;gap:.3rem
+}
+.filter-tab:hover { background:#e4e6ea }
+.filter-tab.active { background:#e7f3ff;border-color:#1877f2;color:#1877f2;font-weight:700 }
+.tab-count { background:#e4e6ea;border-radius:999px;padding:.05rem .42rem;font-size:.73rem;margin-left:.15rem }
+.filter-tab.active .tab-count { background:#cce0ff }
+
+/* Category section */
+.cat-header {
+  background:#f0f2f5;padding:.65rem 1rem;
+  display:flex;align-items:center;gap:.5rem;
+  border-bottom:1px solid var(--border-color)
+}
+.cat-badge {
+  background:#e4e6ea;padding:.1rem .5rem;border-radius:999px;
+  font-size:.76rem;color:#555;font-weight:600;white-space:nowrap
+}
+.cat-action-btn {
+  background:none;border:1px solid transparent;cursor:pointer;
+  color:#1877f2;padding:.2rem .45rem;border-radius:6px;font-size:.78rem;
+  font-family:inherit;font-weight:600;display:inline-flex;align-items:center;gap:.2rem;
+  transition:background .12s
+}
+.cat-action-btn:hover { background:#e7f3ff;border-color:#b3d4f9 }
+.cat-toggle-btn {
+  background:none;border:none;cursor:pointer;
+  color:#aaa;padding:.2rem .35rem;border-radius:5px;font-size:.85rem;
+  transition:background .12s
+}
+.cat-toggle-btn:hover { background:#e4e6ea }
+
+/* Group rows */
+.group-row {
+  display:flex;align-items:center;gap:.65rem;
+  padding:.5rem .9rem .5rem 0;
+  border-bottom:1px solid var(--border-color)
+}
+.group-row-indent {
+  width:1.5rem;flex-shrink:0;
+  border-left:2px solid #e4e6ea;
+  height:2rem;margin-left:.9rem
+}
+.cat-body { background:#fff }
 </style>
 
 <script>
 const _existingCats = <%- JSON.stringify(cats) %>;
 
+/* ── Add form ── */
 function toggleAddForm(preselect) {
   const f = document.getElementById('addForm');
-  const isHidden = f.style.display === 'none' || f.style.display === '';
   f.style.display = f.style.display === 'none' ? '' : 'none';
   if (f.style.display !== 'none') {
     if (preselect) {
@@ -204,13 +270,11 @@ function toggleAddForm(preselect) {
       onCatChange();
     }
     document.getElementById('fGroupUrl').focus();
-    f.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    f.scrollIntoView({ behavior:'smooth', block:'nearest' });
   }
 }
 
-function addGroupInCat(cat) {
-  toggleAddForm(cat);
-}
+function addGroupInCat(cat) { toggleAddForm(cat); }
 
 function onCatChange() {
   const sel = document.getElementById('fCat').value;
@@ -240,34 +304,62 @@ async function addGroup() {
 
   try {
     const r = await fetch('/api/agent/groups', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ groupId: gid, groupName: name, category: cat }),
     });
     const d = await r.json();
     if (!d.ok) throw new Error(d.error || 'เกิดข้อผิดพลาด');
     location.reload();
   } catch(e) {
-    Swal.fire({ icon:'error', title:'เกิดข้อผิดพลาด', text: e.message, confirmButtonColor:'#1877f2' });
+    Swal.fire({ icon:'error', title:'เกิดข้อผิดพลาด', text:e.message, confirmButtonColor:'#1877f2' });
   }
 }
 
+/* ── Delete group ── */
 async function deleteGroup(id) {
   const res = await Swal.fire({
-    title: 'ลบกลุ่มนี้?', icon: 'warning',
-    showCancelButton: true, confirmButtonColor: '#fa5252',
-    confirmButtonText: 'ลบ', cancelButtonText: 'ยกเลิก'
+    title:'ลบกลุ่มนี้?', icon:'warning',
+    showCancelButton:true, confirmButtonColor:'#fa5252',
+    confirmButtonText:'ลบ', cancelButtonText:'ยกเลิก'
   });
   if (!res.isConfirmed) return;
-  await fetch(`/api/agent/groups/${id}`, { method: 'DELETE' });
-  const el = document.getElementById(`gr_${id}`);
-  if (el) {
-    el.remove();
-    const cnt = document.getElementById('groupCount');
-    cnt.textContent = Math.max(0, parseInt(cnt.textContent || 0) - 1);
+  await fetch(`/api/agent/groups/${id}`, { method:'DELETE' });
+  location.reload();
+}
+
+/* ── Move group to different category ── */
+async function moveGroup(id, groupName, currentCat) {
+  const otherCats = _existingCats.filter(c => c !== currentCat);
+  if (!otherCats.length) {
+    Swal.fire({ icon:'info', title:'ไม่มีหมวดอื่น', text:'กรุณาสร้างหมวดใหม่ก่อน แล้วลองใหม่อีกครั้ง', confirmButtonColor:'#1877f2' });
+    return;
+  }
+  const options = otherCats.map(c => `<option value="${c}">${c}</option>`).join('');
+  const { value: newCat } = await Swal.fire({
+    title: `ย้าย "${groupName}"`,
+    html: `<label style="font-size:.87rem;color:#444;display:block;margin-bottom:.4rem;text-align:left">ย้ายไปหมวด:</label>
+           <select id="moveCatSel" style="width:100%;padding:.45rem .6rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.9rem;font-family:inherit">${options}</select>`,
+    showCancelButton: true,
+    confirmButtonText: 'ย้าย',
+    cancelButtonText: 'ยกเลิก',
+    confirmButtonColor: '#1877f2',
+    preConfirm: () => document.getElementById('moveCatSel').value,
+  });
+  if (!newCat) return;
+  try {
+    const r = await fetch(`/api/agent/groups/${id}/category`, {
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ category: newCat }),
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'เกิดข้อผิดพลาด');
+    location.reload();
+  } catch(e) {
+    Swal.fire({ icon:'error', title:'เกิดข้อผิดพลาด', text:e.message, confirmButtonColor:'#1877f2' });
   }
 }
 
+/* ── Category collapse ── */
 function toggleCatSection(ci) {
   const body = document.getElementById(`catbody_${ci}`);
   const chev = document.getElementById(`chevron_${ci}`);
@@ -277,6 +369,7 @@ function toggleCatSection(ci) {
   if (chev) chev.style.transform = hidden ? '' : 'rotate(-90deg)';
 }
 
+/* ── Rename category ── */
 async function renameCategory(oldName) {
   const { value: newName } = await Swal.fire({
     title: 'เปลี่ยนชื่อหมวด',
@@ -292,16 +385,25 @@ async function renameCategory(oldName) {
   if (!newName || newName.trim() === oldName) return;
   try {
     const r = await fetch('/api/agent/groups/rename-category', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ oldName, newName: newName.trim() }),
     });
     const d = await r.json();
     if (!d.ok) throw new Error(d.error || 'เกิดข้อผิดพลาด');
     location.reload();
   } catch(e) {
-    Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: e.message, confirmButtonColor: '#1877f2' });
+    Swal.fire({ icon:'error', title:'เกิดข้อผิดพลาด', text:e.message, confirmButtonColor:'#1877f2' });
   }
+}
+
+/* ── Filter tabs ── */
+function filterCat(cat) {
+  document.querySelectorAll('.cat-section').forEach(el => {
+    el.style.display = (cat === '__all__' || el.dataset.cat === cat) ? '' : 'none';
+  });
+  document.querySelectorAll('.filter-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.cat === cat);
+  });
 }
 </script>
 
