@@ -221,12 +221,12 @@ groups.forEach(g => {
         </button>
         <% } %>
         <button class="cat-toggle-btn" onclick="toggleCatSection(<%= ci %>)" title="ยุบ/ขยาย">
-          <i class="fa-solid fa-chevron-down" id="chevron_<%= ci %>" style="transition:transform .2s"></i>
+          <i class="fa-solid fa-chevron-down" id="chevron_<%= ci %>" style="transition:transform .2s<% if (cat !== 'ทั่วไป') { %>;transform:rotate(-90deg)<% } %>"></i>
         </button>
       </div>
 
       <!-- Groups inside -->
-      <div id="catbody_<%= ci %>" class="cat-body">
+      <div id="catbody_<%= ci %>" class="cat-body"<% if (cat !== 'ทั่วไป') { %> style="display:none"<% } %>>
         <% if (catMap[cat].length === 0) { %>
         <div style="padding:.9rem 1rem;font-size:.87rem;color:var(--text-secondary);display:flex;align-items:center;gap:.6rem">
           <i class="fa-solid fa-circle-info" style="color:#b3d4f9"></i>

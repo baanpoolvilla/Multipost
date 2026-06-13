@@ -66,6 +66,14 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent)}
 .loading{padding:.65rem;text-align:center;color:var(--text2);font-size:12px}
 .empty-list{padding:.65rem;text-align:center;color:var(--text2);font-size:12px}
 
+/* ── Category-grouped pick list ── */
+.pick-cat{border-bottom:1px solid var(--border)}
+.pick-cat:last-child{border-bottom:none}
+.pick-cat-hd{display:flex;align-items:center;gap:.45rem;padding:.38rem .65rem;cursor:pointer;background:var(--bg2);transition:background .1s;user-select:none}
+.pick-cat-hd:hover{background:var(--bg4)}
+.pick-cat-body{}
+.pick-indent{padding-left:1.65rem}
+
 /* ── Badge ── */
 .badge{background:var(--accent);color:#fff;border-radius:999px;padding:.1rem .5rem;font-size:10.5px;font-weight:700}
 

@@ -15,9 +15,13 @@ exports.showGroups = async (req, res) => {
     const dbCatMap = {};
     dbCategories.forEach(c => { dbCatMap[c.name] = String(c._id); });
 
-    // Merge: categories from DB  +  categories derived from existing groups
+    // Merge: categories from DB  +  categories derived from existing groups; ทั่วไป always first
     const catsFromGroups = groups.map(g => g.category || 'ทั่วไป');
-    const allCats = [...new Set([...Object.keys(dbCatMap), ...catsFromGroups])].sort();
+    const allCatsSet = new Set([...Object.keys(dbCatMap), ...catsFromGroups]);
+    const allCats = [
+        ...(allCatsSet.has('ทั่วไป') ? ['ทั่วไป'] : []),
+        ...[...allCatsSet].filter(c => c !== 'ทั่วไป').sort(),
+    ];
 
     res.render('groups', { groups, cats: allCats, dbCatMap });
 };
