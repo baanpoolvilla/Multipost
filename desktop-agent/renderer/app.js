@@ -224,9 +224,11 @@ function _isCatCollapsed(cat) {
 function _getCatGroups() {
     const catMap = {};
     _groups.forEach((g, i) => {
-        const cat = g.category || 'ทั่วไป';
-        if (!catMap[cat]) catMap[cat] = [];
-        catMap[cat].push({ g, i });
+        // Show each group under its primary category (first non-ทั่วไป, else ทั่วไป)
+        const gcats = (g.categories && g.categories.length) ? g.categories : [g.category || 'ทั่วไป'];
+        const primaryCat = gcats.find(c => c !== 'ทั่วไป') || 'ทั่วไป';
+        if (!catMap[primaryCat]) catMap[primaryCat] = [];
+        catMap[primaryCat].push({ g, i });
     });
     const cats = [
         ...('ทั่วไป' in catMap ? ['ทั่วไป'] : []),

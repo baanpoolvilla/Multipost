@@ -131,7 +131,8 @@ router.delete('/api/agent/categories/:id',   agentCtrl.deleteCategory);
 // Groups API (shared across all users)
 router.post('/api/agent/groups',                        agentCtrl.addGroup);
 router.delete('/api/agent/groups/:id',                  agentCtrl.deleteGroup);
-router.patch('/api/agent/groups/:id/category',          agentCtrl.updateGroupCategory);
+router.patch('/api/agent/groups/:id/category',          agentCtrl.updateGroupCategory);     // add to category
+router.delete('/api/agent/groups/:id/category',         agentCtrl.removeGroupFromCategory); // remove from category
 router.post('/api/agent/groups/rename-category',        agentCtrl.bulkRenameCategory);
 
 module.exports = router;

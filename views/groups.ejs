@@ -21,13 +21,15 @@
 </nav>
 
 <%
-// Build catMap from merged cats list (cats passed from controller)
+// catMap: category → groups; a group appears in ALL its categories
 const catMap = {};
 cats.forEach(cat => { catMap[cat] = []; });
 groups.forEach(g => {
-  const cat = g.category || 'ทั่วไป';
-  if (!catMap[cat]) catMap[cat] = [];
-  catMap[cat].push(g);
+  const gcats = (g.categories && g.categories.length) ? g.categories : [g.category || 'ทั่วไป'];
+  gcats.forEach(cat => {
+    if (!catMap[cat]) catMap[cat] = [];
+    catMap[cat].push(g);
+  });
 });
 %>
 
@@ -227,6 +229,13 @@ groups.forEach(g => {
 
       <!-- Groups inside -->
       <div id="catbody_<%= ci %>" class="cat-body"<% if (cat !== 'ทั่วไป') { %> style="display:none"<% } %>>
+        <% if (cat === 'ทั่วไป' && catMap[cat].length > 0) { %>
+        <div style="padding:.35rem .75rem .3rem;background:#fafbfc;border-bottom:1px solid #f0f2f5">
+          <input type="text" placeholder="🔍 ค้นหากลุ่ม..."
+                 oninput="filterTallwai(this.value)"
+                 style="width:100%;padding:.28rem .55rem;border:1px solid #e4e6eb;border-radius:7px;font-size:.82rem;font-family:inherit;outline:none;background:#fff;color:#333">
+        </div>
+        <% } %>
         <% if (catMap[cat].length === 0) { %>
         <div style="padding:.9rem 1rem;font-size:.87rem;color:var(--text-secondary);display:flex;align-items:center;gap:.6rem">
           <i class="fa-solid fa-circle-info" style="color:#b3d4f9"></i>
@@ -241,17 +250,26 @@ groups.forEach(g => {
           <% } %>
         </div>
         <% } %>
-        <% catMap[cat].forEach((g, gi) => { %>
-        <div class="group-row" id="gr_<%= g._id %>" style="background:<%= gi % 2 === 0 ? '#fff' : '#fafbfc' %>">
+        <% catMap[cat].forEach((g, gi) => {
+             const otherCats = (g.categories || []).filter(c => c !== cat);
+        %>
+        <div class="group-row" style="background:<%= gi % 2 === 0 ? '#fff' : '#fafbfc' %>">
           <span style="width:1.5rem;text-align:right;font-size:.73rem;color:#c0c4cc;flex-shrink:0;margin-left:.85rem;font-weight:500;font-family:monospace"><%= gi + 1 %></span>
           <div style="width:2px;height:1.8rem;background:#e8eaed;margin:0 .5rem;flex-shrink:0;border-radius:1px"></div>
           <i class="fa-solid fa-users" style="color:#1877f2;width:14px;text-align:center;flex-shrink:0;font-size:.85rem"></i>
           <div style="flex:1;min-width:0">
-            <div style="font-weight:600;font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><%= g.groupName %></div>
-            <div style="font-size:.71rem;color:var(--text-secondary);font-family:monospace;margin-top:.05rem"><%= g.groupId %></div>
+            <div class="grp-name" style="font-weight:600;font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><%= g.groupName %></div>
+            <div class="grp-id" style="font-size:.71rem;color:var(--text-secondary);font-family:monospace;margin-top:.05rem"><%= g.groupId %></div>
           </div>
+          <% if (cat === 'ทั่วไป' && otherCats.length > 0) { %>
+          <div style="display:flex;gap:.2rem;flex-wrap:wrap;max-width:130px;justify-content:flex-end;flex-shrink:0">
+            <% otherCats.forEach(c => { %>
+            <span style="font-size:.64rem;background:#e8f4ff;color:#1877f2;border-radius:4px;padding:.04rem .27rem;white-space:nowrap">📍<%= c %></span>
+            <% }); %>
+          </div>
+          <% } %>
           <div class="group-actions">
-            <% if (cats.length > 1) { %>
+            <% if (cat !== 'ทั่วไป' && cats.filter(c=>c!=='ทั่วไป').length > 1) { %>
             <button class="row-btn"
                     data-gid="<%= g._id %>" data-gname="<%= g.groupName %>" data-gcat="<%= cat %>"
                     onclick="moveGroup(this.dataset.gid, this.dataset.gname, this.dataset.gcat)" title="ย้ายไปหมวดอื่น">
@@ -261,9 +279,20 @@ groups.forEach(g => {
             <a href="https://www.facebook.com/groups/<%= g.groupId %>" target="_blank" class="row-btn" title="เปิดใน Facebook">
               <i class="fa-solid fa-arrow-up-right-from-square"></i>
             </a>
-            <button class="row-btn row-btn-danger" onclick="deleteGroup('<%= g._id %>')" title="ลบ">
+            <% if (cat === 'ทั่วไป') { %>
+            <button class="row-btn row-btn-danger"
+                    data-id="<%= g._id %>"
+                    onclick="deleteGroup(this.dataset.id)" title="ลบกลุ่มออกจากระบบทั้งหมด">
               <i class="fa-solid fa-trash"></i>
             </button>
+            <% } else { %>
+            <button class="row-btn" style="color:#fd7e14"
+                    data-id="<%= g._id %>" data-cat="<%= cat %>"
+                    onclick="removeFromCat(this.dataset.id, this.dataset.cat)"
+                    title="ออกจากหมวดนี้ (กลุ่มยังอยู่ในทั่วไป)">
+              <i class="fa-solid fa-circle-minus"></i>
+            </button>
+            <% } %>
           </div>
         </div>
         <% }); %>
@@ -415,7 +444,10 @@ function escH(s) {
 
 async function openGroupPicker(targetCat) {
   // Groups NOT already in targetCat
-  const available = _allGroups.filter(g => (g.category || 'ทั่วไป') !== targetCat);
+  const available = _allGroups.filter(g => {
+    const gcats = (g.categories && g.categories.length) ? g.categories : [g.category || 'ทั่วไป'];
+    return !gcats.includes(targetCat);
+  });
 
   if (!available.length) {
     Swal.fire({ icon:'info', title:'ไม่มีกลุ่มที่จะเพิ่ม',
@@ -424,10 +456,11 @@ async function openGroupPicker(targetCat) {
     return;
   }
 
-  // Group available groups by their current category
+  // Group available groups by their first category for display
   const bycat = {};
   available.forEach(g => {
-    const c = g.category || 'ทั่วไป';
+    const gcats = (g.categories && g.categories.length) ? g.categories : [g.category || 'ทั่วไป'];
+    const c = gcats[0] || 'ทั่วไป';
     if (!bycat[c]) bycat[c] = [];
     bycat[c].push(g);
   });
@@ -458,7 +491,7 @@ async function openGroupPicker(targetCat) {
       </div>
       <div id="swGroupList" style="text-align:left;max-height:320px;overflow-y:auto;border:1px solid #e4e6ea;border-radius:10px;padding:.3rem">${html}</div>`,
     showCancelButton: true,
-    confirmButtonText: '<i class="fa-solid fa-right-left"></i> ย้ายเข้าหมวดนี้',
+    confirmButtonText: '<i class="fa-solid fa-plus"></i> เพิ่มเข้าหมวดนี้',
     cancelButtonText: 'ยกเลิก',
     confirmButtonColor: '#1877f2',
     width: 480,
@@ -571,21 +604,42 @@ async function addGroup() {
   }
 }
 
-/* ── Delete Group ── */
+/* ── Delete Group (hard delete from ทั่วไป) ── */
 async function deleteGroup(id) {
   const res = await Swal.fire({
-    title:'ลบกลุ่มนี้?', icon:'warning',
-    showCancelButton:true, confirmButtonColor:'#fa5252',
-    confirmButtonText:'ลบ', cancelButtonText:'ยกเลิก'
+    title:'ลบกลุ่มออกจากระบบ?',
+    text:'กลุ่มนี้จะถูกลบออกจากทุกหมวดหมู่อย่างถาวร',
+    icon:'warning', showCancelButton:true,
+    confirmButtonColor:'#fa5252', confirmButtonText:'ลบถาวร', cancelButtonText:'ยกเลิก'
   });
   if (!res.isConfirmed) return;
   await fetch(`/api/agent/groups/${id}`, { method:'DELETE' });
   location.reload();
 }
 
-/* ── Move Group to another category ── */
+/* ── Remove from category (group stays in ทั่วไป) ── */
+async function removeFromCat(id, cat) {
+  const res = await Swal.fire({
+    title: `ออกจากหมวด "${cat}"?`,
+    html: `กลุ่มนี้จะ<b>ยังอยู่ในหมวด "ทั่วไป"</b> — เฉพาะออกจาก "${cat}" เท่านั้น`,
+    icon:'question', showCancelButton:true,
+    confirmButtonColor:'#fd7e14', confirmButtonText:'ออกจากหมวดนี้', cancelButtonText:'ยกเลิก'
+  });
+  if (!res.isConfirmed) return;
+  try {
+    await fetch(`/api/agent/groups/${id}/category`, {
+      method:'DELETE', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ category: cat }),
+    });
+    location.reload();
+  } catch(e) {
+    Swal.fire({ icon:'error', title:'เกิดข้อผิดพลาด', text:e.message, confirmButtonColor:'#1877f2' });
+  }
+}
+
+/* ── Move Group between non-ทั่วไป categories ── */
 async function moveGroup(id, groupName, currentCat) {
-  const otherCats = _cats.filter(c => c !== currentCat);
+  const otherCats = _cats.filter(c => c !== currentCat && c !== 'ทั่วไป');
   if (!otherCats.length) {
     Swal.fire({ icon:'info', title:'ไม่มีหมวดอื่น', text:'กรุณาสร้างหมวดใหม่ก่อน', confirmButtonColor:'#1877f2' });
     return;
@@ -600,16 +654,31 @@ async function moveGroup(id, groupName, currentCat) {
   });
   if (!newCat) return;
   try {
-    const r = await fetch(`/api/agent/groups/${id}/category`, {
-      method:'PATCH', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ category: newCat }),
-    });
-    const d = await r.json();
-    if (!d.ok) throw new Error(d.error || 'เกิดข้อผิดพลาด');
+    await Promise.all([
+      fetch(`/api/agent/groups/${id}/category`, {
+        method:'PATCH', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ category: newCat }),
+      }),
+      fetch(`/api/agent/groups/${id}/category`, {
+        method:'DELETE', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ category: currentCat }),
+      }),
+    ]);
     location.reload();
   } catch(e) {
     Swal.fire({ icon:'error', title:'เกิดข้อผิดพลาด', text:e.message, confirmButtonColor:'#1877f2' });
   }
+}
+
+/* ── Filter ทั่วไป section ── */
+function filterTallwai(q) {
+  const rows = document.querySelectorAll('.cat-section[data-cat="ทั่วไป"] .group-row');
+  const lq = q.trim().toLowerCase();
+  rows.forEach(row => {
+    const name = row.querySelector('.grp-name')?.textContent?.toLowerCase() || '';
+    const gid  = row.querySelector('.grp-id')?.textContent?.toLowerCase() || '';
+    row.style.display = (!lq || name.includes(lq) || gid.includes(lq)) ? '' : 'none';
+  });
 }
 
 /* ── Collapse / expand category ── */

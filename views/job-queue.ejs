@@ -52,13 +52,19 @@
     </div>
 
     <%
+    // Each group appears under its primary (first non-ทั่วไป) category, or ทั่วไป
     const jqCatMap = {};
     groups.forEach((g, i) => {
-      const cat = g.category || 'ทั่วไป';
-      if (!jqCatMap[cat]) jqCatMap[cat] = [];
-      jqCatMap[cat].push({ groupId: g.groupId, groupName: g.groupName, _id: String(g._id || ''), _idx: i });
+      const gcats = (g.categories && g.categories.length) ? g.categories : [g.category || 'ทั่วไป'];
+      const primaryCat = gcats.find(c => c !== 'ทั่วไป') || 'ทั่วไป';
+      if (!jqCatMap[primaryCat]) jqCatMap[primaryCat] = [];
+      jqCatMap[primaryCat].push({ groupId: g.groupId, groupName: g.groupName, _id: String(g._id || ''), _idx: i });
     });
-    const jqCats = Object.keys(jqCatMap).sort();
+    const allJqSet = new Set(Object.keys(jqCatMap));
+    const jqCats = [
+      ...(allJqSet.has('ทั่วไป') ? ['ทั่วไป'] : []),
+      ...[...allJqSet].filter(c => c !== 'ทั่วไป').sort()
+    ];
     %>
 
     <% if (groups.length === 0) { %>
