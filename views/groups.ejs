@@ -151,7 +151,7 @@ groups.forEach(g => {
         ทั้งหมด <span class="tab-count"><%= groups.length %></span>
       </button>
       <% cats.forEach(cat => { %>
-      <button class="filter-tab" data-cat="<%= cat %>" onclick="filterCat(<%- JSON.stringify(cat) %>)">
+      <button class="filter-tab" data-cat="<%= cat %>" onclick="filterCat(this.dataset.cat)">
         <i class="fa-solid fa-location-dot" style="font-size:.68rem;color:#1877f2"></i>
         <%= cat %> <span class="tab-count"><%= catMap[cat].length %></span>
       </button>
@@ -187,14 +187,16 @@ groups.forEach(g => {
         <% } else { %>
         <span class="cat-badge" style="background:#fff0f0;color:#c0392b">ว่าง</span>
         <% } %>
-        <button class="cat-action-btn" onclick="addGroupToCat(<%- JSON.stringify(cat) %>)" title="เพิ่มกลุ่มในหมวดนี้">
+        <button class="cat-action-btn" data-cat="<%= cat %>" onclick="addGroupToCat(this.dataset.cat)" title="เพิ่มกลุ่มในหมวดนี้">
           <i class="fa-solid fa-plus"></i> เพิ่มกลุ่ม
         </button>
-        <button class="cat-action-btn" onclick="renameCategory(<%- JSON.stringify(cat) %>)" title="เปลี่ยนชื่อหมวด">
+        <button class="cat-action-btn" data-cat="<%= cat %>" onclick="renameCategory(this.dataset.cat)" title="เปลี่ยนชื่อหมวด">
           <i class="fa-solid fa-pen"></i>
         </button>
         <% if (dbCatMap[cat] && catMap[cat].length === 0) { %>
-        <button class="cat-action-btn" style="color:#fa5252" onclick="deleteCategory(<%- JSON.stringify(dbCatMap[cat]) %>, <%- JSON.stringify(cat) %>)" title="ลบหมวด">
+        <button class="cat-action-btn" style="color:#fa5252"
+                data-id="<%= dbCatMap[cat] %>" data-name="<%= cat %>"
+                onclick="deleteCategory(this.dataset.id, this.dataset.name)" title="ลบหมวด">
           <i class="fa-solid fa-trash"></i>
         </button>
         <% } %>
@@ -209,7 +211,7 @@ groups.forEach(g => {
         <div style="padding:.9rem 1rem;font-size:.87rem;color:var(--text-secondary);display:flex;align-items:center;gap:.6rem">
           <i class="fa-solid fa-circle-info" style="color:#b3d4f9"></i>
           ยังไม่มีกลุ่มในหมวดนี้ —
-          <button onclick="addGroupToCat(<%- JSON.stringify(cat) %>)"
+          <button data-cat="<%= cat %>" onclick="addGroupToCat(this.dataset.cat)"
                   style="background:none;border:none;color:#1877f2;cursor:pointer;font-weight:600;font-size:.87rem;font-family:inherit;padding:0">
             คลิกเพื่อเพิ่มกลุ่ม
           </button>
@@ -226,7 +228,9 @@ groups.forEach(g => {
           </div>
           <div class="group-actions">
             <% if (cats.length > 1) { %>
-            <button class="row-btn" onclick="moveGroup('<%= g._id %>', <%- JSON.stringify(g.groupName) %>, <%- JSON.stringify(cat) %>)" title="ย้ายไปหมวดอื่น">
+            <button class="row-btn"
+                    data-gid="<%= g._id %>" data-gname="<%= g.groupName %>" data-gcat="<%= cat %>"
+                    onclick="moveGroup(this.dataset.gid, this.dataset.gname, this.dataset.gcat)" title="ย้ายไปหมวดอื่น">
               <i class="fa-solid fa-right-left"></i>
             </button>
             <% } %>
