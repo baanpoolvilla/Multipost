@@ -34,7 +34,11 @@ const pageSchema = new mongoose.Schema({
 }, { versionKey: false, collection: 'pages' });
 
 const fbGroupSchema = new mongoose.Schema({
-    groupId: String, groupName: String, addedAt: Date,
+    groupId:    String,
+    groupName:  String,
+    category:   String,      // old schema field (backward compat)
+    categories: [String],    // new schema field (array of categories)
+    addedAt:    Date,
 }, { versionKey: false, collection: 'fbgroups' });
 
 const postSchema = new mongoose.Schema({
@@ -67,7 +71,15 @@ async function getAllGroups() {
     try {
         await connect();
         const groups = await FbGroup.find().sort({ groupName: 1 }).lean();
-        return groups.map(g => ({ groupId: g.groupId, groupName: g.groupName }));
+        return groups.map(g => {
+            // Normalize: old docs have category:String, new have categories:[String]
+            let cats = (g.categories && g.categories.length) ? g.categories : null;
+            if (!cats) {
+                const c = g.category || 'ทั่วไป';
+                cats = (c === 'ทั่วไป') ? ['ทั่วไป'] : ['ทั่วไป', c];
+            }
+            return { _id: String(g._id), groupId: g.groupId, groupName: g.groupName, categories: cats };
+        });
     } catch { return []; }
 }
 
