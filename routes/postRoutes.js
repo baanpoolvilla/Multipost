@@ -125,7 +125,9 @@ router.post('/api/agent/jobs',        agentCtrl.createJob);
 router.delete('/api/agent/jobs/:id',  agentCtrl.deleteJob);
 
 // Groups API (shared across all users)
-router.post('/api/agent/groups',        agentCtrl.addGroup);
-router.delete('/api/agent/groups/:id',  agentCtrl.deleteGroup);
+router.post('/api/agent/groups',                        agentCtrl.addGroup);
+router.delete('/api/agent/groups/:id',                  agentCtrl.deleteGroup);
+router.patch('/api/agent/groups/:id/category',          agentCtrl.updateGroupCategory);
+router.post('/api/agent/groups/rename-category',        agentCtrl.bulkRenameCategory);
 
 module.exports = router;

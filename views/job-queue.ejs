@@ -51,6 +51,16 @@
       </div>
     </div>
 
+    <%
+    const jqCatMap = {};
+    groups.forEach((g, i) => {
+      const cat = g.category || 'ทั่วไป';
+      if (!jqCatMap[cat]) jqCatMap[cat] = [];
+      jqCatMap[cat].push({ groupId: g.groupId, groupName: g.groupName, _id: String(g._id || ''), _idx: i });
+    });
+    const jqCats = Object.keys(jqCatMap).sort();
+    %>
+
     <% if (groups.length === 0) { %>
     <div class="card" style="background:linear-gradient(135deg,#e8f4ff 0%,#f0f7ff 100%);border-color:#b3d4f9;padding:1.25rem 1.5rem;text-align:center">
       <i class="fa-solid fa-robot" style="font-size:2.5rem;color:#1877f2;margin-bottom:.65rem;display:block"></i>
@@ -85,7 +95,7 @@
           <label class="form-label">ข้อความ <span style="color:#fa5252">*</span></label>
           <textarea id="fMsg" rows="6" placeholder="พิมพ์ข้อความที่ต้องการโพสต์..." style="width:100%"></textarea>
         </div>
-        <!-- Right: groups -->
+        <!-- Right: groups by category -->
         <div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem">
             <label class="form-label" style="margin-bottom:0">กลุ่ม <span style="color:#fa5252">*</span></label>
@@ -94,14 +104,28 @@
               <button class="btn-link-sm" onclick="selNone()">ยกเลิก</button>
             </span>
           </div>
-          <div style="border:1px solid var(--border-color);border-radius:8px;max-height:160px;overflow-y:auto">
-            <% groups.forEach((g, i) => { %>
-            <label style="display:flex;align-items:center;gap:.5rem;padding:.4rem .65rem;cursor:pointer;border-bottom:1px solid var(--border-color);font-size:.88rem"
-                   id="glabel_<%= i %>">
-              <input type="checkbox" id="gc_<%= i %>" value="<%= i %>" style="accent-color:#1877f2" checked>
-              <span style="flex:1"><%= g.groupName %></span>
-              <span style="font-size:.73rem;color:var(--text-secondary)"><%= g.pageName %></span>
-            </label>
+          <div style="border:1px solid var(--border-color);border-radius:8px;max-height:220px;overflow-y:auto">
+            <% jqCats.forEach((cat, ci) => { %>
+            <!-- Category header (sticky) -->
+            <div style="background:#f7f8fa;padding:.32rem .65rem;display:flex;align-items:center;gap:.4rem;border-bottom:1px solid var(--border-color);position:sticky;top:0;z-index:1;cursor:pointer"
+                 onclick="toggleJqCat(<%= ci %>)">
+              <i class="fa-solid fa-location-dot" style="color:#1877f2;font-size:.75rem;flex-shrink:0"></i>
+              <span style="font-weight:700;font-size:.82rem;flex:1"><%= cat %></span>
+              <span style="font-size:.72rem;color:var(--text-secondary);margin-right:.1rem"><%= jqCatMap[cat].length %></span>
+              <button class="btn-link-sm" style="font-size:.73rem" onclick="event.stopPropagation();selCat(<%= ci %>)">ทั้งหมด</button>
+              <button class="btn-link-sm" style="font-size:.73rem" onclick="event.stopPropagation();deselCat(<%= ci %>)">ยกเลิก</button>
+              <i class="fa-solid fa-chevron-down" id="jqChev_<%= ci %>" style="font-size:.72rem;color:#bbb;transition:transform .2s;flex-shrink:0"></i>
+            </div>
+            <!-- Groups in this category -->
+            <div id="jqCatBody_<%= ci %>">
+              <% jqCatMap[cat].forEach(g => { %>
+              <label data-cat="<%= ci %>" style="display:flex;align-items:center;gap:.5rem;padding:.38rem .65rem;cursor:pointer;border-bottom:1px solid var(--border-color);font-size:.87rem"
+                     id="glabel_<%= g._idx %>">
+                <input type="checkbox" id="gc_<%= g._idx %>" value="<%= g._idx %>" style="accent-color:#1877f2" checked>
+                <span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><%= g.groupName %></span>
+              </label>
+              <% }); %>
+            </div>
             <% }); %>
           </div>
         </div>
@@ -210,6 +234,8 @@
 
 <script>
 const _groups = <%- JSON.stringify(groups) %>;
+// Map: category index -> array of group indices in _groups
+const _catIdxMap = <%- JSON.stringify(Object.fromEntries(jqCats.map((cat, ci) => [ci, jqCatMap[cat].map(g => g._idx)]))) %>;
 let _visibleJobs = 20;
 
 // Hide jobs beyond 20 on load
@@ -234,6 +260,21 @@ function toggleForm() {
 
 function selAll()  { document.querySelectorAll('[id^="gc_"]').forEach(c=>c.checked=true); }
 function selNone() { document.querySelectorAll('[id^="gc_"]').forEach(c=>c.checked=false); }
+
+function selCat(ci) {
+  (_catIdxMap[ci]||[]).forEach(i => { const el=document.getElementById(`gc_${i}`); if(el) el.checked=true; });
+}
+function deselCat(ci) {
+  (_catIdxMap[ci]||[]).forEach(i => { const el=document.getElementById(`gc_${i}`); if(el) el.checked=false; });
+}
+function toggleJqCat(ci) {
+  const body = document.getElementById(`jqCatBody_${ci}`);
+  const chev = document.getElementById(`jqChev_${ci}`);
+  if (!body) return;
+  const hidden = body.style.display === 'none';
+  body.style.display = hidden ? '' : 'none';
+  if (chev) chev.style.transform = hidden ? '' : 'rotate(-90deg)';
+}
 
 async function submitJob() {
   const msg     = document.getElementById('fMsg').value.trim();

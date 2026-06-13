@@ -14,10 +14,10 @@ exports.showGroups = async (req, res) => {
 };
 
 exports.addGroup = async (req, res) => {
-    const { groupId, groupName } = req.body;
+    const { groupId, groupName, category } = req.body;
     if (!groupId?.trim() || !groupName?.trim())
         return res.status(400).json({ error: 'กรุณากรอก Group ID และชื่อกลุ่ม' });
-    const result = await groupStore.add(groupId.trim(), groupName.trim());
+    const result = await groupStore.add(groupId.trim(), groupName.trim(), category?.trim() || 'ทั่วไป');
     if (result.error) return res.status(409).json({ error: result.error });
     res.json({ ok: true, group: result.group });
 };
@@ -25,6 +25,22 @@ exports.addGroup = async (req, res) => {
 exports.deleteGroup = async (req, res) => {
     await groupStore.remove(req.params.id);
     res.json({ ok: true });
+};
+
+exports.updateGroupCategory = async (req, res) => {
+    const { category } = req.body;
+    const g = await groupStore.updateCategory(req.params.id, category?.trim() || 'ทั่วไป');
+    if (!g) return res.status(404).json({ error: 'ไม่พบกลุ่ม' });
+    res.json({ ok: true, group: g });
+};
+
+exports.bulkRenameCategory = async (req, res) => {
+    const { oldName, newName } = req.body;
+    if (!oldName?.trim() || !newName?.trim())
+        return res.status(400).json({ error: 'กรุณากรอกชื่อหมวด' });
+    const result = await groupStore.bulkRenameCategory(oldName.trim(), newName.trim());
+    if (result.error) return res.status(500).json({ error: result.error });
+    res.json(result);
 };
 
 // ── Job Queue page ─────────────────────────────────────────────
