@@ -21,13 +21,14 @@
 </nav>
 
 <%
+// Build catMap from merged cats list (cats passed from controller)
 const catMap = {};
+cats.forEach(cat => { catMap[cat] = []; });
 groups.forEach(g => {
   const cat = g.category || 'ทั่วไป';
   if (!catMap[cat]) catMap[cat] = [];
   catMap[cat].push(g);
 });
-const cats = Object.keys(catMap).sort();
 %>
 
 <div class="page-wrap">
@@ -55,7 +56,7 @@ const cats = Object.keys(catMap).sort();
             <i class="fa-solid fa-robot"></i> โพสลงกลุ่มต้องมี Desktop Agent
           </div>
           <div style="font-size:.82rem;color:#444;line-height:1.75">
-            <span style="background:#1877f2;color:#fff;border-radius:50%;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;margin-right:.25rem">1</span>เพิ่มกลุ่มที่ต้องการที่หน้านี้
+            <span style="background:#1877f2;color:#fff;border-radius:50%;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;margin-right:.25rem">1</span>สร้างหมวด → เพิ่มกลุ่มในหมวด
             &nbsp;<i class="fa-solid fa-arrow-right" style="font-size:.7rem;color:#aaa"></i>&nbsp;
             <span style="background:#1877f2;color:#fff;border-radius:50%;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;margin-right:.25rem">2</span>ดาวน์โหลด &amp; ติดตั้ง Agent (ครั้งเดียว)
             &nbsp;<i class="fa-solid fa-arrow-right" style="font-size:.7rem;color:#aaa"></i>&nbsp;
@@ -69,26 +70,55 @@ const cats = Object.keys(catMap).sort();
       </div>
     </div>
 
-    <!-- Header -->
+    <!-- Header + action buttons -->
     <div class="card" style="padding:.85rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">
       <div class="card-title" style="font-size:1.05rem">
         <i class="fa-solid fa-users-rectangle"></i> กลุ่ม Facebook
-        <span style="background:#e4e6ea;padding:.15rem .55rem;border-radius:999px;font-size:.8rem;margin-left:.4rem"><%= groups.length %></span>
-        <% if (cats.length > 0) { %>
-        <span style="font-size:.78rem;color:var(--text-secondary);font-weight:400;margin-left:.4rem"><%= cats.length %> หมวด</span>
-        <% } %>
+        <span style="background:#e4e6ea;padding:.15rem .55rem;border-radius:999px;font-size:.8rem;margin-left:.4rem"><%= groups.length %> กลุ่ม</span>
+        <span style="background:#dde8ff;padding:.15rem .55rem;border-radius:999px;font-size:.8rem;margin-left:.3rem;color:#1877f2"><%= cats.length %> หมวด</span>
       </div>
-      <button class="btn-post" style="font-size:.82rem;padding:.4rem .9rem" onclick="toggleAddForm()">
-        <i class="fa-solid fa-plus"></i> เพิ่มกลุ่ม
-      </button>
+      <div style="display:flex;gap:.5rem">
+        <button class="btn-outline-blue" onclick="toggleCreateCatForm()">
+          <i class="fa-solid fa-folder-plus"></i> สร้างหมวด
+        </button>
+        <button class="btn-post" style="font-size:.82rem;padding:.4rem .9rem" onclick="toggleAddGroupForm()">
+          <i class="fa-solid fa-plus"></i> เพิ่มกลุ่ม
+        </button>
+      </div>
     </div>
 
-    <!-- Add group form -->
-    <div class="card" id="addForm" style="display:none">
-      <div class="card-title"><i class="fa-solid fa-plus"></i> เพิ่มกลุ่มใหม่</div>
+    <!-- ── Create Category Form ── -->
+    <div class="card" id="createCatForm" style="display:none;border-color:#1877f2">
+      <div class="card-title" style="color:#1877f2"><i class="fa-solid fa-folder-plus"></i> สร้างหมวดใหม่</div>
+      <div style="font-size:.84rem;color:var(--text-secondary);margin-bottom:.65rem">
+        สร้างหัวข้อพื้นที่ก่อน เช่น <strong>บางแสน</strong>, <strong>พัทยา</strong> แล้วค่อยเพิ่มกลุ่มเข้าไปในแต่ละหมวด
+      </div>
+      <div style="display:flex;gap:.5rem;align-items:flex-end;flex-wrap:wrap">
+        <div style="flex:1;min-width:180px">
+          <label class="form-label">ชื่อหมวด / พื้นที่ <span style="color:#fa5252">*</span></label>
+          <input type="text" id="fCatName" placeholder="เช่น บางแสน, พัทยา, ชลบุรี..." style="width:100%"
+                 onkeydown="if(event.key==='Enter') createCategory()">
+        </div>
+        <div style="display:flex;gap:.4rem;padding-bottom:.05rem">
+          <button class="btn-post" style="font-size:.85rem;padding:.45rem 1.1rem" onclick="createCategory()">
+            <i class="fa-solid fa-folder-plus"></i> สร้างหมวด
+          </button>
+          <button class="btn-back" onclick="toggleCreateCatForm()">ยกเลิก</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Add Group Form ── -->
+    <div class="card" id="addGroupForm" style="display:none">
+      <div class="card-title"><i class="fa-solid fa-plus"></i> เพิ่มกลุ่มเข้าหมวด</div>
+      <% if (!cats.length) { %>
+      <div style="background:#fff8e1;border:1px solid #f0c36d;border-radius:8px;padding:.7rem 1rem;font-size:.85rem;color:#856404;margin-bottom:.75rem">
+        <i class="fa-solid fa-triangle-exclamation"></i> ยังไม่มีหมวด — กรุณา<button onclick="toggleCreateCatForm();toggleAddGroupForm()" style="background:none;border:none;color:#1877f2;cursor:pointer;font-weight:700;font-family:inherit;padding:0 .2rem;font-size:inherit">สร้างหมวดก่อน</button>
+      </div>
+      <% } %>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem">
         <div>
-          <label class="form-label">URL กลุ่ม หรือ Group ID</label>
+          <label class="form-label">URL กลุ่ม หรือ Group ID <span style="color:#fa5252">*</span></label>
           <input type="text" id="fGroupUrl" placeholder="https://facebook.com/groups/123... หรือ 123456789" oninput="parseGroupUrl(this.value)">
         </div>
         <div>
@@ -97,31 +127,25 @@ const cats = Object.keys(catMap).sort();
         </div>
       </div>
       <div style="margin-bottom:.75rem">
-        <label class="form-label">หมวด / พื้นที่ <span style="color:#fa5252">*</span></label>
-        <div style="display:flex;gap:.5rem;align-items:flex-start;flex-wrap:wrap">
-          <select id="fCat" onchange="onCatChange()" style="padding:.42rem .65rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.87rem;font-family:inherit;color:#444;outline:none;min-width:180px">
-            <% if (!cats.length) { %><option value="ทั่วไป">ทั่วไป</option><% } %>
-            <% cats.forEach(cat => { %><option value="<%= cat %>"><i class="fa-solid fa-location-dot"></i> <%= cat %></option><% }); %>
-            <option value="__new__">+ สร้างหมวดใหม่...</option>
-          </select>
-          <div id="fCatNewWrap" style="display:none;flex:1;min-width:160px">
-            <input type="text" id="fCatNew" placeholder="ชื่อหมวดใหม่ เช่น บางแสน, พัทยา">
-          </div>
-        </div>
+        <label class="form-label">เพิ่มเข้าหมวด <span style="color:#fa5252">*</span></label>
+        <select id="fGroupCat" style="padding:.42rem .65rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.87rem;font-family:inherit;color:#444;outline:none;min-width:200px">
+          <% if (!cats.length) { %><option value="">— ยังไม่มีหมวด —</option><% } %>
+          <% cats.forEach(cat => { %><option value="<%= cat %>">📍 <%= cat %></option><% }); %>
+        </select>
       </div>
       <div style="display:flex;gap:.5rem">
         <button class="btn-post" style="font-size:.85rem;padding:.45rem 1rem" onclick="addGroup()">
-          <i class="fa-solid fa-plus"></i> เพิ่ม
+          <i class="fa-solid fa-plus"></i> เพิ่มกลุ่ม
         </button>
-        <button class="btn-back" onclick="toggleAddForm()">ยกเลิก</button>
+        <button class="btn-back" onclick="toggleAddGroupForm()">ยกเลิก</button>
       </div>
     </div>
 
-    <!-- Filter tabs (only show when groups exist) -->
-    <% if (groups.length > 0) { %>
-    <div class="card" style="padding:.6rem 1rem;display:flex;gap:.4rem;flex-wrap:wrap;align-items:center">
+    <!-- ── Filter tabs ── -->
+    <% if (cats.length > 0) { %>
+    <div class="card" style="padding:.55rem 1rem;display:flex;gap:.4rem;flex-wrap:wrap;align-items:center">
       <span style="font-size:.78rem;color:var(--text-secondary);font-weight:600;margin-right:.2rem;flex-shrink:0">
-        <i class="fa-solid fa-filter" style="font-size:.73rem"></i> ดูหมวด:
+        <i class="fa-solid fa-filter" style="font-size:.72rem"></i> ดูหมวด:
       </span>
       <button class="filter-tab active" data-cat="__all__" onclick="filterCat('__all__')">
         ทั้งหมด <span class="tab-count"><%= groups.length %></span>
@@ -135,39 +159,63 @@ const cats = Object.keys(catMap).sort();
     </div>
     <% } %>
 
-    <!-- Empty state -->
-    <% if (!groups.length) { %>
-    <div class="card" style="text-align:center;padding:2.5rem;color:var(--text-secondary)">
-      <i class="fa-solid fa-users-rectangle" style="font-size:2.2rem;margin-bottom:.75rem;display:block;opacity:.3"></i>
-      <div style="font-weight:600;margin-bottom:.3rem">ยังไม่มีกลุ่ม</div>
-      <div style="font-size:.87rem">กด "+ เพิ่มกลุ่ม" ด้านบนเพื่อเริ่มต้น</div>
+    <!-- ── Empty state (no categories yet) ── -->
+    <% if (!cats.length) { %>
+    <div class="card" style="text-align:center;padding:2.5rem">
+      <i class="fa-solid fa-folder-open" style="font-size:2.5rem;color:#b3d4f9;margin-bottom:.8rem;display:block"></i>
+      <div style="font-weight:700;font-size:1rem;margin-bottom:.4rem">เริ่มต้นด้วยการสร้างหมวด</div>
+      <div style="font-size:.87rem;color:var(--text-secondary);margin-bottom:1.2rem">
+        สร้างหัวข้อพื้นที่ก่อน เช่น บางแสน หรือ พัทยา<br>แล้วค่อยเพิ่มกลุ่ม Facebook เข้าไปในแต่ละหมวด
+      </div>
+      <button class="btn-post" onclick="toggleCreateCatForm()">
+        <i class="fa-solid fa-folder-plus"></i> สร้างหมวดแรก
+      </button>
     </div>
 
     <% } else { %>
 
-    <!-- Category sections -->
+    <!-- ── Category sections ── -->
     <% cats.forEach((cat, ci) => { %>
     <div class="card cat-section" data-cat="<%= cat %>" style="padding:0;overflow:hidden">
 
       <!-- Category header -->
       <div class="cat-header">
-        <i class="fa-solid fa-location-dot" style="color:#1877f2;font-size:.88rem;flex-shrink:0"></i>
+        <i class="fa-solid fa-location-dot" style="color:#1877f2;font-size:.9rem;flex-shrink:0"></i>
         <span style="font-weight:700;font-size:.97rem;flex:1"><%= cat %></span>
+        <% if (catMap[cat].length > 0) { %>
         <span class="cat-badge"><%= catMap[cat].length %> กลุ่ม</span>
-        <button class="cat-action-btn" onclick="addGroupInCat(<%- JSON.stringify(cat) %>)" title="เพิ่มกลุ่มในหมวดนี้">
-          <i class="fa-solid fa-plus"></i> เพิ่ม
+        <% } else { %>
+        <span class="cat-badge" style="background:#fff0f0;color:#c0392b">ว่าง</span>
+        <% } %>
+        <button class="cat-action-btn" onclick="addGroupToCat(<%- JSON.stringify(cat) %>)" title="เพิ่มกลุ่มในหมวดนี้">
+          <i class="fa-solid fa-plus"></i> เพิ่มกลุ่ม
         </button>
         <button class="cat-action-btn" onclick="renameCategory(<%- JSON.stringify(cat) %>)" title="เปลี่ยนชื่อหมวด">
           <i class="fa-solid fa-pen"></i>
         </button>
+        <% if (dbCatMap[cat] && catMap[cat].length === 0) { %>
+        <button class="cat-action-btn" style="color:#fa5252" onclick="deleteCategory(<%- JSON.stringify(dbCatMap[cat]) %>, <%- JSON.stringify(cat) %>)" title="ลบหมวด">
+          <i class="fa-solid fa-trash"></i>
+        </button>
+        <% } %>
         <button class="cat-toggle-btn" onclick="toggleCatSection(<%= ci %>)" title="ยุบ/ขยาย">
           <i class="fa-solid fa-chevron-down" id="chevron_<%= ci %>" style="transition:transform .2s"></i>
         </button>
       </div>
 
-      <!-- Groups inside this category -->
+      <!-- Groups inside -->
       <div id="catbody_<%= ci %>" class="cat-body">
-        <% catMap[cat].forEach((g, gi) => { %>
+        <% if (catMap[cat].length === 0) { %>
+        <div style="padding:.9rem 1rem;font-size:.87rem;color:var(--text-secondary);display:flex;align-items:center;gap:.6rem">
+          <i class="fa-solid fa-circle-info" style="color:#b3d4f9"></i>
+          ยังไม่มีกลุ่มในหมวดนี้ —
+          <button onclick="addGroupToCat(<%- JSON.stringify(cat) %>)"
+                  style="background:none;border:none;color:#1877f2;cursor:pointer;font-weight:600;font-size:.87rem;font-family:inherit;padding:0">
+            คลิกเพื่อเพิ่มกลุ่ม
+          </button>
+        </div>
+        <% } %>
+        <% catMap[cat].forEach(g => { %>
         <div class="group-row" id="gr_<%= g._id %>">
           <div class="group-row-indent"></div>
           <i class="fa-solid fa-users" style="color:#1877f2;width:15px;text-align:center;flex-shrink:0;font-size:.88rem"></i>
@@ -175,9 +223,12 @@ const cats = Object.keys(catMap).sort();
             <div style="font-weight:600;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><%= g.groupName %></div>
             <div style="font-size:.72rem;color:var(--text-secondary);font-family:monospace"><%= g.groupId %></div>
           </div>
-          <button class="cat-action-btn" style="color:#6c757d;font-size:.75rem" onclick="moveGroup('<%= g._id %>', <%- JSON.stringify(g.groupName) %>, <%- JSON.stringify(cat) %>)" title="ย้ายหมวด">
+          <% if (cats.length > 1) { %>
+          <button class="cat-action-btn" style="color:#6c757d;font-size:.75rem"
+                  onclick="moveGroup('<%= g._id %>', <%- JSON.stringify(g.groupName) %>, <%- JSON.stringify(cat) %>)" title="ย้ายไปหมวดอื่น">
             <i class="fa-solid fa-right-left"></i>
           </button>
+          <% } %>
           <a href="https://www.facebook.com/groups/<%= g.groupId %>" target="_blank"
              style="color:var(--text-secondary);font-size:.8rem;text-decoration:none;padding:.15rem .25rem;flex-shrink:0" title="เปิดใน Facebook">
             <i class="fa-solid fa-arrow-up-right-from-square"></i>
@@ -205,6 +256,15 @@ const cats = Object.keys(catMap).sort();
 <style>
 .form-label { display:block;font-size:.8rem;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.3rem }
 
+/* Buttons */
+.btn-outline-blue {
+  background:#fff;border:1.5px solid #1877f2;color:#1877f2;
+  border-radius:8px;padding:.4rem .85rem;font-size:.82rem;
+  font-family:inherit;font-weight:700;cursor:pointer;
+  display:inline-flex;align-items:center;gap:.35rem;transition:background .12s
+}
+.btn-outline-blue:hover { background:#e7f3ff }
+
 /* Filter tabs */
 .filter-tab {
   background:#f0f2f5;border:1.5px solid transparent;border-radius:999px;
@@ -213,99 +273,89 @@ const cats = Object.keys(catMap).sort();
 }
 .filter-tab:hover { background:#e4e6ea }
 .filter-tab.active { background:#e7f3ff;border-color:#1877f2;color:#1877f2;font-weight:700 }
-.tab-count { background:#e4e6ea;border-radius:999px;padding:.05rem .42rem;font-size:.73rem;margin-left:.15rem }
+.tab-count { background:#e4e6ea;border-radius:999px;padding:.05rem .42rem;font-size:.73rem;margin-left:.1rem }
 .filter-tab.active .tab-count { background:#cce0ff }
 
-/* Category section */
+/* Category sections */
 .cat-header {
   background:#f0f2f5;padding:.65rem 1rem;
-  display:flex;align-items:center;gap:.5rem;
+  display:flex;align-items:center;gap:.45rem;
   border-bottom:1px solid var(--border-color)
 }
 .cat-badge {
   background:#e4e6ea;padding:.1rem .5rem;border-radius:999px;
-  font-size:.76rem;color:#555;font-weight:600;white-space:nowrap
+  font-size:.76rem;color:#555;font-weight:600;white-space:nowrap;flex-shrink:0
 }
 .cat-action-btn {
   background:none;border:1px solid transparent;cursor:pointer;
   color:#1877f2;padding:.2rem .45rem;border-radius:6px;font-size:.78rem;
   font-family:inherit;font-weight:600;display:inline-flex;align-items:center;gap:.2rem;
-  transition:background .12s
+  transition:background .12s;white-space:nowrap;flex-shrink:0
 }
 .cat-action-btn:hover { background:#e7f3ff;border-color:#b3d4f9 }
 .cat-toggle-btn {
   background:none;border:none;cursor:pointer;
-  color:#aaa;padding:.2rem .35rem;border-radius:5px;font-size:.85rem;
-  transition:background .12s
+  color:#aaa;padding:.2rem .35rem;border-radius:5px;font-size:.85rem;flex-shrink:0
 }
 .cat-toggle-btn:hover { background:#e4e6ea }
 
 /* Group rows */
+.cat-body { background:#fff }
 .group-row {
-  display:flex;align-items:center;gap:.65rem;
+  display:flex;align-items:center;gap:.6rem;
   padding:.5rem .9rem .5rem 0;
   border-bottom:1px solid var(--border-color)
 }
 .group-row-indent {
-  width:1.5rem;flex-shrink:0;
+  width:1.4rem;flex-shrink:0;
   border-left:2px solid #e4e6ea;
   height:2rem;margin-left:.9rem
 }
-.cat-body { background:#fff }
 </style>
 
 <script>
-const _existingCats = <%- JSON.stringify(cats) %>;
+const _cats = <%- JSON.stringify(cats) %>;
+const _dbCatMap = <%- JSON.stringify(dbCatMap) %>;
 
-/* ── Add form ── */
-function toggleAddForm(preselect) {
-  const f = document.getElementById('addForm');
+/* ── Toggle forms ── */
+function toggleCreateCatForm() {
+  const f = document.getElementById('createCatForm');
   f.style.display = f.style.display === 'none' ? '' : 'none';
   if (f.style.display !== 'none') {
+    document.getElementById('addGroupForm').style.display = 'none';
+    document.getElementById('fCatName').focus();
+    f.scrollIntoView({ behavior:'smooth', block:'nearest' });
+  }
+}
+
+function toggleAddGroupForm(preselect) {
+  const f = document.getElementById('addGroupForm');
+  f.style.display = f.style.display === 'none' ? '' : 'none';
+  if (f.style.display !== 'none') {
+    document.getElementById('createCatForm').style.display = 'none';
     if (preselect) {
-      const sel = document.getElementById('fCat');
-      for (let i = 0; i < sel.options.length; i++) {
+      const sel = document.getElementById('fGroupCat');
+      if (sel) for (let i = 0; i < sel.options.length; i++) {
         if (sel.options[i].value === preselect) { sel.selectedIndex = i; break; }
       }
-      onCatChange();
     }
     document.getElementById('fGroupUrl').focus();
     f.scrollIntoView({ behavior:'smooth', block:'nearest' });
   }
 }
 
-function addGroupInCat(cat) { toggleAddForm(cat); }
-
-function onCatChange() {
-  const sel = document.getElementById('fCat').value;
-  document.getElementById('fCatNewWrap').style.display = sel === '__new__' ? '' : 'none';
-  if (sel === '__new__') document.getElementById('fCatNew').focus();
+function addGroupToCat(cat) {
+  toggleAddGroupForm(cat);
 }
 
-function parseGroupUrl(val) {
-  const m = val.match(/facebook\.com\/groups\/([^/?#\s]+)/);
-  if (m) document.getElementById('fGroupUrl').value = m[1];
-}
-
-async function addGroup() {
-  const raw  = document.getElementById('fGroupUrl').value.trim();
-  const name = document.getElementById('fGroupName').value.trim();
-  const selVal = document.getElementById('fCat').value;
-  const cat  = selVal === '__new__'
-    ? document.getElementById('fCatNew').value.trim()
-    : selVal;
-
-  const m = raw.match(/facebook\.com\/groups\/([^/?#\s]+)/);
-  const gid = m ? m[1] : raw;
-
-  if (!gid)  { Swal.fire({ icon:'warning', title:'กรุณากรอก Group ID', confirmButtonColor:'#1877f2' }); return; }
-  if (!name) { Swal.fire({ icon:'warning', title:'กรุณากรอกชื่อกลุ่ม', confirmButtonColor:'#1877f2' }); return; }
-  if (!cat)  { Swal.fire({ icon:'warning', title:'กรุณากรอกชื่อหมวด', confirmButtonColor:'#1877f2' }); return; }
-
+/* ── Create Category ── */
+async function createCategory() {
+  const name = document.getElementById('fCatName').value.trim();
+  if (!name) { Swal.fire({ icon:'warning', title:'กรุณากรอกชื่อหมวด', confirmButtonColor:'#1877f2' }); return; }
   try {
-    const r = await fetch('/api/agent/groups', {
+    const r = await fetch('/api/agent/categories', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ groupId: gid, groupName: name, category: cat }),
+      body: JSON.stringify({ name }),
     });
     const d = await r.json();
     if (!d.ok) throw new Error(d.error || 'เกิดข้อผิดพลาด');
@@ -315,70 +365,27 @@ async function addGroup() {
   }
 }
 
-/* ── Delete group ── */
-async function deleteGroup(id) {
+/* ── Delete Category ── */
+async function deleteCategory(id, name) {
   const res = await Swal.fire({
-    title:'ลบกลุ่มนี้?', icon:'warning',
-    showCancelButton:true, confirmButtonColor:'#fa5252',
-    confirmButtonText:'ลบ', cancelButtonText:'ยกเลิก'
+    title: `ลบหมวด "${name}"?`,
+    text: 'หมวดนี้ยังไม่มีกลุ่ม สามารถลบได้',
+    icon:'warning', showCancelButton:true,
+    confirmButtonColor:'#fa5252', confirmButtonText:'ลบ', cancelButtonText:'ยกเลิก'
   });
   if (!res.isConfirmed) return;
-  await fetch(`/api/agent/groups/${id}`, { method:'DELETE' });
+  await fetch(`/api/agent/categories/${id}`, { method:'DELETE' });
   location.reload();
 }
 
-/* ── Move group to different category ── */
-async function moveGroup(id, groupName, currentCat) {
-  const otherCats = _existingCats.filter(c => c !== currentCat);
-  if (!otherCats.length) {
-    Swal.fire({ icon:'info', title:'ไม่มีหมวดอื่น', text:'กรุณาสร้างหมวดใหม่ก่อน แล้วลองใหม่อีกครั้ง', confirmButtonColor:'#1877f2' });
-    return;
-  }
-  const options = otherCats.map(c => `<option value="${c}">${c}</option>`).join('');
-  const { value: newCat } = await Swal.fire({
-    title: `ย้าย "${groupName}"`,
-    html: `<label style="font-size:.87rem;color:#444;display:block;margin-bottom:.4rem;text-align:left">ย้ายไปหมวด:</label>
-           <select id="moveCatSel" style="width:100%;padding:.45rem .6rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.9rem;font-family:inherit">${options}</select>`,
-    showCancelButton: true,
-    confirmButtonText: 'ย้าย',
-    cancelButtonText: 'ยกเลิก',
-    confirmButtonColor: '#1877f2',
-    preConfirm: () => document.getElementById('moveCatSel').value,
-  });
-  if (!newCat) return;
-  try {
-    const r = await fetch(`/api/agent/groups/${id}/category`, {
-      method:'PATCH', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ category: newCat }),
-    });
-    const d = await r.json();
-    if (!d.ok) throw new Error(d.error || 'เกิดข้อผิดพลาด');
-    location.reload();
-  } catch(e) {
-    Swal.fire({ icon:'error', title:'เกิดข้อผิดพลาด', text:e.message, confirmButtonColor:'#1877f2' });
-  }
-}
-
-/* ── Category collapse ── */
-function toggleCatSection(ci) {
-  const body = document.getElementById(`catbody_${ci}`);
-  const chev = document.getElementById(`chevron_${ci}`);
-  if (!body) return;
-  const hidden = body.style.display === 'none';
-  body.style.display = hidden ? '' : 'none';
-  if (chev) chev.style.transform = hidden ? '' : 'rotate(-90deg)';
-}
-
-/* ── Rename category ── */
+/* ── Rename Category ── */
 async function renameCategory(oldName) {
   const { value: newName } = await Swal.fire({
     title: 'เปลี่ยนชื่อหมวด',
-    input: 'text',
-    inputValue: oldName,
+    input: 'text', inputValue: oldName,
     inputLabel: 'ชื่อใหม่ของหมวด',
     showCancelButton: true,
-    confirmButtonText: 'บันทึก',
-    cancelButtonText: 'ยกเลิก',
+    confirmButtonText: 'บันทึก', cancelButtonText: 'ยกเลิก',
     confirmButtonColor: '#1877f2',
     inputValidator: v => !v.trim() ? 'กรุณากรอกชื่อหมวด' : null,
   });
@@ -394,6 +401,89 @@ async function renameCategory(oldName) {
   } catch(e) {
     Swal.fire({ icon:'error', title:'เกิดข้อผิดพลาด', text:e.message, confirmButtonColor:'#1877f2' });
   }
+}
+
+/* ── Parse group URL ── */
+function parseGroupUrl(val) {
+  const m = val.match(/facebook\.com\/groups\/([^/?#\s]+)/);
+  if (m) document.getElementById('fGroupUrl').value = m[1];
+}
+
+/* ── Add Group ── */
+async function addGroup() {
+  const raw  = document.getElementById('fGroupUrl').value.trim();
+  const name = document.getElementById('fGroupName').value.trim();
+  const cat  = document.getElementById('fGroupCat').value;
+
+  const m = raw.match(/facebook\.com\/groups\/([^/?#\s]+)/);
+  const gid = m ? m[1] : raw;
+
+  if (!cat)  { Swal.fire({ icon:'warning', title:'กรุณาสร้างหมวดก่อน', text:'กดปุ่ม "สร้างหมวด" แล้วตั้งชื่อพื้นที่ก่อน', confirmButtonColor:'#1877f2' }); return; }
+  if (!gid)  { Swal.fire({ icon:'warning', title:'กรุณากรอก Group ID', confirmButtonColor:'#1877f2' }); return; }
+  if (!name) { Swal.fire({ icon:'warning', title:'กรุณากรอกชื่อกลุ่ม', confirmButtonColor:'#1877f2' }); return; }
+
+  try {
+    const r = await fetch('/api/agent/groups', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ groupId: gid, groupName: name, category: cat }),
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'เกิดข้อผิดพลาด');
+    location.reload();
+  } catch(e) {
+    Swal.fire({ icon:'error', title:'เกิดข้อผิดพลาด', text:e.message, confirmButtonColor:'#1877f2' });
+  }
+}
+
+/* ── Delete Group ── */
+async function deleteGroup(id) {
+  const res = await Swal.fire({
+    title:'ลบกลุ่มนี้?', icon:'warning',
+    showCancelButton:true, confirmButtonColor:'#fa5252',
+    confirmButtonText:'ลบ', cancelButtonText:'ยกเลิก'
+  });
+  if (!res.isConfirmed) return;
+  await fetch(`/api/agent/groups/${id}`, { method:'DELETE' });
+  location.reload();
+}
+
+/* ── Move Group to another category ── */
+async function moveGroup(id, groupName, currentCat) {
+  const otherCats = _cats.filter(c => c !== currentCat);
+  if (!otherCats.length) {
+    Swal.fire({ icon:'info', title:'ไม่มีหมวดอื่น', text:'กรุณาสร้างหมวดใหม่ก่อน', confirmButtonColor:'#1877f2' });
+    return;
+  }
+  const options = otherCats.map(c => `<option value="${c}">📍 ${c}</option>`).join('');
+  const { value: newCat } = await Swal.fire({
+    title: `ย้าย "${groupName}"`,
+    html: `<select id="moveSel" style="width:100%;padding:.45rem .6rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.9rem;font-family:inherit">${options}</select>`,
+    showCancelButton:true, confirmButtonText:'ย้าย', cancelButtonText:'ยกเลิก',
+    confirmButtonColor:'#1877f2',
+    preConfirm: () => document.getElementById('moveSel').value,
+  });
+  if (!newCat) return;
+  try {
+    const r = await fetch(`/api/agent/groups/${id}/category`, {
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ category: newCat }),
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'เกิดข้อผิดพลาด');
+    location.reload();
+  } catch(e) {
+    Swal.fire({ icon:'error', title:'เกิดข้อผิดพลาด', text:e.message, confirmButtonColor:'#1877f2' });
+  }
+}
+
+/* ── Collapse / expand category ── */
+function toggleCatSection(ci) {
+  const body = document.getElementById(`catbody_${ci}`);
+  const chev = document.getElementById(`chevron_${ci}`);
+  if (!body) return;
+  const hidden = body.style.display === 'none';
+  body.style.display = hidden ? '' : 'none';
+  if (chev) chev.style.transform = hidden ? '' : 'rotate(-90deg)';
 }
 
 /* ── Filter tabs ── */

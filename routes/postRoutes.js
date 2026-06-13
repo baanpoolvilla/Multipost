@@ -124,6 +124,10 @@ router.get('/api/agent/jobs',         agentCtrl.listJobs);
 router.post('/api/agent/jobs',        agentCtrl.createJob);
 router.delete('/api/agent/jobs/:id',  agentCtrl.deleteJob);
 
+// Category API
+router.post('/api/agent/categories',         agentCtrl.addCategory);
+router.delete('/api/agent/categories/:id',   agentCtrl.deleteCategory);
+
 // Groups API (shared across all users)
 router.post('/api/agent/groups',                        agentCtrl.addGroup);
 router.delete('/api/agent/groups/:id',                  agentCtrl.deleteGroup);
