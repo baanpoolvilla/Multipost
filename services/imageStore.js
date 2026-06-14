@@ -19,17 +19,27 @@ const schema = new mongoose.Schema(
 );
 const Image = mongoose.models.Image || mongoose.model('Image', schema);
 
+const VIDEO_EXTS = new Set(['mp4', 'mov', 'avi', 'webm']);
+
 async function save(filename, buffer, contentType) {
-    try {
-        await connect();
-        await Image.findByIdAndUpdate(
-            filename,
-            { $set: { data: buffer.toString('base64'), contentType } },
-            { upsert: true }
-        );
-    } catch (e) {
-        console.warn('[imageStore.save] MongoDB failed:', e.message);
+    const ext = path.extname(filename).slice(1).toLowerCase();
+    const isVideo = VIDEO_EXTS.has(ext);
+
+    // Videos skip MongoDB: base64 overhead pushes them past the 16 MB document limit.
+    // Videos are served from local disk only.
+    if (!isVideo) {
+        try {
+            await connect();
+            await Image.findByIdAndUpdate(
+                filename,
+                { $set: { data: buffer.toString('base64'), contentType } },
+                { upsert: true }
+            );
+        } catch (e) {
+            console.warn('[imageStore.save] MongoDB failed:', e.message);
+        }
     }
+
     if (!process.env.VERCEL) {
         try {
             fs.mkdirSync(UPLOADS_DIR, { recursive: true });

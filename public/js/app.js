@@ -517,14 +517,24 @@ async function submitPost() {
       let errHtml;
       if (res.status === 413) {
         const totalMB = selectedFiles.reduce((s, f) => s + f.size, 0) / 1024 / 1024;
+        const hasVideo = selectedFiles.some(f => /\.(mp4|mov|avi|webm)$/i.test(f.name));
         const fileRows = selectedFiles.length
           ? `<ul style="text-align:left;margin:.35rem 0 0;padding-left:1.1rem;list-style:disc;font-size:.85rem">${selectedFiles.map(f => `<li>${f.name} — <b>${(f.size/1024/1024).toFixed(1)} MB</b></li>`).join('')}</ul>`
           : '';
-        errHtml = `<p>ขนาดไฟล์รวม <b>${totalMB.toFixed(1)} MB</b> ใหญ่เกินไป กรุณาลดขนาดหรือจำนวนไฟล์</p>
-                   ${fileRows}
-                   <p style="margin-top:.6rem;font-size:.82rem;color:#65676b;border-top:1px solid #e4e6ea;padding-top:.5rem">
-                     📌 ขีดจำกัด Facebook: รูปภาพ <b>4 MB</b>/ไฟล์ · วิดีโอ <b>1 GB</b>/ไฟล์
-                   </p>`;
+        if (hasVideo) {
+          errHtml = `<p>ไม่สามารถอัปโหลดวิดีโอผ่านเว็บได้</p>
+                     ${fileRows}
+                     <div style="margin-top:.6rem;background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:.5rem .8rem;text-align:left;font-size:.82rem;color:#5d4037">
+                       <b>สาเหตุ:</b> เซิร์ฟเวอร์ Vercel จำกัด request ไว้ที่ <b>4.5 MB</b> ต่อครั้ง<br>
+                       <b>แนะนำ:</b> ใช้ <b>Desktop Agent</b> โพสวิดีโอโดยตรงจากคอมพิวเตอร์ได้เลย ไม่มีข้อจำกัดขนาด
+                     </div>`;
+        } else {
+          errHtml = `<p>ขนาดไฟล์รวม <b>${totalMB.toFixed(1)} MB</b> เกินขีดจำกัดของเซิร์ฟเวอร์ (4.5 MB/request)</p>
+                     ${fileRows}
+                     <p style="margin-top:.6rem;font-size:.82rem;color:#65676b;border-top:1px solid #e4e6ea;padding-top:.5rem">
+                       📌 อัปโหลดรูปภาพทีละไม่เกิน <b>4 MB/ไฟล์</b> และรวมทั้งหมดไม่เกิน <b>4.5 MB</b> ต่อการส่งโพสต์หนึ่งครั้ง
+                     </p>`;
+        }
       } else {
         errHtml = `เกิดข้อผิดพลาดจากเซิร์ฟเวอร์ (HTTP ${res.status}) กรุณาลองใหม่`;
       }
