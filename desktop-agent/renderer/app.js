@@ -230,58 +230,95 @@ function _isCatCollapsed(cat) {
 }
 
 function _getCatGroups() {
-    // Each group appears in exactly ONE category:
-    // its first non-ทั่วไป category, or ทั่วไป only if it has no other category.
+    // catMap  → groups displayed under their PRIMARY non-ทั่วไป cat (no duplicates)
+    // catAll  → every non-ทั่วไป cat → ALL groups that belong to it (for selection)
+    // ทั่วไป appears in cats ONLY if some group has no other category at all.
     const catMap = {};
-    const allCatsSet = new Set();
+    const catAll = {};
+    const nonGenSet = new Set();
+    let hasGenOnly = false;
+
     _groups.forEach((g, i) => {
         const gcats = (g.categories && g.categories.length) ? g.categories : [g.category || 'ทั่วไป'];
-        const primaryCat = gcats.find(c => c !== 'ทั่วไป') || 'ทั่วไป';
-        allCatsSet.add(primaryCat);
+        const nonGen = gcats.filter(c => c !== 'ทั่วไป');
+        const primaryCat = nonGen[0] || 'ทั่วไป';
+
+        if (primaryCat === 'ทั่วไป') hasGenOnly = true;
         if (!catMap[primaryCat]) catMap[primaryCat] = [];
         catMap[primaryCat].push({ g, i });
+
+        nonGen.forEach(cat => {
+            nonGenSet.add(cat);
+            if (!catAll[cat]) catAll[cat] = [];
+            catAll[cat].push({ g, i });
+        });
     });
+
     const cats = [
-        ...(allCatsSet.has('ทั่วไป') ? ['ทั่วไป'] : []),
-        ...[...allCatsSet].filter(c => c !== 'ทั่วไป').sort(),
+        ...(hasGenOnly ? ['ทั่วไป'] : []),
+        ...[...nonGenSet].sort(),
     ];
-    return { cats, catMap };
+    return { cats, catMap, catAll };
 }
 
-function _renderCatBlock(cat, items, pfx, ci) {
+// Returns the authoritative item list for a category:
+// ทั่วไป uses catMap (only truly uncategorised groups),
+// all other cats use catAll (every member, for selection + count).
+function _catItems(cat, catMap, catAll) {
+    return cat === 'ทั่วไป' ? (catMap[cat] || []) : (catAll[cat] || []);
+}
+
+function _renderCatBlock(cat, catMap, catAll, pfx, ci) {
+    const allItems  = _catItems(cat, catMap, catAll);  // count + selection
+    const dispItems = catMap[cat] || [];               // rendered checkboxes (no dup IDs)
     const collapsed = _isCatCollapsed(cat);
     const cbId      = `${pfx}_ch_${ci}`;
     const cntId     = `${pfx}_cnt_${ci}`;
     const grpPfx    = pfx === 'i' ? 'g' : 'gm';
-    const selCount  = items.filter(({i}) => _selected[i]).length;
+    const selCount  = allItems.filter(({i}) => _selected[i]).length;
     const chevStyle = `display:inline-block;font-size:10px;color:var(--text3);transition:transform .15s;transform:${collapsed?'rotate(-90deg)':'rotate(0)'}`;
     const cbStyle   = `accent-color:var(--accent);width:14px;height:14px;flex-shrink:0;cursor:pointer`;
-    return `<div class="pick-cat">
-      <div class="pick-cat-hd" onclick="toggleCatGrp(${ci})">
-        <input type="checkbox" id="${cbId}" onclick="event.stopPropagation();toggleCatSel(${ci},this.checked)"
-               style="${cbStyle}">
-        <label for="${cbId}" onclick="event.stopPropagation()"
-               style="flex:1;cursor:pointer;font-size:11.5px;font-weight:700;color:var(--text)">
-          📍 ${esc(cat)} <span id="${cntId}" style="font-weight:400;color:var(--text3)">${selCount}/${items.length} กลุ่ม</span>
-        </label>
-        <span style="${chevStyle}">▼</span>
-      </div>
-      <div class="pick-cat-body" style="display:${collapsed?'none':'block'}">
-        ${items.map(({g,i}) => `
+
+    let bodyHtml;
+    if (dispItems.length > 0) {
+        bodyHtml = dispItems.map(({g,i}) => `
           <div class="pick-item pick-indent" onclick="togGrp(${i})">
             <input type="checkbox" id="${grpPfx}_${i}" ${_selected[i]?'checked':''}
                    onclick="event.stopPropagation()"
                    onchange="_selected[${i}]=this.checked;_syncCb(${i});_syncCatCb(${ci});updateGroupCount()"
                    style="${cbStyle}">
             <label for="${grpPfx}_${i}" onclick="event.stopPropagation()" style="flex:1;cursor:pointer">${esc(g.groupName)}</label>
-          </div>`).join('')}
+          </div>`).join('');
+    } else if (allItems.length > 0) {
+        // Groups belong here but are displayed under their primary category
+        const tags = allItems.map(({g}) =>
+            `<span style="background:var(--hover);border-radius:4px;padding:.1rem .35rem;margin:.1rem;display:inline-block;font-size:10.5px">${esc(g.groupName)}</span>`
+        ).join('');
+        bodyHtml = `<div style="padding:.3rem .75rem .45rem;color:var(--text3)">${tags}
+            <div style="margin-top:.25rem;font-size:10px;font-style:italic">↑ ติ๊ก checkbox หมวด เพื่อเลือกทั้งหมด</div></div>`;
+    } else {
+        bodyHtml = '';
+    }
+
+    return `<div class="pick-cat">
+      <div class="pick-cat-hd" onclick="toggleCatGrp(${ci})">
+        <input type="checkbox" id="${cbId}" onclick="event.stopPropagation();toggleCatSel(${ci},this.checked)"
+               style="${cbStyle}">
+        <label for="${cbId}" onclick="event.stopPropagation()"
+               style="flex:1;cursor:pointer;font-size:11.5px;font-weight:700;color:var(--text)">
+          📍 ${esc(cat)} <span id="${cntId}" style="font-weight:400;color:var(--text3)">${selCount}/${allItems.length} กลุ่ม</span>
+        </label>
+        <span style="${chevStyle}">▼</span>
+      </div>
+      <div class="pick-cat-body" style="display:${collapsed?'none':'block'}">
+        ${bodyHtml}
       </div>
     </div>`;
 }
 
-function _applyIndeterminate(pfx, cats, catMap) {
+function _applyIndeterminate(pfx, cats, catMap, catAll) {
     cats.forEach((cat, ci) => {
-        const items    = catMap[cat] || [];
+        const items    = _catItems(cat, catMap, catAll);
         const selCount = items.filter(({i}) => _selected[i]).length;
         const allC     = selCount === items.length;
         const someC    = selCount > 0;
@@ -302,8 +339,8 @@ function toggleCatGrp(ci) {
 function toggleCatSel(ci, checked) {
     const cat = _lastCats[ci];
     if (!cat) return;
-    const { catMap } = _getCatGroups();
-    (catMap[cat] || []).forEach(({ i }) => { _selected[i] = checked; });
+    const { catMap, catAll } = _getCatGroups();
+    _catItems(cat, catMap, catAll).forEach(({ i }) => { _selected[i] = checked; });
     renderGroupsInline();
     renderGroupsModal();
     updateGroupCount();
@@ -312,8 +349,8 @@ function toggleCatSel(ci, checked) {
 function _syncCatCb(ci) {
     const cat = _lastCats[ci];
     if (!cat) return;
-    const { catMap } = _getCatGroups();
-    const items    = catMap[cat] || [];
+    const { catMap, catAll } = _getCatGroups();
+    const items    = _catItems(cat, catMap, catAll);
     const selCount = items.filter(({i}) => _selected[i]).length;
     const allC     = selCount === items.length;
     const someC    = selCount > 0;
@@ -340,18 +377,18 @@ function renderGroupsInline() {
         el.innerHTML = '<div class="empty-list">ยังไม่มีกลุ่ม — กรุณาเพิ่มกลุ่มในเว็บแอปก่อน</div>';
         return;
     }
-    const { cats, catMap } = _getCatGroups();
+    const { cats, catMap, catAll } = _getCatGroups();
     _lastCats = cats;
-    el.innerHTML = cats.map((cat, ci) => _renderCatBlock(cat, catMap[cat], 'i', ci)).join('');
-    _applyIndeterminate('i', cats, catMap);
+    el.innerHTML = cats.map((cat, ci) => _renderCatBlock(cat, catMap, catAll, 'i', ci)).join('');
+    _applyIndeterminate('i', cats, catMap, catAll);
 }
 
 function renderGroupsModal() {
     const el = document.getElementById('groupsModalList');
     if (!el) return;
-    const { cats, catMap } = _getCatGroups();
-    el.innerHTML = cats.map((cat, ci) => _renderCatBlock(cat, catMap[cat], 'm', ci)).join('');
-    _applyIndeterminate('m', cats, catMap);
+    const { cats, catMap, catAll } = _getCatGroups();
+    el.innerHTML = cats.map((cat, ci) => _renderCatBlock(cat, catMap, catAll, 'm', ci)).join('');
+    _applyIndeterminate('m', cats, catMap, catAll);
 }
 
 function openGroupsModal()  { renderGroupsModal(); document.getElementById('groupsModal').style.display='flex'; }
@@ -362,10 +399,11 @@ function togGrp(i) {
     _syncCb(i);
     const g = _groups[i];
     if (g) {
-        const gcats = g.categories?.length ? g.categories : [g.category || 'ทั่วไป'];
-        const primary = gcats.find(c => c !== 'ทั่วไป') || 'ทั่วไป';
-        const ci = _lastCats.indexOf(primary);
-        if (ci !== -1) _syncCatCb(ci);
+        const gcats = (g.categories?.length ? g.categories : [g.category || 'ทั่วไป']);
+        gcats.forEach(cat => {
+            const ci = _lastCats.indexOf(cat);
+            if (ci !== -1) _syncCatCb(ci);
+        });
     }
     updateGroupCount();
 }
