@@ -870,24 +870,28 @@ function useTpl() {
   renderTplImagePreviews();
   closeTemplateModal();
 
-  const videoFiles = (t.images || []).filter(f => /\.(mp4|mov|avi|webm)$/i.test(f));
-  if (videoFiles.length > 0) {
+  const allVideos   = (t.images || []).filter(f => /\.(mp4|mov|avi|webm)$/i.test(f));
+  const cloudVideos = allVideos.filter(f => f.startsWith('http'));
+  const localVideos = allVideos.filter(f => !f.startsWith('http'));
+
+  if (localVideos.length > 0) {
+    // Old template — videos not in Supabase, need to re-upload
     Swal.fire({
       icon: 'warning',
-      title: 'โหลด Template แล้ว — มีวิดีโอ',
+      title: 'โหลด Template แล้ว — วิดีโอเก่า',
       html: `
         <div style="text-align:left;font-size:.9rem">
-          <p style="margin:0 0 .6rem">ข้อความและรูปภาพถูกโหลดแล้ว แต่มีข้อจำกัดสำหรับวิดีโอ:</p>
+          <p style="margin:0 0 .6rem">ข้อความและรูปภาพถูกโหลดแล้ว แต่วิดีโอเก่าไม่ได้เก็บใน Cloud:</p>
           <div style="background:#fff8e1;border-left:4px solid #f9a825;border-radius:4px;padding:.65rem .85rem;line-height:1.6">
-            <b>🎬 วิดีโอ ${videoFiles.length} ไฟล์ เก็บไว้เฉพาะเครื่องที่สร้าง template</b><br>
-            เนื่องจากวิดีโอมีขนาดใหญ่เกินกว่าจะเก็บใน Cloud ได้<br>
-            ผู้ใช้คนอื่น (หรือเครื่องอื่น) จะ<b>ไม่เห็นวิดีโอนี้</b> และต้อง<b>เพิ่มวิดีโอใหม่เอง</b>ก่อนโพสต์
+            <b>🎬 วิดีโอ ${localVideos.length} ไฟล์ เก็บเฉพาะเครื่องที่สร้าง template</b><br>
+            ผู้ใช้คนอื่น (หรือเครื่องอื่น) จะ<b>ไม่เห็นวิดีโอนี้</b> กรุณา<b>เพิ่มวิดีโอใหม่</b>ก่อนโพสต์
           </div>
-          <p style="margin:.6rem 0 0;color:#888;font-size:.82rem">ชื่อไฟล์: ${videoFiles.map(f => f.split('-').slice(2).join('-') || f).join(', ')}</p>
         </div>`,
       confirmButtonText: 'รับทราบ แล้วเพิ่มวิดีโอเอง',
       confirmButtonColor: '#1877f2',
     });
+  } else if (cloudVideos.length > 0) {
+    Swal.fire({ icon: 'success', title: `โหลดโพสต์แล้ว (มีวิดีโอ ${cloudVideos.length} ไฟล์ใน Cloud ✓)`, timer: 1800, showConfirmButton: false });
   } else {
     Swal.fire({ icon: 'success', title: 'โหลดโพสต์แล้ว', timer: 1300, showConfirmButton: false });
   }

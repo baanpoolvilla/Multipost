@@ -782,13 +782,16 @@ async function applyTemplate(id) {
     }));
     renderImagePreviews();
 
-    // Show/hide video notice banner
-    const videoItems  = _selectedImages.filter(i => _isVideo(i.name));
-    const missingCount = _selectedImages.filter(i => i.missing).length;
+    // Show/hide video notice banner — only for missing (non-Supabase) videos
+    const missingVideos = _selectedImages.filter(i => _isVideo(i.name) && i.missing);
+    const cloudVideos   = _selectedImages.filter(i => _isVideo(i.name) && !i.missing);
     const notice = document.getElementById('videoLocalNotice');
-    if (notice) notice.style.display = videoItems.length ? '' : 'none';
-    if (missingCount > 0) {
-        appendLog(`[⚠️] วิดีโอ ${missingCount} ไฟล์บันทึกไว้เฉพาะเครื่องต้นทาง — เห็น placeholder 🎬 สีส้ม กรุณาอัปโหลดใหม่`);
+    if (notice) notice.style.display = missingVideos.length ? '' : 'none';
+    if (missingVideos.length > 0) {
+        appendLog(`[⚠️] วิดีโอ ${missingVideos.length} ไฟล์ไม่ได้อยู่ใน Cloud — กรุณาอัปโหลดใหม่`);
+    }
+    if (cloudVideos.length > 0) {
+        appendLog(`[☁️] วิดีโอ ${cloudVideos.length} ไฟล์โหลดจาก Cloud เรียบร้อย`);
     }
 
     // Switch to compose tab
