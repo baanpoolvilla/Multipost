@@ -641,9 +641,12 @@ async function onImageFilesSelected(input) {
             entry.uploading = false;
             if (entry.path.startsWith('localpath::')) {
                 entry.localOnly = true;
-                appendLog(`[📁] บันทึกแบบ local (ไม่มี Supabase): ${entry.name}`);
+                appendLog(`[📁] วิดีโอบันทึก local (ใช้ได้เฉพาะเครื่องนี้): ${entry.name}`);
+            } else if (entry.path.startsWith('http')) {
+                appendLog(`[☁️] อัปโหลด Supabase สำเร็จ (ใช้ได้ทุกเครื่อง): ${entry.name}`);
             } else {
-                appendLog(`[☁️] อัปโหลดสำเร็จ: ${entry.name}`);
+                // MongoDB filename — images shared via cloud DB
+                appendLog(`[🗄️] รูปบันทึกลง MongoDB (ใช้ได้ทุกเครื่อง): ${entry.name}`);
             }
         } catch (e) {
             entry.uploading = false;

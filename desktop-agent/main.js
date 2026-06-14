@@ -109,20 +109,32 @@ ipcMain.handle('templates:save',   (_, tpl)   => jobTemplateStore.save(tpl));
 ipcMain.handle('templates:get',    (_, id)    => jobTemplateStore.getWithImages(id));
 ipcMain.handle('templates:delete', (_, id)    => jobTemplateStore.remove(id));
 
-// ── IPC: Upload file from disk path directly to Supabase ──────────────────
+// ── IPC: Upload file from disk path → Supabase (best) → MongoDB (images) → localpath (videos) ──
 ipcMain.handle('file:upload', async (_, filePath, contentType) => {
-    const fs   = require('fs');
-    const path = require('path');
-    const supa = require('./src/supabaseStore');
+    const fs       = require('fs');
+    const nodePath = require('path');
+    const supa     = require('./src/supabaseStore');
+    const imgStore = require('./src/agentImageStore');
+    const VIDEO_EXTS = new Set(['.mp4', '.mov', '.avi', '.webm', '.mkv']);
+    const ext  = nodePath.extname(filePath).toLowerCase();
+    const buf  = await fs.promises.readFile(filePath);
+    const fname = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+
+    // 1st choice: Supabase (images + videos, accessible everywhere)
+    try { return await supa.upload(fname, buf, contentType); } catch {}
+
+    // Videos: too large for MongoDB → local path only
+    if (VIDEO_EXTS.has(ext)) {
+        console.warn('[file:upload] Supabase unavailable, video stored locally');
+        return `localpath::${filePath}`;
+    }
+
+    // Images: MongoDB fallback (shared via cloud DB, accessible from every machine)
     try {
-        const buf   = await fs.promises.readFile(filePath);
-        const ext   = path.extname(filePath);
-        const fname = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
-        return await supa.upload(fname, buf, contentType);
-    } catch (e) {
-        // Supabase not configured or upload failed → keep as local path
-        // Template will work on this machine only (localpath:: prefix)
-        console.warn('[file:upload] Supabase unavailable, using local path:', e.message);
+        const fname2 = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+        const result = await imgStore.save(fname2, buf, contentType || 'image/jpeg');
+        return result || fname2; // result = Supabase URL if re-tried ok, else fname2 = MongoDB key
+    } catch {
         return `localpath::${filePath}`;
     }
 });
