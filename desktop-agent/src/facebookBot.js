@@ -102,7 +102,7 @@ async function loginAccount(account, onLog) {
 
         // Wait for form fields to be ready before filling
         try {
-            await page.waitForSelector('#email', { state: 'visible', timeout: 30000 });
+            await page.waitForSelector('#email', { state: 'visible', timeout: 60000 });
         } catch {
             await page.close();
             return { ok: false, error: 'หน้า Login ไม่โหลด (Facebook ตอบช้า) — ลองกดเข้าสู่ระบบอีกครั้ง' };
