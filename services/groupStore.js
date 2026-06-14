@@ -11,11 +11,13 @@ const groupSchema = new mongoose.Schema({
 const Group = mongoose.models.FbGroup
     || mongoose.model('FbGroup', groupSchema, 'fbgroups');
 
-// Normalize old docs that have `category: String` instead of `categories: [String]`
+// Normalize — always ensures 'ทั่วไป' is first in categories
 function _norm(g) {
     if (!g.categories || g.categories.length === 0) {
         const c = g.category || 'ทั่วไป';
         g.categories = (c === 'ทั่วไป') ? ['ทั่วไป'] : ['ทั่วไป', c];
+    } else if (!g.categories.includes('ทั่วไป')) {
+        g.categories = ['ทั่วไป', ...g.categories];
     }
     return g;
 }
@@ -23,6 +25,8 @@ function _norm(g) {
 async function list() {
     try {
         await connect();
+        // Migration: fix any groups that don't have 'ทั่วไป' in their categories array
+        await Group.updateMany({ categories: { $ne: 'ทั่วไป' } }, { $addToSet: { categories: 'ทั่วไป' } });
         const groups = await Group.find().sort({ groupName: 1 }).lean();
         return groups.map(_norm);
     } catch { return []; }
@@ -38,13 +42,13 @@ async function add(groupId, groupName, category = 'ทั่วไป') {
     } catch(e) { return { error: e.message }; }
 }
 
-// Add a category to the group's list (non-destructive)
+// Add a category to the group's list — always keeps ทั่วไป too
 async function addToCategory(id, category) {
     try {
         await connect();
         const g = await Group.findByIdAndUpdate(
             id,
-            { $addToSet: { categories: category } },
+            { $addToSet: { categories: { $each: ['ทั่วไป', category] } } },
             { new: true }
         ).lean();
         return g ? _norm(g) : null;

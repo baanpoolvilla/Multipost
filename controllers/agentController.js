@@ -18,6 +18,15 @@ exports.showGroups = async (req, res) => {
     // Build allCats from groups' categories arrays + DB categories; ทั่วไป always first
     const allCatsSet = new Set(Object.keys(dbCatMap));
     groups.forEach(g => (g.categories || ['ทั่วไป']).forEach(c => allCatsSet.add(c)));
+
+    // Auto-register categories that exist in group data but have no DB record (so trash button shows)
+    const orphanCats = [...allCatsSet].filter(c => c !== 'ทั่วไป' && !dbCatMap[c]);
+    if (orphanCats.length) {
+        await Promise.all(orphanCats.map(name => categoryStore.add(name)));
+        const fresh = await categoryStore.list();
+        fresh.forEach(c => { dbCatMap[c.name] = String(c._id); });
+    }
+
     const allCats = [
         ...(allCatsSet.has('ทั่วไป') ? ['ทั่วไป'] : []),
         ...[...allCatsSet].filter(c => c !== 'ทั่วไป').sort(),
