@@ -648,16 +648,22 @@ function removeImage(i) {
     renderImagePreviews();
 }
 
+const _VIDEO_EXTS = new Set(['mp4','mov','avi','webm','mkv']);
+function _isVideo(name) { return _VIDEO_EXTS.has((name||'').split('.').pop().toLowerCase()); }
+
 function renderImagePreviews() {
     const row = document.getElementById('photoPreviewRow');
     if (!_selectedImages.length) { row.style.display = 'none'; row.innerHTML = ''; return; }
     row.style.display = 'flex';
     row.innerHTML = _selectedImages.map((img, i) => `
       <div class="fb-photo-thumb">
-        <img src="${img.url}" alt="${esc(img.name)}">
+        ${_isVideo(img.name)
+          ? `<video src="${img.url}" style="width:100%;height:100%;object-fit:cover;border-radius:4px" muted></video>
+             <span style="position:absolute;bottom:2px;left:3px;font-size:9px;background:rgba(0,0,0,.55);color:#fff;border-radius:3px;padding:1px 3px">▶ วิดีโอ</span>`
+          : `<img src="${img.url}" alt="${esc(img.name)}">`}
         <button class="rm-btn" onclick="removeImage(${i})" title="ลบ">✕</button>
       </div>`).join('') +
-      `<button class="fb-photo-add-btn" onclick="openImagePicker()" title="เพิ่มรูปอีก">+</button>`;
+      `<button class="fb-photo-add-btn" onclick="openImagePicker()" title="เพิ่มรูป/วิดีโออีก">+</button>`;
 }
 
 // ── Templates ─────────────────────────────────────────────────
@@ -732,11 +738,11 @@ async function applyTemplate(id) {
     _selected = _groups.map(g => (t.groups||[]).some(tg=>tg.groupId===g.groupId));
     renderGroupsInline();
     updateGroupCount();
-    // Restore images from MongoDB data URLs (works on any machine)
+    // Restore images/videos from template
     _selectedImages.forEach(i => { try { URL.revokeObjectURL(i.url); } catch {} });
     _selectedImages = (t.imageDataUrls || [])
-        .filter(x => x.dataUrl)
-        .map(x => ({ path: x.filename, url: x.dataUrl, name: x.filename }));
+        .filter(x => x.dataUrl || x.localPath)
+        .map(x => ({ path: x.localPath || x.filename, url: x.dataUrl || x.localPath, name: x.filename }));
     renderImagePreviews();
     // Switch to compose tab (form is always visible there)
     document.querySelector('.nav-item[data-tab="compose"]')?.click();

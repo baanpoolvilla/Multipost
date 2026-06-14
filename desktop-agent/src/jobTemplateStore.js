@@ -4,7 +4,11 @@ const path      = require('path');
 const { connect } = require('./jobStore');
 const imgStore  = require('./agentImageStore');
 
-const MIME = { '.jpg':'image/jpeg', '.jpeg':'image/jpeg', '.png':'image/png', '.gif':'image/gif', '.webp':'image/webp' };
+const MIME = {
+    '.jpg':'image/jpeg', '.jpeg':'image/jpeg', '.png':'image/png', '.gif':'image/gif', '.webp':'image/webp',
+    '.mp4':'video/mp4', '.mov':'video/quicktime', '.avi':'video/x-msvideo', '.webm':'video/webm', '.mkv':'video/x-matroska',
+};
+const VIDEO_EXTS = new Set(['.mp4','.mov','.avi','.webm','.mkv']);
 
 const schema = new mongoose.Schema({
     _id:          String,
@@ -35,17 +39,24 @@ async function save({ id, name, message, groups, delaySeconds, postAsPage, image
     const filenames = [];
     for (const p of (imagePaths || [])) {
         if (!p) continue;
+        const ext = path.extname(p).toLowerCase();
         if (path.isAbsolute(p) && fs.existsSync(p)) {
-            // New local file → upload to MongoDB
-            try {
-                const ext      = path.extname(p).toLowerCase();
-                const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
-                const buf      = fs.readFileSync(p);
-                await imgStore.save(filename, buf, MIME[ext] || 'image/jpeg');
-                filenames.push(filename);
-            } catch (e) { console.warn('[tpl] img upload failed:', e.message); }
+            if (VIDEO_EXTS.has(ext)) {
+                // Videos: store local path with prefix — not uploaded to MongoDB (too large)
+                filenames.push(`localpath::${p}`);
+            } else {
+                // Images: upload to MongoDB so they work across machines
+                try {
+                    const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+                    const buf      = fs.readFileSync(p);
+                    await imgStore.save(filename, buf, MIME[ext] || 'image/jpeg');
+                    filenames.push(filename);
+                } catch (e) { console.warn('[tpl] img upload failed:', e.message); }
+            }
+        } else if (!p.startsWith('localpath::')) {
+            filenames.push(p); // already a stored filename or localpath:: entry
         } else {
-            filenames.push(p); // already a stored filename
+            filenames.push(p);
         }
     }
 
@@ -65,9 +76,17 @@ async function getWithImages(id) {
         const tpl = await Tpl.findById(id).lean();
         if (!tpl) return null;
         const imageDataUrls = [];
-        for (const filename of (tpl.images || [])) {
-            const dataUrl = await imgStore.getDataUrl(filename);
-            imageDataUrls.push({ filename, dataUrl });
+        for (const entry of (tpl.images || [])) {
+            if (entry.startsWith('localpath::')) {
+                const localPath = entry.slice('localpath::'.length);
+                const filename  = path.basename(localPath);
+                // Return file:// URL for local video; renderer will use it directly
+                const fileUrl = fs.existsSync(localPath) ? `file://${localPath.replace(/\\/g,'/')}` : null;
+                imageDataUrls.push({ filename, dataUrl: fileUrl, localPath: fileUrl ? localPath : null });
+            } else {
+                const dataUrl = await imgStore.getDataUrl(entry);
+                imageDataUrls.push({ filename: entry, dataUrl });
+            }
         }
         return { ..._normalize(tpl), imageDataUrls };
     } catch { return null; }

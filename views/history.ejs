@@ -110,7 +110,7 @@
         </div>
       </div>
 
-      <!-- Date range row -->
+      <!-- Date + time range row -->
       <div style="display:flex;align-items:flex-end;gap:.5rem;flex-wrap:wrap">
         <div>
           <div style="font-size:.73rem;color:#8a8d91;font-weight:600;margin-bottom:.28rem">
@@ -119,10 +119,24 @@
           <input type="date" id="hDateFrom" onchange="applyFilters()"
             style="padding:.4rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;color:#444;outline:none;cursor:pointer">
         </div>
+        <div>
+          <div style="font-size:.73rem;color:#8a8d91;font-weight:600;margin-bottom:.28rem">
+            <i class="fa-solid fa-clock" style="width:12px"></i> เวลา
+          </div>
+          <input type="time" id="hTimeFrom" onchange="applyFilters()"
+            style="padding:.4rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;color:#444;outline:none;cursor:pointer">
+        </div>
         <div style="padding-bottom:.5rem;color:#bbb;font-size:.9rem">—</div>
         <div>
           <div style="font-size:.73rem;color:#8a8d91;font-weight:600;margin-bottom:.28rem">ถึงวันที่</div>
           <input type="date" id="hDateTo" onchange="applyFilters()"
+            style="padding:.4rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;color:#444;outline:none;cursor:pointer">
+        </div>
+        <div>
+          <div style="font-size:.73rem;color:#8a8d91;font-weight:600;margin-bottom:.28rem">
+            <i class="fa-solid fa-clock" style="width:12px"></i> เวลา
+          </div>
+          <input type="time" id="hTimeTo" onchange="applyFilters()"
             style="padding:.4rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;color:#444;outline:none;cursor:pointer">
         </div>
       </div>
@@ -313,14 +327,26 @@
   })();
 
   function applyFilters() {
-    const q       = (document.getElementById('hSearch')?.value || '').toLowerCase().trim();
-    const st      = document.getElementById('hStatus')?.value   || '';
-    const fromVal = document.getElementById('hDateFrom')?.value || '';
-    const toVal   = document.getElementById('hDateTo')?.value   || '';
-    const pg      = document.getElementById('hPage')?.value     || '';
+    const q         = (document.getElementById('hSearch')?.value || '').toLowerCase().trim();
+    const st        = document.getElementById('hStatus')?.value   || '';
+    const fromVal   = document.getElementById('hDateFrom')?.value || '';
+    const toVal     = document.getElementById('hDateTo')?.value   || '';
+    const timeFrom  = document.getElementById('hTimeFrom')?.value || '';
+    const timeTo    = document.getElementById('hTimeTo')?.value   || '';
+    const pg        = document.getElementById('hPage')?.value     || '';
 
-    const fromTs = fromVal ? new Date(fromVal).setHours(0,0,0,0)       : null;
-    const toTs   = toVal   ? new Date(toVal).setHours(23,59,59,999)    : null;
+    let fromTs = null, toTs = null;
+    if (fromVal) {
+      const [fh, fm] = timeFrom ? timeFrom.split(':').map(Number) : [0, 0];
+      fromTs = new Date(fromVal).setHours(fh, fm, 0, 0);
+    }
+    if (toVal) {
+      const [th, tm] = timeTo ? timeTo.split(':').map(Number) : [23, 59];
+      toTs = new Date(toVal).setHours(th, tm, 59, 999);
+    }
+    // Time-only filter (no date): filter by time-of-day across all dates
+    const timeOnlyFrom = !fromVal && timeFrom ? timeFrom : null;
+    const timeOnlyTo   = !toVal   && timeTo   ? timeTo   : null;
     let shown = 0;
 
     _hPosts.forEach(p => {
@@ -331,15 +357,24 @@
       if (st === 'success'   && p.fail > 0)              ok = false;
       if (st === 'partial'   && p.fail === 0)            ok = false;
       if (st === 'scheduled' && p.status !== 'scheduled') ok = false;
-      const postTs = new Date(p.at).getTime();
+      const postDate = new Date(p.at);
+      const postTs   = postDate.getTime();
       if (fromTs !== null && postTs < fromTs)       ok = false;
       if (toTs   !== null && postTs > toTs)         ok = false;
+      if (timeOnlyFrom) {
+        const postTime = postDate.toTimeString().slice(0,5);
+        if (postTime < timeOnlyFrom)                ok = false;
+      }
+      if (timeOnlyTo) {
+        const postTime = postDate.toTimeString().slice(0,5);
+        if (postTime > timeOnlyTo)                  ok = false;
+      }
       if (pg && !p.pages.includes(pg))              ok = false;
       card.style.display = ok ? '' : 'none';
       if (ok) shown++;
     });
 
-    const hasFilter = q || st || fromVal || toVal || pg;
+    const hasFilter = q || st || fromVal || toVal || timeFrom || timeTo || pg;
     const info = document.getElementById('hFilterInfo');
     if (info) {
       info.style.display = hasFilter ? 'block' : 'none';
@@ -356,7 +391,7 @@
   }
 
   function clearFilters() {
-    ['hSearch','hStatus','hDateFrom','hDateTo','hPage'].forEach(id => {
+    ['hSearch','hStatus','hDateFrom','hDateTo','hTimeFrom','hTimeTo','hPage'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
