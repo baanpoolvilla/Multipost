@@ -634,23 +634,24 @@ async function onImageFilesSelected(input) {
     _selectedImages.push(...entries);
     renderImagePreviews();
 
-    // Upload each file to Supabase via main process (reads from disk path)
-    const errors = [];
+    // Upload each file via main process (Supabase if configured, else local fallback)
     await Promise.all(entries.map(async (entry, idx) => {
         try {
             entry.path = await _uploadFileToSupabase(files[idx]);
             entry.uploading = false;
+            if (entry.path.startsWith('localpath::')) {
+                entry.localOnly = true;
+                appendLog(`[📁] บันทึกแบบ local (ไม่มี Supabase): ${entry.name}`);
+            } else {
+                appendLog(`[☁️] อัปโหลดสำเร็จ: ${entry.name}`);
+            }
         } catch (e) {
             entry.uploading = false;
             entry.uploadError = e.message;
-            errors.push(`${entry.name}: ${e.message}`);
             appendLog(`[❌] อัปโหลดไม่สำเร็จ: ${entry.name} — ${e.message}`);
         }
         renderImagePreviews();
     }));
-    if (errors.length) {
-        alert(`อัปโหลดไม่สำเร็จ ${errors.length} ไฟล์:\n\n${errors.join('\n')}\n\nตรวจสอบว่าตั้งค่า SUPABASE_URL และ SUPABASE_SERVICE_KEY ใน .env แล้ว`);
-    }
 }
 
 function removeImage(i) {
@@ -686,8 +687,9 @@ function renderImagePreviews() {
                </div>`
             : _isVideo(img.name)
               ? `<video src="${img.url}" style="width:100%;height:100%;object-fit:cover;border-radius:4px" muted></video>
-                 <span style="position:absolute;bottom:2px;left:3px;font-size:9px;background:rgba(0,0,0,.55);color:#fff;border-radius:3px;padding:1px 3px">▶ วิดีโอ</span>`
-              : `<img src="${img.url}" alt="${esc(img.name)}">`}
+                 <span style="position:absolute;bottom:2px;left:3px;font-size:9px;background:rgba(0,0,0,.55);color:#fff;border-radius:3px;padding:1px 3px">▶ ${img.localOnly ? '📁' : '☁️'}</span>`
+              : `<img src="${img.url}" alt="${esc(img.name)}">
+                 ${img.localOnly ? `<span style="position:absolute;bottom:2px;left:3px;font-size:9px;background:rgba(0,0,0,.55);color:#fff;border-radius:3px;padding:1px 3px">📁</span>` : ''}`}
         <button class="rm-btn" onclick="removeImage(${i})" title="ลบ">✕</button>
       </div>`).join('') +
       `<button class="fb-photo-add-btn" onclick="openImagePicker()" title="เพิ่มรูป/วิดีโออีก">+</button>`;

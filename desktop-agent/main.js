@@ -114,8 +114,15 @@ ipcMain.handle('file:upload', async (_, filePath, contentType) => {
     const fs   = require('fs');
     const path = require('path');
     const supa = require('./src/supabaseStore');
-    const buf  = await fs.promises.readFile(filePath);
-    const ext  = path.extname(filePath);
-    const fname = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
-    return await supa.upload(fname, buf, contentType);
+    try {
+        const buf   = await fs.promises.readFile(filePath);
+        const ext   = path.extname(filePath);
+        const fname = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+        return await supa.upload(fname, buf, contentType);
+    } catch (e) {
+        // Supabase not configured or upload failed → keep as local path
+        // Template will work on this machine only (localpath:: prefix)
+        console.warn('[file:upload] Supabase unavailable, using local path:', e.message);
+        return `localpath::${filePath}`;
+    }
 });
