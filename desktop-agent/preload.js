@@ -30,8 +30,8 @@ contextBridge.exposeInMainWorld('agent', {
     getTemplate:     (id)       => ipcRenderer.invoke('templates:get', id),
     deleteTemplate:  (id)       => ipcRenderer.invoke('templates:delete', id),
 
-    // Supabase — signed upload URL (service key stays in main process)
-    getSignedUploadUrl: (ext) => ipcRenderer.invoke('supabase:sign-upload', ext),
+    // Supabase — upload file from disk path (main process reads file, uploads with service key)
+    uploadFile: (filePath, contentType) => ipcRenderer.invoke('file:upload', filePath, contentType),
 
     // Push events → renderer
     on: (channel, cb) => ipcRenderer.on(channel, (_, data) => cb(data)),

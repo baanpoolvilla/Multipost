@@ -7,16 +7,9 @@ let _selectedPage = null;
 let _recentLoaded = false;
 let _selectedImages = [];   // array of { path (Supabase URL or fs path), url (preview), name, uploading? }
 async function _uploadFileToSupabase(file) {
-    // main process generates signed URL using service key — secret never reaches renderer
-    const ext = file.name.match(/\.[^.]+$/)?.[0] || '';
-    const { signedUrl, publicUrl } = await agent.getSignedUploadUrl(ext);
-    const res = await fetch(signedUrl, {
-        method:  'PUT',
-        headers: { 'Content-Type': file.type },
-        body: file,
-    });
-    if (!res.ok) throw new Error(`Supabase upload failed (${res.status})`);
-    return publicUrl;
+    // Electron exposes file.path (OS path) — let main process read & upload directly
+    if (!file.path) throw new Error('ไม่พบ path ของไฟล์ — กรุณาลองใหม่');
+    return await agent.uploadFile(file.path, file.type || 'application/octet-stream');
 }
 
 // ── Init ─────────────────────────────────────────────────────
@@ -641,7 +634,8 @@ async function onImageFilesSelected(input) {
     _selectedImages.push(...entries);
     renderImagePreviews();
 
-    // Upload each file to Supabase in background
+    // Upload each file to Supabase via main process (reads from disk path)
+    const errors = [];
     await Promise.all(entries.map(async (entry, idx) => {
         try {
             entry.path = await _uploadFileToSupabase(files[idx]);
@@ -649,10 +643,14 @@ async function onImageFilesSelected(input) {
         } catch (e) {
             entry.uploading = false;
             entry.uploadError = e.message;
-            appendLog(`[⚠️] อัปโหลดไม่สำเร็จ: ${entry.name} — ${e.message}`);
+            errors.push(`${entry.name}: ${e.message}`);
+            appendLog(`[❌] อัปโหลดไม่สำเร็จ: ${entry.name} — ${e.message}`);
         }
         renderImagePreviews();
     }));
+    if (errors.length) {
+        alert(`อัปโหลดไม่สำเร็จ ${errors.length} ไฟล์:\n\n${errors.join('\n')}\n\nตรวจสอบว่าตั้งค่า SUPABASE_URL และ SUPABASE_SERVICE_KEY ใน .env แล้ว`);
+    }
 }
 
 function removeImage(i) {
@@ -675,6 +673,11 @@ function renderImagePreviews() {
                <span style="font-size:14px">☁️</span>
                <span style="font-size:8px;color:var(--text3);text-align:center">กำลังอัปโหลด...</span>
              </div>`
+          : img.uploadError
+            ? `<div style="width:100%;height:100%;background:#3d1a1a;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:4px;gap:3px;padding:3px">
+                 <span style="font-size:14px">❌</span>
+                 <span style="font-size:7px;color:#ff6b6b;text-align:center;line-height:1.3">${esc(img.uploadError.slice(0,50))}</span>
+               </div>`
           : img.missing
             ? `<div style="width:100%;height:100%;background:var(--hover);display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:4px;gap:3px">
                  <span style="font-size:20px">🎬</span>

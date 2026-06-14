@@ -109,8 +109,13 @@ ipcMain.handle('templates:save',   (_, tpl)   => jobTemplateStore.save(tpl));
 ipcMain.handle('templates:get',    (_, id)    => jobTemplateStore.getWithImages(id));
 ipcMain.handle('templates:delete', (_, id)    => jobTemplateStore.remove(id));
 
-// ── IPC: Supabase signed upload URL (service key never leaves main process) ──
-ipcMain.handle('supabase:sign-upload', async (_, ext) => {
+// ── IPC: Upload file from disk path directly to Supabase ──────────────────
+ipcMain.handle('file:upload', async (_, filePath, contentType) => {
+    const fs   = require('fs');
+    const path = require('path');
     const supa = require('./src/supabaseStore');
-    return await supa.createSignedUploadUrl(ext || '');
+    const buf  = await fs.promises.readFile(filePath);
+    const ext  = path.extname(filePath);
+    const fname = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+    return await supa.upload(fname, buf, contentType);
 });
