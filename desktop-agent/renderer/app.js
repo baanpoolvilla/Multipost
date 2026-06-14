@@ -6,25 +6,17 @@ let _statusInterval = null;
 let _selectedPage = null;
 let _recentLoaded = false;
 let _selectedImages = [];   // array of { path (Supabase URL or fs path), url (preview), name, uploading? }
-let _supabaseCfg   = null;  // { url, anonKey, bucket }
-
-async function _getSupabaseCfg() {
-    if (!_supabaseCfg) _supabaseCfg = await agent.getSupabaseConfig().catch(() => ({}));
-    return _supabaseCfg;
-}
-
 async function _uploadFileToSupabase(file) {
-    const cfg = await _getSupabaseCfg();
-    if (!cfg.url || !cfg.anonKey) throw new Error('Supabase ยังไม่ได้ตั้งค่า — ตรวจสอบ .env ของ agent');
-    const ext   = file.name.match(/\.[^.]+$/)?.[0] || '';
-    const fname = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
-    const res   = await fetch(`${cfg.url}/storage/v1/object/${cfg.bucket}/${fname}`, {
-        method:  'POST',
-        headers: { 'Authorization': `Bearer ${cfg.anonKey}`, 'Content-Type': file.type, 'x-upsert': 'true' },
+    // main process generates signed URL using service key — secret never reaches renderer
+    const ext = file.name.match(/\.[^.]+$/)?.[0] || '';
+    const { signedUrl, publicUrl } = await agent.getSignedUploadUrl(ext);
+    const res = await fetch(signedUrl, {
+        method:  'PUT',
+        headers: { 'Content-Type': file.type },
         body: file,
     });
-    if (!res.ok) throw new Error(`(${res.status}) ${await res.text()}`);
-    return `${cfg.url}/storage/v1/object/public/${cfg.bucket}/${fname}`;
+    if (!res.ok) throw new Error(`Supabase upload failed (${res.status})`);
+    return publicUrl;
 }
 
 // ── Init ─────────────────────────────────────────────────────

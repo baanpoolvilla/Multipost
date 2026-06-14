@@ -1,11 +1,23 @@
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SERVICE_KEY  = process.env.SUPABASE_SERVICE_KEY;
-const BUCKET       = process.env.SUPABASE_BUCKET || 'multipost-storage';
+const { createClient } = require('@supabase/supabase-js');
+
+const BUCKET = process.env.SUPABASE_BUCKET || 'multipost-storage';
+
+let _client = null;
+function _getClient() {
+    if (!_client) {
+        if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY)
+            throw new Error('Supabase not configured — set SUPABASE_URL and SUPABASE_SERVICE_KEY in .env');
+        _client = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
+            auth: { persistSession: false },
+        });
+    }
+    return _client;
+}
 
 function publicUrl(filename) {
     if (!filename) return null;
     if (filename.startsWith('http')) return filename;
-    return `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${filename}`;
+    return `${process.env.SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${filename}`;
 }
 
 function _extractPath(urlOrName) {
@@ -16,37 +28,28 @@ function _extractPath(urlOrName) {
 }
 
 async function upload(filename, buffer, contentType) {
-    if (!SUPABASE_URL || !SERVICE_KEY)
-        throw new Error('Supabase not configured — set SUPABASE_URL and SUPABASE_SERVICE_KEY in .env');
-    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${filename}`, {
-        method:  'POST',
-        headers: {
-            'Authorization': `Bearer ${SERVICE_KEY}`,
-            'Content-Type':  contentType || 'application/octet-stream',
-            'x-upsert':      'true',
-        },
-        body: buffer,
+    const supa = _getClient();
+    const { error } = await supa.storage.from(BUCKET).upload(filename, buffer, {
+        contentType, upsert: true,
     });
-    if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        throw new Error(`Supabase upload failed (${res.status}): ${text}`);
-    }
+    if (error) throw new Error(`Supabase upload failed: ${error.message}`);
     return publicUrl(filename);
 }
 
-async function remove(urlOrName) {
-    if (!SUPABASE_URL || !SERVICE_KEY) return;
-    try {
-        const name = _extractPath(urlOrName);
-        await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}`, {
-            method:  'DELETE',
-            headers: {
-                'Authorization': `Bearer ${SERVICE_KEY}`,
-                'Content-Type':  'application/json',
-            },
-            body: JSON.stringify({ prefixes: [name] }),
-        });
-    } catch {}
+// Generate signed upload URL — renderer uploads directly to Supabase without auth
+async function createSignedUploadUrl(ext) {
+    const supa  = _getClient();
+    const fname = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext || ''}`;
+    const { data, error } = await supa.storage.from(BUCKET).createSignedUploadUrl(fname);
+    if (error) throw new Error(`Supabase sign failed: ${error.message}`);
+    return { signedUrl: data.signedUrl, publicUrl: publicUrl(fname) };
 }
 
-module.exports = { upload, publicUrl, remove, BUCKET, SUPABASE_URL };
+async function remove(urlOrName) {
+    if (!urlOrName) return;
+    const supa = _getClient();
+    const name = _extractPath(urlOrName);
+    await supa.storage.from(BUCKET).remove([name]).catch(() => {});
+}
+
+module.exports = { upload, publicUrl, createSignedUploadUrl, remove, BUCKET };

@@ -55,11 +55,23 @@ router.get('/uploads/:filename', async (req, res) => {
     res.send(result.buffer);
 });
 
-// Upload images — save to MongoDB, return confirmed filenames
+// Upload images — save to MongoDB, return confirmed filenames (legacy fallback)
 router.post('/api/upload-images', upload.array('images', 30), multerErrorHandler, saveUploadedFiles, async (req, res) => {
     const filenames = (req.files || []).map(f => f.filename);
     if (!filenames.length) return res.json({ ok: true, filenames: [] });
     res.json({ ok: true, filenames });
+});
+
+// Generate Supabase signed upload URL — browser uploads directly to Supabase
+router.get('/api/sign-upload', async (req, res) => {
+    const supa = require('../services/supabaseStore');
+    try {
+        const { ext } = req.query;
+        const result  = await supa.createSignedUploadUrl(ext || '');
+        res.json({ ok: true, ...result });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
 });
 
 // Templates — accept JSON body (images already uploaded via /api/upload-images)

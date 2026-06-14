@@ -11,17 +11,20 @@ let selectedFiles = [];
 let _supabaseUrls = [];  // Supabase public URLs parallel to selectedFiles
 
 async function _uploadToSupabase(file) {
-  const cfg = window.SUPABASE_CONFIG || {};
-  if (!cfg.url || !cfg.anonKey) throw new Error('Supabase ยังไม่ได้ตั้งค่า — ตรวจสอบ SUPABASE_URL และ SUPABASE_ANON_KEY ใน Vercel');
-  const ext   = file.name.match(/\.[^.]+$/)?.[0] || '';
-  const fname = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
-  const res   = await fetch(`${cfg.url}/storage/v1/object/${cfg.bucket}/${fname}`, {
-    method:  'POST',
-    headers: { 'Authorization': `Bearer ${cfg.anonKey}`, 'Content-Type': file.type, 'x-upsert': 'true' },
+  // 1. Get signed upload URL from server (service key stays server-side)
+  const ext     = file.name.match(/\.[^.]+$/)?.[0] || '';
+  const signRes = await fetch(`/api/sign-upload?ext=${encodeURIComponent(ext)}`);
+  if (!signRes.ok) throw new Error('ไม่สามารถสร้าง upload URL — ตรวจสอบ Supabase env vars');
+  const { signedUrl, publicUrl } = await signRes.json();
+
+  // 2. Upload directly to Supabase (no Vercel size limit)
+  const upRes = await fetch(signedUrl, {
+    method:  'PUT',
+    headers: { 'Content-Type': file.type },
     body: file,
   });
-  if (!res.ok) throw new Error(`อัปโหลดไม่สำเร็จ (${res.status}): ${await res.text()}`);
-  return `${cfg.url}/storage/v1/object/public/${cfg.bucket}/${fname}`;
+  if (!upRes.ok) throw new Error(`Supabase upload failed (${upRes.status})`);
+  return publicUrl;
 }
 
 /* Char counter */

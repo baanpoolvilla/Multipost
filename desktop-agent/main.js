@@ -109,9 +109,8 @@ ipcMain.handle('templates:save',   (_, tpl)   => jobTemplateStore.save(tpl));
 ipcMain.handle('templates:get',    (_, id)    => jobTemplateStore.getWithImages(id));
 ipcMain.handle('templates:delete', (_, id)    => jobTemplateStore.remove(id));
 
-// ── IPC: Supabase config (anon key safe for renderer) ──────────
-ipcMain.handle('supabase:config', () => ({
-    url:     process.env.SUPABASE_URL     || '',
-    anonKey: process.env.SUPABASE_ANON_KEY || '',
-    bucket:  process.env.SUPABASE_BUCKET  || 'multipost-storage',
-}));
+// ── IPC: Supabase signed upload URL (service key never leaves main process) ──
+ipcMain.handle('supabase:sign-upload', async (_, ext) => {
+    const supa = require('./src/supabaseStore');
+    return await supa.createSignedUploadUrl(ext || '');
+});
