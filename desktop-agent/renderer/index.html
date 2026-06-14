@@ -233,10 +233,13 @@
           <span>📌 เลือกกลุ่มที่จะโพส</span>
           <button class="btn-link" onclick="selAll()">เลือกทั้งหมด</button>
           <button class="btn-link" onclick="selNone()">ยกเลิกทั้งหมด</button>
-          <button class="btn-link" onclick="loadGroups()" title="รีเฟรชรายการกลุ่ม" style="margin-left:auto">🔄</button>
+          <button class="btn-link" onclick="loadGroups()" title="โหลดกลุ่มใหม่จากเซิร์ฟเวอร์" style="margin-left:auto;color:var(--accent);font-weight:600;font-size:11px">🔄 รีเฟรช</button>
         </div>
         <div id="groupPickList" class="pick-list" style="max-height:220px">
           <div class="loading">กำลังโหลด...</div>
+        </div>
+        <div style="font-size:10px;color:var(--text3);padding:.2rem .4rem;text-align:right">
+          กลุ่มที่อยู่หลายหมวดจะโพสเพียงครั้งเดียว
         </div>
         <button id="showMoreGroupsBtn" class="btn btn-secondary" style="display:none;width:100%;font-size:11.5px;margin-top:.35rem;padding:.3rem" onclick="openGroupsModal()">
           ดูกลุ่มทั้งหมด <span id="showMoreCount"></span> กลุ่ม

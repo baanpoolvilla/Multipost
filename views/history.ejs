@@ -60,35 +60,76 @@
 
     <% if (posts.length > 0) { %>
     <!-- Filter bar -->
-    <div class="card" style="padding:.75rem 1.1rem">
-      <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
-        <div style="position:relative;flex:2;min-width:160px">
-          <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:.6rem;top:50%;transform:translateY(-50%);color:#aaa;font-size:.78rem;pointer-events:none"></i>
-          <input id="hSearch" type="text" placeholder="ค้นหาในข้อความ..." oninput="applyFilters()"
-            style="width:100%;padding:.42rem .7rem .42rem 2rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.83rem;font-family:inherit;outline:none;box-sizing:border-box">
-        </div>
-        <select id="hStatus" onchange="applyFilters()" style="padding:.42rem .7rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.83rem;font-family:inherit;color:#444;background:#fff;cursor:pointer;outline:none">
-          <option value="">สถานะทั้งหมด</option>
-          <option value="success">สำเร็จทั้งหมด</option>
-          <option value="partial">มีล้มเหลวบางเพจ</option>
-          <option value="scheduled">รอโพส (ตั้งเวลา)</option>
-        </select>
-        <div style="display:flex;align-items:center;gap:.3rem;flex-shrink:0">
-          <input type="date" id="hDateFrom" onchange="applyFilters()" title="ตั้งแต่วันที่"
-            style="padding:.42rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;color:#444;outline:none;cursor:pointer;min-width:0">
-          <span style="color:#bbb;font-size:.85rem">—</span>
-          <input type="date" id="hDateTo" onchange="applyFilters()" title="ถึงวันที่"
-            style="padding:.42rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;color:#444;outline:none;cursor:pointer;min-width:0">
-        </div>
-        <select id="hPage" onchange="applyFilters()" style="padding:.42rem .7rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.83rem;font-family:inherit;color:#444;background:#fff;cursor:pointer;outline:none;max-width:160px">
-          <option value="">ทุกเพจ</option>
-        </select>
-        <button onclick="clearFilters()"
-          style="background:#f0f2f5;border:none;border-radius:8px;padding:.42rem .8rem;font-size:.82rem;font-family:inherit;color:#65676b;cursor:pointer;font-weight:600;white-space:nowrap">
+    <div class="card" style="padding:.85rem 1.25rem">
+      <!-- Header row -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+        <span style="font-weight:700;font-size:.88rem;color:#444">
+          <i class="fa-solid fa-filter" style="color:#1877f2;font-size:.8rem;margin-right:.3rem"></i>ค้นหาและกรอง
+        </span>
+        <button onclick="clearFilters()" id="btnClearFilter"
+          style="background:#fff0f0;border:1px solid #fcc;border-radius:7px;padding:.22rem .6rem;font-size:.77rem;font-family:inherit;color:#c62828;cursor:pointer;font-weight:600;transition:opacity .15s;opacity:.35;pointer-events:none">
           <i class="fa-solid fa-rotate-left"></i> ล้างตัวกรอง
         </button>
       </div>
-      <div id="hFilterInfo" style="display:none;margin-top:.45rem;font-size:.79rem;color:#8a8d91">
+
+      <!-- Main filters grid -->
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:.65rem;margin-bottom:.65rem">
+        <!-- Search -->
+        <div>
+          <div style="font-size:.73rem;color:#8a8d91;font-weight:600;margin-bottom:.28rem">
+            <i class="fa-solid fa-magnifying-glass" style="width:12px"></i> ค้นหาข้อความ
+          </div>
+          <div style="position:relative">
+            <input id="hSearch" type="text" placeholder="พิมพ์คำค้น..." oninput="applyFilters()"
+              style="width:100%;padding:.42rem .75rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.83rem;font-family:inherit;outline:none;box-sizing:border-box;transition:border-color .15s"
+              onfocus="this.style.borderColor='#1877f2'" onblur="this.style.borderColor='#e4e6eb'">
+          </div>
+        </div>
+        <!-- Status -->
+        <div>
+          <div style="font-size:.73rem;color:#8a8d91;font-weight:600;margin-bottom:.28rem">
+            <i class="fa-solid fa-circle-dot" style="width:12px"></i> สถานะ
+          </div>
+          <select id="hStatus" onchange="applyFilters()"
+            style="width:100%;padding:.42rem .5rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.83rem;font-family:inherit;color:#444;background:#fff;cursor:pointer;outline:none">
+            <option value="">ทั้งหมด</option>
+            <option value="success">สำเร็จทั้งหมด</option>
+            <option value="partial">มีล้มเหลว</option>
+            <option value="scheduled">รอโพส</option>
+          </select>
+        </div>
+        <!-- Page -->
+        <div>
+          <div style="font-size:.73rem;color:#8a8d91;font-weight:600;margin-bottom:.28rem">
+            <i class="fa-brands fa-facebook" style="width:12px"></i> เพจ
+          </div>
+          <select id="hPage" onchange="applyFilters()"
+            style="width:100%;padding:.42rem .5rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.83rem;font-family:inherit;color:#444;background:#fff;cursor:pointer;outline:none">
+            <option value="">ทุกเพจ</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Date range row -->
+      <div style="display:flex;align-items:flex-end;gap:.5rem;flex-wrap:wrap">
+        <div>
+          <div style="font-size:.73rem;color:#8a8d91;font-weight:600;margin-bottom:.28rem">
+            <i class="fa-solid fa-calendar-days" style="width:12px"></i> ตั้งแต่วันที่
+          </div>
+          <input type="date" id="hDateFrom" onchange="applyFilters()"
+            style="padding:.4rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;color:#444;outline:none;cursor:pointer">
+        </div>
+        <div style="padding-bottom:.5rem;color:#bbb;font-size:.9rem">—</div>
+        <div>
+          <div style="font-size:.73rem;color:#8a8d91;font-weight:600;margin-bottom:.28rem">ถึงวันที่</div>
+          <input type="date" id="hDateTo" onchange="applyFilters()"
+            style="padding:.4rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;color:#444;outline:none;cursor:pointer">
+        </div>
+      </div>
+
+      <!-- Result info -->
+      <div id="hFilterInfo" style="display:none;margin-top:.6rem;padding-top:.5rem;border-top:1px solid #f0f2f5;font-size:.79rem;color:#8a8d91">
+        <i class="fa-solid fa-circle-info" style="color:#1877f2;margin-right:.3rem"></i>
         แสดง <strong id="hShown" style="color:#1877f2">0</strong> จาก <strong><%= posts.length %></strong> โพสต์
       </div>
     </div>
@@ -307,6 +348,11 @@
     }
     const cnt = document.getElementById('historyCount');
     if (cnt) cnt.textContent = hasFilter ? shown : _hPosts.length;
+    const btnClear = document.getElementById('btnClearFilter');
+    if (btnClear) {
+      btnClear.style.opacity = hasFilter ? '1' : '.35';
+      btnClear.style.pointerEvents = hasFilter ? '' : 'none';
+    }
   }
 
   function clearFilters() {

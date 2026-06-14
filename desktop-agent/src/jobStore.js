@@ -70,13 +70,15 @@ function fId() { return Date.now().toString(); }
 async function getAllGroups() {
     try {
         await connect();
+        await FbGroup.updateMany({ categories: { $ne: 'ทั่วไป' } }, { $addToSet: { categories: 'ทั่วไป' } });
         const groups = await FbGroup.find().sort({ groupName: 1 }).lean();
         return groups.map(g => {
-            // Normalize: old docs have category:String, new have categories:[String]
             let cats = (g.categories && g.categories.length) ? g.categories : null;
             if (!cats) {
                 const c = g.category || 'ทั่วไป';
                 cats = (c === 'ทั่วไป') ? ['ทั่วไป'] : ['ทั่วไป', c];
+            } else if (!cats.includes('ทั่วไป')) {
+                cats = ['ทั่วไป', ...cats];
             }
             return { _id: String(g._id), groupId: g.groupId, groupName: g.groupName, categories: cats };
         });

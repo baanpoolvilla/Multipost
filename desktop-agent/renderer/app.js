@@ -207,8 +207,9 @@ async function loadGroups() {
 async function refreshGroupsSilent() {
     const fresh = await agent.getGroups();
     const fp = g => g.groupId + ':' + (g.categories || [g.category || 'ทั่วไป']).slice().sort().join(',');
-    if (fresh.length === _groups.length &&
-        fresh.every((g, i) => fp(g) === fp(_groups[i]))) return;
+    const oldMap = new Map(_groups.map(g => [g.groupId, fp(g)]));
+    const changed = fresh.length !== _groups.length || fresh.some(g => oldMap.get(g.groupId) !== fp(g));
+    if (!changed) return;
     const prevMap = new Map(_groups.map((g, i) => [g.groupId, _selected[i]]));
     _groups   = fresh;
     _selected = fresh.map(g => prevMap.has(g.groupId) ? prevMap.get(g.groupId) : true);
@@ -229,17 +230,17 @@ function _isCatCollapsed(cat) {
 }
 
 function _getCatGroups() {
-    // Each group appears in exactly ONE category in the picker:
-    // its first non-ทั่วไป category, or ทั่วไป if it has no other category.
-    // ทั่วไป only contains groups with NO other category.
+    // Each group appears in ALL its categories (many-to-many).
+    // selectedGroups() deduplicates before posting so no double-post.
     const catMap = {};
     const allCatsSet = new Set();
     _groups.forEach((g, i) => {
         const gcats = (g.categories && g.categories.length) ? g.categories : [g.category || 'ทั่วไป'];
-        const primaryCat = gcats.find(c => c !== 'ทั่วไป') || 'ทั่วไป';
-        allCatsSet.add(primaryCat);
-        if (!catMap[primaryCat]) catMap[primaryCat] = [];
-        catMap[primaryCat].push({ g, i });
+        gcats.forEach(cat => {
+            allCatsSet.add(cat);
+            if (!catMap[cat]) catMap[cat] = [];
+            catMap[cat].push({ g, i });
+        });
     });
     const cats = [
         ...(allCatsSet.has('ทั่วไป') ? ['ทั่วไป'] : []),
@@ -363,9 +364,10 @@ function togGrp(i) {
     const g = _groups[i];
     if (g) {
         const gcats = g.categories?.length ? g.categories : [g.category || 'ทั่วไป'];
-        const primary = gcats.find(c => c !== 'ทั่วไป') || 'ทั่วไป';
-        const ci = _lastCats.indexOf(primary);
-        if (ci !== -1) _syncCatCb(ci);
+        gcats.forEach(cat => {
+            const ci = _lastCats.indexOf(cat);
+            if (ci !== -1) _syncCatCb(ci);
+        });
     }
     updateGroupCount();
 }
