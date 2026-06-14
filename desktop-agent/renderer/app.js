@@ -269,36 +269,23 @@ function _catItems(cat, catMap, catAll) {
 }
 
 function _renderCatBlock(cat, catMap, catAll, pfx, ci) {
-    const allItems  = _catItems(cat, catMap, catAll);  // count + selection
-    const dispItems = catMap[cat] || [];               // rendered checkboxes (no dup IDs)
+    const items     = _catItems(cat, catMap, catAll);
     const collapsed = _isCatCollapsed(cat);
     const cbId      = `${pfx}_ch_${ci}`;
     const cntId     = `${pfx}_cnt_${ci}`;
     const grpPfx    = pfx === 'i' ? 'g' : 'gm';
-    const selCount  = allItems.filter(({i}) => _selected[i]).length;
+    const selCount  = items.filter(({i}) => _selected[i]).length;
     const chevStyle = `display:inline-block;font-size:10px;color:var(--text3);transition:transform .15s;transform:${collapsed?'rotate(-90deg)':'rotate(0)'}`;
     const cbStyle   = `accent-color:var(--accent);width:14px;height:14px;flex-shrink:0;cursor:pointer`;
 
-    let bodyHtml;
-    if (dispItems.length > 0) {
-        bodyHtml = dispItems.map(({g,i}) => `
-          <div class="pick-item pick-indent" onclick="togGrp(${i})">
-            <input type="checkbox" id="${grpPfx}_${i}" ${_selected[i]?'checked':''}
-                   onclick="event.stopPropagation()"
-                   onchange="_selected[${i}]=this.checked;_syncCb(${i});_syncCatCb(${ci});updateGroupCount()"
-                   style="${cbStyle}">
-            <label for="${grpPfx}_${i}" onclick="event.stopPropagation()" style="flex:1;cursor:pointer">${esc(g.groupName)}</label>
-          </div>`).join('');
-    } else if (allItems.length > 0) {
-        // Groups belong here but are displayed under their primary category
-        const tags = allItems.map(({g}) =>
-            `<span style="background:var(--hover);border-radius:4px;padding:.1rem .35rem;margin:.1rem;display:inline-block;font-size:10.5px">${esc(g.groupName)}</span>`
-        ).join('');
-        bodyHtml = `<div style="padding:.3rem .75rem .45rem;color:var(--text3)">${tags}
-            <div style="margin-top:.25rem;font-size:10px;font-style:italic">↑ ติ๊ก checkbox หมวด เพื่อเลือกทั้งหมด</div></div>`;
-    } else {
-        bodyHtml = '';
-    }
+    const bodyHtml = items.map(({g,i}) => `
+      <div class="pick-item pick-indent" onclick="togGrp(${i})">
+        <input type="checkbox" id="${grpPfx}_${ci}_${i}" data-grp="${i}" ${_selected[i]?'checked':''}
+               onclick="event.stopPropagation()"
+               onchange="_selected[${i}]=this.checked;_syncCb(${i});updateGroupCount()"
+               style="${cbStyle}">
+        <label for="${grpPfx}_${ci}_${i}" onclick="event.stopPropagation()" style="flex:1;cursor:pointer">${esc(g.groupName)}</label>
+      </div>`).join('');
 
     return `<div class="pick-cat">
       <div class="pick-cat-hd" onclick="toggleCatGrp(${ci})">
@@ -306,7 +293,7 @@ function _renderCatBlock(cat, catMap, catAll, pfx, ci) {
                style="${cbStyle}">
         <label for="${cbId}" onclick="event.stopPropagation()"
                style="flex:1;cursor:pointer;font-size:11.5px;font-weight:700;color:var(--text)">
-          📍 ${esc(cat)} <span id="${cntId}" style="font-weight:400;color:var(--text3)">${selCount}/${allItems.length} กลุ่ม</span>
+          📍 ${esc(cat)} <span id="${cntId}" style="font-weight:400;color:var(--text3)">${selCount}/${items.length} กลุ่ม</span>
         </label>
         <span style="${chevStyle}">▼</span>
       </div>
@@ -363,10 +350,13 @@ function _syncCatCb(ci) {
 }
 
 function _syncCb(i) {
-    const a = document.getElementById(`g_${i}`);
-    const b = document.getElementById(`gm_${i}`);
-    if (a) a.checked = _selected[i];
-    if (b) b.checked = _selected[i];
+    // Sync all checkbox instances for this group (may appear in multiple categories)
+    document.querySelectorAll(`[data-grp="${i}"]`).forEach(cb => { cb.checked = _selected[i]; });
+    // Sync all category headers that include this group
+    const { catMap, catAll } = _getCatGroups();
+    _lastCats.forEach((cat, ci) => {
+        if (_catItems(cat, catMap, catAll).some(x => x.i === i)) _syncCatCb(ci);
+    });
 }
 
 function renderGroupsInline() {
@@ -396,15 +386,7 @@ function closeGroupsModal(e){ if(!e||e.target===document.getElementById('groupsM
 
 function togGrp(i) {
     _selected[i] = !_selected[i];
-    _syncCb(i);
-    const g = _groups[i];
-    if (g) {
-        const gcats = (g.categories?.length ? g.categories : [g.category || 'ทั่วไป']);
-        gcats.forEach(cat => {
-            const ci = _lastCats.indexOf(cat);
-            if (ci !== -1) _syncCatCb(ci);
-        });
-    }
+    _syncCb(i);   // syncs all checkboxes + all category headers for this group
     updateGroupCount();
 }
 function togGrpM(i) { togGrp(i); }
