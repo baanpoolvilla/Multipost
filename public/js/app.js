@@ -798,18 +798,20 @@ function renderTemplates() {
 }
 
 function renderTplCard(t, num) {
-  const sel      = _tplSelected === t.id;
-  const msg      = t.message.length > 90 ? t.message.slice(0, 90) + '…' : t.message;
-  const imgs     = (t.images || []);
-  const vidCount = imgs.filter(f => /\.(mp4|mov|avi|webm)$/i.test(f)).length;
-  const imgHtml  = imgs.length ? `
+  const sel       = _tplSelected === t.id;
+  const msg       = t.message.length > 90 ? t.message.slice(0, 90) + '…' : t.message;
+  const imgs      = (t.images || []);
+  const cloudVids = imgs.filter(f => /\.(mp4|mov|avi|webm)$/i.test(f) && f.startsWith('http')).length;
+  const localVids = imgs.filter(f => /\.(mp4|mov|avi|webm)$/i.test(f) && !f.startsWith('http')).length;
+  const imgHtml   = imgs.length ? `
     <div style="display:flex;gap:3px;margin-top:.45rem;flex-wrap:wrap">
       ${imgs.slice(0, 4).map(img => /\.(mp4|mov|avi|webm)$/i.test(img)
         ? `<div style="width:42px;height:42px;background:#1c1e21;border-radius:5px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="fa-solid fa-film" style="color:#fff;font-size:.8rem"></i></div>`
-        : `<img src="/uploads/${img}" style="width:42px;height:42px;object-fit:cover;border-radius:5px;flex-shrink:0" onerror="this.style.display='none'">`).join('')}
+        : `<img src="${img.startsWith('http') ? img : `/uploads/${img}`}" style="width:42px;height:42px;object-fit:cover;border-radius:5px;flex-shrink:0" onerror="this.style.display='none'">`).join('')}
       ${imgs.length > 4 ? `<div style="width:42px;height:42px;background:#e4e6eb;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:.7rem;color:#65676b">+${imgs.length-4}</div>` : ''}
     </div>
-    ${vidCount ? `<div style="margin-top:.3rem;font-size:.7rem;background:#fff8e1;color:#b45309;border-radius:4px;padding:.18rem .4rem;display:inline-block">⚠️ วิดีโอ ${vidCount} ไฟล์ — เฉพาะเครื่องที่สร้าง</div>` : ''}
+    ${localVids ? `<div style="margin-top:.3rem;font-size:.7rem;background:#fff8e1;color:#b45309;border-radius:4px;padding:.18rem .4rem;display:inline-block">⚠️ วิดีโอ ${localVids} ไฟล์ เฉพาะเครื่องที่สร้าง</div>` : ''}
+    ${cloudVids ? `<div style="margin-top:.3rem;font-size:.7rem;background:#e8f5e9;color:#2e7d32;border-radius:4px;padding:.18rem .4rem;display:inline-block">☁️ วิดีโอ ${cloudVids} ไฟล์ใน Cloud</div>` : ''}
     ` : '';
 
   return `
@@ -837,7 +839,9 @@ function renderTplCard(t, num) {
 function renderTplListRow(t, num) {
   const sel      = _tplSelected === t.id;
   const msg      = t.message.length > 110 ? t.message.slice(0, 110) + '…' : t.message;
-  const vidCount = (t.images||[]).filter(f => /\.(mp4|mov|avi|webm)$/i.test(f)).length;
+  const _imgs2     = (t.images||[]);
+  const cloudVids2 = _imgs2.filter(f => /\.(mp4|mov|avi|webm)$/i.test(f) && f.startsWith('http')).length;
+  const localVids2 = _imgs2.filter(f => /\.(mp4|mov|avi|webm)$/i.test(f) && !f.startsWith('http')).length;
   return `
     <div onclick="selectTpl('${t.id}')"
       style="background:#fff;border:2px solid ${sel ? '#1877f2' : '#e4e6eb'};border-radius:8px;padding:.6rem .85rem;cursor:pointer;display:flex;align-items:center;gap:.65rem;transition:border-color .12s">
@@ -847,7 +851,8 @@ function renderTplListRow(t, num) {
       <div style="flex:1;min-width:0">
         <div style="font-weight:700;font-size:.8rem;color:#1c1e21">โพสต์ #${num}${t.name ? ' — ' + t.name : ''}</div>
         <div style="font-size:.79rem;color:#65676b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${msg}</div>
-        ${vidCount ? `<div style="font-size:.7rem;color:#b45309;margin-top:.15rem">⚠️ วิดีโอ ${vidCount} ไฟล์ เฉพาะเครื่องที่สร้าง</div>` : ''}
+        ${localVids2 ? `<div style="font-size:.7rem;color:#b45309;margin-top:.15rem">⚠️ วิดีโอ ${localVids2} ไฟล์ เฉพาะเครื่องที่สร้าง</div>` : ''}
+        ${cloudVids2 ? `<div style="font-size:.7rem;color:#2e7d32;margin-top:.15rem">☁️ วิดีโอ ${cloudVids2} ไฟล์ใน Cloud</div>` : ''}
       </div>
       ${(t.images||[]).length ? `<span style="font-size:.7rem;color:#1877f2;background:#e7f3ff;padding:.1rem .4rem;border-radius:4px;flex-shrink:0"><i class="fa-solid fa-${(t.images||[]).some(f => /\.(mp4|mov|avi|webm|gif)$/i.test(f)) ? 'film' : 'image'}"></i> ${t.images.length}</span>` : ''}
       <div style="display:flex;gap:.25rem;flex-shrink:0" onclick="event.stopPropagation()">
