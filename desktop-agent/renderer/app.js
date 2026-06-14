@@ -203,15 +203,17 @@ async function loadGroups() {
     updateGroupCount();
 }
 
-// Smart refresh — preserves current selections, only re-renders on change
+// Smart refresh — preserves current selections, re-renders on any change
 async function refreshGroupsSilent() {
     const fresh = await agent.getGroups();
+    const fp = g => g.groupId + ':' + (g.categories || [g.category || 'ทั่วไป']).slice().sort().join(',');
     if (fresh.length === _groups.length &&
-        fresh.every((g, i) => g.groupId === _groups[i]?.groupId)) return;
+        fresh.every((g, i) => fp(g) === fp(_groups[i]))) return;
     const prevMap = new Map(_groups.map((g, i) => [g.groupId, _selected[i]]));
     _groups   = fresh;
     _selected = fresh.map(g => prevMap.has(g.groupId) ? prevMap.get(g.groupId) : true);
     renderGroupsInline();
+    renderGroupsModal();
     updateGroupCount();
 }
 
@@ -228,15 +230,20 @@ function _isCatCollapsed(cat) {
 
 function _getCatGroups() {
     const catMap = {};
+    const allCatsSet = new Set();
     _groups.forEach((g, i) => {
         const gcats = (g.categories && g.categories.length) ? g.categories : [g.category || 'ทั่วไป'];
-        const primaryCat = gcats.find(c => c !== 'ทั่วไป') || 'ทั่วไป';
-        if (!catMap[primaryCat]) catMap[primaryCat] = [];
-        catMap[primaryCat].push({ g, i });
+        // many-to-many: กลุ่มอยู่ในทุก category ที่มันมี (รวมทั่วไปเสมอ)
+        const normCats = gcats.includes('ทั่วไป') ? gcats : ['ทั่วไป', ...gcats];
+        normCats.forEach(cat => {
+            allCatsSet.add(cat);
+            if (!catMap[cat]) catMap[cat] = [];
+            catMap[cat].push({ g, i });
+        });
     });
     const cats = [
-        ...('ทั่วไป' in catMap ? ['ทั่วไป'] : []),
-        ...Object.keys(catMap).filter(c => c !== 'ทั่วไป').sort(),
+        ...(allCatsSet.has('ทั่วไป') ? ['ทั่วไป'] : []),
+        ...[...allCatsSet].filter(c => c !== 'ทั่วไป').sort(),
     ];
     return { cats, catMap };
 }
@@ -295,11 +302,8 @@ function toggleCatGrp(ci) {
 function toggleCatSel(ci, checked) {
     const cat = _lastCats[ci];
     if (!cat) return;
-    _groups.forEach((g, i) => {
-        const gcats = g.categories?.length ? g.categories : [g.category || 'ทั่วไป'];
-        const primary = gcats.find(c => c !== 'ทั่วไป') || 'ทั่วไป';
-        if (primary === cat) _selected[i] = checked;
-    });
+    const { catMap } = _getCatGroups();
+    (catMap[cat] || []).forEach(({ i }) => { _selected[i] = checked; });
     renderGroupsInline();
     renderGroupsModal();
     updateGroupCount();
@@ -308,16 +312,19 @@ function toggleCatSel(ci, checked) {
 function _syncCatCb(ci) {
     const cat = _lastCats[ci];
     if (!cat) return;
-    const { catMap } = _getCatGroups();
-    const items    = catMap[cat] || [];
-    const selCount = items.filter(({i}) => _selected[i]).length;
-    const allC     = selCount === items.length;
-    const someC    = selCount > 0;
-    ['i', 'm'].forEach(pfx => {
-        const cb  = document.getElementById(`${pfx}_ch_${ci}`);
-        const cnt = document.getElementById(`${pfx}_cnt_${ci}`);
-        if (cb)  { cb.checked = allC; cb.indeterminate = someC && !allC; }
-        if (cnt) cnt.textContent = `${selCount}/${items.length} กลุ่ม`;
+    // sync all categories that share the same groups (many-to-many)
+    const { cats, catMap } = _getCatGroups();
+    cats.forEach((c, idx) => {
+        const items    = catMap[c] || [];
+        const selCount = items.filter(({i}) => _selected[i]).length;
+        const allC     = selCount === items.length;
+        const someC    = selCount > 0;
+        ['i', 'm'].forEach(pfx => {
+            const cb  = document.getElementById(`${pfx}_ch_${idx}`);
+            const cnt = document.getElementById(`${pfx}_cnt_${idx}`);
+            if (cb)  { cb.checked = allC; cb.indeterminate = someC && !allC; }
+            if (cnt) cnt.textContent = `${selCount}/${items.length} กลุ่ม`;
+        });
     });
 }
 
@@ -369,7 +376,15 @@ function togGrpM(i) { togGrp(i); }
 
 function selAll()  { _selected=_selected.map(()=>true);  renderGroupsInline(); renderGroupsModal(); updateGroupCount(); }
 function selNone() { _selected=_selected.map(()=>false); renderGroupsInline(); renderGroupsModal(); updateGroupCount(); }
-function selectedGroups() { return _groups.filter((_,i)=>_selected[i]); }
+function selectedGroups() {
+    // deduplicate เพราะ many-to-many — กลุ่มเดียวอาจอยู่ใน _selected หลาย index
+    const seen = new Set();
+    return _groups.filter((g, i) => {
+        if (!_selected[i] || seen.has(g.groupId)) return false;
+        seen.add(g.groupId);
+        return true;
+    });
+}
 
 // ── Recent posts ──────────────────────────────────────────────
 async function loadRecentPosts() {
@@ -560,22 +575,13 @@ async function onAccountChange() {
 }
 
 function updateGroupCount() {
-    const n     = _selected.filter(Boolean).length;
-    const total = _groups.length;
-    const el    = document.getElementById('fbGroupCount');
+    const el = document.getElementById('fbGroupCount');
     if (!el) return;
+    const sel   = selectedGroups();
+    const n     = sel.length;
+    const total = _groups.length;
     if (n === 0) { el.textContent = 'ยังไม่ได้เลือกกลุ่ม'; return; }
-    const selCats = new Set();
-    _groups.forEach((g, i) => {
-        if (!_selected[i]) return;
-        const gcats = g.categories?.length ? g.categories : [g.category || 'ทั่วไป'];
-        selCats.add(gcats.find(c => c !== 'ทั่วไป') || 'ทั่วไป');
-    });
-    const nCats   = selCats.size;
-    const catPart = nCats > 1 ? `${nCats} หมวด · ` : '';
-    el.textContent = n === total
-        ? `เลือกทั้งหมด ${catPart}${n} กลุ่ม`
-        : `เลือก ${catPart}${n}/${total} กลุ่ม`;
+    el.textContent = n === total ? `เลือกทั้งหมด ${n} กลุ่ม` : `เลือก ${n}/${total} กลุ่ม`;
 }
 
 function toggleRecentPosts() {
