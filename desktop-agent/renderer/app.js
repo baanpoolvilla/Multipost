@@ -530,6 +530,8 @@ async function createJob() {
         _selectedImages.forEach(i => URL.revokeObjectURL(i.url));
         _selectedImages = [];
         document.getElementById('photoPreviewRow').style.display = 'none';
+        const _n = document.getElementById('videoLocalNotice');
+        if (_n) _n.style.display = 'none';
         document.querySelectorAll('.pick-item.selected').forEach(e => e.classList.remove('selected'));
         const info = [groups.length + ' กลุ่ม', postAs ? postAs : null, imagePaths.length ? imagePaths.length+' รูป' : null].filter(Boolean).join(' · ');
         appendLog(`[📋] สร้างคิวโพสแล้ว: "${msg.slice(0,40)}..." → ${info}`);
@@ -743,10 +745,13 @@ async function applyTemplate(id) {
     }));
     renderImagePreviews();
 
-    // Warn if any video is missing (different machine / file moved)
+    // Show/hide video notice banner
+    const videoItems  = _selectedImages.filter(i => _isVideo(i.name));
     const missingCount = _selectedImages.filter(i => i.missing).length;
+    const notice = document.getElementById('videoLocalNotice');
+    if (notice) notice.style.display = videoItems.length ? '' : 'none';
     if (missingCount > 0) {
-        appendLog(`[⚠️] วิดีโอ ${missingCount} ไฟล์ถูกบันทึกไว้เฉพาะเครื่องต้นทาง — กรุณาอัปโหลดใหม่ (🎬 สีส้ม)`);
+        appendLog(`[⚠️] วิดีโอ ${missingCount} ไฟล์บันทึกไว้เฉพาะเครื่องต้นทาง — เห็น placeholder 🎬 สีส้ม กรุณาอัปโหลดใหม่`);
     }
 
     // Switch to compose tab

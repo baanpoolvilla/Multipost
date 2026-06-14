@@ -196,6 +196,13 @@
       <!-- Hidden file input for photos -->
       <input type="file" id="imageFileInput" accept="image/*,video/*" multiple style="display:none" onchange="onImageFilesSelected(this)">
 
+      <!-- Video local-only notice (shown when template with video is loaded) -->
+      <div id="videoLocalNotice" style="display:none;background:#fff8e1;border:1px solid #f9a825;border-radius:8px;padding:.55rem .75rem;font-size:.8rem;color:#78350f;line-height:1.5;margin-top:.4rem">
+        <b>🎬 template นี้มีวิดีโอที่เก็บไว้เฉพาะเครื่องนี้</b><br>
+        ผู้ใช้คนอื่นที่โหลด template นี้บนเครื่องอื่น <b>จะไม่เห็นวิดีโอ</b> และต้องอัปโหลดวิดีโอใหม่เอง
+        เนื่องจากวิดีโอมีขนาดใหญ่เกินกว่าจะเก็บใน Cloud ได้
+      </div>
+
       <!-- Photo preview strip (shown when images selected) -->
       <div id="photoPreviewRow" class="fb-photo-row" style="display:none"></div>
 

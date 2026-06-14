@@ -733,16 +733,19 @@ function renderTemplates() {
 }
 
 function renderTplCard(t, num) {
-  const sel  = _tplSelected === t.id;
-  const msg  = t.message.length > 90 ? t.message.slice(0, 90) + '…' : t.message;
-  const imgs = (t.images || []);
-  const imgHtml = imgs.length ? `
+  const sel      = _tplSelected === t.id;
+  const msg      = t.message.length > 90 ? t.message.slice(0, 90) + '…' : t.message;
+  const imgs     = (t.images || []);
+  const vidCount = imgs.filter(f => /\.(mp4|mov|avi|webm)$/i.test(f)).length;
+  const imgHtml  = imgs.length ? `
     <div style="display:flex;gap:3px;margin-top:.45rem;flex-wrap:wrap">
       ${imgs.slice(0, 4).map(img => /\.(mp4|mov|avi|webm)$/i.test(img)
         ? `<div style="width:42px;height:42px;background:#1c1e21;border-radius:5px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="fa-solid fa-film" style="color:#fff;font-size:.8rem"></i></div>`
         : `<img src="/uploads/${img}" style="width:42px;height:42px;object-fit:cover;border-radius:5px;flex-shrink:0" onerror="this.style.display='none'">`).join('')}
       ${imgs.length > 4 ? `<div style="width:42px;height:42px;background:#e4e6eb;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:.7rem;color:#65676b">+${imgs.length-4}</div>` : ''}
-    </div>` : '';
+    </div>
+    ${vidCount ? `<div style="margin-top:.3rem;font-size:.7rem;background:#fff8e1;color:#b45309;border-radius:4px;padding:.18rem .4rem;display:inline-block">⚠️ วิดีโอ ${vidCount} ไฟล์ — เฉพาะเครื่องที่สร้าง</div>` : ''}
+    ` : '';
 
   return `
     <div onclick="selectTpl('${t.id}')"
@@ -767,8 +770,9 @@ function renderTplCard(t, num) {
 }
 
 function renderTplListRow(t, num) {
-  const sel = _tplSelected === t.id;
-  const msg = t.message.length > 110 ? t.message.slice(0, 110) + '…' : t.message;
+  const sel      = _tplSelected === t.id;
+  const msg      = t.message.length > 110 ? t.message.slice(0, 110) + '…' : t.message;
+  const vidCount = (t.images||[]).filter(f => /\.(mp4|mov|avi|webm)$/i.test(f)).length;
   return `
     <div onclick="selectTpl('${t.id}')"
       style="background:#fff;border:2px solid ${sel ? '#1877f2' : '#e4e6eb'};border-radius:8px;padding:.6rem .85rem;cursor:pointer;display:flex;align-items:center;gap:.65rem;transition:border-color .12s">
@@ -778,6 +782,7 @@ function renderTplListRow(t, num) {
       <div style="flex:1;min-width:0">
         <div style="font-weight:700;font-size:.8rem;color:#1c1e21">โพสต์ #${num}${t.name ? ' — ' + t.name : ''}</div>
         <div style="font-size:.79rem;color:#65676b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${msg}</div>
+        ${vidCount ? `<div style="font-size:.7rem;color:#b45309;margin-top:.15rem">⚠️ วิดีโอ ${vidCount} ไฟล์ เฉพาะเครื่องที่สร้าง</div>` : ''}
       </div>
       ${(t.images||[]).length ? `<span style="font-size:.7rem;color:#1877f2;background:#e7f3ff;padding:.1rem .4rem;border-radius:4px;flex-shrink:0"><i class="fa-solid fa-${(t.images||[]).some(f => /\.(mp4|mov|avi|webm|gif)$/i.test(f)) ? 'film' : 'image'}"></i> ${t.images.length}</span>` : ''}
       <div style="display:flex;gap:.25rem;flex-shrink:0" onclick="event.stopPropagation()">
@@ -799,7 +804,28 @@ function useTpl() {
   _tplLoadedImages = [...(t.images || [])];
   renderTplImagePreviews();
   closeTemplateModal();
-  Swal.fire({ icon: 'success', title: 'โหลดโพสต์แล้ว', timer: 1300, showConfirmButton: false });
+
+  const videoFiles = (t.images || []).filter(f => /\.(mp4|mov|avi|webm)$/i.test(f));
+  if (videoFiles.length > 0) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'โหลด Template แล้ว — มีวิดีโอ',
+      html: `
+        <div style="text-align:left;font-size:.9rem">
+          <p style="margin:0 0 .6rem">ข้อความและรูปภาพถูกโหลดแล้ว แต่มีข้อจำกัดสำหรับวิดีโอ:</p>
+          <div style="background:#fff8e1;border-left:4px solid #f9a825;border-radius:4px;padding:.65rem .85rem;line-height:1.6">
+            <b>🎬 วิดีโอ ${videoFiles.length} ไฟล์ เก็บไว้เฉพาะเครื่องที่สร้าง template</b><br>
+            เนื่องจากวิดีโอมีขนาดใหญ่เกินกว่าจะเก็บใน Cloud ได้<br>
+            ผู้ใช้คนอื่น (หรือเครื่องอื่น) จะ<b>ไม่เห็นวิดีโอนี้</b> และต้อง<b>เพิ่มวิดีโอใหม่เอง</b>ก่อนโพสต์
+          </div>
+          <p style="margin:.6rem 0 0;color:#888;font-size:.82rem">ชื่อไฟล์: ${videoFiles.map(f => f.split('-').slice(2).join('-') || f).join(', ')}</p>
+        </div>`,
+      confirmButtonText: 'รับทราบ แล้วเพิ่มวิดีโอเอง',
+      confirmButtonColor: '#1877f2',
+    });
+  } else {
+    Swal.fire({ icon: 'success', title: 'โหลดโพสต์แล้ว', timer: 1300, showConfirmButton: false });
+  }
 }
 
 /* ── Create new template ── */
