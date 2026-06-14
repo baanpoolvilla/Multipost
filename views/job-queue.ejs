@@ -32,10 +32,10 @@
 
     <div class="sidebar-divider"></div>
     <div class="sidebar-label">โพส&amp;แชร์ ลงกลุ่ม</div>
-    <a href="/guide" class="sidebar-item"><i class="fa-solid fa-book-open"></i><span>คู่มือการใช้งาน</span></a>
     <a href="/groups" class="sidebar-item"><i class="fa-solid fa-users-rectangle"></i><span>จัดการกลุ่ม</span></a>
     <a href="/agent" class="sidebar-item"><i class="fa-solid fa-robot"></i><span>ติดตั้ง Desktop Agent</span></a>
     <a href="/job-queue" class="sidebar-item active"><i class="fa-solid fa-list-check"></i><span>คิวโพส</span></a>
+    <a href="/guide" class="sidebar-item"><i class="fa-solid fa-book-open"></i><span>คู่มือการใช้งาน</span></a>
   </aside>
 
   <main class="feed">
@@ -76,18 +76,13 @@
         ต้องทำตามขั้นตอนนี้ก่อน:
       </div>
       <div style="display:inline-flex;flex-direction:column;gap:.5rem;text-align:left;font-size:.85rem;color:var(--text-secondary);margin-bottom:1.25rem;line-height:1.7">
-        <div><span style="background:#1877f2;color:#fff;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;margin-right:.4rem">1</span>ไปที่ <a href="/groups" style="color:#1877f2;font-weight:600">จัดการกลุ่ม</a> แล้วเพิ่มกลุ่มที่ต้องการ</div>
-        <div><span style="background:#1877f2;color:#fff;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;margin-right:.4rem">2</span>ดาวน์โหลด Desktop Agent ติดตั้งบนเครื่อง Windows</div>
+        <div><span style="background:#1877f2;color:#fff;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;margin-right:.4rem">1</span>ไปที่ <a href="/groups" style="color:#1877f2;font-weight:600">จัดการกลุ่ม</a> → กด "+ เพิ่มกลุ่ม" เพื่อเพิ่มกลุ่มที่ต้องการ</div>
+        <div><span style="background:#1877f2;color:#fff;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;margin-right:.4rem">2</span>ติดตั้ง Desktop Agent บนเครื่อง Windows — ดูวิธีที่ <a href="/agent" style="color:#1877f2;font-weight:600">หน้าติดตั้ง Agent</a></div>
         <div><span style="background:#1877f2;color:#fff;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;margin-right:.4rem">3</span>เปิด Agent → Login Facebook → กลับมาสั่งโพสที่หน้านี้</div>
       </div>
-      <div style="display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap">
-        <a href="/groups" style="display:inline-flex;align-items:center;gap:.45rem;background:#f0f2f5;color:#1c1e21;padding:.5rem 1.1rem;border-radius:8px;font-weight:700;font-size:.85rem;text-decoration:none">
-          <i class="fa-solid fa-users-rectangle"></i> เพิ่มกลุ่ม
-        </a>
-        <a href="/agent" style="display:inline-flex;align-items:center;gap:.45rem;background:#1877f2;color:#fff;padding:.5rem 1.1rem;border-radius:8px;font-weight:700;font-size:.85rem;text-decoration:none">
-          <i class="fa-solid fa-download"></i> ดาวน์โหลด Agent
-        </a>
-      </div>
+      <a href="/groups" style="display:inline-flex;align-items:center;gap:.45rem;background:#1877f2;color:#fff;padding:.5rem 1.25rem;border-radius:8px;font-weight:700;font-size:.85rem;text-decoration:none">
+        <i class="fa-solid fa-users-rectangle"></i> ไปเพิ่มกลุ่ม
+      </a>
     </div>
     <% } else { %>
 

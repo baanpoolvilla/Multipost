@@ -94,4 +94,14 @@ async function bulkRenameCategory(oldName, newName) {
     } catch(e) { return { error: e.message }; }
 }
 
-module.exports = { list, add, addToCategory, removeFromCategory, moveCategory, remove, bulkRenameCategory };
+// Remove a category name from all groups (used when deleting a category)
+async function bulkRemoveCategory(catName) {
+    if (!catName || catName === 'ทั่วไป') return { ok: true };
+    try {
+        await connect();
+        await Group.updateMany({ categories: catName }, { $pull: { categories: catName } });
+        return { ok: true };
+    } catch(e) { return { error: e.message }; }
+}
+
+module.exports = { list, add, addToCategory, removeFromCategory, moveCategory, remove, bulkRenameCategory, bulkRemoveCategory };

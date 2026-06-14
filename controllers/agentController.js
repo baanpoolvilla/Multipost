@@ -36,7 +36,8 @@ exports.addCategory = async (req, res) => {
 };
 
 exports.deleteCategory = async (req, res) => {
-    await categoryStore.remove(req.params.id);
+    const deleted = await categoryStore.remove(req.params.id);
+    if (deleted?.name) await groupStore.bulkRemoveCategory(deleted.name);
     res.json({ ok: true });
 };
 
