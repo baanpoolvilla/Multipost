@@ -44,6 +44,17 @@ exports.sendPost = async (req, res) => {
         }
     }
 
+    // Pre-flight: video files in Vercel are ephemeral — catch missing files before posting
+    const videoImages = images.filter(f => /\.(mp4|mov|avi|webm)$/i.test(f));
+    for (const vf of videoImages) {
+        const ok = await imageStore.exists(vf);
+        if (!ok) return res.status(400).json({
+            error: `ไฟล์วิดีโอ "${vf.split('-').slice(2).join('-') || vf}" หมดอายุ\n` +
+                   `Vercel เก็บไฟล์ชั่วคราวเท่านั้น — ไฟล์จะหายหลัง serverless function จบ\n` +
+                   `กรุณาอัปโหลดวิดีโอใหม่โดยตรงในช่องโพสต์ (ไม่ใช่จาก Template)`,
+        });
+    }
+
     const results      = await sendToPages(message.trim(), pageIds || null, images, delaySeconds);
     const successCount = results.filter(r => r.status === 'success').length;
 

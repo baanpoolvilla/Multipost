@@ -555,7 +555,15 @@ async function submitPost() {
     } else if (data.id) {
       window.location.href = `/result/${data.id}`;
     } else {
-      Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: data.error || 'ลองใหม่อีกครั้ง', confirmButtonColor: '#1877f2' });
+      const errMsg = data.error || 'ลองใหม่อีกครั้ง';
+      const isVideoErr = errMsg.includes('วิดีโอ') && errMsg.includes('หมดอายุ');
+      Swal.fire({
+        icon: 'error',
+        title: isVideoErr ? '🎬 ไฟล์วิดีโอหมดอายุ' : 'เกิดข้อผิดพลาด',
+        html: `<div style="text-align:left;font-size:.9rem">${errMsg.replace(/\n/g, '<br>')}</div>`,
+        confirmButtonText: isVideoErr ? 'รับทราบ — จะอัปโหลดใหม่' : 'ตกลง',
+        confirmButtonColor: '#1877f2',
+      });
     }
   } catch (err) {
     Swal.fire({ icon: 'error', title: 'ไม่สามารถส่งได้', text: err.message, confirmButtonColor: '#1877f2' });
@@ -639,10 +647,11 @@ function renderTplImagePreviews() {
   el.innerHTML = _tplLoadedImages.map((name, i) => {
     const isVid = /\.(mp4|mov|avi|webm)$/i.test(name);
     const thumb = isVid
-      ? `<video src="/uploads/${name}" style="width:100%;height:100%;object-fit:cover" muted playsinline></video>`
+      ? `<video src="/uploads/${name}" style="width:100%;height:100%;object-fit:cover" muted playsinline
+             onerror="tplVideoBroken('${name}',${i},this)"></video>`
       : `<img src="/uploads/${name}" alt="" onerror="tplImgBroken('${name}', this)">`;
     return `
-    <div class="img-thumb">
+    <div class="img-thumb" id="tpl-thumb-${i}">
       ${thumb}
       <button class="img-thumb-remove" type="button" onclick="removeTplImage(${i})">
         <i class="fa-solid fa-xmark"></i>
@@ -652,9 +661,23 @@ function renderTplImagePreviews() {
 }
 
 function tplImgBroken(name, img) {
-  // Hide the broken thumbnail in UI only — keep filename in _tplLoadedImages so it's still sent
   const thumb = img.closest('.img-thumb');
   if (thumb) thumb.style.display = 'none';
+}
+
+function tplVideoBroken(name, idx, vid) {
+  // Replace broken video with a warning placeholder
+  const thumb = vid.closest('.img-thumb');
+  if (!thumb) return;
+  thumb.style.position = 'relative';
+  thumb.innerHTML = `
+    <div style="width:100%;height:100%;background:#fff3cd;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border-radius:6px;padding:4px;box-sizing:border-box">
+      <span style="font-size:1.4rem">🎬</span>
+      <span style="font-size:.65rem;color:#856404;text-align:center;line-height:1.3">วิดีโอหมดอายุ<br>อัปโหลดใหม่</span>
+    </div>
+    <button class="img-thumb-remove" type="button" onclick="removeTplImage(${idx})" style="position:absolute;top:2px;right:2px">
+      <i class="fa-solid fa-xmark"></i>
+    </button>`;
 }
 
 function removeTplImage(idx) { _tplLoadedImages.splice(idx, 1); renderTplImagePreviews(); }

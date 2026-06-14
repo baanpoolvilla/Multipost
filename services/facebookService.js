@@ -24,7 +24,10 @@ async function uploadPhoto(targetId, accessToken, filename) {
 
 async function uploadVideo(pageId, accessToken, message, filename) {
     const result = await imageStore.getBuffer(filename);
-    if (!result) throw new Error(`ไม่พบไฟล์วิดีโอ: ${filename}`);
+    if (!result) throw new Error(
+        `ไม่พบไฟล์วิดีโอ "${filename}" — Vercel เก็บไฟล์ชั่วคราวเท่านั้น ` +
+        `กรุณาอัปโหลดวิดีโอใหม่โดยตรง (ไม่ใช่จาก Template)`
+    );
 
     const form = new FormData();
     form.append('source', new Blob([result.buffer], { type: result.contentType }), filename);
