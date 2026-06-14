@@ -639,10 +639,16 @@ function renderImagePreviews() {
     row.style.display = 'flex';
     row.innerHTML = _selectedImages.map((img, i) => `
       <div class="fb-photo-thumb">
-        ${_isVideo(img.name)
-          ? `<video src="${img.url}" style="width:100%;height:100%;object-fit:cover;border-radius:4px" muted></video>
-             <span style="position:absolute;bottom:2px;left:3px;font-size:9px;background:rgba(0,0,0,.55);color:#fff;border-radius:3px;padding:1px 3px">▶ วิดีโอ</span>`
-          : `<img src="${img.url}" alt="${esc(img.name)}">`}
+        ${img.missing
+          ? `<div style="width:100%;height:100%;background:var(--hover);display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:4px;gap:3px">
+               <span style="font-size:20px">🎬</span>
+               <span style="font-size:8.5px;color:var(--text3);text-align:center;line-height:1.3;padding:0 3px">${esc(img.name)}</span>
+               <span style="font-size:8px;color:#e67e22;font-weight:600">อัปโหลดใหม่</span>
+             </div>`
+          : _isVideo(img.name)
+            ? `<video src="${img.url}" style="width:100%;height:100%;object-fit:cover;border-radius:4px" muted></video>
+               <span style="position:absolute;bottom:2px;left:3px;font-size:9px;background:rgba(0,0,0,.55);color:#fff;border-radius:3px;padding:1px 3px">▶ วิดีโอ</span>`
+            : `<img src="${img.url}" alt="${esc(img.name)}">`}
         <button class="rm-btn" onclick="removeImage(${i})" title="ลบ">✕</button>
       </div>`).join('') +
       `<button class="fb-photo-add-btn" onclick="openImagePicker()" title="เพิ่มรูป/วิดีโออีก">+</button>`;
@@ -659,15 +665,22 @@ async function loadTemplates() {
 function renderTemplates() {
     const el = document.getElementById('templatesList');
     if (!_templates.length) { el.innerHTML='<div class="empty-state">ยังไม่มีรูปแบบโพสที่บันทึก</div>'; return; }
-    el.innerHTML = _templates.map(t => `
+    el.innerHTML = _templates.map(t => {
+        const hasLocalVid = (t.images||[]).some(p => p.startsWith('localpath::'));
+        const imgCount    = (t.images||[]).filter(p => !p.startsWith('localpath::')).length;
+        let meta = `${(t.groups||[]).length} กลุ่ม · หน่วง ${t.delaySeconds} วิ/กลุ่ม`;
+        if (imgCount)    meta += ` · 🖼 ${imgCount}`;
+        if (hasLocalVid) meta += ` · <span style="color:#e67e22">🎬 วิดีโอ (เฉพาะเครื่องนี้)</span>`;
+        return `
       <div class="tpl-item">
         <div class="tpl-info">
           <div class="tpl-name">${esc(t.name||'ไม่มีชื่อ')}</div>
-          <div class="tpl-meta">${(t.groups||[]).length} กลุ่ม · หน่วง ${t.delaySeconds} วิ/กลุ่ม</div>
+          <div class="tpl-meta">${meta}</div>
         </div>
         <button class="btn btn-primary" style="font-size:11px;padding:.3rem .6rem" onclick="applyTemplate('${t.id}')">ใช้รูปแบบนี้</button>
         <button class="btn btn-secondary" style="font-size:11px;padding:.3rem .5rem;color:var(--red)" onclick="removeTemplate('${t.id}')" title="ลบรูปแบบนี้">🗑</button>
-      </div>`).join('');
+      </div>`;
+    }).join('');
 }
 
 function toggleTemplates() {
@@ -722,14 +735,25 @@ async function applyTemplate(id) {
     updateGroupCount();
     // Restore images/videos from template
     _selectedImages.forEach(i => { try { URL.revokeObjectURL(i.url); } catch {} });
-    _selectedImages = (t.imageDataUrls || [])
-        .filter(x => x.dataUrl || x.localPath)
-        .map(x => ({ path: x.localPath || x.filename, url: x.dataUrl || x.localPath, name: x.filename }));
+    _selectedImages = (t.imageDataUrls || []).map(x => ({
+        path:    x.localPath || x.filename || '',
+        url:     x.dataUrl   || null,
+        name:    x.filename  || '',
+        missing: !!x.missing,
+    }));
     renderImagePreviews();
-    // Switch to compose tab (form is always visible there)
+
+    // Warn if any video is missing (different machine / file moved)
+    const missingCount = _selectedImages.filter(i => i.missing).length;
+    if (missingCount > 0) {
+        appendLog(`[⚠️] วิดีโอ ${missingCount} ไฟล์ถูกบันทึกไว้เฉพาะเครื่องต้นทาง — กรุณาอัปโหลดใหม่ (🎬 สีส้ม)`);
+    }
+
+    // Switch to compose tab
     document.querySelector('.nav-item[data-tab="compose"]')?.click();
     document.getElementById('templatesPanel').style.display='none';
-    appendLog(`[📁] โหลดรูปแบบโพส: "${t.name}"${_selectedImages.length ? ` · ${_selectedImages.length} รูป` : ''}`);
+    const mediaCount = _selectedImages.filter(i => !i.missing).length;
+    appendLog(`[📁] โหลดรูปแบบโพส: "${t.name}"${mediaCount ? ` · ${mediaCount} ไฟล์` : ''}`);
 }
 
 async function removeTemplate(id) {
