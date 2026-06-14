@@ -748,6 +748,14 @@ function togglePostingHelp() {
     btn?.classList.toggle('active', !open);
 }
 
+function toggleDelayTip() {
+    const el  = document.getElementById('delayTipPanel');
+    const btn = document.getElementById('btnDelayTip');
+    const open = el.style.display === '';
+    el.style.display = open ? 'none' : '';
+    if (btn) btn.style.color = open ? '' : 'var(--accent)';
+}
+
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function fmtDate(iso){ try{ return new Date(iso).toLocaleString('th-TH',{timeZone:'Asia/Bangkok',hour12:false,dateStyle:'short',timeStyle:'short'}); }catch{return iso||'';} }
 function fmtUptime(s){ if(!s)return'—'; const h=Math.floor(s/3600),m=Math.floor((s%3600)/60); return h?`${h}h ${m}m`:`${m}m`; }

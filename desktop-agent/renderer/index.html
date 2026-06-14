@@ -19,7 +19,7 @@
     <span class="nav-icon">👤</span><span>บัญชี Facebook</span>
   </button>
   <button class="nav-item" data-tab="compose">
-    <span class="nav-icon">✏️</span><span>โพสใหม่</span>
+    <span class="nav-icon">✏️</span><span>โพส&amp;แชร์กลุ่ม</span>
   </button>
   <button class="nav-item" data-tab="jobs">
     <span class="nav-icon">📋</span><span>คิวโพส</span>
@@ -121,7 +121,7 @@
   <!-- ── TAB: COMPOSE ── -->
   <section id="tab-compose" class="tab">
     <div class="tab-header">
-      <h1>✏️ โพสใหม่</h1>
+      <h1>✏️ โพส&amp;แชร์กลุ่ม</h1>
       <button class="btn btn-secondary" onclick="toggleTemplates()" title="รูปแบบโพสที่บันทึกไว้">📁 รูปแบบโพส</button>
     </div>
 
@@ -167,8 +167,29 @@
         <button class="fb-tool-btn" id="btnPostingHelp" onclick="togglePostingHelp()">❓ วิธีใช้งาน</button>
         <div class="fb-delay-wrap">
           <span>⏱</span>
-          <input type="number" id="jobDelay" value="5" min="1" max="120" class="fb-delay-input">
+          <input type="number" id="jobDelay" value="30" min="1" max="120" class="fb-delay-input">
           <span>วิ/กลุ่ม</span>
+          <span style="font-size:10px;color:#4caf50;font-weight:600;white-space:nowrap">(แนะนำ 30-60)</span>
+          <button onclick="toggleDelayTip()" id="btnDelayTip"
+            style="background:none;border:1px solid var(--border);border-radius:50%;width:16px;height:16px;font-size:10px;cursor:pointer;color:var(--text2);display:inline-flex;align-items:center;justify-content:center;padding:0;flex-shrink:0"
+            title="คำแนะนำหน่วงเวลา">ⓘ</button>
+        </div>
+      </div>
+
+      <!-- Delay tip popup -->
+      <div id="delayTipPanel" style="display:none">
+        <div style="background:#1a2332;border:1px solid var(--border);border-radius:8px;padding:.65rem .85rem;margin:.3rem 0;font-size:11.5px;line-height:1.8">
+          <div style="font-weight:700;color:var(--text);margin-bottom:.4rem">⏱ คำแนะนำ: หน่วงเวลาต่อกลุ่ม</div>
+          <div style="display:grid;grid-template-columns:auto 1fr;gap:.1rem .6rem;color:var(--text2)">
+            <span style="color:#f44336;font-weight:600">&lt; 15 วิ</span><span>⚠️ เสี่ยงสูง — อาจโดนแบนหรือจำกัดการโพส</span>
+            <span style="color:#ff9800;font-weight:600">15-29 วิ</span><span>⚠️ เสี่ยงปานกลาง — ใช้ได้ถ้ากลุ่มน้อย</span>
+            <span style="color:#4caf50;font-weight:700">30-60 วิ</span><span style="color:#4caf50">✅ แนะนำ — สมดุลดีระหว่างความเร็วกับความปลอดภัย</span>
+            <span style="color:#4caf50;font-weight:600">61-90 วิ</span><span>✅ ปลอดภัยดี — เหมาะถ้ามีหลายกลุ่มหรือบัญชีใหม่</span>
+            <span style="color:#4caf50;font-weight:600">&gt; 90 วิ</span><span>✅ ปลอดภัยสูง — แต่ใช้เวลานาน</span>
+          </div>
+          <div style="margin-top:.45rem;padding-top:.4rem;border-top:1px solid var(--border);color:var(--text3);font-size:10.5px">
+            💡 ยิ่งโพสหลายกลุ่มหรือบัญชีใหม่ ควรตั้งหน่วงเวลานานขึ้น
+          </div>
         </div>
       </div>
 
@@ -191,7 +212,7 @@
           <div class="posting-help-title">วิธีการโพส</div>
           <div class="posting-help-row">
             <span class="phmode">ข้อความปกติ</span>
-            <span class="phdesc">พิมพ์ข้อความแล้วกด <b>โพสทุกกลุ่ม</b> ได้เลย</span>
+            <span class="phdesc">พิมพ์ข้อความแล้วกด <b>โพส</b> ได้เลย</span>
           </div>
           <div class="posting-help-row">
             <span class="phmode">🔗 ข้อความ + ลิงก์</span>
@@ -230,7 +251,7 @@
         <div class="fb-footer-actions">
           <input id="templateName" placeholder="ตั้งชื่อรูปแบบ" class="fb-tpl-input">
           <button class="btn btn-secondary" style="padding:.35rem .55rem;font-size:12px" onclick="saveTemplate()" title="บันทึกรูปแบบโพส">💾</button>
-          <button class="btn btn-primary fb-post-btn" onclick="createJob()">โพสทุกกลุ่ม</button>
+          <button class="btn btn-primary fb-post-btn" onclick="createJob()">โพส</button>
         </div>
       </div>
 
