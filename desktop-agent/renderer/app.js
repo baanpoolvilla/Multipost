@@ -229,17 +229,17 @@ function _isCatCollapsed(cat) {
 }
 
 function _getCatGroups() {
+    // Each group appears in exactly ONE category in the picker:
+    // its first non-ทั่วไป category, or ทั่วไป if it has no other category.
+    // ทั่วไป only contains groups with NO other category.
     const catMap = {};
     const allCatsSet = new Set();
     _groups.forEach((g, i) => {
         const gcats = (g.categories && g.categories.length) ? g.categories : [g.category || 'ทั่วไป'];
-        // many-to-many: กลุ่มอยู่ในทุก category ที่มันมี (รวมทั่วไปเสมอ)
-        const normCats = gcats.includes('ทั่วไป') ? gcats : ['ทั่วไป', ...gcats];
-        normCats.forEach(cat => {
-            allCatsSet.add(cat);
-            if (!catMap[cat]) catMap[cat] = [];
-            catMap[cat].push({ g, i });
-        });
+        const primaryCat = gcats.find(c => c !== 'ทั่วไป') || 'ทั่วไป';
+        allCatsSet.add(primaryCat);
+        if (!catMap[primaryCat]) catMap[primaryCat] = [];
+        catMap[primaryCat].push({ g, i });
     });
     const cats = [
         ...(allCatsSet.has('ทั่วไป') ? ['ทั่วไป'] : []),
@@ -312,19 +312,16 @@ function toggleCatSel(ci, checked) {
 function _syncCatCb(ci) {
     const cat = _lastCats[ci];
     if (!cat) return;
-    // sync all categories that share the same groups (many-to-many)
-    const { cats, catMap } = _getCatGroups();
-    cats.forEach((c, idx) => {
-        const items    = catMap[c] || [];
-        const selCount = items.filter(({i}) => _selected[i]).length;
-        const allC     = selCount === items.length;
-        const someC    = selCount > 0;
-        ['i', 'm'].forEach(pfx => {
-            const cb  = document.getElementById(`${pfx}_ch_${idx}`);
-            const cnt = document.getElementById(`${pfx}_cnt_${idx}`);
-            if (cb)  { cb.checked = allC; cb.indeterminate = someC && !allC; }
-            if (cnt) cnt.textContent = `${selCount}/${items.length} กลุ่ม`;
-        });
+    const { catMap } = _getCatGroups();
+    const items    = catMap[cat] || [];
+    const selCount = items.filter(({i}) => _selected[i]).length;
+    const allC     = selCount === items.length;
+    const someC    = selCount > 0;
+    ['i', 'm'].forEach(pfx => {
+        const cb  = document.getElementById(`${pfx}_ch_${ci}`);
+        const cnt = document.getElementById(`${pfx}_cnt_${ci}`);
+        if (cb)  { cb.checked = allC; cb.indeterminate = someC && !allC; }
+        if (cnt) cnt.textContent = `${selCount}/${items.length} กลุ่ม`;
     });
 }
 
