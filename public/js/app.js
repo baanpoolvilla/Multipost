@@ -8,6 +8,21 @@ const fileInput   = document.getElementById('fileInput');
 const tagsBar     = document.getElementById('tagsBar');
 
 let selectedFiles = [];
+let _supabaseUrls = [];  // Supabase public URLs parallel to selectedFiles
+
+async function _uploadToSupabase(file) {
+  const cfg = window.SUPABASE_CONFIG || {};
+  if (!cfg.url || !cfg.anonKey) throw new Error('Supabase ยังไม่ได้ตั้งค่า — ตรวจสอบ SUPABASE_URL และ SUPABASE_ANON_KEY ใน Vercel');
+  const ext   = file.name.match(/\.[^.]+$/)?.[0] || '';
+  const fname = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+  const res   = await fetch(`${cfg.url}/storage/v1/object/${cfg.bucket}/${fname}`, {
+    method:  'POST',
+    headers: { 'Authorization': `Bearer ${cfg.anonKey}`, 'Content-Type': file.type, 'x-upsert': 'true' },
+    body: file,
+  });
+  if (!res.ok) throw new Error(`อัปโหลดไม่สำเร็จ (${res.status}): ${await res.text()}`);
+  return `${cfg.url}/storage/v1/object/public/${cfg.bucket}/${fname}`;
+}
 
 /* Char counter */
 if (messageEl) {
@@ -79,14 +94,37 @@ function _checkFiles(incoming, alreadyHave, maxTotal) {
 function triggerImage() { fileInput?.click(); }
 
 if (fileInput) {
-  fileInput.addEventListener('change', function () {
+  fileInput.addEventListener('change', async function () {
     const incoming = Array.from(this.files);
     this.value = '';
-    const valid = _checkFiles(incoming, selectedFiles.length, 30);
-    valid.forEach(file => {
-      if (!selectedFiles.some(f => f.name === file.name && f.size === file.size))
-        selectedFiles.push(file);
+    const valid = _checkFiles(incoming, selectedFiles.length, 30).filter(
+      f => !selectedFiles.some(x => x.name === f.name && x.size === f.size)
+    );
+    if (!valid.length) return;
+
+    Swal.fire({
+      title: `กำลังอัปโหลด ${valid.length} ไฟล์...`,
+      html: '<p style="color:#65676b;font-size:.85rem">กำลังส่งไปยัง Cloud Storage — ไม่ถูกจำกัด 4.5 MB แล้ว</p>',
+      allowOutsideClick: false, allowEscapeKey: false, showConfirmButton: false,
+      didOpen: () => Swal.showLoading(),
     });
+
+    const failed = [];
+    for (const file of valid) {
+      try {
+        const url = await _uploadToSupabase(file);
+        selectedFiles.push(file);
+        _supabaseUrls.push(url);
+      } catch (e) {
+        failed.push(`${file.name}: ${e.message}`);
+      }
+    }
+    Swal.close();
+    if (failed.length) {
+      Swal.fire({ icon: 'error', title: 'อัปโหลดไม่สำเร็จ',
+        html: `<ul style="text-align:left;padding-left:1.2rem">${failed.map(m => `<li style="font-size:.85rem">${m}</li>`).join('')}</ul>`,
+        confirmButtonColor: '#1877f2', confirmButtonText: 'ตกลง' });
+    }
     renderPreviews();
   });
 }
@@ -110,7 +148,7 @@ function renderPreviews() {
   }).join('');
 }
 
-function removeImage(idx) { selectedFiles.splice(idx, 1); renderPreviews(); }
+function removeImage(idx) { selectedFiles.splice(idx, 1); _supabaseUrls.splice(idx, 1); renderPreviews(); }
 
 /* ── Page selector ── */
 let selectedPageIds = new Set(
@@ -502,9 +540,9 @@ async function submitPost() {
   fd.append('feelingLabel', document.getElementById('feelingLabel')?.value || '');
   selectedPageIds.forEach(id => fd.append('selectedPages', id));
   _tplLoadedImages.forEach(name => fd.append('templateImages', name));
+  _supabaseUrls.forEach(url => fd.append('templateImages', url));
   if (_shareGroupsData.length > 0)
     fd.append('shareGroups', JSON.stringify(_shareGroupsData));
-  selectedFiles.forEach(f => fd.append('images', f));
   if (schedAt) fd.append('scheduledAt', new Date(schedAt.slice(0,16) + ':00+07:00').toISOString());
   if (delay > 0) fd.append('postDelay', delay);
 
@@ -551,7 +589,7 @@ async function submitPost() {
         cancelButtonText: 'โพสต์ต่อ', confirmButtonColor: '#1877f2',
       });
       if (r2.isConfirmed) window.location.href = '/history';
-      else { messageEl.value = ''; selectedFiles = []; document.getElementById('imagePreview').style.display='none'; }
+      else { messageEl.value = ''; selectedFiles = []; _supabaseUrls = []; document.getElementById('imagePreview').style.display='none'; }
     } else if (data.id) {
       window.location.href = `/result/${data.id}`;
     } else {
@@ -646,10 +684,11 @@ function renderTplImagePreviews() {
   el.style.display = 'grid';
   el.innerHTML = _tplLoadedImages.map((name, i) => {
     const isVid = /\.(mp4|mov|avi|webm)$/i.test(name);
+    const src   = name.startsWith('http') ? name : `/uploads/${name}`;
     const thumb = isVid
-      ? `<video src="/uploads/${name}" style="width:100%;height:100%;object-fit:cover" muted playsinline
+      ? `<video src="${src}" style="width:100%;height:100%;object-fit:cover" muted playsinline
              onerror="tplVideoBroken('${name}',${i},this)"></video>`
-      : `<img src="/uploads/${name}" alt="" onerror="tplImgBroken('${name}', this)">`;
+      : `<img src="${src}" alt="" onerror="tplImgBroken('${name}', this)">`;
     return `
     <div class="img-thumb" id="tpl-thumb-${i}">
       ${thumb}
@@ -1128,9 +1167,8 @@ async function saveCurrentAsTemplate() {
 
   try {
     Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, showConfirmButton: false, didOpen: () => Swal.showLoading() });
-    const newFilenames = await _uploadImages(selectedFiles);
-    if (selectedFiles.length > 0 && newFilenames.length === 0) throw new Error('อัปโหลดรูปไม่สำเร็จ');
-    const images = [..._tplLoadedImages, ...newFilenames];
+    // _supabaseUrls already uploaded — combine with template images
+    const images = [..._tplLoadedImages, ..._supabaseUrls];
     const data = await _saveTemplate('/api/templates', 'POST', { message: msg, name: name || '', images });
     if (!data.ok) throw new Error(data.error || 'บันทึกไม่สำเร็จ');
     Swal.fire({ icon: 'success', title: 'บันทึกแล้ว!', timer: 1400, showConfirmButton: false });

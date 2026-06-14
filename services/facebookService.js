@@ -8,14 +8,23 @@ function isVideoFile(filename) {
 }
 
 async function uploadPhoto(targetId, accessToken, filename) {
+    // Prefer URL-based upload (works for both Supabase URLs and old filenames via redirect)
+    const publicUrl = await imageStore.getPublicUrl(filename);
+    if (publicUrl) {
+        const params = new URLSearchParams({ url: publicUrl, published: 'false', access_token: accessToken });
+        const res  = await fetch(`${FB_API}/${targetId}/photos`, { method: 'POST', body: params });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error.message);
+        return data.id;
+    }
+
+    // Fallback: binary upload (legacy MongoDB images)
     const result = await imageStore.getBuffer(filename);
     if (!result) return null;
-
     const form = new FormData();
     form.append('source', new Blob([result.buffer], { type: result.contentType }), filename);
     form.append('published', 'false');
     form.append('access_token', accessToken);
-
     const res  = await fetch(`${FB_API}/${targetId}/photos`, { method: 'POST', body: form });
     const data = await res.json();
     if (data.error) throw new Error(data.error.message);
@@ -23,17 +32,26 @@ async function uploadPhoto(targetId, accessToken, filename) {
 }
 
 async function uploadVideo(pageId, accessToken, message, filename) {
+    // Use file_url — FB fetches directly from Supabase, no server download needed
+    const publicUrl = await imageStore.getPublicUrl(filename);
+    if (publicUrl) {
+        const params = new URLSearchParams({ file_url: publicUrl, description: message, access_token: accessToken });
+        const res  = await fetch(`${FB_API}/${pageId}/videos`, { method: 'POST', body: params });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error.message);
+        return data.id;
+    }
+
+    // Fallback: binary upload (local disk only — will fail on Vercel)
     const result = await imageStore.getBuffer(filename);
     if (!result) throw new Error(
-        `ไม่พบไฟล์วิดีโอ "${filename}" — Vercel เก็บไฟล์ชั่วคราวเท่านั้น ` +
-        `กรุณาอัปโหลดวิดีโอใหม่โดยตรง (ไม่ใช่จาก Template)`
+        `ไม่พบไฟล์วิดีโอ "${filename.split('-').slice(2).join('-') || filename}" — ` +
+        `กรุณาอัปโหลดวิดีโอใหม่ (ไฟล์ใน Supabase Storage จะทำงานได้ถาวร)`
     );
-
     const form = new FormData();
     form.append('source', new Blob([result.buffer], { type: result.contentType }), filename);
     form.append('description', message);
     form.append('access_token', accessToken);
-
     const res  = await fetch(`${FB_API}/${pageId}/videos`, { method: 'POST', body: form });
     const data = await res.json();
     if (data.error) throw new Error(data.error.message);

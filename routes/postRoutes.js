@@ -40,9 +40,15 @@ async function saveUploadedFiles(req, res, next) {
     }
 }
 
-// Serve uploaded images from MongoDB (works on Vercel where /tmp is ephemeral)
+// Serve uploaded images — redirect to Supabase URL when available
 router.get('/uploads/:filename', async (req, res) => {
-    const result = await imageStore.getBuffer(req.params.filename);
+    const { filename } = req.params;
+    const publicUrl = await imageStore.getPublicUrl(filename);
+    if (publicUrl?.startsWith('http')) {
+        return res.redirect(301, publicUrl);
+    }
+    // Legacy fallback: serve binary from MongoDB/disk
+    const result = await imageStore.getBuffer(filename);
     if (!result) return res.status(404).send('Not found');
     res.set('Content-Type', result.contentType);
     res.set('Cache-Control', 'public, max-age=31536000, immutable');
@@ -99,10 +105,21 @@ router.delete('/pages/:id',   ctrl.deletePage);
 // Agent download — injects .env with MONGODB_URI so DB connects on first run
 router.get('/download/agent', (req, res) => {
     try {
-        const mongoUri = process.env.MONGODB_URI || '';
+        const mongoUri   = process.env.MONGODB_URI        || '';
+        const supaUrl    = process.env.SUPABASE_URL       || '';
+        const supaSvc    = process.env.SUPABASE_SERVICE_KEY || '';
+        const supaAnon   = process.env.SUPABASE_ANON_KEY  || '';
+        const supaBucket = process.env.SUPABASE_BUCKET    || 'multipost-storage';
+        const envContent = [
+            `MONGODB_URI=${mongoUri}`,
+            `SUPABASE_URL=${supaUrl}`,
+            `SUPABASE_SERVICE_KEY=${supaSvc}`,
+            `SUPABASE_ANON_KEY=${supaAnon}`,
+            `SUPABASE_BUCKET=${supaBucket}`,
+        ].join('\n') + '\n';
         const zipPath  = path.join(__dirname, '../public/downloads/agent.zip');
         const zip      = new AdmZip(zipPath);
-        zip.addFile('multipost-agent/.env', Buffer.from(`MONGODB_URI=${mongoUri}\n`));
+        zip.addFile('multipost-agent/.env', Buffer.from(envContent));
         const buf = zip.toBuffer();
         res.setHeader('Content-Type', 'application/zip');
         res.setHeader('Content-Disposition', 'attachment; filename="multipost-agent.zip"');

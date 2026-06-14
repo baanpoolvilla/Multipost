@@ -44,14 +44,13 @@ exports.sendPost = async (req, res) => {
         }
     }
 
-    // Pre-flight: video files in Vercel are ephemeral — catch missing files before posting
-    const videoImages = images.filter(f => /\.(mp4|mov|avi|webm)$/i.test(f));
+    // Pre-flight: check that video files still exist (skip Supabase URLs — they're permanent)
+    const videoImages = images.filter(f => /\.(mp4|mov|avi|webm)$/i.test(f) && !f.startsWith('http'));
     for (const vf of videoImages) {
         const ok = await imageStore.exists(vf);
         if (!ok) return res.status(400).json({
             error: `ไฟล์วิดีโอ "${vf.split('-').slice(2).join('-') || vf}" หมดอายุ\n` +
-                   `Vercel เก็บไฟล์ชั่วคราวเท่านั้น — ไฟล์จะหายหลัง serverless function จบ\n` +
-                   `กรุณาอัปโหลดวิดีโอใหม่โดยตรงในช่องโพสต์ (ไม่ใช่จาก Template)`,
+                   `Vercel เก็บไฟล์ชั่วคราวเท่านั้น — กรุณาอัปโหลดวิดีโอใหม่`,
         });
     }
 

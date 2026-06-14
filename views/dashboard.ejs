@@ -300,8 +300,12 @@
 <script>
   const ALL_PAGES = <%- JSON.stringify(pages) %>;
   let DISABLED_PAGES = <%- JSON.stringify(disabledPages) %>;
+  window.SUPABASE_CONFIG = {
+    url:     '<%- (process.env.SUPABASE_URL        || "") %>',
+    anonKey: '<%- (process.env.SUPABASE_ANON_KEY   || "") %>',
+    bucket:  '<%- (process.env.SUPABASE_BUCKET     || "multipost-storage") %>',
+  };
   <% if (recentPosts.some(p => p.status === 'scheduled')) { %>
-  // มี scheduled post — trigger scheduler ทันที
   fetch('/api/cron/run-scheduled', { method: 'POST' }).catch(() => {});
   <% } %>
 </script>

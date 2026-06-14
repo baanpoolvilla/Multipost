@@ -5,7 +5,27 @@ let _catCollapsed = {}; // category → true (collapsed) / false (expanded)
 let _statusInterval = null;
 let _selectedPage = null;
 let _recentLoaded = false;
-let _selectedImages = [];   // array of { path, url } (path = fs path, url = objectURL)
+let _selectedImages = [];   // array of { path (Supabase URL or fs path), url (preview), name, uploading? }
+let _supabaseCfg   = null;  // { url, anonKey, bucket }
+
+async function _getSupabaseCfg() {
+    if (!_supabaseCfg) _supabaseCfg = await agent.getSupabaseConfig().catch(() => ({}));
+    return _supabaseCfg;
+}
+
+async function _uploadFileToSupabase(file) {
+    const cfg = await _getSupabaseCfg();
+    if (!cfg.url || !cfg.anonKey) throw new Error('Supabase ยังไม่ได้ตั้งค่า — ตรวจสอบ .env ของ agent');
+    const ext   = file.name.match(/\.[^.]+$/)?.[0] || '';
+    const fname = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+    const res   = await fetch(`${cfg.url}/storage/v1/object/${cfg.bucket}/${fname}`, {
+        method:  'POST',
+        headers: { 'Authorization': `Bearer ${cfg.anonKey}`, 'Content-Type': file.type, 'x-upsert': 'true' },
+        body: file,
+    });
+    if (!res.ok) throw new Error(`(${res.status}) ${await res.text()}`);
+    return `${cfg.url}/storage/v1/object/public/${cfg.bucket}/${fname}`;
+}
 
 // ── Init ─────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', async () => {
@@ -520,7 +540,7 @@ async function createJob() {
     const _selAcc = _accounts.find(a => a.id === accId);
     if (_selAcc && _selAcc.status !== 'logged_in') { alert(`บัญชี "${_selAcc.email}" ยังไม่ได้เข้าสู่ระบบ\nกรุณากด "เข้าสู่ระบบ" ที่หน้าบัญชีก่อน`); return; }
 
-    const imagePaths = _selectedImages.map(i => i.path).filter(Boolean);
+    const imagePaths = _selectedImages.filter(i => !i.uploading).map(i => i.path).filter(Boolean);
 
     const job = await agent.createJob({ message:msg, groups, delaySeconds:delay, accountId:accId||undefined, postAsPage:postAs||undefined, images:imagePaths });
     if (job) {
@@ -617,13 +637,30 @@ function openImagePicker() {
     document.getElementById('imageFileInput').click();
 }
 
-function onImageFilesSelected(input) {
-    for (const file of input.files) {
-        const url = URL.createObjectURL(file);
-        _selectedImages.push({ path: file.path || '', url, name: file.name });
-    }
+async function onImageFilesSelected(input) {
+    const files = Array.from(input.files);
     input.value = '';
+    if (!files.length) return;
+
+    // Add entries with local preview immediately
+    const entries = files.map(f => ({
+        path: '', url: URL.createObjectURL(f), name: f.name, uploading: true,
+    }));
+    _selectedImages.push(...entries);
     renderImagePreviews();
+
+    // Upload each file to Supabase in background
+    await Promise.all(entries.map(async (entry, idx) => {
+        try {
+            entry.path = await _uploadFileToSupabase(files[idx]);
+            entry.uploading = false;
+        } catch (e) {
+            entry.uploading = false;
+            entry.uploadError = e.message;
+            appendLog(`[⚠️] อัปโหลดไม่สำเร็จ: ${entry.name} — ${e.message}`);
+        }
+        renderImagePreviews();
+    }));
 }
 
 function removeImage(i) {
@@ -641,16 +678,21 @@ function renderImagePreviews() {
     row.style.display = 'flex';
     row.innerHTML = _selectedImages.map((img, i) => `
       <div class="fb-photo-thumb">
-        ${img.missing
+        ${img.uploading
           ? `<div style="width:100%;height:100%;background:var(--hover);display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:4px;gap:3px">
-               <span style="font-size:20px">🎬</span>
-               <span style="font-size:8.5px;color:var(--text3);text-align:center;line-height:1.3;padding:0 3px">${esc(img.name)}</span>
-               <span style="font-size:8px;color:#e67e22;font-weight:600">อัปโหลดใหม่</span>
+               <span style="font-size:14px">☁️</span>
+               <span style="font-size:8px;color:var(--text3);text-align:center">กำลังอัปโหลด...</span>
              </div>`
-          : _isVideo(img.name)
-            ? `<video src="${img.url}" style="width:100%;height:100%;object-fit:cover;border-radius:4px" muted></video>
-               <span style="position:absolute;bottom:2px;left:3px;font-size:9px;background:rgba(0,0,0,.55);color:#fff;border-radius:3px;padding:1px 3px">▶ วิดีโอ</span>`
-            : `<img src="${img.url}" alt="${esc(img.name)}">`}
+          : img.missing
+            ? `<div style="width:100%;height:100%;background:var(--hover);display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:4px;gap:3px">
+                 <span style="font-size:20px">🎬</span>
+                 <span style="font-size:8.5px;color:var(--text3);text-align:center;line-height:1.3;padding:0 3px">${esc(img.name)}</span>
+                 <span style="font-size:8px;color:#e67e22;font-weight:600">อัปโหลดใหม่</span>
+               </div>`
+            : _isVideo(img.name)
+              ? `<video src="${img.url}" style="width:100%;height:100%;object-fit:cover;border-radius:4px" muted></video>
+                 <span style="position:absolute;bottom:2px;left:3px;font-size:9px;background:rgba(0,0,0,.55);color:#fff;border-radius:3px;padding:1px 3px">▶ วิดีโอ</span>`
+              : `<img src="${img.url}" alt="${esc(img.name)}">`}
         <button class="rm-btn" onclick="removeImage(${i})" title="ลบ">✕</button>
       </div>`).join('') +
       `<button class="fb-photo-add-btn" onclick="openImagePicker()" title="เพิ่มรูป/วิดีโออีก">+</button>`;
@@ -668,10 +710,13 @@ function renderTemplates() {
     const el = document.getElementById('templatesList');
     if (!_templates.length) { el.innerHTML='<div class="empty-state">ยังไม่มีรูปแบบโพสที่บันทึก</div>'; return; }
     el.innerHTML = _templates.map(t => {
-        const hasLocalVid = (t.images||[]).some(p => p.startsWith('localpath::'));
-        const imgCount    = (t.images||[]).filter(p => !p.startsWith('localpath::')).length;
+        const hasLocalVid  = (t.images||[]).some(p => p.startsWith('localpath::'));
+        const cloudCount   = (t.images||[]).filter(p => p.startsWith('http')).length;
+        const localImgCount = (t.images||[]).filter(p => !p.startsWith('localpath::') && !p.startsWith('http')).length;
+        const imgCount     = cloudCount + localImgCount;
         let meta = `${(t.groups||[]).length} กลุ่ม · หน่วง ${t.delaySeconds} วิ/กลุ่ม`;
         if (imgCount)    meta += ` · 🖼 ${imgCount}`;
+        if (cloudCount)  meta += ` · <span style="color:#27ae60">☁️ Cloud</span>`;
         if (hasLocalVid) meta += ` · <span style="color:#e67e22">🎬 วิดีโอ (เฉพาะเครื่องนี้)</span>`;
         return `
       <div class="tpl-item">
@@ -697,7 +742,7 @@ async function saveTemplate() {
     const grps   = selectedGroups();
     const del    = parseInt(document.getElementById('jobDelay').value)||5;
     const postAs = _selectedPage || null;
-    const imgs   = _selectedImages.map(i => i.path).filter(Boolean);
+    const imgs   = _selectedImages.filter(i => !i.uploading).map(i => i.path).filter(Boolean);
     if (!msg && !grps.length) { alert('กรุณากรอกข้อความหรือเลือกกลุ่มก่อนบันทึกรูปแบบ'); return; }
     _templates = await agent.saveTemplate({ name, message:msg, groups:grps, delaySeconds:del, postAsPage:postAs||undefined, images: imgs });
     renderTemplates();
@@ -736,11 +781,11 @@ async function applyTemplate(id) {
     renderGroupsInline();
     updateGroupCount();
     // Restore images/videos from template
-    _selectedImages.forEach(i => { try { URL.revokeObjectURL(i.url); } catch {} });
+    _selectedImages.forEach(i => { try { if (i.url && !i.url.startsWith('http')) URL.revokeObjectURL(i.url); } catch {} });
     _selectedImages = (t.imageDataUrls || []).map(x => ({
-        path:    x.localPath || x.filename || '',
-        url:     x.dataUrl   || null,
-        name:    x.filename  || '',
+        path:    x.supabaseUrl || x.localPath || x.filename || '',
+        url:     x.supabaseUrl || x.dataUrl   || null,
+        name:    x.filename    || '',
         missing: !!x.missing,
     }));
     renderImagePreviews();

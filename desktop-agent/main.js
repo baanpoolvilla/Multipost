@@ -108,3 +108,10 @@ ipcMain.handle('templates:list',   ()         => jobTemplateStore.list());
 ipcMain.handle('templates:save',   (_, tpl)   => jobTemplateStore.save(tpl));
 ipcMain.handle('templates:get',    (_, id)    => jobTemplateStore.getWithImages(id));
 ipcMain.handle('templates:delete', (_, id)    => jobTemplateStore.remove(id));
+
+// ── IPC: Supabase config (anon key safe for renderer) ──────────
+ipcMain.handle('supabase:config', () => ({
+    url:     process.env.SUPABASE_URL     || '',
+    anonKey: process.env.SUPABASE_ANON_KEY || '',
+    bucket:  process.env.SUPABASE_BUCKET  || 'multipost-storage',
+}));

@@ -3,12 +3,12 @@ const fs        = require('fs');
 const path      = require('path');
 const { connect } = require('./jobStore');
 const imgStore  = require('./agentImageStore');
+const supa      = require('./supabaseStore');
 
 const MIME = {
     '.jpg':'image/jpeg', '.jpeg':'image/jpeg', '.png':'image/png', '.gif':'image/gif', '.webp':'image/webp',
     '.mp4':'video/mp4', '.mov':'video/quicktime', '.avi':'video/x-msvideo', '.webm':'video/webm', '.mkv':'video/x-matroska',
 };
-const VIDEO_EXTS = new Set(['.mp4','.mov','.avi','.webm','.mkv']);
 
 const schema = new mongoose.Schema({
     _id:          String,
@@ -32,7 +32,7 @@ async function list() {
     } catch { return []; }
 }
 
-// imagePaths: absolute fs paths (new files), or stored refs (plain filename / localpath::)
+// imagePaths: Supabase URLs, absolute fs paths, or stored refs
 async function save({ id, name, message, groups, delaySeconds, postAsPage, images: imagePaths }) {
     await connect();
 
@@ -40,29 +40,60 @@ async function save({ id, name, message, groups, delaySeconds, postAsPage, image
     for (const p of (imagePaths || [])) {
         if (!p) continue;
 
-        // Already stored ref — keep as-is
-        if (p.startsWith('localpath::') || p.startsWith('gridfs::')) {
+        // Already a Supabase URL or other http URL → keep as-is
+        if (p.startsWith('http')) {
             filenames.push(p);
             continue;
         }
 
-        const ext = path.extname(p).toLowerCase();
+        // Legacy refs — keep as-is
+        if (p.startsWith('gridfs::')) {
+            filenames.push(p);
+            continue;
+        }
 
-        if (path.isAbsolute(p) && fs.existsSync(p)) {
-            if (VIDEO_EXTS.has(ext)) {
-                // Videos: store local path only (not uploaded to DB — too large)
-                filenames.push(`localpath::${p}`);
-            } else {
-                // Images: upload to MongoDB so they work across machines
+        // localpath:: → try to re-upload to Supabase
+        if (p.startsWith('localpath::')) {
+            const localPath = p.slice('localpath::'.length);
+            if (fs.existsSync(localPath)) {
+                const ext = path.extname(localPath).toLowerCase();
                 try {
-                    const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
-                    const buf      = fs.readFileSync(p);
-                    await imgStore.save(filename, buf, MIME[ext] || 'image/jpeg');
-                    filenames.push(filename);
-                } catch (e) { console.warn('[tpl] img upload failed:', e.message); }
+                    const buf   = fs.readFileSync(localPath);
+                    const fname = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+                    const url   = await supa.upload(fname, buf, MIME[ext] || 'application/octet-stream');
+                    filenames.push(url);
+                } catch { filenames.push(p); } // keep localpath:: on failure
+            } else {
+                filenames.push(p); // missing but keep ref
+            }
+            continue;
+        }
+
+        // Absolute local path → upload to Supabase (images and videos)
+        const ext = path.extname(p).toLowerCase();
+        if (path.isAbsolute(p) && fs.existsSync(p)) {
+            try {
+                const buf   = fs.readFileSync(p);
+                const fname = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+                const url   = await supa.upload(fname, buf, MIME[ext] || 'application/octet-stream');
+                filenames.push(url);
+            } catch (e) {
+                console.warn('[tpl] Supabase upload failed:', e.message);
+                // fallback: MongoDB for images, localpath:: for videos
+                const VIDEO_EXTS = new Set(['.mp4','.mov','.avi','.webm','.mkv']);
+                if (VIDEO_EXTS.has(ext)) {
+                    filenames.push(`localpath::${p}`);
+                } else {
+                    try {
+                        const buf   = fs.readFileSync(p);
+                        const fname = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+                        await imgStore.save(fname, buf, MIME[ext] || 'image/jpeg');
+                        filenames.push(fname);
+                    } catch {}
+                }
             }
         } else {
-            filenames.push(p); // already a stored filename (image in agentImageStore)
+            filenames.push(p); // already a stored filename (MongoDB image)
         }
     }
 
@@ -75,7 +106,7 @@ async function save({ id, name, message, groups, delaySeconds, postAsPage, image
     return (await Tpl.find().sort({ createdAt: -1 }).lean()).map(_normalize);
 }
 
-// Returns template with images as data URLs / file:// URLs for the renderer
+// Returns template with images as data URLs / Supabase URLs for the renderer
 async function getWithImages(id) {
     try {
         await connect();
@@ -83,9 +114,18 @@ async function getWithImages(id) {
         if (!tpl) return null;
         const imageDataUrls = [];
         for (const entry of (tpl.images || [])) {
-            if (entry.startsWith('localpath::')) {
-                const localPath = entry.slice('localpath::'.length);
-                const filename  = path.basename(localPath);
+            if (entry.startsWith('http')) {
+                // Supabase URL — use directly
+                const filename = decodeURIComponent(entry.split('/').pop());
+                imageDataUrls.push({
+                    filename,
+                    supabaseUrl: entry,
+                    dataUrl:     entry,
+                    missing:     false,
+                });
+            } else if (entry.startsWith('localpath::')) {
+                const localPath  = entry.slice('localpath::'.length);
+                const filename   = path.basename(localPath);
                 const fileExists = fs.existsSync(localPath);
                 imageDataUrls.push({
                     filename,
@@ -94,12 +134,11 @@ async function getWithImages(id) {
                     missing:   !fileExists,
                 });
             } else if (entry.startsWith('gridfs::')) {
-                // Legacy gridfs:: entries — treat as missing (GridFS removed)
                 imageDataUrls.push({ filename: entry.slice('gridfs::'.length), dataUrl: null, missing: true });
             } else {
-                // Regular image stored in agentImageStore (MongoDB document)
+                // Legacy MongoDB image
                 const dataUrl = await imgStore.getDataUrl(entry);
-                imageDataUrls.push({ filename: entry, dataUrl });
+                imageDataUrls.push({ filename: entry, dataUrl, missing: !dataUrl });
             }
         }
         return { ..._normalize(tpl), imageDataUrls };
@@ -111,7 +150,9 @@ async function remove(id) {
     const tpl = await Tpl.findById(id).lean();
     if (tpl?.images?.length) {
         for (const entry of tpl.images) {
-            if (!entry.startsWith('localpath::') && !entry.startsWith('gridfs::')) {
+            if (entry.startsWith('http')) {
+                await supa.remove(entry).catch(() => {});
+            } else if (!entry.startsWith('localpath::') && !entry.startsWith('gridfs::')) {
                 await imgStore.remove(entry);
             }
         }
@@ -120,7 +161,7 @@ async function remove(id) {
     return (await Tpl.find().sort({ createdAt: -1 }).lean()).map(_normalize);
 }
 
-// Returns true if any stored image entry is a local-only video
+// Returns true if any stored image entry is local-only (no cloud backup)
 function hasLocalVideo(tpl) {
     return (tpl.images || []).some(p => p.startsWith('localpath::'));
 }

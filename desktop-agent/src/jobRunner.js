@@ -82,17 +82,18 @@ async function processJob(job) {
         sharedPageId = result?.pageId || null;
     }
 
-    // Download images from MongoDB to temp files (filenames → absolute paths)
+    // Download images from Supabase / MongoDB to temp files
     let tempImagePaths = [];
     const rawImages = job.images || [];
     if (rawImages.length > 0) {
-        log(`📥 โหลดรูปภาพ ${rawImages.length} รูปจาก MongoDB...`);
+        log(`📥 โหลดรูปภาพ ${rawImages.length} รูป...`);
         for (const filename of rawImages) {
             if (!filename) continue;
             // Already an absolute path on disk → use directly
             if (require('path').isAbsolute(filename) && fs.existsSync(filename)) {
                 tempImagePaths.push(filename);
             } else {
+                // Supabase URL or MongoDB filename → download to temp
                 const tmpPath = await imgStore.downloadToTemp(filename);
                 if (tmpPath) tempImagePaths.push(tmpPath);
                 else log(`   ⚠️ โหลดรูปไม่ได้: ${filename}`);

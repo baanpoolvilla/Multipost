@@ -30,6 +30,9 @@ contextBridge.exposeInMainWorld('agent', {
     getTemplate:     (id)       => ipcRenderer.invoke('templates:get', id),
     deleteTemplate:  (id)       => ipcRenderer.invoke('templates:delete', id),
 
+    // Supabase config (for direct renderer → Supabase uploads)
+    getSupabaseConfig: () => ipcRenderer.invoke('supabase:config'),
+
     // Push events → renderer
     on: (channel, cb) => ipcRenderer.on(channel, (_, data) => cb(data)),
 });
