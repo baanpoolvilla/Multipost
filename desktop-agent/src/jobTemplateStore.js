@@ -3,6 +3,7 @@ const fs        = require('fs');
 const path      = require('path');
 const { connect } = require('./jobStore');
 const imgStore  = require('./agentImageStore');
+const gridfs    = require('./gridfsStore');
 
 const MIME = {
     '.jpg':'image/jpeg', '.jpeg':'image/jpeg', '.png':'image/png', '.gif':'image/gif', '.webp':'image/webp',
@@ -32,20 +33,38 @@ async function list() {
     } catch { return []; }
 }
 
-// imagePaths: array of strings — absolute fs paths (new files) or existing filenames
+// imagePaths: absolute fs paths (new files), or stored refs (plain filename / gridfs:: / localpath::)
 async function save({ id, name, message, groups, delaySeconds, postAsPage, images: imagePaths }) {
     await connect();
 
     const filenames = [];
     for (const p of (imagePaths || [])) {
         if (!p) continue;
+
+        // Already stored — keep as-is
+        if (p.startsWith('gridfs::') || p.startsWith('localpath::')) {
+            filenames.push(p);
+            continue;
+        }
+
         const ext = path.extname(p).toLowerCase();
+
         if (path.isAbsolute(p) && fs.existsSync(p)) {
             if (VIDEO_EXTS.has(ext)) {
-                // Videos: store local path with prefix — not uploaded to MongoDB (too large)
-                filenames.push(`localpath::${p}`);
+                // Videos → GridFS (shared across all machines/users)
+                try {
+                    const buf      = fs.readFileSync(p);
+                    const filename = `vid-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+                    await gridfs.save(filename, buf, MIME[ext] || 'video/mp4');
+                    filenames.push(`gridfs::${filename}`);
+                    console.log(`[tpl] video uploaded to GridFS: ${filename} (${(buf.length/1024/1024).toFixed(1)} MB)`);
+                } catch (e) {
+                    console.warn('[tpl] GridFS video upload failed:', e.message);
+                    // Fallback: store local path so video still works on same machine
+                    filenames.push(`localpath::${p}`);
+                }
             } else {
-                // Images: upload to MongoDB so they work across machines
+                // Images → MongoDB document (base64) — works across machines
                 try {
                     const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
                     const buf      = fs.readFileSync(p);
@@ -53,10 +72,8 @@ async function save({ id, name, message, groups, delaySeconds, postAsPage, image
                     filenames.push(filename);
                 } catch (e) { console.warn('[tpl] img upload failed:', e.message); }
             }
-        } else if (!p.startsWith('localpath::')) {
-            filenames.push(p); // already a stored filename or localpath:: entry
         } else {
-            filenames.push(p);
+            filenames.push(p); // already a stored filename (image in agentImageStore)
         }
     }
 
@@ -69,7 +86,7 @@ async function save({ id, name, message, groups, delaySeconds, postAsPage, image
     return (await Tpl.find().sort({ createdAt: -1 }).lean()).map(_normalize);
 }
 
-// Returns template with images as base64 data URLs for the renderer
+// Returns template with images as data URLs / file:// URLs for the renderer
 async function getWithImages(id) {
     try {
         await connect();
@@ -77,13 +94,21 @@ async function getWithImages(id) {
         if (!tpl) return null;
         const imageDataUrls = [];
         for (const entry of (tpl.images || [])) {
-            if (entry.startsWith('localpath::')) {
+            if (entry.startsWith('gridfs::')) {
+                // Download from GridFS to OS temp folder, return file:// URL
+                const gfsName  = entry.slice('gridfs::'.length);
+                const tmpPath  = await gridfs.downloadToTemp(gfsName);
+                const fileUrl  = tmpPath ? `file://${tmpPath.replace(/\\/g, '/')}` : null;
+                imageDataUrls.push({ filename: gfsName, dataUrl: fileUrl, localPath: tmpPath });
+            } else if (entry.startsWith('localpath::')) {
+                // Legacy: absolute local path (falls back gracefully)
                 const localPath = entry.slice('localpath::'.length);
-                const filename  = path.basename(localPath);
-                // Return file:// URL for local video; renderer will use it directly
-                const fileUrl = fs.existsSync(localPath) ? `file://${localPath.replace(/\\/g,'/')}` : null;
-                imageDataUrls.push({ filename, dataUrl: fileUrl, localPath: fileUrl ? localPath : null });
+                const fileUrl   = require('fs').existsSync(localPath)
+                    ? `file://${localPath.replace(/\\/g, '/')}`
+                    : null;
+                imageDataUrls.push({ filename: require('path').basename(localPath), dataUrl: fileUrl, localPath: fileUrl ? localPath : null });
             } else {
+                // Regular image stored in agentImageStore (MongoDB document)
                 const dataUrl = await imgStore.getDataUrl(entry);
                 imageDataUrls.push({ filename: entry, dataUrl });
             }
@@ -96,8 +121,12 @@ async function remove(id) {
     await connect();
     const tpl = await Tpl.findById(id).lean();
     if (tpl?.images?.length) {
-        for (const filename of tpl.images) {
-            await imgStore.remove(filename);
+        for (const entry of tpl.images) {
+            if (entry.startsWith('gridfs::')) {
+                await gridfs.remove(entry.slice('gridfs::'.length));
+            } else if (!entry.startsWith('localpath::')) {
+                await imgStore.remove(entry);
+            }
         }
     }
     await Tpl.findByIdAndDelete(id);

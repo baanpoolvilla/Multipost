@@ -40,13 +40,27 @@ async function saveUploadedFiles(req, res, next) {
     }
 }
 
-// Serve uploaded images from MongoDB (works on Vercel where /tmp is ephemeral)
+// Serve uploaded files from MongoDB / GridFS (works on Vercel where /tmp is ephemeral)
 router.get('/uploads/:filename', async (req, res) => {
     const result = await imageStore.getBuffer(req.params.filename);
     if (!result) return res.status(404).send('Not found');
     res.set('Content-Type', result.contentType);
-    res.set('Cache-Control', 'public, max-age=31536000, immutable');
-    res.send(result.buffer);
+    res.set('Cache-Control', 'public, max-age=86400');
+    // Support range requests for video seeking
+    const total  = result.buffer.length;
+    const range  = req.headers.range;
+    if (range && result.contentType.startsWith('video/')) {
+        const [startStr, endStr] = range.replace(/bytes=/, '').split('-');
+        const start = parseInt(startStr, 10);
+        const end   = endStr ? parseInt(endStr, 10) : total - 1;
+        res.status(206);
+        res.set('Content-Range',  `bytes ${start}-${end}/${total}`);
+        res.set('Accept-Ranges',  'bytes');
+        res.set('Content-Length', String(end - start + 1));
+        res.send(result.buffer.slice(start, end + 1));
+    } else {
+        res.send(result.buffer);
+    }
 });
 
 // Upload images — save to MongoDB, return confirmed filenames
