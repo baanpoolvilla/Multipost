@@ -188,7 +188,7 @@
             โพสอัตโนมัติ <%= new Date(post.scheduledAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', dateStyle:'short', timeStyle:'short' }) %>
             <% } else { %>
             <i class="fa-solid fa-earth-asia"></i>
-            <%= new Date(post.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) %>
+            <%= new Date(post.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', dateStyle:'short', timeStyle:'short', hour12:false }) %>
             <% if (post.location) { %>
             &nbsp;·&nbsp;<i class="fa-solid fa-location-dot" style="color:#f5533d"></i> <%= post.location %>
             <% } %>
@@ -295,9 +295,9 @@
         const totalSuccess = posts.reduce((s, p) => s + p.successCount, 0);
         const totalFail = posts.reduce((s, p) => s + p.failCount, 0);
       %>
-      <div class="stats-row"><span>โพสต์ทั้งหมด</span><span class="stats-val blue"><%= totalPosts %></span></div>
-      <div class="stats-row"><span>ส่งสำเร็จ</span><span class="stats-val green"><%= totalSuccess %></span></div>
-      <div class="stats-row"><span>ล้มเหลว</span><span class="stats-val red"><%= totalFail %></span></div>
+      <div class="stats-row"><span>โพสต์ทั้งหมด</span><span class="stats-val blue" id="statPosts"><%= totalPosts %></span></div>
+      <div class="stats-row"><span>ส่งสำเร็จ</span><span class="stats-val green" id="statSuccess"><%= totalSuccess %></span></div>
+      <div class="stats-row"><span>ล้มเหลว</span><span class="stats-val red" id="statFail"><%= totalFail %></span></div>
     </div>
   </aside>
 
@@ -306,12 +306,13 @@
 <script>
   // Embedded post data for client-side filtering
   const _hPosts = <%- JSON.stringify(posts.map(p => ({
-    id: p.id,
-    msg: p.message || '',
-    at: p.status === 'scheduled' ? p.scheduledAt : p.createdAt,
-    fail: p.failCount || 0,
-    status: p.status || 'done',
-    pages: (p.results || []).map(r => r.pageName)
+    id:      p.id,
+    msg:     p.message || '',
+    at:      p.status === 'scheduled' ? p.scheduledAt : p.createdAt,
+    success: p.successCount || 0,
+    fail:    p.failCount || 0,
+    status:  p.status || 'done',
+    pages:   (p.results || []).map(r => r.pageName)
   }))) %>;
 
   // Populate page select
@@ -348,7 +349,7 @@
     // Time-only filter (no date): filter by time-of-day across all dates
     const timeOnlyFrom = !fromVal && timeFrom ? timeFrom : null;
     const timeOnlyTo   = !toVal   && timeTo   ? timeTo   : null;
-    let shown = 0;
+    let shown = 0, sumSuccess = 0, sumFail = 0;
 
     _hPosts.forEach(p => {
       const card = document.getElementById('card-' + p.id);
@@ -372,7 +373,7 @@
       }
       if (pg && !p.pages.includes(pg))              ok = false;
       card.style.display = ok ? '' : 'none';
-      if (ok) shown++;
+      if (ok) { shown++; sumSuccess += p.success; sumFail += p.fail; }
     });
 
     const hasFilter = q || st || fromVal || toVal || timeFrom || timeTo || pg;
@@ -384,6 +385,10 @@
     }
     const cnt = document.getElementById('historyCount');
     if (cnt) cnt.textContent = hasFilter ? shown : _hPosts.length;
+    // Update right-panel stats dynamically
+    const sP = document.getElementById('statPosts');   if (sP) sP.textContent = shown;
+    const sS = document.getElementById('statSuccess'); if (sS) sS.textContent = hasFilter ? sumSuccess : <%- posts.reduce((s,p)=>s+p.successCount,0) %>;
+    const sF = document.getElementById('statFail');    if (sF) sF.textContent = hasFilter ? sumFail : <%- posts.reduce((s,p)=>s+p.failCount,0) %>;
     const btnClear = document.getElementById('btnClearFilter');
     if (btnClear) {
       btnClear.style.opacity = hasFilter ? '1' : '.35';

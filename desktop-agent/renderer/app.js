@@ -2,6 +2,7 @@
 const _timeout = ms => new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms));
 let _accounts = [], _groups = [], _selected = [], _jobs = [], _jobFilter = 'all', _jobsVisible = 20;
 let _history = [], _historyFilter = 'all', _historyLoaded = false;
+let _webUrl = agent.webUrl || localStorage.getItem('_webUrl') || '';
 let _catCollapsed = {}; // category → true (collapsed) / false (expanded)
 let _statusInterval = null;
 let _selectedPage = null;
@@ -17,6 +18,8 @@ async function _uploadFileToSupabase(file) {
 window.addEventListener('DOMContentLoaded', async () => {
     setupTabs();
     setupPushEvents();
+    const wuInput = document.getElementById('hWebUrl');
+    if (wuInput && _webUrl) wuInput.value = _webUrl;
     // Run each init step independently — a hanging IPC must not block the others
     try { await Promise.race([refreshStatus(), _timeout(4000)]); } catch {}
     try { await Promise.race([loadAccounts(),  _timeout(5000)]); } catch {}
@@ -909,9 +912,20 @@ function filterHistory(btn, filter) {
 function renderHistory() {
     const el = document.getElementById('historyList');
     if (!el) return;
-    const list = _historyFilter === 'all' ? _history : _history.filter(j => j.status === _historyFilter);
+
+    const search  = (document.getElementById('hHistSearch')?.value || '').trim().toLowerCase();
+    const fromVal = document.getElementById('hHistFrom')?.value || '';
+    const toVal   = document.getElementById('hHistTo')?.value   || '';
+    const fromMs  = fromVal ? new Date(fromVal).getTime() : 0;
+    const toMs    = toVal   ? new Date(toVal + 'T23:59:59').getTime() : Infinity;
+
+    let list = _historyFilter === 'all' ? _history : _history.filter(j => j.status === _historyFilter);
+    if (search)  list = list.filter(j => (j.message||'').toLowerCase().includes(search));
+    if (fromVal) list = list.filter(j => new Date(j.createdAt).getTime() >= fromMs);
+    if (toVal)   list = list.filter(j => new Date(j.createdAt).getTime() <= toMs);
+
     if (!list.length) {
-        el.innerHTML = '<div class="empty-state">ยังไม่มีประวัติโพส</div>';
+        el.innerHTML = '<div class="empty-state">ไม่พบประวัติโพส</div>';
         return;
     }
     el.innerHTML = list.map(j => {
@@ -928,22 +942,24 @@ function renderHistory() {
         const failBadge = fail > 0
             ? `<span style="font-size:10px;background:#3d1a1a;color:#ff6b6b;border-radius:4px;padding:.05rem .4rem;margin-left:.3rem">❌ ${fail}</span>` : '';
 
-        // Images: show thumbnails for http URLs; localpath:: shown as folder icon
+        // Images: http → thumbnail, localpath:: → file:// thumbnail (video → icon)
         const httpImgs  = (j.images||[]).filter(p => p && p.startsWith('http'));
         const localImgs = (j.images||[]).filter(p => p && p.startsWith('localpath::'));
-        const imgHtml = httpImgs.length > 0
+        const allDisplayImgs = [
+            ...httpImgs.map(url => ({ url, local: false })),
+            ...localImgs.map(p  => ({ url: 'file:///' + p.replace('localpath::', '').replace(/\\/g, '/'), local: true })),
+        ];
+        const imgHtml = allDisplayImgs.length > 0
             ? `<div style="display:flex;gap:3px;margin-top:.4rem;flex-wrap:wrap">
-                 ${httpImgs.slice(0,4).map(url => {
+                 ${allDisplayImgs.slice(0,4).map(({ url }) => {
                      const isVid = /\.(mp4|mov|avi|webm)$/i.test(url);
                      return isVid
                          ? `<div style="width:52px;height:52px;background:#111;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:20px">🎬</div>`
                          : `<img src="${url}" style="width:52px;height:52px;object-fit:cover;border-radius:4px;background:#2a2b2e" onerror="this.style.display='none'">`;
                  }).join('')}
-                 ${httpImgs.length > 4 ? `<div style="width:52px;height:52px;background:#2a2b2e;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text3)">+${httpImgs.length-4}</div>` : ''}
+                 ${allDisplayImgs.length > 4 ? `<div style="width:52px;height:52px;background:#2a2b2e;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text3)">+${allDisplayImgs.length-4}</div>` : ''}
                </div>`
-            : localImgs.length > 0
-              ? `<div style="font-size:10.5px;color:var(--text3);margin-top:.3rem">📁 ${localImgs.length} ไฟล์ในเครื่อง</div>`
-              : '';
+            : '';
 
         return `<div class="job-item" style="flex-wrap:wrap;gap:.3rem">
           <div class="job-icon">${icon}</div>
@@ -954,6 +970,8 @@ function renderHistory() {
           </div>
           <div style="display:flex;align-items:center;gap:.4rem;flex-shrink:0">
             <span class="job-status ${statusCls}">${statusTH}</span>
+            <button class="btn btn-secondary" style="font-size:11px;padding:.3rem .6rem;white-space:nowrap"
+                    onclick="openReport('${j._id}')">📊 รายงาน</button>
             <button class="btn btn-primary" style="font-size:11px;padding:.3rem .6rem;white-space:nowrap"
                     onclick="repostHistoryJob('${j._id}')">🔄 โพสอีกครั้ง</button>
           </div>
@@ -961,17 +979,44 @@ function renderHistory() {
     }).join('');
 }
 
+function clearHistoryFilter() {
+    const s = document.getElementById('hHistSearch');
+    const f = document.getElementById('hHistFrom');
+    const t = document.getElementById('hHistTo');
+    if (s) s.value = '';
+    if (f) f.value = '';
+    if (t) t.value = '';
+    renderHistory();
+}
+
+function saveWebUrl(val) {
+    _webUrl = val.trim();
+    if (_webUrl) localStorage.setItem('_webUrl', _webUrl);
+    else localStorage.removeItem('_webUrl');
+}
+
+function openReport(id) {
+    let base = _webUrl;
+    if (!base) {
+        base = prompt('กรุณาใส่ URL ของเว็บ เช่น https://xxx.vercel.app');
+        if (!base) return;
+        base = base.trim().replace(/\/$/, '');
+        saveWebUrl(base);
+        const inp = document.getElementById('hWebUrl');
+        if (inp) inp.value = base;
+    }
+    base = base.replace(/\/$/, '');
+    agent.openUrl(`${base}/group-result/${id}`);
+}
+
 async function repostHistoryJob(id) {
     const j = _history.find(h => h._id === id);
     if (!j) return;
-    // Auto-use first logged-in account
     const acc = _accounts.find(a => a.status === 'logged_in');
     if (!acc) {
         alert('ยังไม่มีบัญชีที่เข้าสู่ระบบ\nกรุณาไปที่แท็บ "บัญชี Facebook" แล้วเข้าสู่ระบบก่อน');
         return;
     }
-    const n = (j.groups||[]).length;
-    if (!confirm(`โพสอีกครั้ง "${(j.message||'').slice(0,40)}..." ไปยัง ${n} กลุ่ม\nบัญชี: ${acc.email}`)) return;
     const job = await agent.createJob({
         message:      j.message,
         groups:       j.groups,
@@ -981,7 +1026,8 @@ async function repostHistoryJob(id) {
     });
     if (job) {
         _jobs.unshift(job);
-        appendLog(`[📋] สร้างคิวโพสอีกครั้ง: "${(j.message||'').slice(0,40)}..." → ${n} กลุ่ม (${acc.email})`);
+        renderJobs();
+        appendLog(`[📋] สร้างคิวโพสอีกครั้ง: "${(j.message||'').slice(0,40)}..." → ${(j.groups||[]).length} กลุ่ม`);
         document.querySelector('.nav-item[data-tab="jobs"]')?.click();
     }
 }

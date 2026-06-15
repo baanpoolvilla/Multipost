@@ -60,7 +60,7 @@
       </div>
       <div class="summary-text">
         <h2><%= allOk ? 'โพสสำเร็จทุกกลุ่ม! 🎉' : `สำเร็จ ${sc} จาก ${total} กลุ่ม` %></h2>
-        <p><%= new Date(job.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) %></p>
+        <p><%= new Date(job.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', dateStyle:'short', timeStyle:'short', hour12:false }) %></p>
       </div>
       <div class="summary-pills">
         <span class="pill pill-success"><i class="fa-solid fa-check"></i> <%= sc %></span>
@@ -76,7 +76,7 @@
           <div class="fb-post-author">Desktop Agent</div>
           <div class="fb-post-time">
             <i class="fa-solid fa-clock"></i>
-            <%= new Date(job.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) %>
+            <%= new Date(job.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', dateStyle:'short', timeStyle:'short', hour12:false }) %>
             &nbsp;·&nbsp;<i class="fa-solid fa-users" style="color:#1877f2"></i> <%= (job.groups||[]).length %> กลุ่ม
           </div>
         </div>
@@ -145,7 +145,7 @@
           <div class="result-time">
             <% if (r.timestamp) { %>
             <i class="fa-regular fa-clock"></i>
-            <%= new Date(r.timestamp).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) %>
+            <%= new Date(r.timestamp).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', dateStyle:'short', timeStyle:'short', hour12:false }) %>
             <% } %>
             <% if (r.error) { %>&nbsp;·&nbsp;<span style="color:#c62828;font-size:.78rem"><%= r.error %></span><% } %>
           </div>

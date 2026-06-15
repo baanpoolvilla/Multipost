@@ -185,7 +185,7 @@
           </div>
           <div class="fb-post-time">
             <i class="fa-solid fa-clock"></i>
-            <%= new Date(job.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) %>
+            <%= new Date(job.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', dateStyle:'short', timeStyle:'short', hour12:false }) %>
             &nbsp;·&nbsp;
             <i class="fa-solid fa-users" style="color:#1877f2"></i>
             <%= (job.groups || []).length %> กลุ่ม
@@ -307,10 +307,10 @@
         const totalFail    = jobs.reduce((s, j) => s + j.failCount, 0);
         const totalGroups  = jobs.reduce((s, j) => s + (j.groups||[]).length, 0);
       %>
-      <div class="stats-row"><span>จำนวน Job</span><span class="stats-val blue"><%= totalJobs %></span></div>
-      <div class="stats-row"><span>กลุ่มทั้งหมด</span><span class="stats-val blue"><%= totalGroups %></span></div>
-      <div class="stats-row"><span>โพสสำเร็จ</span><span class="stats-val green"><%= totalSuccess %></span></div>
-      <div class="stats-row"><span>ล้มเหลว</span><span class="stats-val red"><%= totalFail %></span></div>
+      <div class="stats-row"><span>จำนวน Job</span><span class="stats-val blue" id="statJobs"><%= totalJobs %></span></div>
+      <div class="stats-row"><span>กลุ่มทั้งหมด</span><span class="stats-val blue" id="statGroups"><%= totalGroups %></span></div>
+      <div class="stats-row"><span>โพสสำเร็จ</span><span class="stats-val green" id="statSuccess"><%= totalSuccess %></span></div>
+      <div class="stats-row"><span>ล้มเหลว</span><span class="stats-val red" id="statFail"><%= totalFail %></span></div>
     </div>
   </aside>
 
@@ -320,11 +320,12 @@
   const _groupCatMap = <%- JSON.stringify(groupCatMap) %>;
 
   const _hJobs = <%- JSON.stringify(jobs.map(j => ({
-    id:     String(j._id),
-    msg:    j.message || '',
-    at:     j.createdAt,
-    fail:   j.failCount || 0,
-    groups: (j.groups || []).map(g => ({ id: g.groupId, name: g.groupName })),
+    id:      String(j._id),
+    msg:     j.message || '',
+    at:      j.createdAt,
+    success: j.successCount || 0,
+    fail:    j.failCount || 0,
+    groups:  (j.groups || []).map(g => ({ id: g.groupId, name: g.groupName })),
   }))) %>;
 
   // Populate group select
@@ -362,7 +363,7 @@
     const timeOnlyFrom = !fromVal && timeFrom ? timeFrom : null;
     const timeOnlyTo   = !toVal   && timeTo   ? timeTo   : null;
 
-    let shown = 0;
+    let shown = 0, sumSuccess = 0, sumFail = 0, sumGroups = 0;
     _hJobs.forEach(j => {
       const card = document.getElementById('card-' + j.id);
       if (!card) return;
@@ -398,7 +399,7 @@
       }
 
       card.style.display = ok ? '' : 'none';
-      if (ok) shown++;
+      if (ok) { shown++; sumSuccess += j.success; sumFail += j.fail; sumGroups += j.groups.length; }
     });
 
     const hasFilter = q || st || grp || cat || fromVal || toVal || timeFrom || timeTo;
@@ -410,6 +411,11 @@
     }
     const cnt = document.getElementById('historyCount');
     if (cnt) cnt.textContent = hasFilter ? shown : _hJobs.length;
+    // Update right-panel stats dynamically
+    const sJ = document.getElementById('statJobs');   if (sJ) sJ.textContent = shown;
+    const sG = document.getElementById('statGroups'); if (sG) sG.textContent = hasFilter ? sumGroups : <%- jobs.reduce((s,j)=>s+(j.groups||[]).length,0) %>;
+    const sS = document.getElementById('statSuccess');if (sS) sS.textContent = hasFilter ? sumSuccess : <%- jobs.reduce((s,j)=>s+j.successCount,0) %>;
+    const sF = document.getElementById('statFail');   if (sF) sF.textContent = hasFilter ? sumFail : <%- jobs.reduce((s,j)=>s+j.failCount,0) %>;
     const btnClear = document.getElementById('btnClearFilter');
     if (btnClear) {
       btnClear.style.opacity      = hasFilter ? '1' : '.35';

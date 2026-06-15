@@ -1,6 +1,6 @@
 require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('path');
 
 const apiServer        = require('./api/server');
@@ -100,6 +100,20 @@ ipcMain.handle('jobs:delete-all',   ()        => jobStore.deleteAllJobs());
 ipcMain.handle('jobs:groups',       ()        => jobStore.getAllGroups());
 ipcMain.handle('jobs:recent-posts', ()        => jobStore.getRecentPosts());
 ipcMain.handle('jobs:history',      ()        => jobStore.getCompletedJobs());
+
+// ── IPC: Shell / image utilities ───────────────────────────────
+ipcMain.handle('shell:open', (_, url) => shell.openExternal(url));
+
+ipcMain.handle('image:get-local', async (_, filePath) => {
+    const fs   = require('fs');
+    const path = require('path');
+    try {
+        const ext  = path.extname(filePath).slice(1).toLowerCase();
+        const mime = { jpg:'image/jpeg', jpeg:'image/jpeg', png:'image/png', gif:'image/gif', webp:'image/webp' }[ext] || 'image/jpeg';
+        const buf  = await fs.promises.readFile(filePath);
+        return `data:${mime};base64,${buf.toString('base64')}`;
+    } catch { return null; }
+});
 
 // ── IPC: Runner ────────────────────────────────────────────────
 ipcMain.handle('runner:start', () => { jobRunner.start(); return { ok: true }; });

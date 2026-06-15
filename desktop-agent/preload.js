@@ -34,6 +34,15 @@ contextBridge.exposeInMainWorld('agent', {
     // Supabase — upload file from disk path (main process reads file, uploads with service key)
     uploadFile: (filePath, contentType) => ipcRenderer.invoke('file:upload', filePath, contentType),
 
+    // Shell — open URL in default browser
+    openUrl:       (url)      => ipcRenderer.invoke('shell:open', url),
+
+    // Local image — read local file as base64 data URL (for localpath:: images)
+    getLocalImage: (filePath) => ipcRenderer.invoke('image:get-local', filePath),
+
+    // Web URL — set in .env on download, fallback to localStorage
+    webUrl: process.env.WEB_URL || null,
+
     // Push events → renderer
     on: (channel, cb) => ipcRenderer.on(channel, (_, data) => cb(data)),
 });
