@@ -762,13 +762,28 @@ async function renderFolderTabs() {
   const container = document.getElementById('tplFolderTabs');
   if (!container) return;
   const folders = [...new Set(_templates.map(t => t.folder).filter(Boolean))].sort();
-  let html = `<button onclick="setFolderFilter('')" style="white-space:nowrap;padding:.25rem .6rem;border-radius:6px;border:1.5px solid ${_tplFolderFilter===''?'#1877f2':'#444'};background:${_tplFolderFilter===''?'#1877f2':'transparent'};color:${_tplFolderFilter===''?'#fff':'#ccc'};font-size:.75rem;cursor:pointer;font-family:inherit">ทั้งหมด (${_templates.length})</button>`;
-  folders.forEach(f => {
-    const cnt = _templates.filter(t => t.folder === f).length;
-    const active = _tplFolderFilter === f;
-    html += `<button onclick="setFolderFilter('${f.replace(/'/g,"\\'")}')" style="white-space:nowrap;padding:.25rem .6rem;border-radius:6px;border:1.5px solid ${active?'#f7b928':'#444'};background:${active?'#f7b928':'transparent'};color:${active?'#1a1a1a':'#ccc'};font-size:.75rem;cursor:pointer;font-family:inherit">📁 ${f} (${cnt})</button>`;
-  });
-  container.innerHTML = html;
+
+  if (_tplFolderFilter) {
+    // Inside a folder: show back button + breadcrumb
+    const cnt = _templates.filter(t => t.folder === _tplFolderFilter).length;
+    container.innerHTML = `
+      <button onclick="setFolderFilter('')" style="display:flex;align-items:center;gap:.35rem;white-space:nowrap;padding:.25rem .65rem;border-radius:6px;border:1.5px solid #555;background:transparent;color:#ccc;font-size:.75rem;cursor:pointer;font-family:inherit">
+        <i class="fa-solid fa-arrow-left"></i> กลับ
+      </button>
+      <span style="display:flex;align-items:center;gap:.3rem;color:#f7b928;font-weight:700;font-size:.8rem">
+        📁 ${_tplFolderFilter}
+        <span style="color:#888;font-weight:400">(${cnt} โพสต์)</span>
+      </span>`;
+    container.style.display = 'flex';
+  } else if (folders.length > 0) {
+    // Folder list view: hide tabs (folders shown as cards in body)
+    container.style.display = 'none';
+    container.innerHTML = '';
+  } else {
+    // No folders at all
+    container.style.display = 'none';
+    container.innerHTML = '';
+  }
 }
 
 function setFolderFilter(f) {
@@ -792,12 +807,48 @@ function renderTemplates() {
   const footer = document.getElementById('tplFooter');
   if (!body) return;
 
-  const query    = (document.getElementById('tplSearchInput')?.value || '').toLowerCase();
+  const query   = (document.getElementById('tplSearchInput')?.value || '').toLowerCase();
+  const folders = [...new Set(_templates.map(t => t.folder).filter(Boolean))].sort();
+  if (badge) badge.textContent = _templates.length;
+
+  // ── Folder card view (root level, no search, folders exist) ──
+  if (!_tplFolderFilter && !query && folders.length > 0) {
+    const noFolder = _templates.filter(t => !t.folder);
+    let html = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.65rem;margin-bottom:${noFolder.length?'1rem':'0'}">`;
+    folders.forEach(f => {
+      const cnt   = _templates.filter(t => t.folder === f).length;
+      const first = _templates.find(t => t.folder === f);
+      const prev  = first ? (first.message.slice(0,45) + (first.message.length > 45 ? '…' : '')) : '';
+      html += `
+        <div onclick="setFolderFilter('${f.replace(/'/g,"\\'")}')"
+          style="background:#1c1e21;border:2px solid #333;border-radius:12px;padding:.85rem .75rem;cursor:pointer;text-align:center;transition:border-color .15s;display:flex;flex-direction:column;gap:.3rem;align-items:center"
+          onmouseover="this.style.borderColor='#f7b928'" onmouseout="this.style.borderColor='#333'">
+          <div style="font-size:2rem;line-height:1">📁</div>
+          <div style="font-weight:700;font-size:.82rem;color:#fff;word-break:break-word">${f}</div>
+          <div style="font-size:.7rem;color:#888">${cnt} โพสต์</div>
+          ${prev ? `<div style="font-size:.68rem;color:#666;line-height:1.35;text-align:left;margin-top:.2rem">${prev}</div>` : ''}
+        </div>`;
+    });
+    html += '</div>';
+    if (noFolder.length > 0) {
+      html += `<div style="font-size:.78rem;font-weight:700;color:#888;margin-bottom:.5rem;padding-left:.1rem">📄 โพสต์ไม่มีโฟลเดอร์ (${noFolder.length})</div>`;
+      const total = _templates.length;
+      if (_tplView === 'card') {
+        html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:.65rem">${noFolder.map(t => renderTplCard(t, total - _templates.findIndex(x => x.id === t.id))).join('')}</div>`;
+      } else {
+        html += `<div style="display:flex;flex-direction:column;gap:.35rem">${noFolder.map(t => renderTplListRow(t, total - _templates.findIndex(x => x.id === t.id))).join('')}</div>`;
+      }
+    }
+    body.innerHTML = html;
+    if (footer) footer.style.display = noFolder.length && _tplSelected ? 'block' : 'none';
+    return;
+  }
+
+  // ── Filtered / inside-folder view ──
   const filtered = _templates.filter(t => {
     if (_tplFolderFilter && t.folder !== _tplFolderFilter) return false;
     return !query || t.message.toLowerCase().includes(query) || (t.name||'').toLowerCase().includes(query) || (t.folder||'').toLowerCase().includes(query);
   });
-  if (badge) badge.textContent = _templates.length;
 
   if (!filtered.length) {
     body.innerHTML = `

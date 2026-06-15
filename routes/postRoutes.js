@@ -94,6 +94,7 @@ router.get('/overview',               ctrl.showOverview);
 router.get('/group-overview',         agentCtrl.showGroupOverview);
 router.get('/api/stats',              ctrl.overviewStats);
 router.post('/api/refresh-analytics', ctrl.refreshAnalytics);
+router.patch('/posts/:id/reschedule', ctrl.reschedulePost);
 router.get('/api/daily-summary',      ctrl.dailySummary);
 router.get('/api/check-tokens',       ctrl.checkTokens);
 router.post('/api/exchange-token',    ctrl.exchangeToken);

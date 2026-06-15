@@ -203,6 +203,19 @@ exports.overviewStats = async (req, res) => {
     res.json(computeStats(posts, pages));
 };
 
+exports.reschedulePost = async (req, res) => {
+    try {
+        const { scheduledAt } = req.body;
+        const schedDate = scheduledAt ? new Date(scheduledAt) : null;
+        if (schedDate && isNaN(schedDate.getTime())) return res.status(400).json({ error: 'วันเวลาไม่ถูกต้อง' });
+        const post = await postStore.updateOne(req.params.id, { scheduledAt: schedDate ? schedDate.toISOString() : null });
+        if (!post) return res.status(404).json({ error: 'ไม่พบโพส' });
+        res.json({ ok: true, scheduledAt: post.scheduledAt });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+};
+
 exports.refreshAnalytics = async (req, res) => {
     const [posts, pages] = await Promise.all([postStore.load(), pageStore.load()]);
     const tokenMap = Object.fromEntries(pages.map(p => [p.pageId, p.accessToken]));

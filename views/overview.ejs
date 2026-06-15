@@ -238,10 +238,14 @@
 
   <aside class="right-panel">
     <div class="card stats-card">
-      <div class="stats-title"><i class="fa-solid fa-trophy" style="color:#f7b928"></i> Top เพจ</div>
+      <div class="stats-title" style="display:flex;align-items:center;justify-content:space-between">
+        <span><i class="fa-solid fa-trophy" style="color:#f7b928"></i> Top เพจ</span>
+        <button onclick="showPageEngInfo()" style="background:none;border:none;cursor:pointer;color:#1877f2;font-size:.82rem;padding:.1rem .25rem" title="วิธีคำนวณ"><i class="fa-solid fa-circle-info"></i></button>
+      </div>
       <%
         const medals = ['🥇','🥈','🥉','4️⃣','5️⃣'];
-        const sorted = [...pageStats].sort((a,b) => (b.posts||0) - (a.posts||0)).slice(0,5);
+        const pageEngScore = p => (p.likes||0)*1 + (p.comments||0)*2 + (p.shares||0)*3 + (p.reach||0)*0.01;
+        const sorted = [...pageStats].sort((a,b) => pageEngScore(b) - pageEngScore(a)).slice(0,5);
       %>
       <% if (sorted.length === 0) { %>
         <p style="font-size:.82rem;color:#8a8d91;margin-top:.4rem">ยังไม่มีข้อมูล</p>
@@ -454,6 +458,27 @@ function showAllPages() {
 }
 
 applyPageVisibility('');
+
+/* ── Engagement formula info ── */
+function showPageEngInfo() {
+  Swal.fire({
+    title: '<i class="fa-solid fa-circle-info" style="color:#1877f2"></i> วิธีคำนวณ Top เพจ',
+    html: `<div style="text-align:left;font-size:.88rem">
+      <p style="color:#555;margin-bottom:.75rem">เรียงตาม <b>คะแนน Engagement</b> (การมีส่วนร่วม) ซึ่งชั่งน้ำหนักว่าผู้ชมมีปฏิกิริยาอย่างไรต่อโพสต์ ไม่ใช่แค่การมองเห็น</p>
+      <div style="background:#f0f7ff;border-radius:10px;padding:.75rem 1rem;margin-bottom:.75rem">
+        <div style="font-weight:700;color:#1877f2;margin-bottom:.5rem">สูตรคะแนน</div>
+        <div style="display:grid;grid-template-columns:auto 1fr;gap:.3rem .75rem;font-size:.85rem">
+          <span style="color:#f7b928;font-weight:700">👍 ไลค์</span><span>× 1 (Reaction พื้นฐาน)</span>
+          <span style="color:#f5533d;font-weight:700">💬 คอมเมนต์</span><span>× 2 (มีส่วนร่วมสูง)</span>
+          <span style="color:#09af74;font-weight:700">🔁 แชร์</span><span>× 3 (เผยแพร่ไปยังคนใหม่)</span>
+          <span style="color:#45bd62;font-weight:700">👁️ Reach</span><span>× 0.01 (การเข้าถึง)</span>
+        </div>
+      </div>
+      <p style="font-size:.78rem;color:#8a8d91">แชร์ได้รับน้ำหนักสูงสุดเพราะนำโพสต์ออกนอกเครือข่ายผู้ติดตาม คอมเมนต์รองลงมาเพราะแสดงถึงการมีส่วนร่วมเชิงลึก</p>
+    </div>`,
+    confirmButtonText: 'รับทราบ', confirmButtonColor: '#1877f2', width: '430px',
+  });
+}
 
 /* ── Helper ── */
 const RANK_MEDALS = ['🥇','🥈','🥉','4️⃣','5️⃣'];

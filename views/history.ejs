@@ -205,6 +205,12 @@
             <i class="fa-solid fa-chart-bar"></i> รายงาน
           </a>
           <% } %>
+          <% if (isScheduled) { %>
+          <button onclick="reschedulePost('<%= post.id %>', '<%= post.scheduledAt || '' %>')"
+            style="background:none;border:none;cursor:pointer;color:#856404;font-size:.85rem;padding:.1rem .3rem;border-radius:4px" title="แก้ไขเวลาโพส">
+            <i class="fa-solid fa-clock"></i>
+          </button>
+          <% } %>
           <button class="icon-btn danger" title="ลบ" onclick="deletePost('<%= post.id %>', this)">
             <i class="fa-solid fa-trash"></i>
           </button>
@@ -615,6 +621,37 @@ async function showSummaryModal() {
       confirmButtonText: 'ปิด', confirmButtonColor: '#1877f2', width: '440px',
     });
   } catch { Swal.fire({ icon:'error', title:'เกิดข้อผิดพลาด', text:'ไม่สามารถโหลดข้อมูลได้' }); }
+}
+
+async function reschedulePost(id, currentScheduledAt) {
+  const current = currentScheduledAt
+    ? new Date(currentScheduledAt).toLocaleString('sv-SE', { timeZone: 'Asia/Bangkok' }).slice(0, 16)
+    : '';
+  const { value, isConfirmed } = await Swal.fire({
+    title: '<i class="fa-solid fa-clock" style="color:#856404"></i> แก้ไขเวลาโพส',
+    html: `<div style="text-align:left;display:flex;flex-direction:column;gap:.4rem">
+      <label style="font-size:.8rem;font-weight:600;color:#555">วันที่และเวลาใหม่</label>
+      <input id="swal-postAt" type="datetime-local" value="${current}"
+        style="padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.88rem;font-family:inherit;color:#333;outline:none;width:100%;box-sizing:border-box">
+      <div style="font-size:.75rem;color:#8a8d91"><i class="fa-solid fa-circle-info"></i> ล้างค่าแล้ว Save = ยกเลิก Schedule</div>
+    </div>`,
+    confirmButtonText: 'บันทึก', confirmButtonColor: '#856404',
+    showCancelButton: true, cancelButtonText: 'ยกเลิก', focusConfirm: false,
+    preConfirm: () => document.getElementById('swal-postAt').value,
+  });
+  if (!isConfirmed) return;
+  try {
+    const scheduledAt = value ? new Date(value + ':00+07:00').toISOString() : null;
+    const r = await fetch(`/posts/${id}/reschedule`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scheduledAt }),
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    location.reload();
+  } catch(e) {
+    Swal.fire({ icon: 'error', title: 'แก้ไขไม่สำเร็จ', text: e.message, confirmButtonColor: '#1877f2' });
+  }
 }
 </script>
 </body>
