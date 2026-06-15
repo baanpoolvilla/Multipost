@@ -1,6 +1,7 @@
 const groupJobStore  = require('../services/groupJobStore');
 const groupStore     = require('../services/groupStore');
 const categoryStore  = require('../services/categoryStore');
+const postStore      = require('../services/postStore');
 
 // ── Agent status page ──────────────────────────────────────────
 exports.showAgent = async (req, res) => {
@@ -171,6 +172,32 @@ exports.showGroupHistory = async (req, res) => {
 exports.deleteGroupHistoryJob = async (req, res) => {
     const job = await groupJobStore.deleteHistory(req.params.id);
     res.json({ success: !!job });
+};
+
+// ── Combined stats API (page posts + group posts by date range) ─
+exports.getCombinedStats = async (req, res) => {
+    try {
+        const { from, to } = req.query; // YYYY-MM-DD (Bangkok timezone)
+        const fromDate = from ? new Date(from + 'T00:00:00+07:00') : null;
+        const toDate   = to   ? new Date(to   + 'T23:59:59+07:00') : null;
+
+        // Page posts
+        let posts = await postStore.load();
+        if (fromDate) posts = posts.filter(p => new Date(p.createdAt).getTime() >= fromDate.getTime());
+        if (toDate)   posts = posts.filter(p => new Date(p.createdAt).getTime() <= toDate.getTime());
+        const pageStats = {
+            total:   posts.length,
+            success: posts.reduce((s, p) => s + (p.successCount || 0), 0),
+            fail:    posts.reduce((s, p) => s + (p.failCount    || 0), 0),
+        };
+
+        // Group posts
+        const groupStats = await groupJobStore.statsByDateRange(fromDate, toDate);
+
+        res.json({ ok: true, pageStats, groupStats });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
 };
 
 exports.showGroupResult = async (req, res) => {

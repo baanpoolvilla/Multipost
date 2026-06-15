@@ -71,4 +71,22 @@ async function deleteHistory(id) {
     } catch { return null; }
 }
 
-module.exports = { list, create, remove, listHistory, deleteHistory, getById };
+async function statsByDateRange(fromDate, toDate) {
+    try {
+        await connect();
+        const q = { status: { $in: ['done', 'failed'] } };
+        if (fromDate || toDate) {
+            q.createdAt = {};
+            if (fromDate) q.createdAt.$gte = fromDate;
+            if (toDate)   q.createdAt.$lte = toDate;
+        }
+        const jobs = await GroupJob.find(q).lean();
+        return {
+            total:   jobs.length,
+            success: jobs.reduce((s, j) => s + (j.successCount || 0), 0),
+            fail:    jobs.reduce((s, j) => s + (j.failCount    || 0), 0),
+        };
+    } catch { return { total: 0, success: 0, fail: 0 }; }
+}
+
+module.exports = { list, create, remove, listHistory, deleteHistory, getById, statsByDateRange };

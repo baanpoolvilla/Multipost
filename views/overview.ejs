@@ -113,6 +113,71 @@
       </div>
     </div>
 
+    <!-- Combined stats date filter -->
+    <div class="card">
+      <div class="card-title" style="margin-bottom:.85rem">
+        <i class="fa-solid fa-calendar-days" style="color:#1877f2"></i> สถิติตามวันที่
+        <span style="font-size:.78rem;font-weight:400;color:#8a8d91;margin-left:.4rem">ทั้งโพสเพจและแชร์กลุ่ม</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;margin-bottom:1rem">
+        <input id="csFrom" type="date" style="padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.83rem;font-family:inherit;color:#333;outline:none;cursor:pointer">
+        <span style="color:#bbb">—</span>
+        <input id="csTo"   type="date" style="padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.83rem;font-family:inherit;color:#333;outline:none;cursor:pointer">
+        <button onclick="loadCombinedStats()" style="padding:.38rem 1rem;background:#1877f2;color:#fff;border:none;border-radius:8px;font-size:.83rem;font-family:inherit;cursor:pointer;display:flex;align-items:center;gap:.4rem">
+          <i class="fa-solid fa-magnifying-glass"></i> ดูสถิติ
+        </button>
+        <button onclick="clearCombinedStats()" style="padding:.38rem .7rem;background:#f0f2f5;border:none;border-radius:8px;font-size:.83rem;font-family:inherit;cursor:pointer;color:#666">
+          ✕ ล้าง
+        </button>
+        <span id="csLoading" style="font-size:.82rem;color:#8a8d91;display:none"><i class="fa-solid fa-spinner fa-spin"></i></span>
+      </div>
+      <div id="csResults" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+          <!-- Page posts -->
+          <div style="background:#f0f7ff;border:1.5px solid #d0e6fb;border-radius:10px;padding:.75rem 1rem">
+            <div style="font-size:.78rem;font-weight:700;color:#1877f2;margin-bottom:.55rem">
+              <i class="fa-brands fa-facebook"></i> โพสลงเพจ
+            </div>
+            <div style="display:flex;flex-direction:column;gap:.3rem">
+              <div style="display:flex;justify-content:space-between;font-size:.85rem">
+                <span style="color:#555">โพสทั้งหมด</span>
+                <span id="cs-page-total" style="font-weight:700;color:#1877f2">—</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:.85rem">
+                <span style="color:#555">สำเร็จ</span>
+                <span id="cs-page-success" style="font-weight:700;color:#2e7d32">—</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:.85rem">
+                <span style="color:#555">ล้มเหลว</span>
+                <span id="cs-page-fail" style="font-weight:700;color:#c62828">—</span>
+              </div>
+            </div>
+          </div>
+          <!-- Group posts -->
+          <div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:10px;padding:.75rem 1rem">
+            <div style="font-size:.78rem;font-weight:700;color:#2e7d32;margin-bottom:.55rem">
+              <i class="fa-solid fa-users"></i> แชร์ลงกลุ่ม
+            </div>
+            <div style="display:flex;flex-direction:column;gap:.3rem">
+              <div style="display:flex;justify-content:space-between;font-size:.85rem">
+                <span style="color:#555">งาน (Job)</span>
+                <span id="cs-grp-total" style="font-weight:700;color:#2e7d32">—</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:.85rem">
+                <span style="color:#555">โพสสำเร็จ</span>
+                <span id="cs-grp-success" style="font-weight:700;color:#2e7d32">—</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:.85rem">
+                <span style="color:#555">ล้มเหลว</span>
+                <span id="cs-grp-fail" style="font-weight:700;color:#c62828">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="csDateLabel" style="font-size:.76rem;color:#8a8d91;margin-top:.5rem;text-align:right"></div>
+      </div>
+    </div>
+
     <!-- Chart -->
     <div class="card">
       <div class="card-title" style="margin-bottom:1rem">
@@ -382,6 +447,42 @@ function showAllPages() {
 }
 
 applyPageVisibility('');
+
+/* ── Combined stats ── */
+async function loadCombinedStats() {
+  const from = document.getElementById('csFrom')?.value || '';
+  const to   = document.getElementById('csTo')?.value   || '';
+  const loading = document.getElementById('csLoading');
+  const results = document.getElementById('csResults');
+  if (loading) loading.style.display = '';
+  try {
+    const params = new URLSearchParams();
+    if (from) params.set('from', from);
+    if (to)   params.set('to',   to);
+    const res  = await fetch('/api/stats/combined?' + params);
+    const data = await res.json();
+    if (!data.ok) return;
+    document.getElementById('cs-page-total').textContent   = data.pageStats.total;
+    document.getElementById('cs-page-success').textContent = data.pageStats.success;
+    document.getElementById('cs-page-fail').textContent    = data.pageStats.fail;
+    document.getElementById('cs-grp-total').textContent    = data.groupStats.total;
+    document.getElementById('cs-grp-success').textContent  = data.groupStats.success;
+    document.getElementById('cs-grp-fail').textContent     = data.groupStats.fail;
+    const lbl = document.getElementById('csDateLabel');
+    if (lbl) {
+      const fmt = d => new Date(d + 'T00:00:00').toLocaleDateString('th-TH', { dateStyle:'short' });
+      lbl.textContent = from || to ? `ช่วง: ${from ? fmt(from) : '—'} ถึง ${to ? fmt(to) : '—'}` : 'ข้อมูลทั้งหมด';
+    }
+    if (results) results.style.display = '';
+  } catch(e) { alert('โหลดสถิติไม่สำเร็จ: ' + e.message); }
+  finally { if (loading) loading.style.display = 'none'; }
+}
+
+function clearCombinedStats() {
+  const f = document.getElementById('csFrom'); if (f) f.value = '';
+  const t = document.getElementById('csTo');   if (t) t.value = '';
+  const r = document.getElementById('csResults'); if (r) r.style.display = 'none';
+}
 
 /* ── Chart ── */
 const ctx = document.getElementById('postsChart');

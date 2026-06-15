@@ -33,10 +33,19 @@ window.addEventListener('DOMContentLoaded', async () => {
         _jobRefreshing = true;
         try {
             const fresh = await agent.listJobs();
-            if (JSON.stringify(fresh.map(j=>j._id+j.status)) !== JSON.stringify(_jobs.map(j=>j._id+j.status))) {
-                _jobs = fresh;
-                renderJobs();
-            }
+            const freshIds = new Set(fresh.map(j => j._id));
+            let changed = false;
+            // Update/add jobs from server
+            fresh.forEach(j => {
+                const i = _jobs.findIndex(x => x._id === j._id);
+                if (i !== -1) { if (_jobs[i].status !== j.status) { _jobs[i] = j; changed = true; } }
+                else { _jobs.unshift(j); changed = true; }
+            });
+            // Remove pending/running jobs that left the server; keep done/failed visible
+            const before = _jobs.length;
+            _jobs = _jobs.filter(j => j.status === 'done' || j.status === 'failed' || freshIds.has(j._id));
+            if (_jobs.length !== before) changed = true;
+            if (changed) renderJobs();
         } catch {} finally { _jobRefreshing = false; }
     }, 8000);
 
@@ -996,16 +1005,16 @@ function saveWebUrl(val) {
 }
 
 function openReport(id) {
-    let base = _webUrl;
+    const input = document.getElementById('hWebUrl');
+    let base = (input?.value || '').trim() || _webUrl;
     if (!base) {
-        base = prompt('กรุณาใส่ URL ของเว็บ เช่น https://xxx.vercel.app');
-        if (!base) return;
-        base = base.trim().replace(/\/$/, '');
-        saveWebUrl(base);
-        const inp = document.getElementById('hWebUrl');
-        if (inp) inp.value = base;
+        alert('กรุณาใส่ URL ของเว็บก่อน\nเช่น https://xxx.vercel.app\n(ดูช่อง "🌐 URL เว็บ" ด้านบน)');
+        input?.focus();
+        return;
     }
     base = base.replace(/\/$/, '');
+    if (base !== _webUrl) saveWebUrl(base);
+    appendLog(`[🌐] เปิดรายงาน: ${base}/group-result/${id}`);
     agent.openUrl(`${base}/group-result/${id}`);
 }
 
