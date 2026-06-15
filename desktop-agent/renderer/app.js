@@ -970,27 +970,11 @@ function renderHistory() {
           </div>
           <div style="display:flex;align-items:center;gap:.4rem;flex-shrink:0">
             <span class="job-status ${statusCls}">${statusTH}</span>
-            <button class="btn btn-secondary" style="font-size:11px;padding:.3rem .6rem;white-space:nowrap"
-                    onclick="openReport('${j._id}')">📊 รายงาน</button>
             <button class="btn btn-primary" style="font-size:11px;padding:.3rem .6rem;white-space:nowrap"
                     onclick="repostHistoryJob('${j._id}')">🔄 โพสอีกครั้ง</button>
           </div>
         </div>`;
     }).join('');
-}
-
-function openReport(id) {
-    let base = _webUrl;
-    if (!base) {
-        base = prompt('กรุณาใส่ URL ของเว็บ เช่น https://xxx.vercel.app\n(ดาวน์โหลด Agent ใหม่เพื่อตั้งค่าอัตโนมัติ)');
-        if (!base) return;
-        base = base.trim().replace(/\/$/, '');
-        _webUrl = base;
-        localStorage.setItem('_webUrl', base);
-    }
-    base = base.replace(/\/$/, '');
-    appendLog(`[🌐] เปิดรายงาน: ${base}/group-result/${id}`);
-    agent.openUrl(`${base}/group-result/${id}`);
 }
 
 async function repostHistoryJob(id) {
