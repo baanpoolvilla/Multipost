@@ -3,6 +3,59 @@ const groupStore     = require('../services/groupStore');
 const categoryStore  = require('../services/categoryStore');
 const postStore      = require('../services/postStore');
 
+// ── Group Overview Dashboard ───────────────────────────────────
+exports.showGroupOverview = async (req, res) => {
+    try {
+        const jobs = await groupJobStore.listHistory();
+
+        const totalJobs    = jobs.length;
+        const totalSuccess = jobs.reduce((s, j) => s + (j.results||[]).filter(r=>r.status==='success').length, 0);
+        const totalFail    = jobs.reduce((s, j) => s + (j.results||[]).filter(r=>r.status==='failed').length, 0);
+        const successRate  = (totalSuccess + totalFail) > 0 ? Math.round(totalSuccess/(totalSuccess+totalFail)*100) : 0;
+
+        // Top 5 groups
+        const grpCounts = {};
+        jobs.forEach(j => {
+            (j.results||[]).forEach(r => {
+                const key = r.groupId || r.groupName || 'ไม่ทราบ';
+                if (!grpCounts[key]) grpCounts[key] = { name: r.groupName || r.groupId || 'ไม่ทราบ', success: 0, fail: 0 };
+                if (r.status === 'success') grpCounts[key].success++;
+                else grpCounts[key].fail++;
+            });
+        });
+        const topGroups = Object.values(grpCounts)
+            .sort((a,b) => (b.success+b.fail)-(a.success+a.fail)).slice(0,5);
+
+        // Chart last 7 days (Bangkok)
+        const labels = [], chartData = [];
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date(new Date().toLocaleString('en-US', { timeZone:'Asia/Bangkok' }));
+            d.setDate(d.getDate() - i);
+            labels.push(d.toLocaleDateString('th-TH', { month:'short', day:'numeric' }));
+            chartData.push(jobs.filter(j => {
+                const jd = new Date(new Date(j.createdAt).toLocaleString('en-US', { timeZone:'Asia/Bangkok' }));
+                return jd.getFullYear()===d.getFullYear() && jd.getMonth()===d.getMonth() && jd.getDate()===d.getDate();
+            }).length);
+        }
+
+        const recentJobs = jobs.slice(0, 10).map(j => ({
+            ...j, _id: String(j._id),
+            successCount: (j.results||[]).filter(r=>r.status==='success').length,
+            failCount:    (j.results||[]).filter(r=>r.status==='failed').length,
+            groupCount:   (j.groups||[]).length,
+        }));
+
+        res.render('group-overview', {
+            totalJobs, totalSuccess, totalFail, successRate, topGroups,
+            chartLabels: JSON.stringify(labels),
+            chartData:   JSON.stringify(chartData),
+            recentJobs,
+        });
+    } catch (e) {
+        res.status(500).send('เกิดข้อผิดพลาด: ' + e.message);
+    }
+};
+
 // ── Agent status page ──────────────────────────────────────────
 exports.showAgent = async (req, res) => {
     res.render('agent');

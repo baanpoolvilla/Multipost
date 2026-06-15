@@ -91,6 +91,7 @@ router.get('/api/post/:id/status', ctrl.getPostStatus);
 router.get('/history',        ctrl.showHistory);
 router.delete('/history/:id', ctrl.deletePost);
 router.get('/overview',               ctrl.showOverview);
+router.get('/group-overview',         agentCtrl.showGroupOverview);
 router.get('/api/stats',              ctrl.overviewStats);
 router.post('/api/refresh-analytics', ctrl.refreshAnalytics);
 router.get('/api/daily-summary',      ctrl.dailySummary);
