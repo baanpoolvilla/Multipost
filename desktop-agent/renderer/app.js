@@ -202,8 +202,8 @@ async function removeAcc(id) {
 async function loginAcc(id) {
     _loggingIn.add(id);
     renderAccounts();
-    appendLog('[🔑] กำลังเปิดเบราว์เซอร์และ auto-fill รหัสผ่านให้อัตโนมัติ...');
-    appendLog('[ℹ️] รอสักครู่ ไม่ต้องกรอกอะไรในเบราว์เซอร์ที่เปิดขึ้นมา');
+    appendLog('[🔑] กำลังเปิดเบราว์เซอร์และกรอก Email/รหัสผ่านให้อัตโนมัติ...');
+    appendLog('[ℹ️] ถ้า Facebook ขอยืนยันตัวตน (OTP/โทรศัพท์/อีเมล) ให้ทำในเบราว์เซอร์ที่เปิดขึ้นมาได้เลย');
     const res = await agent.loginAccount(id);
     _loggingIn.delete(id);
     if (res.ok) appendLog('[✅] '+res.message);

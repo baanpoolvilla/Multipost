@@ -47,4 +47,19 @@ async function remove(id) {
     } catch { return null; }
 }
 
-module.exports = { list, create, remove };
+async function listHistory() {
+    try {
+        await connect();
+        return GroupJob.find({ status: { $in: ['done', 'failed'] } })
+            .sort({ createdAt: -1 }).limit(300).lean();
+    } catch(e) { return []; }
+}
+
+async function deleteHistory(id) {
+    try {
+        await connect();
+        return GroupJob.findByIdAndDelete(id).lean();
+    } catch { return null; }
+}
+
+module.exports = { list, create, remove, listHistory, deleteHistory };

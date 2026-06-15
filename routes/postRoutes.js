@@ -143,10 +143,12 @@ router.get('/download/agent', (req, res) => {
 });
 
 // Agent / Groups / Job Queue / Guide pages
-router.get('/guide',     (req, res) => res.render('guide'));
-router.get('/agent',     agentCtrl.showAgent);
-router.get('/groups',    agentCtrl.showGroups);
-router.get('/job-queue', agentCtrl.showJobQueue);
+router.get('/guide',         (req, res) => res.render('guide'));
+router.get('/agent',         agentCtrl.showAgent);
+router.get('/groups',        agentCtrl.showGroups);
+router.get('/job-queue',     agentCtrl.showJobQueue);
+router.get('/group-history', agentCtrl.showGroupHistory);
+router.delete('/api/agent/history/:id', agentCtrl.deleteGroupHistoryJob);
 
 // Job Queue API
 router.get('/api/agent/jobs',         agentCtrl.listJobs);

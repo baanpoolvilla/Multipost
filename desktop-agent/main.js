@@ -24,6 +24,7 @@ function createWindow() {
         },
         title: 'MultiPost – Desktop Agent v2',
         backgroundColor: '#1a1b1e',
+        icon: path.join(__dirname, 'assets', 'icon.ico'),
     });
     win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 }

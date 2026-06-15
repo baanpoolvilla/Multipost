@@ -135,3 +135,39 @@ exports.deleteJob = async (req, res) => {
     const job = await groupJobStore.remove(req.params.id);
     res.json({ success: !!job });
 };
+
+// ── Group History page ─────────────────────────────────────────
+exports.showGroupHistory = async (req, res) => {
+    const [jobs, groups, dbCategories] = await Promise.all([
+        groupJobStore.listHistory(),
+        groupStore.list(),
+        categoryStore.list(),
+    ]);
+
+    // groupId → categories map for category-based filtering on client
+    const groupCatMap = {};
+    groups.forEach(g => { groupCatMap[g.groupId] = g.categories || ['ทั่วไป']; });
+
+    // All distinct categories (from DB + from group data)
+    const catSet = new Set(dbCategories.map(c => c.name));
+    groups.forEach(g => (g.categories || ['ทั่วไป']).forEach(c => catSet.add(c)));
+    const allCats = ['ทั่วไป', ...[...catSet].filter(c => c !== 'ทั่วไป').sort()];
+
+    // Enrich jobs with successCount/failCount
+    const enriched = jobs.map(j => {
+        const results = j.results || [];
+        return {
+            ...j,
+            _id: String(j._id),
+            successCount: results.filter(r => r.status === 'success').length,
+            failCount:    results.filter(r => r.status === 'failed').length,
+        };
+    });
+
+    res.render('group-history', { jobs: enriched, groupCatMap, allCats });
+};
+
+exports.deleteGroupHistoryJob = async (req, res) => {
+    const job = await groupJobStore.deleteHistory(req.params.id);
+    res.json({ success: !!job });
+};

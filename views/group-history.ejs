@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ประวัติโพสต์ - Multi Post System</title>
+  <title>ประวัติโพสกลุ่ม - Multi Post System</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -17,22 +17,16 @@
       <div class="fb-logo"><i class="fa-brands fa-facebook"></i></div>
       <span>Multi Post System</span>
     </div>
-    <div class="navbar-right">
-      <a href="/" class="btn-back"><i class="fa-solid fa-plus"></i> โพสต์ใหม่</a>
-    </div>
   </div>
 </nav>
 
 <div class="page-wrap">
 
   <aside class="sidebar">
-        <div class="sidebar-label">โพสลงเพจ</div>
+    <div class="sidebar-label">โพสลงเพจ</div>
     <a href="/" class="sidebar-item"><i class="fa-solid fa-pen-to-square"></i><span>โพสใหม่</span></a>
     <a href="/overview" class="sidebar-item"><i class="fa-solid fa-chart-line"></i><span>ภาพรวม</span></a>
-    <a href="/history" class="sidebar-item active"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพส</span></a>
-    <a href="#" class="sidebar-item" style="padding-left:2.5rem;font-size:.83rem;color:#8a8d91;pointer-events:none">
-      <i class="fa-solid fa-chart-bar" style="font-size:.78rem;color:#bbb"></i><span>รายงานการโพส</span>
-    </a>
+    <a href="/history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพส</span></a>
     <a href="/pages" class="sidebar-item"><i class="fa-brands fa-facebook"></i><span>จัดการเพจ</span></a>
 
     <div class="sidebar-divider"></div>
@@ -40,7 +34,7 @@
     <a href="/groups" class="sidebar-item"><i class="fa-solid fa-users-rectangle"></i><span>จัดการกลุ่ม</span></a>
     <a href="/agent" class="sidebar-item"><i class="fa-solid fa-robot"></i><span>ติดตั้ง Desktop Agent</span></a>
     <a href="/job-queue" class="sidebar-item"><i class="fa-solid fa-list-check"></i><span>คิวโพส</span></a>
-    <a href="/group-history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพสกลุ่ม</span></a>
+    <a href="/group-history" class="sidebar-item active"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพสกลุ่ม</span></a>
     <a href="/guide" class="sidebar-item"><i class="fa-solid fa-book-open"></i><span>คู่มือการใช้งาน</span></a>
   </aside>
 
@@ -49,20 +43,19 @@
     <div class="card" style="padding:.85rem 1.25rem;display:flex;align-items:center;justify-content:space-between">
       <div class="card-title">
         <i class="fa-solid fa-clock-rotate-left"></i>
-        ประวัติการโพสต์
-        <span id="historyCount" style="background:#e4e6ea;padding:.15rem .55rem;border-radius:999px;font-size:.8rem;margin-left:.4rem"><%= posts.length %></span>
+        ประวัติโพสลงกลุ่ม
+        <span id="historyCount" style="background:#e4e6ea;padding:.15rem .55rem;border-radius:999px;font-size:.8rem;margin-left:.4rem"><%= jobs.length %></span>
       </div>
-      <% if (posts.length > 0) { %>
+      <% if (jobs.length > 0) { %>
       <button class="btn-danger-sm" onclick="confirmClearAll()">
         <i class="fa-solid fa-trash"></i> ล้างทั้งหมด
       </button>
       <% } %>
     </div>
 
-    <% if (posts.length > 0) { %>
+    <% if (jobs.length > 0) { %>
     <!-- Filter bar -->
     <div class="card" style="padding:.85rem 1.25rem">
-      <!-- Header row -->
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
         <span style="font-weight:700;font-size:.88rem;color:#444">
           <i class="fa-solid fa-filter" style="color:#1877f2;font-size:.8rem;margin-right:.3rem"></i>ค้นหาและกรอง
@@ -73,20 +66,16 @@
         </button>
       </div>
 
-      <!-- Main filters grid -->
-      <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:.65rem;margin-bottom:.65rem">
-        <!-- Search -->
+      <!-- Row 1: search + status + group + category -->
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:.65rem;margin-bottom:.65rem">
         <div>
           <div style="font-size:.73rem;color:#8a8d91;font-weight:600;margin-bottom:.28rem">
             <i class="fa-solid fa-magnifying-glass" style="width:12px"></i> ค้นหาข้อความ
           </div>
-          <div style="position:relative">
-            <input id="hSearch" type="text" placeholder="พิมพ์คำค้น..." oninput="applyFilters()"
-              style="width:100%;padding:.42rem .75rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.83rem;font-family:inherit;outline:none;box-sizing:border-box;transition:border-color .15s"
-              onfocus="this.style.borderColor='#1877f2'" onblur="this.style.borderColor='#e4e6eb'">
-          </div>
+          <input id="hSearch" type="text" placeholder="พิมพ์คำค้น..." oninput="applyFilters()"
+            style="width:100%;padding:.42rem .75rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.83rem;font-family:inherit;outline:none;box-sizing:border-box;transition:border-color .15s"
+            onfocus="this.style.borderColor='#1877f2'" onblur="this.style.borderColor='#e4e6eb'">
         </div>
-        <!-- Status -->
         <div>
           <div style="font-size:.73rem;color:#8a8d91;font-weight:600;margin-bottom:.28rem">
             <i class="fa-solid fa-circle-dot" style="width:12px"></i> สถานะ
@@ -96,22 +85,32 @@
             <option value="">ทั้งหมด</option>
             <option value="success">สำเร็จทั้งหมด</option>
             <option value="partial">มีล้มเหลว</option>
-            <option value="scheduled">รอโพส</option>
           </select>
         </div>
-        <!-- Page -->
         <div>
           <div style="font-size:.73rem;color:#8a8d91;font-weight:600;margin-bottom:.28rem">
-            <i class="fa-brands fa-facebook" style="width:12px"></i> เพจ
+            <i class="fa-solid fa-users" style="width:12px"></i> กลุ่ม
           </div>
-          <select id="hPage" onchange="applyFilters()"
+          <select id="hGroup" onchange="applyFilters()"
             style="width:100%;padding:.42rem .5rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.83rem;font-family:inherit;color:#444;background:#fff;cursor:pointer;outline:none">
-            <option value="">ทุกเพจ</option>
+            <option value="">ทุกกลุ่ม</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:.73rem;color:#8a8d91;font-weight:600;margin-bottom:.28rem">
+            <i class="fa-solid fa-tag" style="width:12px"></i> หมวดหมู่
+          </div>
+          <select id="hCat" onchange="applyFilters()"
+            style="width:100%;padding:.42rem .5rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.83rem;font-family:inherit;color:#444;background:#fff;cursor:pointer;outline:none">
+            <option value="">ทุกหมวด</option>
+            <% allCats.forEach(c => { %>
+            <option value="<%= c %>"><%= c %></option>
+            <% }) %>
           </select>
         </div>
       </div>
 
-      <!-- Date + time range row -->
+      <!-- Row 2: date range -->
       <div style="display:flex;align-items:flex-end;gap:.5rem;flex-wrap:wrap">
         <div>
           <div style="font-size:.73rem;color:#8a8d91;font-weight:600;margin-bottom:.28rem">
@@ -142,69 +141,55 @@
         </div>
       </div>
 
-      <!-- Result info -->
       <div id="hFilterInfo" style="display:none;margin-top:.6rem;padding-top:.5rem;border-top:1px solid #f0f2f5;font-size:.79rem;color:#8a8d91">
         <i class="fa-solid fa-circle-info" style="color:#1877f2;margin-right:.3rem"></i>
-        แสดง <strong id="hShown" style="color:#1877f2">0</strong> จาก <strong><%= posts.length %></strong> โพสต์
+        แสดง <strong id="hShown" style="color:#1877f2">0</strong> จาก <strong><%= jobs.length %></strong> รายการ
       </div>
     </div>
     <% } %>
 
-    <% if (posts.length === 0) { %>
+    <% if (jobs.length === 0) { %>
     <div class="card empty-state">
       <i class="fa-regular fa-face-meh-blank"></i>
-      <h3>ยังไม่มีประวัติการโพสต์</h3>
-      <p>เริ่มโพสต์ครั้งแรกได้เลย!</p>
-      <a href="/" class="btn-post" style="text-decoration:none;margin-top:1rem">
-        <i class="fa-solid fa-paper-plane"></i> เริ่มโพสต์
+      <h3>ยังไม่มีประวัติการโพสกลุ่ม</h3>
+      <p>เมื่อ Agent โพสสำเร็จแล้ว ประวัติจะแสดงที่นี่</p>
+      <a href="/job-queue" class="btn-post" style="text-decoration:none;margin-top:1rem">
+        <i class="fa-solid fa-list-check"></i> ไปที่คิวโพส
       </a>
     </div>
     <% } %>
 
     <% const colors = ['purple','green','orange','blue','red']; %>
-    <% posts.forEach(post => { %>
-    <% const isScheduled = post.status === 'scheduled'; %>
-    <div class="card history-card" id="card-<%= post.id %>">
+    <% jobs.forEach(job => { %>
+    <%
+      const allOk   = job.successCount > 0 && job.failCount === 0;
+      const allFail = job.successCount === 0 && job.failCount > 0;
+    %>
+    <div class="card history-card" id="card-<%= job._id %>">
 
       <!-- Card header -->
       <div class="fb-post-header">
-        <div class="avatar avatar-<%= isScheduled ? 'orange' : 'blue' %>">
-          <i class="fa-solid fa-<%= isScheduled ? 'clock' : 'building' %>"></i>
+        <div class="avatar avatar-<%= allOk ? 'green' : allFail ? 'red' : 'blue' %>">
+          <i class="fa-solid fa-robot"></i>
         </div>
         <div style="flex:1">
           <div class="fb-post-author">
-            Admin
-            <% if (isScheduled) { %>
-            <span style="background:#fff3cd;color:#856404;border-radius:999px;font-size:.7rem;padding:.1rem .45rem;font-weight:700;margin-left:.35rem">
-              <i class="fa-solid fa-clock" style="font-size:.65rem"></i> รอโพส
+            Desktop Agent
+            <span style="background:<%= allOk ? '#d1e7dd' : allFail ? '#f8d7da' : '#fff3cd' %>;color:<%= allOk ? '#0a3622' : allFail ? '#842029' : '#856404' %>;border-radius:999px;font-size:.7rem;padding:.1rem .5rem;font-weight:700;margin-left:.35rem">
+              <i class="fa-solid fa-<%= allOk ? 'check' : allFail ? 'xmark' : 'triangle-exclamation' %>" style="font-size:.65rem"></i>
+              <%= allOk ? 'สำเร็จทั้งหมด' : allFail ? 'ล้มเหลวทั้งหมด' : 'สำเร็จบางส่วน' %>
             </span>
-            <% } else if (post.feeling) { %>
-            <span class="inline-feeling">รู้สึก <%= post.feeling.emoji %> <%= post.feeling.label %></span>
-            <% } %>
           </div>
           <div class="fb-post-time">
-            <% if (isScheduled) { %>
-            <i class="fa-solid fa-calendar-clock"></i>
-            โพสอัตโนมัติ <%= new Date(post.scheduledAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', dateStyle:'short', timeStyle:'short' }) %>
-            <% } else { %>
-            <i class="fa-solid fa-earth-asia"></i>
-            <%= new Date(post.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) %>
-            <% if (post.location) { %>
-            &nbsp;·&nbsp;<i class="fa-solid fa-location-dot" style="color:#f5533d"></i> <%= post.location %>
-            <% } %>
-            <% } %>
+            <i class="fa-solid fa-clock"></i>
+            <%= new Date(job.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) %>
+            &nbsp;·&nbsp;
+            <i class="fa-solid fa-users" style="color:#1877f2"></i>
+            <%= (job.groups || []).length %> กลุ่ม
           </div>
         </div>
         <div class="history-actions">
-          <% if (!isScheduled) { %>
-          <a href="/result/<%= post.id %>"
-             style="display:inline-flex;align-items:center;gap:.28rem;background:#e7f0fd;color:#1877f2;border:none;border-radius:7px;padding:.28rem .65rem;font-size:.78rem;font-weight:700;text-decoration:none;transition:background .15s"
-             onmouseover="this.style.background='#cfe2ff'" onmouseout="this.style.background='#e7f0fd'"
-             title="ดูรายงานการโพส">
-            <i class="fa-solid fa-chart-bar"></i> รายงาน
-          </a>
-          <% } %>
-          <button class="icon-btn danger" title="ลบ" onclick="deletePost('<%= post.id %>', this)">
+          <button class="icon-btn danger" title="ลบ" onclick="deleteJob('<%= job._id %>', this)">
             <i class="fa-solid fa-trash"></i>
           </button>
         </div>
@@ -212,7 +197,7 @@
 
       <!-- Message -->
       <div class="history-message">
-        <% const msg = post.message; %>
+        <% const msg = job.message || ''; %>
         <% if (msg.length > 200) { %>
           <span class="msg-short"><%= msg.slice(0, 200) %>...<button class="read-more-btn" onclick="toggleMsg(this)"> อ่านเพิ่มเติม</button></span>
           <span class="msg-full" style="display:none"><%= msg %><button class="read-more-btn" onclick="toggleMsg(this)"> ย่อ</button></span>
@@ -221,13 +206,14 @@
         <% } %>
       </div>
 
-      <!-- Images / Videos -->
-      <% if (post.images && post.images.length > 0) { %>
-      <div class="post-img-grid post-img-<%= Math.min(post.images.length, 4) %>">
-        <% post.images.slice(0, 4).forEach((img, i) => { %>
+      <!-- Images (skip localpath:: entries — local files) -->
+      <% const webImages = (job.images || []).filter(img => img && !img.startsWith('localpath::') && !require('path').isAbsolute(img)); %>
+      <% if (webImages.length > 0) { %>
+      <div class="post-img-grid post-img-<%= Math.min(webImages.length, 4) %>">
+        <% webImages.slice(0, 4).forEach((img, i) => { %>
         <% const imgSrc = img.startsWith('http') ? img : '/uploads/' + img; %>
         <% const isVid  = /\.(mp4|mov|avi|webm)$/i.test(img); %>
-        <div class="post-img-item <%= (i === 3 && post.images.length > 4) ? 'has-more' : '' %>"
+        <div class="post-img-item <%= (i === 3 && webImages.length > 4) ? 'has-more' : '' %>"
              onclick="<%= isVid ? `viewVideo('${imgSrc}')` : `viewImage('${imgSrc}')` %>">
           <% if (isVid) { %>
           <video src="<%= imgSrc %>" style="width:100%;height:100%;object-fit:cover" muted playsinline
@@ -236,34 +222,45 @@
           <img src="<%= imgSrc %>" alt="รูปภาพ" loading="lazy"
                onerror="this.closest('.post-img-item').style.display='none'">
           <% } %>
-          <% if (i === 3 && post.images.length > 4) { %>
-          <div class="img-more-overlay">+<%= post.images.length - 4 %></div>
+          <% if (i === 3 && webImages.length > 4) { %>
+          <div class="img-more-overlay">+<%= webImages.length - 4 %></div>
           <% } %>
         </div>
         <% }); %>
       </div>
       <% } %>
+      <% const localVids = (job.images || []).filter(img => img && img.startsWith('localpath::')); %>
+      <% if (localVids.length > 0) { %>
+      <div style="font-size:.78rem;color:#8a8d91;margin:.4rem 0 .2rem;display:flex;align-items:center;gap:.35rem">
+        <i class="fa-solid fa-video" style="color:#bbb"></i>
+        วิดีโอในเครื่อง <%= localVids.length %> ไฟล์ (แสดงได้เฉพาะบนเครื่อง Agent)
+      </div>
+      <% } %>
 
-      <!-- Footer stats -->
-      <div class="history-footer" <% if (isScheduled) { %>style="opacity:.5"<% } %>>
+      <!-- Footer: group result badges -->
+      <div class="history-footer">
         <div class="history-pages" style="flex:1">
           <% const MAX_B = 8; %>
-          <% post.results.slice(0, MAX_B).forEach((r, i) => { %>
-          <span class="mini-page-badge <%= r.status %>">
-            <div class="avatar avatar-<%= colors[i%5] %>" style="width:18px;height:18px;font-size:.6rem"><%= r.pageName.slice(-1) %></div>
-            <%= r.pageName %>
+          <% (job.results || []).slice(0, MAX_B).forEach((r, i) => { %>
+          <span class="mini-page-badge <%= r.status === 'success' ? 'success' : 'fail' %>">
+            <div class="avatar avatar-<%= colors[i%5] %>" style="width:18px;height:18px;font-size:.6rem">
+              <%= (r.groupName||'?').slice(0,1) %>
+            </div>
+            <%= r.groupName %>
             <i class="fa-solid fa-<%= r.status === 'success' ? 'check' : 'xmark' %>"></i>
           </span>
           <% }); %>
-          <% if (post.results.length > MAX_B) { %>
-          <button class="mini-more-btn" onclick="toggleMoreBadges(this, '<%= post.id %>')">
-            + <%= post.results.length - MAX_B %> เพจ
+          <% if ((job.results||[]).length > MAX_B) { %>
+          <button class="mini-more-btn" onclick="toggleMoreBadges(this, '<%= job._id %>')">
+            + <%= (job.results||[]).length - MAX_B %> กลุ่ม
           </button>
-          <span class="mini-more-group" id="mb-<%= post.id %>" style="display:none;flex-wrap:wrap;gap:.25rem">
-            <% post.results.slice(MAX_B).forEach((r, i) => { %>
-            <span class="mini-page-badge <%= r.status %>">
-              <div class="avatar avatar-<%= colors[(i+MAX_B)%5] %>" style="width:18px;height:18px;font-size:.6rem"><%= r.pageName.slice(-1) %></div>
-              <%= r.pageName %>
+          <span class="mini-more-group" id="mb-<%= job._id %>" style="display:none;flex-wrap:wrap;gap:.25rem">
+            <% (job.results||[]).slice(MAX_B).forEach((r, i) => { %>
+            <span class="mini-page-badge <%= r.status === 'success' ? 'success' : 'fail' %>">
+              <div class="avatar avatar-<%= colors[(i+MAX_B)%5] %>" style="width:18px;height:18px;font-size:.6rem">
+                <%= (r.groupName||'?').slice(0,1) %>
+              </div>
+              <%= r.groupName %>
               <i class="fa-solid fa-<%= r.status === 'success' ? 'check' : 'xmark' %>"></i>
             </span>
             <% }); %>
@@ -272,11 +269,11 @@
         </div>
         <div class="history-summary">
           <span class="pill pill-success" style="font-size:.75rem;padding:.2rem .6rem">
-            <i class="fa-solid fa-check"></i> <%= post.successCount %>
+            <i class="fa-solid fa-check"></i> <%= job.successCount %>
           </span>
-          <% if (post.failCount > 0) { %>
+          <% if (job.failCount > 0) { %>
           <span class="pill pill-fail" style="font-size:.75rem;padding:.2rem .6rem">
-            <i class="fa-solid fa-xmark"></i> <%= post.failCount %>
+            <i class="fa-solid fa-xmark"></i> <%= job.failCount %>
           </span>
           <% } %>
         </div>
@@ -291,12 +288,14 @@
     <div class="card stats-card">
       <div class="stats-title"><i class="fa-solid fa-chart-simple"></i> สถิติรวม</div>
       <%
-        const totalPosts = posts.length;
-        const totalSuccess = posts.reduce((s, p) => s + p.successCount, 0);
-        const totalFail = posts.reduce((s, p) => s + p.failCount, 0);
+        const totalJobs    = jobs.length;
+        const totalSuccess = jobs.reduce((s, j) => s + j.successCount, 0);
+        const totalFail    = jobs.reduce((s, j) => s + j.failCount, 0);
+        const totalGroups  = jobs.reduce((s, j) => s + (j.groups||[]).length, 0);
       %>
-      <div class="stats-row"><span>โพสต์ทั้งหมด</span><span class="stats-val blue"><%= totalPosts %></span></div>
-      <div class="stats-row"><span>ส่งสำเร็จ</span><span class="stats-val green"><%= totalSuccess %></span></div>
+      <div class="stats-row"><span>จำนวน Job</span><span class="stats-val blue"><%= totalJobs %></span></div>
+      <div class="stats-row"><span>กลุ่มทั้งหมด</span><span class="stats-val blue"><%= totalGroups %></span></div>
+      <div class="stats-row"><span>โพสสำเร็จ</span><span class="stats-val green"><%= totalSuccess %></span></div>
       <div class="stats-row"><span>ล้มเหลว</span><span class="stats-val red"><%= totalFail %></span></div>
     </div>
   </aside>
@@ -304,37 +303,38 @@
 </div>
 
 <script>
-  // Embedded post data for client-side filtering
-  const _hPosts = <%- JSON.stringify(posts.map(p => ({
-    id: p.id,
-    msg: p.message || '',
-    at: p.status === 'scheduled' ? p.scheduledAt : p.createdAt,
-    fail: p.failCount || 0,
-    status: p.status || 'done',
-    pages: (p.results || []).map(r => r.pageName)
+  const _groupCatMap = <%- JSON.stringify(groupCatMap) %>;
+
+  const _hJobs = <%- JSON.stringify(jobs.map(j => ({
+    id:     String(j._id),
+    msg:    j.message || '',
+    at:     j.createdAt,
+    fail:   j.failCount || 0,
+    groups: (j.groups || []).map(g => ({ id: g.groupId, name: g.groupName })),
   }))) %>;
 
-  // Populate page select
+  // Populate group select
   (function() {
-    const sel = document.getElementById('hPage');
+    const sel = document.getElementById('hGroup');
     if (!sel) return;
-    const pgs = new Set();
-    _hPosts.forEach(p => p.pages.forEach(pg => pgs.add(pg)));
-    [...pgs].sort().forEach(pg => {
+    const names = new Set();
+    _hJobs.forEach(j => j.groups.forEach(g => names.add(g.name)));
+    [...names].sort().forEach(n => {
       const o = document.createElement('option');
-      o.value = o.textContent = pg;
+      o.value = o.textContent = n;
       sel.appendChild(o);
     });
   })();
 
   function applyFilters() {
-    const q         = (document.getElementById('hSearch')?.value || '').toLowerCase().trim();
-    const st        = document.getElementById('hStatus')?.value   || '';
-    const fromVal   = document.getElementById('hDateFrom')?.value || '';
-    const toVal     = document.getElementById('hDateTo')?.value   || '';
-    const timeFrom  = document.getElementById('hTimeFrom')?.value || '';
-    const timeTo    = document.getElementById('hTimeTo')?.value   || '';
-    const pg        = document.getElementById('hPage')?.value     || '';
+    const q        = (document.getElementById('hSearch')?.value || '').toLowerCase().trim();
+    const st       = document.getElementById('hStatus')?.value   || '';
+    const grp      = document.getElementById('hGroup')?.value    || '';
+    const cat      = document.getElementById('hCat')?.value      || '';
+    const fromVal  = document.getElementById('hDateFrom')?.value || '';
+    const toVal    = document.getElementById('hDateTo')?.value   || '';
+    const timeFrom = document.getElementById('hTimeFrom')?.value || '';
+    const timeTo   = document.getElementById('hTimeTo')?.value   || '';
 
     let fromTs = null, toTs = null;
     if (fromVal) {
@@ -345,37 +345,49 @@
       const [th, tm] = timeTo ? timeTo.split(':').map(Number) : [23, 59];
       toTs = new Date(toVal).setHours(th, tm, 59, 999);
     }
-    // Time-only filter (no date): filter by time-of-day across all dates
     const timeOnlyFrom = !fromVal && timeFrom ? timeFrom : null;
     const timeOnlyTo   = !toVal   && timeTo   ? timeTo   : null;
-    let shown = 0;
 
-    _hPosts.forEach(p => {
-      const card = document.getElementById('card-' + p.id);
+    let shown = 0;
+    _hJobs.forEach(j => {
+      const card = document.getElementById('card-' + j.id);
       if (!card) return;
       let ok = true;
-      if (q  && !p.msg.toLowerCase().includes(q))       ok = false;
-      if (st === 'success'   && p.fail > 0)              ok = false;
-      if (st === 'partial'   && p.fail === 0)            ok = false;
-      if (st === 'scheduled' && p.status !== 'scheduled') ok = false;
-      const postDate = new Date(p.at);
+
+      if (q  && !j.msg.toLowerCase().includes(q))    ok = false;
+      if (st === 'success' && j.fail > 0)             ok = false;
+      if (st === 'partial' && j.fail === 0)           ok = false;
+
+      // Group filter
+      if (grp && !j.groups.some(g => g.name === grp)) ok = false;
+
+      // Category filter — cross-reference groupCatMap
+      if (cat) {
+        const groupsInCat = j.groups.filter(g => {
+          const cats = _groupCatMap[g.id] || ['ทั่วไป'];
+          return cats.includes(cat);
+        });
+        if (groupsInCat.length === 0) ok = false;
+      }
+
+      const postDate = new Date(j.at);
       const postTs   = postDate.getTime();
-      if (fromTs !== null && postTs < fromTs)       ok = false;
-      if (toTs   !== null && postTs > toTs)         ok = false;
+      if (fromTs !== null && postTs < fromTs) ok = false;
+      if (toTs   !== null && postTs > toTs)   ok = false;
       if (timeOnlyFrom) {
         const postTime = postDate.toTimeString().slice(0,5);
-        if (postTime < timeOnlyFrom)                ok = false;
+        if (postTime < timeOnlyFrom) ok = false;
       }
       if (timeOnlyTo) {
         const postTime = postDate.toTimeString().slice(0,5);
-        if (postTime > timeOnlyTo)                  ok = false;
+        if (postTime > timeOnlyTo) ok = false;
       }
-      if (pg && !p.pages.includes(pg))              ok = false;
+
       card.style.display = ok ? '' : 'none';
       if (ok) shown++;
     });
 
-    const hasFilter = q || st || fromVal || toVal || timeFrom || timeTo || pg;
+    const hasFilter = q || st || grp || cat || fromVal || toVal || timeFrom || timeTo;
     const info = document.getElementById('hFilterInfo');
     if (info) {
       info.style.display = hasFilter ? 'block' : 'none';
@@ -383,16 +395,16 @@
       if (el) el.textContent = shown;
     }
     const cnt = document.getElementById('historyCount');
-    if (cnt) cnt.textContent = hasFilter ? shown : _hPosts.length;
+    if (cnt) cnt.textContent = hasFilter ? shown : _hJobs.length;
     const btnClear = document.getElementById('btnClearFilter');
     if (btnClear) {
-      btnClear.style.opacity = hasFilter ? '1' : '.35';
+      btnClear.style.opacity      = hasFilter ? '1' : '.35';
       btnClear.style.pointerEvents = hasFilter ? '' : 'none';
     }
   }
 
   function clearFilters() {
-    ['hSearch','hStatus','hDateFrom','hDateTo','hTimeFrom','hTimeTo','hPage'].forEach(id => {
+    ['hSearch','hStatus','hGroup','hCat','hDateFrom','hDateTo','hTimeFrom','hTimeTo'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
@@ -410,27 +422,27 @@
     });
   }
 
-  function toggleMoreBadges(btn, postId) {
-    const group = document.getElementById('mb-' + postId);
+  function toggleMoreBadges(btn, jobId) {
+    const group = document.getElementById('mb-' + jobId);
     const open  = group.style.display !== 'none';
     group.style.display = open ? 'none' : 'inline-flex';
     btn.textContent = open
-      ? '+ ' + group.querySelectorAll('.mini-page-badge').length + ' เพจ'
+      ? '+ ' + group.querySelectorAll('.mini-page-badge').length + ' กลุ่ม'
       : 'ซ่อน';
   }
 
   function toggleMsg(btn) {
     const card = btn.closest('.history-message');
-    card.querySelector('.msg-short').style.display =
-      card.querySelector('.msg-short').style.display === 'none' ? '' : 'none';
-    card.querySelector('.msg-full').style.display =
-      card.querySelector('.msg-full').style.display === 'none' ? '' : 'none';
+    const s = card.querySelector('.msg-short');
+    const f = card.querySelector('.msg-full');
+    s.style.display = s.style.display === 'none' ? '' : 'none';
+    f.style.display = f.style.display === 'none' ? '' : 'none';
   }
 
-  async function deletePost(id, btn) {
+  async function deleteJob(id, btn) {
     const result = await Swal.fire({
-      title: 'ลบโพสต์นี้?',
-      text: 'ข้อมูลและรูปภาพจะถูกลบถาวร',
+      title: 'ลบรายการนี้?',
+      text: 'ประวัติโพสนี้จะถูกลบถาวร',
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#c62828',
@@ -441,7 +453,7 @@
     if (!result.isConfirmed) return;
 
     try {
-      const res = await fetch(`/history/${id}`, { method: 'DELETE' });
+      const res  = await fetch(`/api/agent/history/${id}`, { method: 'DELETE' });
       const data = await res.json();
       if (data.success) {
         const card = document.getElementById(`card-${id}`);
@@ -450,88 +462,23 @@
         card.style.transform = 'translateX(30px)';
         setTimeout(() => { card.remove(); updateCount(); }, 320);
         Swal.fire({ icon: 'success', title: 'ลบแล้ว', timer: 1200, showConfirmButton: false });
-      } else {
-        Swal.fire({ icon: 'error', title: 'ลบไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง', confirmButtonColor: '#1877f2' });
       }
     } catch {
-      Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'ไม่สามารถลบได้ กรุณาลองใหม่', confirmButtonColor: '#1877f2' });
+      Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', confirmButtonColor: '#1877f2' });
     }
   }
 
   function updateCount() {
     const cards = document.querySelectorAll('.history-card');
-    const badge = document.querySelector('.card-title span');
+    const badge = document.getElementById('historyCount');
     if (badge) badge.textContent = cards.length;
     if (cards.length === 0) location.reload();
   }
 
-  // ── Scheduled post polling + auto-trigger ──────────────────
-  (function() {
-    const scheduled = _hPosts.filter(p => p.status === 'scheduled');
-    if (!scheduled.length) return;
-
-    let pollTimer = null;
-
-    async function triggerScheduler() {
-      try { await fetch('/api/cron/run-scheduled', { method: 'POST' }); } catch {}
-    }
-
-    async function pollScheduled() {
-      // trigger scheduler ก่อนดูสถานะ
-      await triggerScheduler();
-
-      let anyChanged = false;
-      for (const p of scheduled) {
-        try {
-          const r = await fetch(`/api/post/${p.id}/status`);
-          const d = await r.json();
-          if (d.status && d.status !== 'scheduled') {
-            anyChanged = true;
-            const card = document.getElementById('card-' + p.id);
-            if (card) {
-              const badge = card.querySelector('.fb-post-author span[style*="fff3cd"]');
-              if (badge) {
-                if (d.status === 'done') {
-                  badge.style.background = '#d1e7dd';
-                  badge.style.color = '#0a3622';
-                  badge.innerHTML = '<i class="fa-solid fa-check" style="font-size:.65rem"></i> โพสแล้ว';
-                } else if (d.status === 'failed') {
-                  badge.style.background = '#f8d7da';
-                  badge.style.color = '#842029';
-                  badge.innerHTML = '<i class="fa-solid fa-xmark" style="font-size:.65rem"></i> ล้มเหลว';
-                }
-              }
-              const actions = card.querySelector('.history-actions');
-              if (actions && d.status === 'done' && !actions.querySelector('a[href*="/result/"]')) {
-                const a = document.createElement('a');
-                a.href = `/result/${p.id}`;
-                a.style = 'display:inline-flex;align-items:center;gap:.28rem;background:#e7f0fd;color:#1877f2;border:none;border-radius:7px;padding:.28rem .65rem;font-size:.78rem;font-weight:700;text-decoration:none';
-                a.title = 'ดูรายงานการโพส';
-                a.innerHTML = '<i class="fa-solid fa-chart-bar"></i> รายงาน';
-                actions.prepend(a);
-              }
-              p.status = d.status;
-            }
-          }
-        } catch {}
-      }
-      const stillPending = scheduled.filter(p => p.status === 'scheduled');
-      if (stillPending.length) {
-        pollTimer = setTimeout(pollScheduled, 30000);
-      } else if (anyChanged) {
-        setTimeout(() => location.reload(), 2000);
-      }
-    }
-
-    // trigger ทันทีที่โหลดหน้า แล้ว poll ครั้งแรกหลัง 5 วิ (และ 30 วิ ในรอบต่อๆ ไป)
-    triggerScheduler();
-    pollTimer = setTimeout(pollScheduled, 5000);
-  })();
-
   async function confirmClearAll() {
     const result = await Swal.fire({
       title: 'ล้างประวัติทั้งหมด?',
-      text: 'จะลบโพสต์ทั้งหมดและรูปภาพออกจากระบบ',
+      text: 'จะลบประวัติโพสกลุ่มทั้งหมดออกจากระบบ',
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#c62828',
@@ -544,7 +491,7 @@
     const cards = [...document.querySelectorAll('.history-card')];
     for (const card of cards) {
       const id = card.id.replace('card-', '');
-      await fetch(`/history/${id}`, { method: 'DELETE' });
+      await fetch(`/api/agent/history/${id}`, { method: 'DELETE' });
     }
     location.reload();
   }
