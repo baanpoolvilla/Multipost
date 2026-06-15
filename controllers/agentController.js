@@ -245,22 +245,25 @@ exports.showPageActivity = async (req, res) => {
             // ตรวจเช็ก groups.pageId (สำหรับแชร์ลงกลุ่ม)
             if ((j.groups || []).some(g => g.pageId === pageId)) return true;
             return false;
-        })
-            .map(j => ({
-                ...j,
-                _id: String(j._id),
-                successCount: (j.results || []).filter(r => r.status === 'success').length,
-                failCount:    (j.results || []).filter(r => r.status === 'failed').length,
-                groupCount:   (j.groups  || []).length,
-            }));
+        });
+        console.log(`[showPageActivity] pageId=${pageId}, allJobs=${allJobs.length}, filtered=${jobs.length}`);
+        if (jobs.length > 0 && jobs.length < 5) console.log(`[showPageActivity] jobs:`, jobs.map(j => ({ id: j._id, pageId: j.pageId, groups: j.groups })));
+        
+        const mappedJobs = jobs.map(j => ({
+            ...j,
+            _id: String(j._id),
+            successCount: (j.results || []).filter(r => r.status === 'success').length,
+            failCount:    (j.results || []).filter(r => r.status === 'failed').length,
+            groupCount:   (j.groups  || []).length,
+        }));
 
         const pageSuccess = posts.filter(p => p.pageResult.status === 'success').length;
         const pageFail    = posts.filter(p => p.pageResult.status !== 'success').length;
-        const grpSuccess  = jobs.reduce((s, j) => s + j.successCount, 0);
-        const grpFail     = jobs.reduce((s, j) => s + j.failCount,    0);
+        const grpSuccess  = mappedJobs.reduce((s, j) => s + j.successCount, 0);
+        const grpFail     = mappedJobs.reduce((s, j) => s + j.failCount,    0);
 
         res.render('page-activity', {
-            page, posts, jobs,
+            page, posts, jobs: mappedJobs,
             pageSuccess, pageFail, grpSuccess, grpFail,
         });
     } catch (e) {
