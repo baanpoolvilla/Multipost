@@ -13,7 +13,7 @@ exports.showGroupOverview = async (req, res) => {
         const totalFail    = jobs.reduce((s, j) => s + (j.results||[]).filter(r=>r.status==='failed').length, 0);
         const successRate  = (totalSuccess + totalFail) > 0 ? Math.round(totalSuccess/(totalSuccess+totalFail)*100) : 0;
 
-        // Top 5 groups
+        // All groups sorted by activity (top 5 = topGroups, full table = allGroupStats)
         const grpCounts = {};
         jobs.forEach(j => {
             (j.results||[]).forEach(r => {
@@ -23,8 +23,9 @@ exports.showGroupOverview = async (req, res) => {
                 else grpCounts[key].fail++;
             });
         });
-        const topGroups = Object.values(grpCounts)
-            .sort((a,b) => (b.success+b.fail)-(a.success+a.fail)).slice(0,5);
+        const allGroupStats = Object.values(grpCounts)
+            .sort((a,b) => (b.success+b.fail)-(a.success+a.fail));
+        const topGroups = allGroupStats.slice(0,5);
 
         // Chart last 7 days (Bangkok)
         const labels = [], chartData = [];
@@ -46,7 +47,7 @@ exports.showGroupOverview = async (req, res) => {
         }));
 
         res.render('group-overview', {
-            totalJobs, totalSuccess, totalFail, successRate, topGroups,
+            totalJobs, totalSuccess, totalFail, successRate, topGroups, allGroupStats,
             chartLabels: JSON.stringify(labels),
             chartData:   JSON.stringify(chartData),
             recentJobs,

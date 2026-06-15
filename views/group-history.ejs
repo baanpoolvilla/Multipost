@@ -300,8 +300,11 @@
   </main>
 
   <aside class="right-panel">
-    <div class="card stats-card">
-      <div class="stats-title"><i class="fa-solid fa-chart-simple"></i> สถิติรวม</div>
+    <div class="card stats-card" onclick="showGroupSummaryModal()" style="cursor:pointer;transition:box-shadow .15s" onmouseover="this.style.boxShadow='0 0 0 2px #2e7d32'" onmouseout="this.style.boxShadow=''">
+      <div class="stats-title" style="display:flex;align-items:center;justify-content:space-between">
+        <span><i class="fa-solid fa-chart-simple"></i> สถิติรวม</span>
+        <span style="font-size:.72rem;color:#2e7d32;font-weight:600"><i class="fa-solid fa-arrow-up-right-from-square"></i> ดูสรุป</span>
+      </div>
       <%
         const totalJobs    = jobs.length;
         const totalSuccess = jobs.reduce((s, j) => s + j.successCount, 0);
@@ -537,6 +540,54 @@
     }
     location.reload();
   }
+
+async function showGroupSummaryModal() {
+  const { value: dates } = await Swal.fire({
+    title: '<i class="fa-solid fa-users" style="color:#2e7d32"></i> สรุปแชร์กลุ่มตามช่วงเวลา',
+    html: `<div style="display:flex;flex-wrap:wrap;gap:.6rem;justify-content:center;align-items:flex-end;margin-top:.5rem">
+      <div><label style="font-size:.78rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem">วันที่เริ่ม</label>
+        <input id="gh-from" type="date" style="padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none"></div>
+      <div><label style="font-size:.78rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem">วันที่สิ้นสุด</label>
+        <input id="gh-to" type="date" style="padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none"></div>
+    </div>`,
+    confirmButtonText: 'ดูสรุป', confirmButtonColor: '#2e7d32',
+    showCancelButton: true, cancelButtonText: 'ยกเลิก', focusConfirm: false,
+    preConfirm: () => ({ from: document.getElementById('gh-from').value, to: document.getElementById('gh-to').value }),
+  });
+  if (!dates) return;
+  Swal.fire({ title: 'กำลังโหลด...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+  try {
+    const p = new URLSearchParams();
+    if (dates.from) p.set('from', dates.from);
+    if (dates.to)   p.set('to',   dates.to);
+    const data = await (await fetch('/api/stats/combined?' + p)).json();
+    if (!data.ok) throw new Error();
+    const g = data.groupStats;
+    const fmt = d => new Date(d + 'T00:00:00').toLocaleDateString('th-TH', { dateStyle:'short' });
+    const label = dates.from||dates.to ? `ช่วง: ${dates.from?fmt(dates.from):'—'} ถึง ${dates.to?fmt(dates.to):'—'}` : 'ข้อมูลทั้งหมด';
+    const medals = ['🥇','🥈','🥉','4️⃣','5️⃣'];
+    const topHtml = (data.topGroups||[]).map((item,i)=>{
+      const tot=(item.success||0)+(item.fail||0);
+      const rt=tot>0?Math.round(item.success/tot*100):0;
+      return `<div style="display:flex;align-items:center;justify-content:space-between;font-size:.82rem;padding:.2rem 0;border-bottom:1px solid #f0f2f5">
+        <span>${medals[i]} ${item.name||'—'}</span>
+        <span><b style="color:#2e7d32">${item.success}</b>/<span style="color:#555">${tot}</span> <span style="font-size:.7rem;background:#e8fde8;color:#2e7d32;border-radius:4px;padding:.05rem .3rem">${rt}%</span></span></div>`;
+    }).join('') || '<div style="font-size:.8rem;color:#bbb;text-align:center;padding:.4rem">ไม่มีข้อมูล</div>';
+    Swal.fire({
+      title: `<i class="fa-solid fa-users" style="color:#2e7d32"></i> แชร์ลงกลุ่ม`,
+      html: `<div style="text-align:left">
+        <div style="font-size:.78rem;color:#8a8d91;margin-bottom:.6rem">${label}</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-bottom:.8rem">
+          <div style="background:#f0fdf4;border-radius:8px;padding:.5rem;text-align:center"><div style="font-size:1.3rem;font-weight:700;color:#2e7d32">${g.total}</div><div style="font-size:.72rem;color:#555">งาน</div></div>
+          <div style="background:#e8fde8;border-radius:8px;padding:.5rem;text-align:center"><div style="font-size:1.3rem;font-weight:700;color:#059669">${g.success}</div><div style="font-size:.72rem;color:#555">สำเร็จ</div></div>
+          <div style="background:#fff5f5;border-radius:8px;padding:.5rem;text-align:center"><div style="font-size:1.3rem;font-weight:700;color:#c62828">${g.fail}</div><div style="font-size:.72rem;color:#555">ล้มเหลว</div></div>
+        </div>
+        <div style="font-size:.75rem;font-weight:700;color:#555;margin-bottom:.4rem"><i class="fa-solid fa-ranking-star" style="color:#f7b928"></i> 5 อันดับกลุ่ม</div>
+        ${topHtml}</div>`,
+      confirmButtonText: 'ปิด', confirmButtonColor: '#2e7d32', width: '440px',
+    });
+  } catch { Swal.fire({ icon:'error', title:'เกิดข้อผิดพลาด', text:'ไม่สามารถโหลดข้อมูลได้' }); }
+}
 </script>
 </body>
 </html>

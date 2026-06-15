@@ -90,26 +90,80 @@
       </div>
     </div>
 
-    <!-- Top 5 groups -->
-    <% if (topGroups.length > 0) { %>
+    <!-- Group stats table -->
+    <% if (allGroupStats.length > 0) { %>
     <div class="card">
-      <div class="card-title" style="margin-bottom:.85rem">
-        <i class="fa-solid fa-ranking-star" style="color:#f7b928"></i> 5 อันดับกลุ่ม (แชร์มากสุด)
-      </div>
-      <% topGroups.forEach((g, i) => { %>
-      <% const total = g.success + g.fail; const rate = total > 0 ? Math.round(g.success/total*100) : 0; %>
-      <div style="display:flex;align-items:center;gap:.65rem;padding:.55rem 0;border-bottom:1px solid var(--border)">
-        <span style="font-size:1.1rem;width:24px;text-align:center"><%= ['🥇','🥈','🥉','4️⃣','5️⃣'][i] %></span>
-        <div style="flex:1;min-width:0">
-          <div style="font-weight:600;font-size:.88rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><%= g.name %></div>
-          <div style="font-size:.75rem;color:var(--text3);margin-top:.1rem"><%= total %> ครั้ง</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;margin-bottom:1rem">
+        <div class="card-title" style="margin-bottom:0">
+          <i class="fa-solid fa-layer-group"></i> สถิติแต่ละกลุ่ม
         </div>
-        <div style="text-align:right;flex-shrink:0">
-          <div style="font-size:.9rem;font-weight:700;color:#2e7d32"><%= g.success %> <span style="color:#bbb;font-weight:400">/</span> <span style="color:#555;font-size:.82rem"><%= total %></span></div>
-          <div style="font-size:.72rem;background:#e8fde8;color:#2e7d32;border-radius:5px;padding:.05rem .4rem;display:inline-block;margin-top:.1rem"><%= rate %>%</div>
+        <div style="position:relative">
+          <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:.6rem;top:50%;transform:translateY(-50%);color:#8a8d91;font-size:.8rem;pointer-events:none"></i>
+          <input id="grp-search" type="text" placeholder="ค้นหาชื่อกลุ่ม..." oninput="filterGrpTable(this.value)"
+            style="padding:.35rem .7rem .35rem 1.9rem;border:1px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;width:180px;outline:none;color:#333">
         </div>
       </div>
-      <% }); %>
+      <div class="overview-table-wrap">
+        <table class="overview-table">
+          <thead>
+            <tr>
+              <th>กลุ่ม</th>
+              <th><i class="fa-solid fa-paper-plane"></i> แชร์ทั้งหมด</th>
+              <th><i class="fa-solid fa-circle-check" style="color:#2e7d32"></i> สำเร็จ</th>
+              <th><i class="fa-solid fa-circle-xmark" style="color:#c62828"></i> ล้มเหลว</th>
+              <th>อัตราสำเร็จ</th>
+            </tr>
+          </thead>
+          <tbody id="grp-tbody">
+            <%
+              const totalAllSuccess = allGroupStats.reduce((s,g)=>s+g.success,0);
+              const totalAllFail    = allGroupStats.reduce((s,g)=>s+g.fail,0);
+              const totalAllTotal   = totalAllSuccess + totalAllFail;
+              const totalAllRate    = totalAllTotal > 0 ? Math.round(totalAllSuccess/totalAllTotal*100) : 0;
+            %>
+            <!-- Summary row -->
+            <tr style="background:#f0fdf4;font-weight:700">
+              <td><i class="fa-solid fa-sigma" style="color:#2e7d32;margin-right:.35rem"></i>สรุปรวม (<%= allGroupStats.length %> กลุ่ม)</td>
+              <td class="num"><%= totalAllTotal %></td>
+              <td class="num" style="color:#2e7d32"><%= totalAllSuccess %></td>
+              <td class="num" style="color:#c62828"><%= totalAllFail %></td>
+              <td>
+                <div class="rate-bar-wrap">
+                  <div class="rate-bar" style="width:<%= totalAllRate %>%;background:#2e7d32"></div>
+                  <span class="rate-text"><%= totalAllRate %>%</span>
+                </div>
+              </td>
+            </tr>
+            <% allGroupStats.forEach((g, i) => { %>
+            <% const total = g.success + g.fail; const rate = total > 0 ? Math.round(g.success/total*100) : 0; %>
+            <tr class="grp-row" data-name="<%= g.name.toLowerCase() %>" data-index="<%= i %>">
+              <td>
+                <div style="display:flex;align-items:center;gap:.5rem">
+                  <div class="avatar avatar-green avatar-sm" style="background:#2e7d32"><%= g.name.slice(0,1).toUpperCase() %></div>
+                  <span style="font-weight:600"><%= g.name %></span>
+                </div>
+              </td>
+              <td class="num"><%= total %></td>
+              <td class="num" style="color:#2e7d32"><%= g.success %></td>
+              <td class="num" style="color:#c62828"><%= g.fail %></td>
+              <td>
+                <div class="rate-bar-wrap">
+                  <div class="rate-bar" style="width:<%= rate %>%;background:#2e7d32"></div>
+                  <span class="rate-text"><%= rate %>%</span>
+                </div>
+              </td>
+            </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+      <% if (allGroupStats.length > 8) { %>
+      <div id="grp-show-more" style="text-align:center;margin-top:.75rem">
+        <button onclick="showAllGrps()" style="background:none;border:1px solid #2e7d32;color:#2e7d32;border-radius:8px;padding:.35rem 1.1rem;font-size:.82rem;cursor:pointer;font-family:inherit">
+          <i class="fa-solid fa-chevron-down"></i> ดูทั้งหมด
+        </button>
+      </div>
+      <% } %>
     </div>
     <% } %>
 
@@ -195,6 +249,23 @@
 
 <script>
 const RANK_MEDALS = ['🥇','🥈','🥉','4️⃣','5️⃣'];
+
+/* ── Group table filter + show-more ── */
+const GRP_LIMIT = 8;
+let grpShowAll = false;
+function applyGrpVisibility(q) {
+  const rows = document.querySelectorAll('.grp-row');
+  rows.forEach(r => {
+    const match = !q || r.dataset.name.includes(q);
+    const withinLimit = grpShowAll || parseInt(r.dataset.index) < GRP_LIMIT;
+    r.style.display = match && withinLimit ? '' : 'none';
+  });
+  const wrap = document.getElementById('grp-show-more');
+  if (wrap) wrap.style.display = (!grpShowAll && !q && rows.length > GRP_LIMIT) ? '' : 'none';
+}
+function filterGrpTable(q) { grpShowAll = !!q; applyGrpVisibility(q.toLowerCase()); }
+function showAllGrps() { grpShowAll = true; applyGrpVisibility((document.getElementById('grp-search')?.value||'').toLowerCase()); }
+applyGrpVisibility('');
 
 function _fmtDateTH(d) {
   return new Date(d + 'T00:00:00').toLocaleDateString('th-TH', { dateStyle:'short' });

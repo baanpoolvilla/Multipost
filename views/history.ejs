@@ -289,8 +289,11 @@
   </main>
 
   <aside class="right-panel">
-    <div class="card stats-card">
-      <div class="stats-title"><i class="fa-solid fa-chart-simple"></i> สถิติรวม</div>
+    <div class="card stats-card" onclick="showSummaryModal()" style="cursor:pointer;transition:box-shadow .15s" onmouseover="this.style.boxShadow='0 0 0 2px #1877f2'" onmouseout="this.style.boxShadow=''">
+      <div class="stats-title" style="display:flex;align-items:center;justify-content:space-between">
+        <span><i class="fa-solid fa-chart-simple"></i> สถิติรวม</span>
+        <span style="font-size:.72rem;color:#1877f2;font-weight:600"><i class="fa-solid fa-arrow-up-right-from-square"></i> ดูสรุป</span>
+      </div>
       <%
         const totalPosts = posts.length;
         const totalSuccess = posts.reduce((s, p) => s + p.successCount, 0);
@@ -554,6 +557,57 @@
     }
     location.reload();
   }
+
+async function showSummaryModal() {
+  const today = new Date().toISOString().slice(0, 10);
+  const { value: fv } = await Swal.fire({
+    title: '<i class="fa-solid fa-chart-pie" style="color:#1877f2"></i> สรุป',
+    html: `<div style="text-align:left;display:flex;flex-direction:column;gap:.6rem">
+      <div><label style="font-size:.8rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem">วันที่ <span style="color:#c62828">*</span></label>
+        <input id="sm-date" type="date" value="${today}" style="width:100%;padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none;box-sizing:border-box"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
+        <div><label style="font-size:.8rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem">เวลาเริ่ม (ไม่บังคับ)</label>
+          <input id="sm-tfrom" type="time" style="width:100%;padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none;box-sizing:border-box"></div>
+        <div><label style="font-size:.8rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem">เวลาสิ้นสุด (ไม่บังคับ)</label>
+          <input id="sm-tto" type="time" style="width:100%;padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none;box-sizing:border-box"></div>
+      </div></div>`,
+    confirmButtonText: 'ดูสรุป', confirmButtonColor: '#1877f2',
+    showCancelButton: true, cancelButtonText: 'ยกเลิก', focusConfirm: false,
+    preConfirm: () => {
+      const date = document.getElementById('sm-date').value;
+      if (!date) { Swal.showValidationMessage('กรุณากรอกวันที่'); return false; }
+      return { date, tfrom: document.getElementById('sm-tfrom').value, tto: document.getElementById('sm-tto').value };
+    },
+  });
+  if (!fv) return;
+  Swal.fire({ title: 'กำลังโหลด...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+  try {
+    const p = new URLSearchParams({ date: fv.date });
+    if (fv.tfrom) p.set('timeFrom', fv.tfrom);
+    if (fv.tto)   p.set('timeTo', fv.tto);
+    const d = await (await fetch('/api/daily-summary?' + p)).json();
+    const dl = new Date(fv.date + 'T00:00:00').toLocaleDateString('th-TH', { year:'numeric', month:'long', day:'numeric' });
+    const tl = fv.tfrom ? ` เวลา ${fv.tfrom}${fv.tto?'–'+fv.tto:''}` : '';
+    const grp = d.groupStats || { total:0, success:0, fail:0 };
+    Swal.fire({
+      title: `สรุป ${dl}${tl}`,
+      html: `<div style="text-align:left">
+        <div style="font-size:.75rem;font-weight:700;color:#1877f2;margin-bottom:.4rem"><i class="fa-brands fa-facebook"></i> โพสลงเพจ</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-bottom:.8rem">
+          <div style="background:#e8f4fd;border-radius:8px;padding:.5rem;text-align:center"><div style="font-size:1.3rem;font-weight:700;color:#1877f2">${d.totalPosts}</div><div style="font-size:.72rem;color:#555">โพสต์</div></div>
+          <div style="background:#e8fde8;border-radius:8px;padding:.5rem;text-align:center"><div style="font-size:1.3rem;font-weight:700;color:#2e7d32">${d.successRate}%</div><div style="font-size:.72rem;color:#555">สำเร็จ</div></div>
+          <div style="background:#fff8e6;border-radius:8px;padding:.5rem;text-align:center"><div style="font-size:1.3rem;font-weight:700;color:#f7b928">${d.totalLikes}</div><div style="font-size:.72rem;color:#555">ไลค์</div></div>
+        </div>
+        <div style="font-size:.75rem;font-weight:700;color:#2e7d32;margin-bottom:.4rem"><i class="fa-solid fa-users"></i> แชร์ลงกลุ่ม</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem">
+          <div style="background:#f0fdf4;border-radius:8px;padding:.5rem;text-align:center"><div style="font-size:1.3rem;font-weight:700;color:#2e7d32">${grp.total}</div><div style="font-size:.72rem;color:#555">งาน</div></div>
+          <div style="background:#e8fde8;border-radius:8px;padding:.5rem;text-align:center"><div style="font-size:1.3rem;font-weight:700;color:#059669">${grp.success}</div><div style="font-size:.72rem;color:#555">สำเร็จ</div></div>
+          <div style="background:#fff5f5;border-radius:8px;padding:.5rem;text-align:center"><div style="font-size:1.3rem;font-weight:700;color:#c62828">${grp.fail}</div><div style="font-size:.72rem;color:#555">ล้มเหลว</div></div>
+        </div></div>`,
+      confirmButtonText: 'ปิด', confirmButtonColor: '#1877f2', width: '440px',
+    });
+  } catch { Swal.fire({ icon:'error', title:'เกิดข้อผิดพลาด', text:'ไม่สามารถโหลดข้อมูลได้' }); }
+}
 </script>
 </body>
 </html>
