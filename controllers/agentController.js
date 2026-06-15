@@ -236,14 +236,17 @@ exports.showPageActivity = async (req, res) => {
                 pageResult: (p.results || []).find(r => r.pageId === pageId) || {},
             }));
 
-        // Group jobs where this page was used — match by pageId, pageName, or groupId overlap
+        // Group jobs — match by groupId overlap with page.groups.
+        // If page has no groups configured, fall back to showing ALL group jobs.
         const pageGroupIds = new Set((page.groups || []).map(g => g.groupId));
-        const jobs = allJobs
-            .filter(j => (j.groups || []).some(g =>
+        const jobs = (pageGroupIds.size === 0
+            ? allJobs
+            : allJobs.filter(j => (j.groups || []).some(g =>
                 (g.pageId && g.pageId === pageId) ||
                 (g.pageName && g.pageName === page.pageName) ||
-                (pageGroupIds.size > 0 && pageGroupIds.has(g.groupId))
+                pageGroupIds.has(g.groupId)
             ))
+        )
             .map(j => ({
                 ...j,
                 _id: String(j._id),

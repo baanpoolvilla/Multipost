@@ -939,12 +939,15 @@ function renderHistory() {
         const failBadge = fail > 0
             ? `<span style="font-size:10px;background:#3d1a1a;color:#ff6b6b;border-radius:4px;padding:.05rem .4rem;margin-left:.3rem">❌ ${fail}</span>` : '';
 
-        // Images: http → thumbnail, localpath:: → file:// thumbnail (video → icon)
+        // Images: http → thumbnail, localpath:: → file:// thumbnail, fname → web /uploads/
         const httpImgs  = (j.images||[]).filter(p => p && p.startsWith('http'));
         const localImgs = (j.images||[]).filter(p => p && p.startsWith('localpath::'));
+        const mongoImgs = (j.images||[]).filter(p => p && !p.startsWith('http') && !p.startsWith('localpath::'));
+        const _base = _webUrl ? _webUrl.replace(/\/$/, '') : '';
         const allDisplayImgs = [
             ...httpImgs.map(url => ({ url, local: false })),
             ...localImgs.map(p  => ({ url: 'file:///' + p.replace('localpath::', '').replace(/\\/g, '/'), local: true })),
+            ...(_base ? mongoImgs.map(p => ({ url: `${_base}/uploads/${p}`, local: false })) : []),
         ];
         const imgHtml = allDisplayImgs.length > 0
             ? `<div style="display:flex;gap:3px;margin-top:.4rem;flex-wrap:wrap">
