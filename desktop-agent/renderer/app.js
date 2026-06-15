@@ -115,27 +115,39 @@ async function loadAccounts() {
     updateAccountSelect();
 }
 
+let _loggingIn = new Set();
+
 function renderAccounts() {
     const el = document.getElementById('accountsList');
     document.getElementById('accCount').textContent = _accounts.length;
     if (!_accounts.length) { el.innerHTML='<div class="empty-state">ยังไม่มีบัญชี — กด "+ เพิ่มบัญชี" ด้านบน</div>'; return; }
     el.innerHTML = _accounts.map(a => {
-        const init = a.email[0].toUpperCase();
-        const ts   = a.loginedAt ? fmtDate(a.loginedAt) : '—';
+        const init      = a.email[0].toUpperCase();
+        const ts        = a.loginedAt ? fmtDate(a.loginedAt) : '—';
+        const loading   = _loggingIn.has(a.id);
+        const loggedIn  = a.status === 'logged_in';
+
+        const loginBtn = loading
+            ? `<button class="btn btn-secondary" style="font-size:11px;padding:.3rem .65rem;margin-left:.4rem" disabled>⏳ กำลังเข้าสู่ระบบ...</button>`
+            : loggedIn
+                ? `<button class="btn btn-secondary" style="font-size:11px;padding:.3rem .55rem;margin-left:.4rem;opacity:.7"
+                     onclick="loginAcc('${a.id}')" title="เข้าสู่ระบบใหม่ (session หมดอายุ)">🔄 เข้าใหม่</button>`
+                : `<button class="btn btn-primary" style="font-size:11px;padding:.3rem .65rem;margin-left:.4rem"
+                     onclick="loginAcc('${a.id}')">เข้าสู่ระบบ</button>`;
+
         return `
           <div class="acc-item">
             <div class="acc-avatar">${init}</div>
             <div class="acc-info">
               <div class="acc-email">${esc(a.email)}</div>
-              <div class="acc-meta">เข้าสู่ระบบล่าสุด: ${ts}</div>
+              <div class="acc-meta">${loading ? '🔄 กำลัง auto-fill รหัสผ่านในเบราว์เซอร์...' : 'เข้าสู่ระบบล่าสุด: ' + ts}</div>
             </div>
-            <span class="acc-status ${a.status}">${statusAccTH(a.status)}</span>
-            <button class="btn btn-primary" style="font-size:11px;padding:.3rem .65rem;margin-left:.4rem"
-              onclick="loginAcc('${a.id}')">เข้าสู่ระบบ</button>
+            <span class="acc-status ${loading ? 'running' : a.status}">${loading ? 'กำลังเข้าสู่ระบบ' : statusAccTH(a.status)}</span>
+            ${loginBtn}
             <button class="btn btn-secondary" style="font-size:11px;padding:.3rem .65rem"
-              onclick="logoutAcc('${a.id}')" ${a.status!=='logged_in'?'disabled':''}>ออกจากระบบ</button>
+              onclick="logoutAcc('${a.id}')" ${!loggedIn||loading?'disabled':''}>ออกจากระบบ</button>
             <button class="btn btn-secondary" style="font-size:11px;padding:.3rem .5rem;color:var(--red)"
-              onclick="removeAcc('${a.id}')" title="ลบบัญชี">🗑</button>
+              onclick="removeAcc('${a.id}')" title="ลบบัญชี" ${loading?'disabled':''}>🗑</button>
           </div>`;
     }).join('');
 }
@@ -176,6 +188,9 @@ async function addAccount() {
     toggleAddAccount();
     await loadAccounts();
     appendLog(`[✅] เพิ่มบัญชีแล้ว: ${email}`);
+    // Auto-login ทันทีหลังเพิ่ม — ไม่ต้องกดปุ่ม "เข้าสู่ระบบ" อีกรอบ
+    const acc = _accounts.find(a => a.email === email);
+    if (acc) await loginAcc(acc.id);
 }
 
 async function removeAcc(id) {
@@ -185,8 +200,12 @@ async function removeAcc(id) {
 }
 
 async function loginAcc(id) {
-    appendLog('[🔑] กำลังเข้าสู่ระบบ Facebook...');
+    _loggingIn.add(id);
+    renderAccounts();
+    appendLog('[🔑] กำลังเปิดเบราว์เซอร์และ auto-fill รหัสผ่านให้อัตโนมัติ...');
+    appendLog('[ℹ️] รอสักครู่ ไม่ต้องกรอกอะไรในเบราว์เซอร์ที่เปิดขึ้นมา');
     const res = await agent.loginAccount(id);
+    _loggingIn.delete(id);
     if (res.ok) appendLog('[✅] '+res.message);
     else appendLog('[❌] '+(res.error||'เข้าสู่ระบบไม่สำเร็จ'));
     await loadAccounts();
