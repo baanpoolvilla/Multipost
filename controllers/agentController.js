@@ -302,11 +302,10 @@ exports.showPageActivity = async (req, res) => {
                 pageResult: (p.results || []).find(r => r.pageId === pageId) || {},
             }));
 
-        // Group jobs — match job ที่มี pageId ใน groups.pageId หรือ top-level pageId
+        // Group jobs — match by pageId (web-created) OR postAsPage name (agent-created)
         const jobs = allJobs.filter(j => {
-            // ตรวจเช็ก top-level pageId
             if (j.pageId === pageId) return true;
-            // ตรวจเช็ก groups.pageId (สำหรับแชร์ลงกลุ่ม)
+            if (j.postAsPage && page.pageName && j.postAsPage === page.pageName) return true;
             if ((j.groups || []).some(g => g.pageId === pageId)) return true;
             return false;
         });

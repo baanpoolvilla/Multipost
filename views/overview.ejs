@@ -54,9 +54,14 @@
             <i class="fa-solid fa-spinner fa-spin" style="font-size:.75rem"></i> กำลังอัปเดต...
           </span>
         </div>
-        <button onclick="showSummaryModal()" style="background:#1877f2;color:#fff;border:none;border-radius:8px;padding:.35rem .85rem;font-size:.82rem;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:.4rem">
-          <i class="fa-solid fa-calendar-day"></i> สรุป
-        </button>
+        <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+          <button onclick="showSummaryModal()" style="background:#1877f2;color:#fff;border:none;border-radius:8px;padding:.35rem .85rem;font-size:.82rem;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:.4rem">
+            <i class="fa-solid fa-calendar-day"></i> สรุป
+          </button>
+          <button onclick="showPageRangeModal()" style="background:#e7f0fd;color:#1877f2;border:1.5px solid #1877f2;border-radius:8px;padding:.35rem .85rem;font-size:.82rem;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:.4rem">
+            <i class="fa-solid fa-chart-bar"></i> ช่วงเวลา (เพจ)
+          </button>
+        </div>
       </div>
     </div>
 
@@ -110,94 +115,6 @@
           <div class="metric-val" id="m-rate" style="color: #2e7d32;"><%= successRate %>%</div>
           <div class="metric-label">อัตราสำเร็จ</div>
         </div>
-      </div>
-    </div>
-
-    <!-- สรุป: date + time filter + stats + top 5 -->
-    <div class="card">
-      <div class="card-title" style="margin-bottom:.85rem">
-        <i class="fa-solid fa-chart-pie" style="color:#1877f2"></i> สรุปตามช่วงเวลา
-        <span style="font-size:.78rem;font-weight:400;color:#8a8d91;margin-left:.4rem">โพสเพจ + แชร์กลุ่ม + 5 อันดับ</span>
-      </div>
-
-      <!-- Filter row -->
-      <div style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:.55rem;margin-bottom:.9rem">
-        <div>
-          <div style="font-size:.72rem;color:#8a8d91;font-weight:600;margin-bottom:.25rem">วันที่เริ่ม</div>
-          <input id="csFrom" type="date" style="padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.83rem;font-family:inherit;color:#333;outline:none;cursor:pointer">
-        </div>
-        <div>
-          <div style="font-size:.72rem;color:#8a8d91;font-weight:600;margin-bottom:.25rem">วันที่สิ้นสุด</div>
-          <input id="csTo" type="date" style="padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.83rem;font-family:inherit;color:#333;outline:none;cursor:pointer">
-        </div>
-        <button onclick="loadCombinedStats()" style="padding:.4rem 1rem;background:#1877f2;color:#fff;border:none;border-radius:8px;font-size:.83rem;font-family:inherit;cursor:pointer;display:flex;align-items:center;gap:.4rem;height:34px">
-          <i class="fa-solid fa-magnifying-glass"></i> ดูสถิติ
-        </button>
-        <button onclick="clearCombinedStats()" style="padding:.4rem .7rem;background:#f0f2f5;border:none;border-radius:8px;font-size:.83rem;font-family:inherit;cursor:pointer;color:#666;height:34px">
-          ✕ ล้าง
-        </button>
-        <span id="csLoading" style="font-size:.82rem;color:#8a8d91;display:none"><i class="fa-solid fa-spinner fa-spin"></i></span>
-      </div>
-
-      <div id="csResults" style="display:none">
-        <!-- Stats row -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.9rem">
-          <div style="background:#f0f7ff;border:1.5px solid #d0e6fb;border-radius:10px;padding:.75rem 1rem">
-            <div style="font-size:.78rem;font-weight:700;color:#1877f2;margin-bottom:.55rem">
-              <i class="fa-brands fa-facebook"></i> โพสลงเพจ
-            </div>
-            <div style="display:flex;flex-direction:column;gap:.3rem">
-              <div style="display:flex;justify-content:space-between;font-size:.85rem">
-                <span style="color:#555">โพสทั้งหมด</span><span id="cs-page-total" style="font-weight:700;color:#1877f2">—</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;font-size:.85rem">
-                <span style="color:#555">สำเร็จ</span><span id="cs-page-success" style="font-weight:700;color:#2e7d32">—</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;font-size:.85rem">
-                <span style="color:#555">ล้มเหลว</span><span id="cs-page-fail" style="font-weight:700;color:#c62828">—</span>
-              </div>
-            </div>
-          </div>
-          <div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:10px;padding:.75rem 1rem">
-            <div style="font-size:.78rem;font-weight:700;color:#2e7d32;margin-bottom:.55rem">
-              <i class="fa-solid fa-users"></i> แชร์ลงกลุ่ม
-            </div>
-            <div style="display:flex;flex-direction:column;gap:.3rem">
-              <div style="display:flex;justify-content:space-between;font-size:.85rem">
-                <span style="color:#555">งาน (Job)</span><span id="cs-grp-total" style="font-weight:700;color:#2e7d32">—</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;font-size:.85rem">
-                <span style="color:#555">โพสกลุ่มสำเร็จ</span><span id="cs-grp-success" style="font-weight:700;color:#2e7d32">—</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;font-size:.85rem">
-                <span style="color:#555">ล้มเหลว</span><span id="cs-grp-fail" style="font-weight:700;color:#c62828">—</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Top 5 rankings -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
-          <!-- Top 5 pages -->
-          <div style="border:1.5px solid #e4e6eb;border-radius:10px;padding:.7rem .9rem">
-            <div style="font-size:.78rem;font-weight:700;color:#555;margin-bottom:.5rem">
-              <i class="fa-solid fa-trophy" style="color:#f7b928"></i> 5 อันดับเพจ (โพสมากสุด)
-            </div>
-            <div id="cs-top-pages" style="display:flex;flex-direction:column;gap:.3rem">
-              <div style="font-size:.8rem;color:#bbb;text-align:center;padding:.5rem 0">ไม่มีข้อมูล</div>
-            </div>
-          </div>
-          <!-- Top 5 groups -->
-          <div style="border:1.5px solid #e4e6eb;border-radius:10px;padding:.7rem .9rem">
-            <div style="font-size:.78rem;font-weight:700;color:#555;margin-bottom:.5rem">
-              <i class="fa-solid fa-ranking-star" style="color:#1877f2"></i> 5 อันดับกลุ่ม (แชร์มากสุด)
-            </div>
-            <div id="cs-top-groups" style="display:flex;flex-direction:column;gap:.3rem">
-              <div style="font-size:.8rem;color:#bbb;text-align:center;padding:.5rem 0">ไม่มีข้อมูล</div>
-            </div>
-          </div>
-        </div>
-        <div id="csDateLabel" style="font-size:.76rem;color:#8a8d91;margin-top:.5rem;text-align:right"></div>
       </div>
     </div>
 
@@ -272,9 +189,14 @@
 
     <!-- Group share overview (item 5) -->
     <div class="card" id="grpOverviewCard">
-      <div class="card-title" style="margin-bottom:.85rem">
-        <i class="fa-solid fa-users-rectangle" style="color:#2e7d32"></i> ภาพรวมแชร์กลุ่ม
-        <span style="font-size:.78rem;font-weight:400;color:#8a8d91;margin-left:.4rem">ข้อมูลจาก Desktop Agent</span>
+      <div class="card-title" style="margin-bottom:.85rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.4rem">
+        <div>
+          <i class="fa-solid fa-users-rectangle" style="color:#2e7d32"></i> ภาพรวมแชร์กลุ่ม
+          <span style="font-size:.78rem;font-weight:400;color:#8a8d91;margin-left:.4rem">ข้อมูลจาก Desktop Agent</span>
+        </div>
+        <button onclick="showGroupRangeModal()" style="background:#e8fde8;color:#2e7d32;border:1.5px solid #2e7d32;border-radius:8px;padding:.3rem .75rem;font-size:.8rem;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:.35rem">
+          <i class="fa-solid fa-chart-bar"></i> ช่วงเวลา
+        </button>
       </div>
       <div id="grpOverviewBody">
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.65rem;margin-bottom:.85rem">
@@ -551,9 +473,9 @@ function showAllPages() {
 
 applyPageVisibility('');
 
-/* ── Combined stats + top 5 rankings ── */
+/* ── Helper ── */
 const RANK_MEDALS = ['🥇','🥈','🥉','4️⃣','5️⃣'];
-function renderRankList(containerId, items, nameKey, countFn, colorClass) {
+function renderRankList(containerId, items, nameKey) {
   const el = document.getElementById(containerId);
   if (!el) return;
   if (!items || !items.length) {
@@ -575,41 +497,122 @@ function renderRankList(containerId, items, nameKey, countFn, colorClass) {
   }).join('');
 }
 
-async function loadCombinedStats() {
-  const from = document.getElementById('csFrom')?.value || '';
-  const to   = document.getElementById('csTo')?.value   || '';
-  const loading = document.getElementById('csLoading');
-  const results = document.getElementById('csResults');
-  if (loading) loading.style.display = '';
-  try {
-    const params = new URLSearchParams();
-    if (from) params.set('from', from);
-    if (to)   params.set('to',   to);
-    const res  = await fetch('/api/stats/combined?' + params);
-    const data = await res.json();
-    if (!data.ok) return;
-    document.getElementById('cs-page-total').textContent   = data.pageStats.total;
-    document.getElementById('cs-page-success').textContent = data.pageStats.success;
-    document.getElementById('cs-page-fail').textContent    = data.pageStats.fail;
-    document.getElementById('cs-grp-total').textContent    = data.groupStats.total;
-    document.getElementById('cs-grp-success').textContent  = data.groupStats.success;
-    document.getElementById('cs-grp-fail').textContent     = data.groupStats.fail;
-    renderRankList('cs-top-pages',  data.topPages  || [], 'name', i => i.success + i.fail);
-    renderRankList('cs-top-groups', data.topGroups || [], 'name', i => i.success + i.fail);
-    const lbl = document.getElementById('csDateLabel');
-    if (lbl) {
-      const fmt = d => new Date(d + 'T00:00:00').toLocaleDateString('th-TH', { dateStyle:'short' });
-      lbl.textContent = from || to ? `ช่วง: ${from ? fmt(from) : '—'} ถึง ${to ? fmt(to) : '—'}` : 'ข้อมูลทั้งหมด';
-    }
-    if (results) results.style.display = '';
-  } catch(e) { alert('โหลดสถิติไม่สำเร็จ: ' + e.message); }
-  finally { if (loading) loading.style.display = 'none'; }
+function _fmtDateTH(d) {
+  return new Date(d + 'T00:00:00').toLocaleDateString('th-TH', { dateStyle:'short' });
 }
 
-function clearCombinedStats() {
-  const f = document.getElementById('csFrom'); if (f) f.value = '';
-  const t = document.getElementById('csTo');   if (t) t.value = '';
-  const r = document.getElementById('csResults'); if (r) r.style.display = 'none';
+function _rankRowsHtml(items) {
+  if (!items || !items.length) return '<div style="font-size:.8rem;color:#bbb;text-align:center;padding:.4rem 0">ไม่มีข้อมูล</div>';
+  return items.map((item, i) => {
+    const total = (item.success||0) + (item.fail||0);
+    const rate  = total > 0 ? Math.round(item.success/total*100) : 0;
+    return `<div style="display:flex;align-items:center;justify-content:space-between;font-size:.82rem;padding:.2rem 0;border-bottom:1px solid #f0f2f5">
+      <span>${RANK_MEDALS[i]} ${item.name||'—'}</span>
+      <span><b style="color:#2e7d32">${item.success}</b><span style="color:#bbb">/</span><span style="color:#555">${total}</span> <span style="font-size:.7rem;background:#e8fde8;color:#2e7d32;border-radius:4px;padding:.05rem .3rem">${rate}%</span></span>
+    </div>`;
+  }).join('');
+}
+
+async function _fetchCombined(from, to) {
+  const params = new URLSearchParams();
+  if (from) params.set('from', from);
+  if (to)   params.set('to',   to);
+  const res = await fetch('/api/stats/combined?' + params);
+  return res.json();
+}
+
+/* ── สรุปช่วงเวลา โพสเพจ ── */
+async function showPageRangeModal() {
+  const { value: dates } = await Swal.fire({
+    title: '<i class="fa-brands fa-facebook" style="color:#1877f2"></i> สถิติโพสเพจตามช่วงเวลา',
+    html: `<div style="display:flex;flex-wrap:wrap;gap:.6rem;justify-content:center;align-items:flex-end;margin-top:.5rem">
+      <div><label style="font-size:.78rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem">วันที่เริ่ม</label>
+        <input id="pr-from" type="date" style="padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none"></div>
+      <div><label style="font-size:.78rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem">วันที่สิ้นสุด</label>
+        <input id="pr-to" type="date" style="padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none"></div>
+    </div>`,
+    confirmButtonText: 'ดูสถิติ', confirmButtonColor: '#1877f2',
+    showCancelButton: true, cancelButtonText: 'ยกเลิก', focusConfirm: false,
+    preConfirm: () => ({ from: document.getElementById('pr-from').value, to: document.getElementById('pr-to').value }),
+  });
+  if (!dates) return;
+  Swal.fire({ title: 'กำลังโหลด...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+  try {
+    const data = await _fetchCombined(dates.from, dates.to);
+    if (!data.ok) throw new Error('API error');
+    const p = data.pageStats;
+    const label = dates.from || dates.to ? `ช่วง: ${dates.from ? _fmtDateTH(dates.from) : '—'} ถึง ${dates.to ? _fmtDateTH(dates.to) : '—'}` : 'ข้อมูลทั้งหมด';
+    Swal.fire({
+      title: `<i class="fa-brands fa-facebook" style="color:#1877f2"></i> โพสเพจ`,
+      html: `<div style="text-align:left">
+        <div style="font-size:.78rem;color:#8a8d91;margin-bottom:.6rem">${label}</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-bottom:.8rem">
+          <div style="background:#e8f4fd;border-radius:8px;padding:.5rem .6rem;text-align:center">
+            <div style="font-size:1.3rem;font-weight:700;color:#1877f2">${p.total}</div>
+            <div style="font-size:.72rem;color:#555">โพสต์</div>
+          </div>
+          <div style="background:#e8fde8;border-radius:8px;padding:.5rem .6rem;text-align:center">
+            <div style="font-size:1.3rem;font-weight:700;color:#2e7d32">${p.success}</div>
+            <div style="font-size:.72rem;color:#555">สำเร็จ</div>
+          </div>
+          <div style="background:#fff5f5;border-radius:8px;padding:.5rem .6rem;text-align:center">
+            <div style="font-size:1.3rem;font-weight:700;color:#c62828">${p.fail}</div>
+            <div style="font-size:.72rem;color:#555">ล้มเหลว</div>
+          </div>
+        </div>
+        <div style="font-size:.75rem;font-weight:700;color:#555;margin-bottom:.4rem"><i class="fa-solid fa-trophy" style="color:#f7b928"></i> 5 อันดับเพจ</div>
+        ${_rankRowsHtml(data.topPages)}
+      </div>`,
+      confirmButtonText: 'ปิด', confirmButtonColor: '#1877f2', width: '440px',
+    });
+  } catch { Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'ไม่สามารถโหลดข้อมูลได้' }); }
+}
+
+/* ── สรุปช่วงเวลา แชร์กลุ่ม ── */
+async function showGroupRangeModal() {
+  const { value: dates } = await Swal.fire({
+    title: '<i class="fa-solid fa-users" style="color:#2e7d32"></i> สถิติแชร์กลุ่มตามช่วงเวลา',
+    html: `<div style="display:flex;flex-wrap:wrap;gap:.6rem;justify-content:center;align-items:flex-end;margin-top:.5rem">
+      <div><label style="font-size:.78rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem">วันที่เริ่ม</label>
+        <input id="gr-from" type="date" style="padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none"></div>
+      <div><label style="font-size:.78rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem">วันที่สิ้นสุด</label>
+        <input id="gr-to" type="date" style="padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none"></div>
+    </div>`,
+    confirmButtonText: 'ดูสถิติ', confirmButtonColor: '#2e7d32',
+    showCancelButton: true, cancelButtonText: 'ยกเลิก', focusConfirm: false,
+    preConfirm: () => ({ from: document.getElementById('gr-from').value, to: document.getElementById('gr-to').value }),
+  });
+  if (!dates) return;
+  Swal.fire({ title: 'กำลังโหลด...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+  try {
+    const data = await _fetchCombined(dates.from, dates.to);
+    if (!data.ok) throw new Error('API error');
+    const g = data.groupStats;
+    const label = dates.from || dates.to ? `ช่วง: ${dates.from ? _fmtDateTH(dates.from) : '—'} ถึง ${dates.to ? _fmtDateTH(dates.to) : '—'}` : 'ข้อมูลทั้งหมด';
+    Swal.fire({
+      title: `<i class="fa-solid fa-users" style="color:#2e7d32"></i> แชร์ลงกลุ่ม`,
+      html: `<div style="text-align:left">
+        <div style="font-size:.78rem;color:#8a8d91;margin-bottom:.6rem">${label}</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-bottom:.8rem">
+          <div style="background:#f0fdf4;border-radius:8px;padding:.5rem .6rem;text-align:center">
+            <div style="font-size:1.3rem;font-weight:700;color:#2e7d32">${g.total}</div>
+            <div style="font-size:.72rem;color:#555">งาน (Job)</div>
+          </div>
+          <div style="background:#e8fde8;border-radius:8px;padding:.5rem .6rem;text-align:center">
+            <div style="font-size:1.3rem;font-weight:700;color:#059669">${g.success}</div>
+            <div style="font-size:.72rem;color:#555">สำเร็จ</div>
+          </div>
+          <div style="background:#fff5f5;border-radius:8px;padding:.5rem .6rem;text-align:center">
+            <div style="font-size:1.3rem;font-weight:700;color:#c62828">${g.fail}</div>
+            <div style="font-size:.72rem;color:#555">ล้มเหลว</div>
+          </div>
+        </div>
+        <div style="font-size:.75rem;font-weight:700;color:#555;margin-bottom:.4rem"><i class="fa-solid fa-ranking-star" style="color:#1877f2"></i> 5 อันดับกลุ่ม</div>
+        ${_rankRowsHtml(data.topGroups)}
+      </div>`,
+      confirmButtonText: 'ปิด', confirmButtonColor: '#2e7d32', width: '440px',
+    });
+  } catch { Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'ไม่สามารถโหลดข้อมูลได้' }); }
 }
 
 /* ── Group overview (load on page load) ── */
