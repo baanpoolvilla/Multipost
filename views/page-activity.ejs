@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= page.pageName %> – กิจกรรม</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-inner">
+    <div class="navbar-brand">
+      <div class="fb-logo"><i class="fa-brands fa-facebook"></i></div>
+      <span>Multi Post System</span>
+    </div>
+    <div class="navbar-right">
+      <a href="/" class="btn-back"><i class="fa-solid fa-arrow-left"></i> กลับ</a>
+    </div>
+  </div>
+</nav>
+
+<div class="page-wrap">
+
+  <aside class="sidebar">
+    <div class="sidebar-label">โพสลงเพจ</div>
+    <a href="/" class="sidebar-item"><i class="fa-solid fa-pen-to-square"></i><span>โพสใหม่</span></a>
+    <a href="/overview" class="sidebar-item"><i class="fa-solid fa-chart-line"></i><span>ภาพรวม</span></a>
+    <a href="/history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพส</span></a>
+    <a href="/pages" class="sidebar-item"><i class="fa-brands fa-facebook"></i><span>จัดการเพจ</span></a>
+
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-label">โพส&amp;แชร์ ลงกลุ่ม</div>
+    <a href="/groups" class="sidebar-item"><i class="fa-solid fa-users-rectangle"></i><span>จัดการกลุ่ม</span></a>
+    <a href="/agent" class="sidebar-item"><i class="fa-solid fa-robot"></i><span>ติดตั้ง Desktop Agent</span></a>
+    <a href="/job-queue" class="sidebar-item"><i class="fa-solid fa-list-check"></i><span>คิวโพส</span></a>
+    <a href="/group-history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพสกลุ่ม</span></a>
+    <a href="/guide" class="sidebar-item"><i class="fa-solid fa-book-open"></i><span>คู่มือการใช้งาน</span></a>
+  </aside>
+
+  <main class="feed">
+
+    <!-- Page header banner -->
+    <div class="card" style="padding:1rem 1.25rem;display:flex;align-items:center;gap:.85rem">
+      <div class="avatar avatar-blue" style="width:44px;height:44px;font-size:1.1rem;flex-shrink:0">
+        <i class="fa-brands fa-facebook"></i>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:1.05rem;font-weight:700;color:var(--text)"><%= page.pageName %></div>
+        <div style="font-size:.78rem;color:var(--text3);margin-top:.1rem">
+          Page ID: <%= page.pageId %>
+          &nbsp;·&nbsp;
+          <span style="color:#1877f2"><%= posts.length %> โพสเพจ</span>
+          &nbsp;·&nbsp;
+          <span style="color:#2e7d32"><%= jobs.length %> แชร์กลุ่ม</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab bar -->
+    <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:.5rem">
+      <button id="tabBtnPage" onclick="switchTab('page')"
+        style="padding:.55rem 1.2rem;background:none;border:none;border-bottom:2.5px solid #1877f2;margin-bottom:-2px;font-size:.88rem;font-weight:700;color:#1877f2;cursor:pointer;font-family:inherit">
+        <i class="fa-brands fa-facebook"></i> โพสลงเพจ (<%= posts.length %>)
+      </button>
+      <button id="tabBtnGrp" onclick="switchTab('grp')"
+        style="padding:.55rem 1.2rem;background:none;border:none;border-bottom:2.5px solid transparent;margin-bottom:-2px;font-size:.88rem;font-weight:600;color:var(--text3);cursor:pointer;font-family:inherit">
+        <i class="fa-solid fa-users"></i> แชร์ลงกลุ่ม (<%= jobs.length %>)
+      </button>
+    </div>
+
+    <!-- ── PAGE POSTS TAB ── -->
+    <div id="tabPage">
+    <% if (posts.length === 0) { %>
+    <div class="card"><div class="empty-state">ยังไม่มีโพสลงเพจนี้</div></div>
+    <% } else { %>
+    <% posts.forEach(post => { %>
+    <%
+      const r       = post.pageResult;
+      const isOk    = r.status === 'success';
+      const msg     = (post.message || '');
+      const display = msg.includes('|||') ? (msg.slice(0, msg.indexOf('|||')).trim() || msg.slice(msg.indexOf('|||')+3).trim()) : msg;
+      const imgs    = (post.images || []).filter(img => img && !img.startsWith('localpath::') && !/^[A-Za-z]:[\\\/]/.test(img));
+    %>
+    <div class="card history-card">
+      <div class="fb-post-header">
+        <div class="avatar avatar-<%= isOk ? 'green' : 'red' %>">
+          <i class="fa-solid fa-<%= isOk ? 'circle-check' : 'circle-xmark' %>"></i>
+        </div>
+        <div style="flex:1">
+          <div class="fb-post-author">
+            <%= page.pageName %>
+            <span style="background:<%= isOk ? '#d1e7dd' : '#f8d7da' %>;color:<%= isOk ? '#0a3622' : '#842029' %>;border-radius:999px;font-size:.7rem;padding:.1rem .5rem;font-weight:700;margin-left:.35rem">
+              <%= isOk ? 'สำเร็จ' : 'ล้มเหลว' %>
+            </span>
+          </div>
+          <div class="fb-post-time">
+            <i class="fa-solid fa-clock"></i>
+            <%= new Date(post.createdAt).toLocaleString('th-TH', { timeZone:'Asia/Bangkok', dateStyle:'short', timeStyle:'short', hour12:false }) %>
+            <% if (r.postUrl) { %>
+            &nbsp;·&nbsp;<a href="<%= r.postUrl %>" target="_blank" rel="noopener" style="color:#1877f2;text-decoration:none;font-size:.78rem"><i class="fa-solid fa-arrow-up-right-from-square"></i> ดูโพสต์</a>
+            <% } %>
+          </div>
+        </div>
+        <a href="/result/<%= post.id %>" style="display:inline-flex;align-items:center;gap:.28rem;background:#e7f0fd;color:#1877f2;border-radius:7px;padding:.28rem .65rem;font-size:.78rem;font-weight:700;text-decoration:none">
+          <i class="fa-solid fa-chart-bar"></i> รายงาน
+        </a>
+      </div>
+
+      <div class="history-message" style="margin:.6rem 0">
+        <% if (display.length > 200) { %>
+        <span class="msg-short"><%= display.slice(0, 200) %>…</span>
+        <span class="msg-full" style="display:none"><%= display %></span>
+        <button onclick="this.previousElementSibling.style.display='';this.previousElementSibling.previousElementSibling.style.display='none';this.style.display='none'" style="background:none;border:none;color:#1877f2;font-size:.78rem;cursor:pointer;font-family:inherit">ดูทั้งหมด</button>
+        <% } else { %>
+        <%= display %>
+        <% } %>
+      </div>
+
+      <% if (imgs.length > 0) { %>
+      <div class="post-img-grid post-img-<%= Math.min(imgs.length,4) %>" style="margin-bottom:.5rem">
+        <% imgs.slice(0,4).forEach((img,i) => { %>
+        <% const src = img.startsWith('http') ? img : '/uploads/' + img; %>
+        <% const isVid = /\.(mp4|mov|avi|webm)$/i.test(img); %>
+        <div class="post-img-item" onclick="<%= isVid ? `viewVideo('${src}')` : `viewImage('${src}')` %>">
+          <% if (isVid) { %>
+          <video src="<%= src %>" style="width:100%;height:100%;object-fit:cover" muted playsinline preload="metadata"></video>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+            <div style="width:32px;height:32px;background:rgba(0,0,0,.55);border-radius:50%;display:flex;align-items:center;justify-content:center">
+              <svg width="12" height="14" viewBox="0 0 14 16" fill="white"><polygon points="2,1 13,8 2,15"/></svg>
+            </div>
+          </div>
+          <% } else { %>
+          <img src="<%= src %>" alt="" loading="lazy" onerror="this.closest('.post-img-item').style.display='none'">
+          <% } %>
+          <% if (i===3 && imgs.length>4) { %><div class="img-more-overlay">+<%= imgs.length-4 %></div><% } %>
+        </div>
+        <% }); %>
+      </div>
+      <% } %>
+
+      <% if (r.analytics) { %>
+      <div style="display:flex;gap:.85rem;font-size:.78rem;color:var(--text3);border-top:1px solid var(--border);padding-top:.5rem;margin-top:.4rem;flex-wrap:wrap">
+        <% if (r.analytics.likes)    { %><span><i class="fa-solid fa-thumbs-up" style="color:#1877f2"></i> <%= r.analytics.likes.toLocaleString() %></span><% } %>
+        <% if (r.analytics.comments) { %><span><i class="fa-solid fa-comment"   style="color:#e67e22"></i> <%= r.analytics.comments.toLocaleString() %></span><% } %>
+        <% if (r.analytics.shares)   { %><span><i class="fa-solid fa-share-nodes" style="color:#2e7d32"></i> <%= r.analytics.shares.toLocaleString() %></span><% } %>
+        <% if (r.analytics.reach)    { %><span><i class="fa-solid fa-eye"         style="color:#8e44ad"></i> <%= r.analytics.reach.toLocaleString() %></span><% } %>
+      </div>
+      <% } %>
+    </div>
+    <% }); %>
+    <% } %>
+    </div>
+
+    <!-- ── GROUP SHARES TAB ── -->
+    <div id="tabGrp" style="display:none">
+    <% if (jobs.length === 0) { %>
+    <div class="card"><div class="empty-state">ยังไม่มีการแชร์ลงกลุ่มจากเพจนี้</div></div>
+    <% } else { %>
+    <% jobs.forEach(job => { %>
+    <%
+      const allOk   = job.successCount > 0 && job.failCount === 0;
+      const allFail = job.successCount === 0;
+      const jmsg    = (job.message || '');
+      const jdisplay = jmsg.includes('|||') ? (jmsg.slice(0, jmsg.indexOf('|||')).trim() || jmsg.slice(jmsg.indexOf('|||')+3).trim()) : jmsg;
+    %>
+    <div class="card history-card">
+      <div class="fb-post-header">
+        <div class="avatar avatar-<%= allOk ? 'green' : allFail ? 'red' : 'orange' %>">
+          <i class="fa-solid fa-users"></i>
+        </div>
+        <div style="flex:1">
+          <div class="fb-post-author">
+            แชร์ลงกลุ่ม
+            <span style="background:<%= allOk ? '#d1e7dd' : allFail ? '#f8d7da' : '#fff3cd' %>;color:<%= allOk ? '#0a3622' : allFail ? '#842029' : '#856404' %>;border-radius:999px;font-size:.7rem;padding:.1rem .5rem;font-weight:700;margin-left:.35rem">
+              <%= allOk ? 'สำเร็จทั้งหมด' : allFail ? 'ล้มเหลว' : `สำเร็จ ${job.successCount}/${job.groupCount}` %>
+            </span>
+          </div>
+          <div class="fb-post-time">
+            <i class="fa-solid fa-clock"></i>
+            <%= new Date(job.createdAt).toLocaleString('th-TH', { timeZone:'Asia/Bangkok', dateStyle:'short', timeStyle:'short', hour12:false }) %>
+            &nbsp;·&nbsp;<i class="fa-solid fa-users" style="color:#1877f2"></i> <%= job.groupCount %> กลุ่ม
+          </div>
+        </div>
+        <a href="/group-result/<%= job._id %>" style="display:inline-flex;align-items:center;gap:.28rem;background:#e7f0fd;color:#1877f2;border-radius:7px;padding:.28rem .65rem;font-size:.78rem;font-weight:700;text-decoration:none">
+          <i class="fa-solid fa-chart-bar"></i> รายงาน
+        </a>
+      </div>
+      <div class="history-message" style="margin:.6rem 0">
+        <%= jdisplay.length > 200 ? jdisplay.slice(0,200) + '…' : jdisplay %>
+      </div>
+      <!-- Groups involved -->
+      <% const pageGroups = (job.groups || []).filter(g => g.pageId === page.pageId); %>
+      <% if (pageGroups.length > 0) { %>
+      <div style="display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.3rem">
+        <% pageGroups.slice(0,8).forEach(g => { %>
+        <span style="background:var(--surface2);border-radius:999px;font-size:.7rem;padding:.1rem .5rem;color:var(--text2)"><%= g.groupName || g.groupId %></span>
+        <% }); %>
+        <% if (pageGroups.length > 8) { %><span style="font-size:.7rem;color:var(--text3)">+<%= pageGroups.length-8 %> กลุ่ม</span><% } %>
+      </div>
+      <% } %>
+    </div>
+    <% }); %>
+    <% } %>
+    </div>
+
+  </main>
+
+  <aside class="right-panel">
+    <div class="card stats-card">
+      <div class="stats-title"><i class="fa-solid fa-chart-simple"></i> สถิติเพจ</div>
+      <div style="font-size:.72rem;font-weight:700;color:#1877f2;margin:.5rem 0 .25rem">โพสลงเพจ</div>
+      <div class="stats-row"><span>โพสทั้งหมด</span><span class="stats-val blue"><%= posts.length %></span></div>
+      <div class="stats-row"><span>สำเร็จ</span><span class="stats-val green"><%= pageSuccess %></span></div>
+      <div class="stats-row"><span>ล้มเหลว</span><span class="stats-val red"><%= pageFail %></span></div>
+      <div style="font-size:.72rem;font-weight:700;color:#2e7d32;margin:.75rem 0 .25rem">แชร์ลงกลุ่ม</div>
+      <div class="stats-row"><span>งาน (Job)</span><span class="stats-val green"><%= jobs.length %></span></div>
+      <div class="stats-row"><span>โพสสำเร็จ</span><span class="stats-val green"><%= grpSuccess %></span></div>
+      <div class="stats-row"><span>ล้มเหลว</span><span class="stats-val red"><%= grpFail %></span></div>
+    </div>
+  </aside>
+
+</div>
+
+<script>
+  function switchTab(t) {
+    document.getElementById('tabPage').style.display = t === 'page' ? '' : 'none';
+    document.getElementById('tabGrp').style.display  = t === 'grp'  ? '' : 'none';
+    const bp = document.getElementById('tabBtnPage');
+    const bg = document.getElementById('tabBtnGrp');
+    bp.style.borderBottomColor = t==='page' ? '#1877f2' : 'transparent';
+    bp.style.color             = t==='page' ? '#1877f2' : 'var(--text3)';
+    bp.style.fontWeight        = t==='page' ? '700' : '600';
+    bg.style.borderBottomColor = t==='grp'  ? '#1877f2' : 'transparent';
+    bg.style.color             = t==='grp'  ? '#1877f2' : 'var(--text3)';
+    bg.style.fontWeight        = t==='grp'  ? '700' : '600';
+  }
+  function viewImage(src) {
+    Swal.fire({ imageUrl: src, imageAlt: '', showConfirmButton:false, showCloseButton:true, width:'auto' });
+  }
+  function viewVideo(src) {
+    Swal.fire({ html:`<video src="${src}" controls autoplay style="max-width:100%;max-height:70vh;border-radius:8px"></video>`, showConfirmButton:false, showCloseButton:true, width:'auto', background:'#000', padding:'1rem' });
+  }
+</script>
+</body>
+</html>

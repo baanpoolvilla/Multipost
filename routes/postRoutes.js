@@ -144,6 +144,9 @@ router.get('/download/agent', (req, res) => {
     }
 });
 
+// Page activity (page posts + group shares for one page)
+router.get('/page-activity/:pageId', agentCtrl.showPageActivity);
+
 // Agent / Groups / Job Queue / Guide pages
 router.get('/guide',         (req, res) => res.render('guide'));
 router.get('/agent',         agentCtrl.showAgent);

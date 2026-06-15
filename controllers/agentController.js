@@ -212,3 +212,51 @@ exports.showGroupResult = async (req, res) => {
     };
     res.render('group-result', { job: enriched });
 };
+
+// ── Page Activity (page posts + group shares for one page) ─────
+exports.showPageActivity = async (req, res) => {
+    try {
+        const pageId = decodeURIComponent(req.params.pageId);
+        const pageStore = require('../services/pageStore');
+
+        const [allPages, allPosts, allJobs] = await Promise.all([
+            pageStore.load(),
+            postStore.load(),
+            groupJobStore.listHistory(),
+        ]);
+
+        const page = allPages.find(p => p.pageId === pageId);
+        if (!page) return res.status(404).send('ไม่พบเพจ');
+
+        // Page posts where this page was included
+        const posts = allPosts
+            .filter(p => (p.results || []).some(r => r.pageId === pageId))
+            .map(p => ({
+                ...p,
+                pageResult: (p.results || []).find(r => r.pageId === pageId) || {},
+            }));
+
+        // Group jobs where this page was used
+        const jobs = allJobs
+            .filter(j => (j.groups || []).some(g => g.pageId === pageId))
+            .map(j => ({
+                ...j,
+                _id: String(j._id),
+                successCount: (j.results || []).filter(r => r.status === 'success').length,
+                failCount:    (j.results || []).filter(r => r.status === 'failed').length,
+                groupCount:   (j.groups  || []).length,
+            }));
+
+        const pageSuccess = posts.filter(p => p.pageResult.status === 'success').length;
+        const pageFail    = posts.filter(p => p.pageResult.status !== 'success').length;
+        const grpSuccess  = jobs.reduce((s, j) => s + j.successCount, 0);
+        const grpFail     = jobs.reduce((s, j) => s + j.failCount,    0);
+
+        res.render('page-activity', {
+            page, posts, jobs,
+            pageSuccess, pageFail, grpSuccess, grpFail,
+        });
+    } catch (e) {
+        res.status(500).send('เกิดข้อผิดพลาด: ' + e.message);
+    }
+};

@@ -46,13 +46,13 @@
     <div id="sidebarPagesList">
     <% const colors = ['purple','green','orange','blue','red']; %>
     <% pages.slice(0, 5).forEach((p, i) => { %>
-    <div class="sidebar-item">
+    <a href="/page-activity/<%= encodeURIComponent(p.pageId) %>" class="sidebar-item" style="text-decoration:none;cursor:pointer">
       <div class="avatar avatar-<%= colors[i%5] %> avatar-xs"><%= p.pageName.slice(-1) %></div>
       <span style="flex:1"><%= p.pageName %></span>
       <% if ((p.groups||[]).length > 0) { %>
       <span style="background:#e7f3ff;color:#1877f2;border-radius:999px;font-size:.65rem;padding:.05rem .38rem;font-weight:700;flex-shrink:0"><%= p.groups.length %>กลุ่ม</span>
       <% } %>
-    </div>
+    </a>
     <% }); %>
 
     <% if (pages.length > 5) { %>
@@ -62,13 +62,13 @@
     </div>
     <div id="morePagesList" style="display:none">
       <% pages.slice(5).forEach((p, i) => { %>
-      <div class="sidebar-item">
+      <a href="/page-activity/<%= encodeURIComponent(p.pageId) %>" class="sidebar-item" style="text-decoration:none;cursor:pointer">
         <div class="avatar avatar-<%= colors[(i+5)%5] %> avatar-xs"><%= p.pageName.slice(-1) %></div>
         <span style="flex:1"><%= p.pageName %></span>
         <% if ((p.groups||[]).length > 0) { %>
         <span style="background:#e7f3ff;color:#1877f2;border-radius:999px;font-size:.65rem;padding:.05rem .38rem;font-weight:700;flex-shrink:0"><%= p.groups.length %>กลุ่ม</span>
         <% } %>
-      </div>
+      </a>
       <% }); %>
     </div>
     <% } %>
