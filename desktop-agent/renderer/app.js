@@ -708,7 +708,7 @@ async function loadTemplates() {
 
 function renderTemplates() {
     const el = document.getElementById('templatesList');
-    if (!_templates.length) { el.innerHTML='<div class="empty-state">ยังไม่มีรูปแบบโพสที่บันทึก</div>'; return; }
+    if (!_templates.length) { el.innerHTML='<div class="empty-state">ยังไม่มีเทมเพลตที่บันทึก</div>'; return; }
     el.innerHTML = _templates.map(t => {
         const hasLocalVid  = (t.images||[]).some(p => p.startsWith('localpath::'));
         const cloudCount   = (t.images||[]).filter(p => p.startsWith('http')).length;
@@ -717,7 +717,7 @@ function renderTemplates() {
         let meta = `${(t.groups||[]).length} กลุ่ม · หน่วง ${t.delaySeconds} วิ/กลุ่ม`;
         if (imgCount)    meta += ` · 🖼 ${imgCount}`;
         if (cloudCount)  meta += ` · <span style="color:#27ae60">☁️ Cloud</span>`;
-        if (hasLocalVid) meta += ` · <span style="color:#e67e22">🎬 วิดีโอ (เฉพาะเครื่องนี้)</span>`;
+        if (hasLocalVid) meta += ` · <span style="color:#e67e22">🎬 วิดีโอ ต้องอัพโหลดใหม่ทุกครั้ง</span>`;
         return `
       <div class="tpl-item">
         <div class="tpl-info">
@@ -747,7 +747,7 @@ async function saveTemplate() {
     _templates = await agent.saveTemplate({ name, message:msg, groups:grps, delaySeconds:del, postAsPage:postAs||undefined, images: imgs });
     renderTemplates();
     document.getElementById('templateName').value = '';
-    appendLog(`[💾] บันทึกรูปแบบโพส: "${name}"${imgs.length ? ` · ${imgs.length} รูป` : ''}`);
+    appendLog(`[💾] บันทึกเทมเพลต: "${name}"${imgs.length ? ` · ${imgs.length} รูป` : ''}`);
 }
 
 async function applyTemplate(id) {
@@ -790,23 +790,33 @@ async function applyTemplate(id) {
     }));
     renderImagePreviews();
 
-    // Show/hide video notice banner — only for missing (non-Supabase) videos
+    // Separate missing videos — show popup instead of inline "อัพโหลดใหม่" thumbnails
     const missingVideos = _selectedImages.filter(i => _isVideo(i.name) && i.missing);
     const cloudVideos   = _selectedImages.filter(i => _isVideo(i.name) && !i.missing);
+    _selectedImages = _selectedImages.filter(i => !i.missing);
+    renderImagePreviews();
+
     const notice = document.getElementById('videoLocalNotice');
-    if (notice) notice.style.display = missingVideos.length ? '' : 'none';
-    if (missingVideos.length > 0) {
-        appendLog(`[⚠️] วิดีโอ ${missingVideos.length} ไฟล์ไม่ได้อยู่ใน Cloud — กรุณาอัปโหลดใหม่`);
-    }
+    if (notice) notice.style.display = 'none';
+
     if (cloudVideos.length > 0) {
         appendLog(`[☁️] วิดีโอ ${cloudVideos.length} ไฟล์โหลดจาก Cloud เรียบร้อย`);
+    }
+    if (missingVideos.length > 0) {
+        appendLog(`[⚠️] วิดีโอ ${missingVideos.length} ไฟล์ต้องอัพโหลดใหม่`);
+        setTimeout(() => {
+            const names = missingVideos.map(v => `• ${v.name}`).join('\n');
+            if (confirm(`🎬 เทมเพลตนี้มีวิดีโอ ${missingVideos.length} ไฟล์ที่ต้องอัพโหลดใหม่\n\n${names}\n\nวิดีโอเก็บอยู่บนเครื่องนี้เท่านั้น ต้องเลือกไฟล์ใหม่ก่อนโพส\nกด OK เพื่อเลือกไฟล์วิดีโอ`)) {
+                openImagePicker();
+            }
+        }, 350);
     }
 
     // Switch to compose tab
     document.querySelector('.nav-item[data-tab="compose"]')?.click();
     document.getElementById('templatesPanel').style.display='none';
     const mediaCount = _selectedImages.filter(i => !i.missing).length;
-    appendLog(`[📁] โหลดรูปแบบโพส: "${t.name}"${mediaCount ? ` · ${mediaCount} ไฟล์` : ''}`);
+    appendLog(`[📁] โหลดเทมเพลต: "${t.name}"${mediaCount ? ` · ${mediaCount} ไฟล์` : ''}`);
 }
 
 async function removeTemplate(id) {

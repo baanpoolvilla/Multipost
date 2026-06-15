@@ -122,16 +122,16 @@
   <section id="tab-compose" class="tab">
     <div class="tab-header">
       <h1>✏️ โพส&amp;แชร์กลุ่ม</h1>
-      <button class="btn btn-secondary" onclick="toggleTemplates()" title="รูปแบบโพสที่บันทึกไว้">📁 รูปแบบโพส</button>
+      <button class="btn btn-secondary" onclick="toggleTemplates()" title="เทมเพลตที่บันทึกไว้">📁 เทมเพลต</button>
     </div>
 
     <!-- Templates panel -->
     <div id="templatesPanel" style="display:none">
       <div class="card">
-        <div class="card-title">📁 รูปแบบโพสที่บันทึกไว้
+        <div class="card-title">📁 เทมเพลตที่บันทึกไว้
           <button class="btn-link ml-auto" onclick="toggleTemplates()">ปิด</button>
         </div>
-        <div id="templatesList"><div class="empty-state">ยังไม่มีรูปแบบโพสที่บันทึก</div></div>
+        <div id="templatesList"><div class="empty-state">ยังไม่มีเทมเพลตที่บันทึก</div></div>
       </div>
     </div>
 
@@ -259,7 +259,7 @@
         <span class="fb-count" id="fbGroupCount">เลือกแล้ว 0 กลุ่ม</span>
         <div class="fb-footer-actions">
           <input id="templateName" placeholder="ตั้งชื่อรูปแบบ" class="fb-tpl-input">
-          <button class="btn btn-secondary" style="padding:.35rem .55rem;font-size:12px" onclick="saveTemplate()" title="บันทึกรูปแบบโพส">💾</button>
+          <button class="btn btn-secondary" style="padding:.35rem .65rem;font-size:12px;white-space:nowrap" onclick="saveTemplate()">💾 บันทึกเทมเพลต</button>
           <button class="btn btn-primary fb-post-btn" onclick="createJob()">โพส</button>
         </div>
       </div>

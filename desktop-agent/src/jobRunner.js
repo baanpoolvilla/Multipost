@@ -89,6 +89,16 @@ async function processJob(job) {
         log(`📥 โหลดรูปภาพ ${rawImages.length} รูป...`);
         for (const filename of rawImages) {
             if (!filename) continue;
+            // Local video stored with localpath:: prefix (Supabase unavailable at upload time)
+            if (filename.startsWith('localpath::')) {
+                const actualPath = filename.slice('localpath::'.length);
+                if (fs.existsSync(actualPath)) {
+                    tempImagePaths.push(actualPath);
+                } else {
+                    log(`   ⚠️ ไม่พบไฟล์วิดีโอ — อาจถูกย้ายหรือลบแล้ว: ${require('path').basename(actualPath)}`);
+                }
+                continue;
+            }
             // Already an absolute path on disk → use directly
             if (require('path').isAbsolute(filename) && fs.existsSync(filename)) {
                 tempImagePaths.push(filename);

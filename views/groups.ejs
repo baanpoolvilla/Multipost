@@ -252,10 +252,17 @@ groups.forEach(g => {
             <div class="grp-id" style="font-size:.71rem;color:var(--text-secondary);font-family:monospace;margin-top:.05rem"><%= g.groupId %></div>
           </div>
           <% if (cat === 'ทั่วไป' && otherCats.length > 0) { %>
-          <div style="display:flex;gap:.2rem;flex-wrap:wrap;max-width:130px;justify-content:flex-end;flex-shrink:0">
-            <% otherCats.forEach(c => { %>
+          <div style="display:flex;gap:.2rem;align-items:center;justify-content:flex-end;flex-shrink:0;max-width:160px;flex-wrap:wrap">
+            <% otherCats.slice(0, 2).forEach(c => { %>
             <span style="font-size:.64rem;background:#e8f4ff;color:#1877f2;border-radius:4px;padding:.04rem .27rem;white-space:nowrap">📍<%= c %></span>
             <% }); %>
+            <% if (otherCats.length > 2) { %>
+            <span class="cats-more-btn" onclick="expandCats(this)"
+              data-extra='<%- JSON.stringify(otherCats.slice(2)) %>'
+              style="font-size:.62rem;background:#f0f2f5;color:#65676b;border-radius:4px;padding:.04rem .3rem;cursor:pointer;white-space:nowrap;user-select:none">
+              +<%= otherCats.length - 2 %>
+            </span>
+            <% } %>
           </div>
           <% } %>
           <div class="group-actions">
@@ -409,6 +416,18 @@ function toggleAddGroupForm(preselect) {
     document.getElementById('fGroupUrl').focus();
     f.scrollIntoView({ behavior:'smooth', block:'nearest' });
   }
+}
+
+/* ── Expand extra category tags ── */
+function expandCats(btn) {
+  const cats = JSON.parse(btn.dataset.extra || '[]');
+  cats.forEach(c => {
+    const span = document.createElement('span');
+    span.style.cssText = 'font-size:.64rem;background:#e8f4ff;color:#1877f2;border-radius:4px;padding:.04rem .27rem;white-space:nowrap';
+    span.textContent = '📍' + c;
+    btn.parentElement.insertBefore(span, btn);
+  });
+  btn.remove();
 }
 
 /* ── More tabs dropdown ── */

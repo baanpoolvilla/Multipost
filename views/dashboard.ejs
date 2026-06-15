@@ -146,6 +146,9 @@
         <button type="button" class="action-chip" onclick="triggerImage()">
           <i class="fa-solid fa-image" style="color:#45bd62"></i><span>รูปภาพ/วิดีโอ</span>
         </button>
+        <span onclick="toggleVideoInfo()" style="font-size:.7rem;color:#8a8d91;cursor:pointer;display:inline-flex;align-items:center;gap:.2rem;padding:.2rem .4rem;border-radius:5px;transition:background .12s" onmouseover="this.style.background='#f0f2f5'" onmouseout="this.style.background='transparent'">
+          <i class="fa-solid fa-circle-info" style="font-size:.72rem"></i> ข้อจำกัดวิดีโอ
+        </span>
 <button type="button" class="action-chip" onclick="openTemplateModal()">
           <i class="fa-solid fa-layer-group" style="color:#1877f2"></i><span>เทมเพลต</span>
         </button>
@@ -159,6 +162,23 @@
           <input type="number" id="postDelay" value="30" min="0" max="120"
             style="width:54px;padding:.28rem .4rem;border:1.5px solid #e4e6eb;border-radius:7px;font-size:.82rem;font-family:inherit;outline:none;text-align:center">
           <span style="font-size:.78rem;color:#8a8d91">วิ</span>
+          <span style="font-size:.73rem;color:#42b72a;font-weight:600;white-space:nowrap">(แนะนำ 30-60)</span>
+          <button type="button" onclick="toggleDelayTipWeb()"
+            style="background:none;border:1px solid #dbe0e6;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;color:#8a8d91;display:inline-flex;align-items:center;justify-content:center;padding:0;flex-shrink:0"
+            title="คำแนะนำหน่วงเวลา">ⓘ</button>
+        </div>
+        <!-- Delay tip panel -->
+        <div id="delayTipWebPanel" style="display:none;width:100%;margin-top:.35rem">
+          <div style="background:#f0f7ff;border:1px solid #b3d4f9;border-radius:8px;padding:.6rem .85rem;font-size:.8rem;line-height:1.8">
+            <div style="font-weight:700;color:#1877f2;margin-bottom:.3rem">⏱ คำแนะนำ: หน่วงเวลาต่อเพจ</div>
+            <div style="display:grid;grid-template-columns:auto 1fr;gap:.05rem .55rem;color:#444">
+              <span style="color:#f44336;font-weight:600">0 วิ</span><span>⚠️ ไม่หน่วง — เสี่ยงโดนจำกัดจาก Facebook</span>
+              <span style="color:#ff9800;font-weight:600">1-15 วิ</span><span>⚠️ เสี่ยงปานกลาง</span>
+              <span style="color:#42b72a;font-weight:700">30-60 วิ</span><span style="color:#42b72a">✅ แนะนำ — สมดุลระหว่างความเร็วกับความปลอดภัย</span>
+              <span style="color:#42b72a;font-weight:600">&gt; 60 วิ</span><span>✅ ปลอดภัยสูง — แต่ใช้เวลานาน</span>
+            </div>
+            <div style="margin-top:.35rem;font-size:.74rem;color:#8a8d91">💡 ยิ่งโพสหลายเพจหรือบัญชีใหม่ ควรตั้งหน่วงเวลานานขึ้น</div>
+          </div>
         </div>
         <div style="display:flex;align-items:center;gap:.35rem">
           <button type="button" id="scheduleToggleBtn" onclick="toggleSchedule()"
@@ -297,6 +317,39 @@
   </div>
 </div>
 
+<!-- Video info popup -->
+<div id="videoInfoPanel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:none;align-items:center;justify-content:center" onclick="if(event.target===this)toggleVideoInfo()">
+  <div style="background:#fff;border-radius:14px;padding:1.25rem 1.5rem;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+    <div style="font-weight:700;font-size:1rem;margin-bottom:.75rem;display:flex;align-items:center;gap:.5rem">
+      <i class="fa-solid fa-video" style="color:#1877f2"></i> ข้อจำกัดการโพสวิดีโอ
+    </div>
+    <div style="font-size:.84rem;color:#444;line-height:1.8">
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:.2rem .75rem;margin-bottom:.6rem">
+        <span style="font-weight:700;color:#1c1e21">ขนาดไฟล์สูงสุด</span><span>1 GB ต่อไฟล์</span>
+        <span style="font-weight:700;color:#1c1e21">ความยาวสูงสุด</span><span>240 นาที</span>
+        <span style="font-weight:700;color:#1c1e21">ฟอร์แมตรองรับ</span><span>MP4, MOV, AVI, WMV, WebM</span>
+        <span style="font-weight:700;color:#1c1e21">ความละเอียดแนะนำ</span><span>720p ขึ้นไป (1280×720)</span>
+      </div>
+      <div style="background:#fff8e1;border:1px solid #f9a825;border-radius:8px;padding:.5rem .75rem;font-size:.78rem;color:#78350f">
+        ⚠️ วิดีโอขนาดใหญ่อาจใช้เวลาอัพโหลดนาน แนะนำ <strong>MP4 H.264</strong> เพื่อผลดีที่สุด
+      </div>
+    </div>
+    <button onclick="toggleVideoInfo()" style="margin-top:.85rem;width:100%;background:#1877f2;color:#fff;border:none;border-radius:9px;padding:.5rem;font-size:.88rem;cursor:pointer;font-family:inherit;font-weight:600">
+      รับทราบ
+    </button>
+  </div>
+</div>
+
+<script>
+  function toggleDelayTipWeb() {
+    const p = document.getElementById('delayTipWebPanel');
+    p.style.display = p.style.display === 'none' ? '' : 'none';
+  }
+  function toggleVideoInfo() {
+    const p = document.getElementById('videoInfoPanel');
+    p.style.display = p.style.display === 'none' ? 'flex' : 'none';
+  }
+</script>
 <script>
   const ALL_PAGES = <%- JSON.stringify(pages) %>;
   let DISABLED_PAGES = <%- JSON.stringify(disabledPages) %>;
