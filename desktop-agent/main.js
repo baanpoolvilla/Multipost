@@ -99,6 +99,7 @@ ipcMain.handle('jobs:delete',       (_, id)   => jobStore.deleteJob(id));
 ipcMain.handle('jobs:delete-all',   ()        => jobStore.deleteAllJobs());
 ipcMain.handle('jobs:groups',       ()        => jobStore.getAllGroups());
 ipcMain.handle('jobs:recent-posts', ()        => jobStore.getRecentPosts());
+ipcMain.handle('jobs:history',      ()        => jobStore.getCompletedJobs());
 
 // ── IPC: Runner ────────────────────────────────────────────────
 ipcMain.handle('runner:start', () => { jobRunner.start(); return { ok: true }; });

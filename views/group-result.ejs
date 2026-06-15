@@ -94,8 +94,13 @@
         <div class="post-img-item <%= (i === 3 && imgs.length > 4) ? 'has-more' : '' %>"
              onclick="<%= isVid ? `viewVideo('${imgSrc}')` : `viewImage('${imgSrc}')` %>">
           <% if (isVid) { %>
-          <video src="<%= imgSrc %>" class="vid-thumb" style="width:100%;height:100%;object-fit:cover" muted playsinline crossorigin="anonymous"
+          <video src="<%= imgSrc %>" style="width:100%;height:100%;object-fit:cover" muted playsinline preload="metadata"
                  onerror="this.closest('.post-img-item').style.display='none'"></video>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none">
+            <div style="width:36px;height:36px;background:rgba(0,0,0,.55);border-radius:50%;display:flex;align-items:center;justify-content:center">
+              <svg width="14" height="16" viewBox="0 0 14 16" fill="white"><polygon points="2,1 13,8 2,15"/></svg>
+            </div>
+          </div>
           <% } else { %>
           <img src="<%= imgSrc %>" alt="รูปภาพ" loading="lazy"
                onerror="this.closest('.post-img-item').style.display='none'">
@@ -164,6 +169,9 @@
       <a href="/group-history" class="btn-post" style="text-decoration:none;background:#65676b">
         <i class="fa-solid fa-clock-rotate-left"></i> กลับประวัติ
       </a>
+      <button class="btn-post" style="background:#0a7a3e" onclick="repostJob()">
+        <i class="fa-solid fa-rotate-right"></i> โพสอีกครั้ง
+      </button>
       <a href="/job-queue" class="btn-post" style="text-decoration:none">
         <i class="fa-solid fa-list-check"></i> คิวโพส
       </a>
@@ -204,24 +212,41 @@
       : `<i class="fa-solid fa-chevron-down"></i> ดูเพิ่มเติม ${hidden.length} กลุ่ม`;
   }
 
-  // Fix black video thumbnails
-  document.querySelectorAll('video.vid-thumb').forEach(v => {
-    v.onloadedmetadata = () => { v.currentTime = 0.5; };
-    v.onseeked = () => {
-      try {
-        const c = document.createElement('canvas');
-        c.width = v.videoWidth || 320; c.height = v.videoHeight || 240;
-        c.getContext('2d').drawImage(v, 0, 0);
-        const img = document.createElement('img');
-        img.src = c.toDataURL('image/jpeg', 0.85);
-        img.style.cssText = 'width:100%;height:100%;object-fit:cover';
-        img.onclick = v.closest('.post-img-item').onclick;
-        img.onerror = () => {};
-        v.replaceWith(img);
-      } catch { v.currentTime = 0; }
-    };
-    v.load();
-  });
+  async function repostJob() {
+    const result = await Swal.fire({
+      title: 'โพสอีกครั้ง?',
+      text: 'จะสร้างงานโพสใหม่ด้วยข้อมูลชุดเดิม <%= (job.groups||[]).length %> กลุ่ม',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#0a7a3e',
+      cancelButtonColor: '#65676b',
+      confirmButtonText: '<i class="fa-solid fa-rotate-right"></i> โพสเลย',
+      cancelButtonText: 'ยกเลิก',
+    });
+    if (!result.isConfirmed) return;
+
+    try {
+      const res  = await fetch('/api/agent/jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message:      <%- JSON.stringify(job.message || '') %>,
+          groups:       <%- JSON.stringify(job.groups || []) %>,
+          delaySeconds: <%= job.delaySeconds || 5 %>,
+          images:       <%- JSON.stringify(job.images || []) %>,
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        await Swal.fire({ icon: 'success', title: 'เพิ่มงานโพสแล้ว', timer: 1400, showConfirmButton: false });
+        location.href = '/job-queue';
+      } else {
+        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: data.error || 'ไม่สามารถสร้างงานได้', confirmButtonColor: '#1877f2' });
+      }
+    } catch {
+      Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', confirmButtonColor: '#1877f2' });
+    }
+  }
 </script>
 </body>
 </html>

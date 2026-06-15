@@ -222,8 +222,13 @@
         <div class="post-img-item <%= (i === 3 && webImages.length > 4) ? 'has-more' : '' %>"
              onclick="<%= isVid ? `viewVideo('${imgSrc}')` : `viewImage('${imgSrc}')` %>">
           <% if (isVid) { %>
-          <video src="<%= imgSrc %>" class="vid-thumb" style="width:100%;height:100%;object-fit:cover" muted playsinline crossorigin="anonymous"
+          <video src="<%= imgSrc %>" class="vid-thumb" style="width:100%;height:100%;object-fit:cover" muted playsinline preload="metadata"
                  onerror="this.closest('.post-img-item').style.display='none'"></video>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none">
+            <div style="width:36px;height:36px;background:rgba(0,0,0,.55);border-radius:50%;display:flex;align-items:center;justify-content:center">
+              <svg width="14" height="16" viewBox="0 0 14 16" fill="white"><polygon points="2,1 13,8 2,15"/></svg>
+            </div>
+          </div>
           <% } else { %>
           <img src="<%= imgSrc %>" alt="รูปภาพ" loading="lazy"
                onerror="this.closest('.post-img-item').style.display='none'">
@@ -481,10 +486,13 @@
     if (cards.length === 0) location.reload();
   }
 
-  // Fix black video thumbnails
+  // Try canvas thumbnail capture for videos (falls back to play-icon overlay on CORS block)
   document.querySelectorAll('video.vid-thumb').forEach(v => {
+    let done = false;
     v.onloadedmetadata = () => { v.currentTime = 0.5; };
     v.onseeked = () => {
+      if (done) return;
+      done = true;
       try {
         const c = document.createElement('canvas');
         c.width = v.videoWidth || 320; c.height = v.videoHeight || 240;
@@ -494,7 +502,7 @@
         img.style.cssText = 'width:100%;height:100%;object-fit:cover';
         img.onerror = () => {};
         v.replaceWith(img);
-      } catch { v.currentTime = 0; }
+      } catch { /* CORS blocked — play icon overlay still shows */ }
     };
     v.load();
   });

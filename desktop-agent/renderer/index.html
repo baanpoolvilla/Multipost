@@ -25,6 +25,9 @@
     <span class="nav-icon">📋</span><span>คิวโพส</span>
     <span class="nav-badge" id="pendingBadge" style="display:none">0</span>
   </button>
+  <button class="nav-item" data-tab="history" onclick="onHistoryTabClick()">
+    <span class="nav-icon">🕐</span><span>ประวัติโพส</span>
+  </button>
 
   <div class="sidenav-footer">
     <div class="status-row">
@@ -264,6 +267,22 @@
         </div>
       </div>
 
+    </div>
+  </section>
+
+  <!-- ── TAB: HISTORY ── -->
+  <section id="tab-history" class="tab">
+    <div class="tab-header">
+      <h1>🕐 ประวัติโพส</h1>
+      <div class="status-filter" style="margin-left:.5rem">
+        <button class="filter-btn active" data-hfilter="all"    onclick="filterHistory(this,'all')">ทั้งหมด</button>
+        <button class="filter-btn"        data-hfilter="done"   onclick="filterHistory(this,'done')">สำเร็จ</button>
+        <button class="filter-btn"        data-hfilter="failed" onclick="filterHistory(this,'failed')">ล้มเหลว</button>
+      </div>
+      <button class="btn-link ml-auto" onclick="loadHistory()">🔄 อัพเดต</button>
+    </div>
+    <div class="card">
+      <div id="historyList"><div class="empty-state">กำลังโหลด...</div></div>
     </div>
   </section>
 

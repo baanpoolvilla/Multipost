@@ -1,6 +1,7 @@
 // ── State ────────────────────────────────────────────────────
 const _timeout = ms => new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms));
 let _accounts = [], _groups = [], _selected = [], _jobs = [], _jobFilter = 'all', _jobsVisible = 20;
+let _history = [], _historyFilter = 'all', _historyLoaded = false;
 let _catCollapsed = {}; // category → true (collapsed) / false (expanded)
 let _statusInterval = null;
 let _selectedPage = null;
@@ -881,6 +882,84 @@ async function removeTemplate(id) {
     if (!confirm('ต้องการลบรูปแบบโพสนี้หรือไม่?')) return;
     _templates = await agent.deleteTemplate(id);
     renderTemplates();
+}
+
+// ── History ───────────────────────────────────────────────────
+function onHistoryTabClick() {
+    if (!_historyLoaded) loadHistory();
+}
+
+async function loadHistory() {
+    _historyLoaded = true;
+    const el = document.getElementById('historyList');
+    if (el) el.innerHTML = '<div class="empty-state">กำลังโหลด...</div>';
+    try {
+        _history = await agent.getJobHistory();
+    } catch { _history = []; }
+    renderHistory();
+}
+
+function filterHistory(btn, filter) {
+    document.querySelectorAll('[data-hfilter]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    _historyFilter = filter;
+    renderHistory();
+}
+
+function renderHistory() {
+    const el = document.getElementById('historyList');
+    if (!el) return;
+    const list = _historyFilter === 'all' ? _history : _history.filter(j => j.status === _historyFilter);
+    if (!list.length) {
+        el.innerHTML = '<div class="empty-state">ยังไม่มีประวัติโพส</div>';
+        return;
+    }
+    el.innerHTML = list.map(j => {
+        const ok  = (j.results||[]).filter(r => r.status === 'success').length;
+        const tot = (j.groups||[]).length;
+        const fail = tot - ok;
+        const done = j.status === 'done';
+        const icon = done ? '✅' : '❌';
+        const statusCls = done ? 'done' : 'failed';
+        const statusTH  = done ? 'สำเร็จ' : 'ล้มเหลว';
+        const msg = (j.message||'');
+        const display = msg.includes('|||') ? msg.slice(0, msg.indexOf('|||')).trim() || msg.slice(msg.indexOf('|||')+3).trim() : msg;
+        const preview = display.length > 55 ? display.slice(0, 55) + '…' : display;
+        const imgBadge = (j.images||[]).length > 0
+            ? `<span style="font-size:10px;background:#e7f3ff;color:#1877f2;border-radius:4px;padding:.05rem .4rem;margin-left:.3rem">📸 ${j.images.length}</span>` : '';
+        const failBadge = fail > 0
+            ? `<span style="font-size:10px;background:#fde8e8;color:#c62828;border-radius:4px;padding:.05rem .4rem;margin-left:.3rem">❌ ${fail}</span>` : '';
+        return `<div class="job-item">
+          <div class="job-icon">${icon}</div>
+          <div class="job-body">
+            <div class="job-msg">${esc(preview)}${imgBadge}${failBadge}</div>
+            <div class="job-meta">${ok}/${tot} กลุ่ม · ${fmtDate(j.createdAt)}</div>
+          </div>
+          <span class="job-status ${statusCls}">${statusTH}</span>
+          <button class="btn btn-primary" style="font-size:11px;padding:.3rem .6rem;white-space:nowrap"
+                  onclick="repostHistoryJob('${j._id}')">🔄 โพสอีกครั้ง</button>
+        </div>`;
+    }).join('');
+}
+
+async function repostHistoryJob(id) {
+    const j = _history.find(h => h._id === id);
+    if (!j) return;
+    const accId = document.getElementById('jobAccount').value || null;
+    if (!accId) { alert('กรุณาเลือกบัญชี Facebook ที่แท็บ "โพส&แชร์กลุ่ม" ก่อน'); return; }
+    if (!confirm(`โพสอีกครั้ง "${(j.message||'').slice(0,40)}..." ไปยัง ${(j.groups||[]).length} กลุ่ม?`)) return;
+    const job = await agent.createJob({
+        message:      j.message,
+        groups:       j.groups,
+        delaySeconds: j.delaySeconds || 5,
+        accountId:    accId,
+        images:       j.images || [],
+    });
+    if (job) {
+        _jobs.unshift(job);
+        appendLog(`[📋] สร้างคิวโพสอีกครั้ง: "${(j.message||'').slice(0,40)}..." → ${(j.groups||[]).length} กลุ่ม`);
+        document.querySelector('.nav-item[data-tab="jobs"]')?.click();
+    }
 }
 
 // ── Log ───────────────────────────────────────────────────────

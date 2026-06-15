@@ -146,6 +146,13 @@ async function deleteAllJobs() {
     catch { fSave([]); }
 }
 
+async function getCompletedJobs() {
+    try {
+        await connect();
+        return (await Job.find({ status: { $in: ['done', 'failed'] } }).sort({ createdAt: -1 }).limit(200).lean()).map(_s);
+    } catch { return []; }
+}
+
 function _s(j) { return j ? { ...j, _id: j._id?.toString?.()??j._id } : j; }
 
-module.exports = { connect, isDbConnected, setDataPath, getAllGroups, getRecentPosts, createJob, getJobs, getPendingJobs, updateJob, deleteJob, deleteAllJobs };
+module.exports = { connect, isDbConnected, setDataPath, getAllGroups, getRecentPosts, createJob, getJobs, getPendingJobs, updateJob, deleteJob, deleteAllJobs, getCompletedJobs };

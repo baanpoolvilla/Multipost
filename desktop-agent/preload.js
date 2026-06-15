@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld('agent', {
     deleteAllJobs:   ()         => ipcRenderer.invoke('jobs:delete-all'),
     getGroups:       ()         => ipcRenderer.invoke('jobs:groups'),
     getRecentPosts:  ()         => ipcRenderer.invoke('jobs:recent-posts'),
+    getJobHistory:   ()         => ipcRenderer.invoke('jobs:history'),
 
     // Runner
     startRunner:     ()         => ipcRenderer.invoke('runner:start'),
