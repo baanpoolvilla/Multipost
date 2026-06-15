@@ -134,7 +134,7 @@
         <div class="page-manage-header">
           <div class="avatar avatar-<%= colors[i%5] %>"><%= p.pageName.slice(-1) %></div>
           <div class="page-manage-info">
-            <div class="page-manage-name" style="display:flex;align-items:center;gap:.5rem">
+            <div class="page-manage-name" style="display:flex;align-items:center;gap:.5rem;cursor:pointer" onclick="window.location.href='/page-activity/<%= encodeURIComponent(p.pageId) %>'">
               <%= p.pageName %>
               <span id="live-<%= p.pageId %>" style="font-size:.72rem;padding:.18rem .55rem;border-radius:999px;background:#f0f2f5;color:#8a8d91;display:inline-flex;align-items:center;gap:.25rem;font-weight:600">
                 <i class="fa-solid fa-spinner fa-spin" style="font-size:.65rem"></i> ตรวจสอบ...
