@@ -239,17 +239,27 @@
   <aside class="right-panel">
     <div class="card stats-card">
       <div class="stats-title"><i class="fa-solid fa-trophy" style="color:#f7b928"></i> Top เพจ</div>
-      <% const sorted = [...pageStats].sort((a,b) => b.reach - a.reach).slice(0,3); %>
+      <%
+        const medals = ['🥇','🥈','🥉','4️⃣','5️⃣'];
+        const sorted = [...pageStats].sort((a,b) => (b.posts||0) - (a.posts||0)).slice(0,5);
+      %>
       <% if (sorted.length === 0) { %>
         <p style="font-size:.82rem;color:#8a8d91;margin-top:.4rem">ยังไม่มีข้อมูล</p>
       <% } %>
       <% sorted.forEach((p, i) => { %>
-      <div class="stats-row">
-        <div style="display:flex;align-items:center;gap:.4rem">
-          <span style="font-size:.85rem"><%= ['🥇','🥈','🥉'][i] %></span>
-          <span style="font-size:.85rem"><%= p.pageName %></span>
+      <% const rate = p.posts > 0 ? Math.round((p.success||0)/p.posts*100) : 0; %>
+      <div style="padding:.5rem 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:.35rem;margin-bottom:.25rem">
+          <span><%= medals[i] %></span>
+          <span style="font-weight:600;font-size:.83rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><%= p.pageName %></span>
+          <span style="font-size:.7rem;color:#888"><%= rate %>%</span>
         </div>
-        <span class="stats-val purple-text" style="font-size:.82rem"><%= p.reach.toLocaleString() %></span>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:.12rem .35rem;font-size:.75rem;color:var(--text3)">
+          <span>📝 <b style="color:var(--text)"><%= p.posts %></b> โพส</span>
+          <span>👁️ <b style="color:#45bd62"><%= (p.reach||0).toLocaleString() %></b></span>
+          <span>👍 <b style="color:#1877f2"><%= (p.likes||0).toLocaleString() %></b></span>
+          <span>💬 <b style="color:#f5533d"><%= (p.comments||0).toLocaleString() %></b></span>
+        </div>
       </div>
       <% }); %>
     </div>

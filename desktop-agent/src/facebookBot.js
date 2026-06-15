@@ -724,6 +724,16 @@ async function postToGroup(accountId, groupId, groupName, message, postAsPage, o
             '[role="dialog"] div[aria-label="Post"][role="button"]',
             '[role="dialog"] div[aria-label="โพสต์"][role="button"]',
         ];
+        // Snapshot existing post URLs before clicking Post (for diff after)
+        let existingPostUrls = new Set();
+        try {
+            const urls = await page.evaluate(() =>
+                [...document.querySelectorAll('a[href*="/posts/"], a[href*="/permalink/"]')]
+                    .map(a => a.href).filter(Boolean)
+            );
+            existingPostUrls = new Set(urls);
+        } catch {}
+
         let posted = false;
         for (const s of postSels) {
             try {
@@ -741,8 +751,24 @@ async function postToGroup(accountId, groupId, groupName, message, postAsPage, o
         if (!posted) { if (ownPage) await page.close(); return { ok: false, error: 'กด Post ไม่ได้' }; }
 
         await page.waitForTimeout(4000);
+
+        // Try to capture the URL of the new post (best-effort)
+        let postUrl = null;
+        try {
+            const allUrls = await page.evaluate(() =>
+                [...document.querySelectorAll('a[href*="/posts/"], a[href*="/permalink/"]')]
+                    .map(a => a.href).filter(h => h && h.includes('facebook.com'))
+            );
+            // Prefer a URL that didn't exist before (= our new post)
+            for (const url of allUrls) {
+                if (!existingPostUrls.has(url)) { postUrl = url; break; }
+            }
+            // Fallback: first visible post URL
+            if (!postUrl && allUrls.length > 0) postUrl = allUrls[0];
+        } catch {}
+
         if (ownPage) await page.close();
-        return { ok: true };
+        return { ok: true, postUrl };
     } catch(e) { return { ok: false, error: e.message }; }
 }
 

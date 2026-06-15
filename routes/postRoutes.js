@@ -160,6 +160,9 @@ router.delete('/api/agent/history/:id', agentCtrl.deleteGroupHistoryJob);
 // Combined stats API
 router.get('/api/stats/combined', agentCtrl.getCombinedStats);
 
+// Group analytics refresh
+router.post('/api/agent/refresh-group-analytics', agentCtrl.refreshGroupAnalytics);
+
 // Job Queue API
 router.get('/api/agent/jobs',                   agentCtrl.listJobs);
 router.post('/api/agent/jobs',                  agentCtrl.createJob);

@@ -2,6 +2,7 @@ const groupJobStore  = require('../services/groupJobStore');
 const groupStore     = require('../services/groupStore');
 const categoryStore  = require('../services/categoryStore');
 const postStore      = require('../services/postStore');
+const { refreshPostAnalytics } = require('../services/facebookService');
 
 // ── Group Overview Dashboard ───────────────────────────────────
 exports.showGroupOverview = async (req, res) => {
@@ -13,19 +14,31 @@ exports.showGroupOverview = async (req, res) => {
         const totalFail    = jobs.reduce((s, j) => s + (j.results||[]).filter(r=>r.status==='failed').length, 0);
         const successRate  = (totalSuccess + totalFail) > 0 ? Math.round(totalSuccess/(totalSuccess+totalFail)*100) : 0;
 
-        // All groups sorted by activity (top 5 = topGroups, full table = allGroupStats)
+        // All groups sorted by activity — include analytics totals
         const grpCounts = {};
         jobs.forEach(j => {
             (j.results||[]).forEach(r => {
                 const key = r.groupId || r.groupName || 'ไม่ทราบ';
-                if (!grpCounts[key]) grpCounts[key] = { name: r.groupName || r.groupId || 'ไม่ทราบ', success: 0, fail: 0 };
+                if (!grpCounts[key]) grpCounts[key] = { name: r.groupName || r.groupId || 'ไม่ทราบ', success: 0, fail: 0, likes: 0, comments: 0, shares: 0, reach: 0 };
                 if (r.status === 'success') grpCounts[key].success++;
                 else grpCounts[key].fail++;
+                if (r.analytics) {
+                    grpCounts[key].likes    += r.analytics.likes    || 0;
+                    grpCounts[key].comments += r.analytics.comments || 0;
+                    grpCounts[key].shares   += r.analytics.shares   || 0;
+                    grpCounts[key].reach    += r.analytics.reach    || 0;
+                }
             });
         });
         const allGroupStats = Object.values(grpCounts)
             .sort((a,b) => (b.success+b.fail)-(a.success+a.fail));
         const topGroups = allGroupStats.slice(0,5);
+
+        // Analytics totals
+        const totalLikes    = allGroupStats.reduce((s,g)=>s+g.likes,0);
+        const totalComments = allGroupStats.reduce((s,g)=>s+g.comments,0);
+        const totalShares   = allGroupStats.reduce((s,g)=>s+g.shares,0);
+        const hasAnalytics  = totalLikes > 0 || totalComments > 0 || totalShares > 0;
 
         // Chart last 7 days (Bangkok)
         const labels = [], chartData = [];
@@ -48,6 +61,7 @@ exports.showGroupOverview = async (req, res) => {
 
         res.render('group-overview', {
             totalJobs, totalSuccess, totalFail, successRate, topGroups, allGroupStats,
+            totalLikes, totalComments, totalShares, hasAnalytics,
             chartLabels: JSON.stringify(labels),
             chartData:   JSON.stringify(chartData),
             recentJobs,
@@ -315,6 +329,54 @@ exports.getCombinedStats = async (req, res) => {
             .slice(0, 5);
 
         res.json({ ok: true, pageStats, groupStats, topPages, topGroups });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+};
+
+// ── Refresh Group Analytics (pull likes/comments/shares from Graph API) ────
+exports.refreshGroupAnalytics = async (req, res) => {
+    try {
+        const pageStore = require('../services/pageStore');
+        const [jobs, pages] = await Promise.all([
+            groupJobStore.listHistory(),
+            pageStore.load(),
+        ]);
+
+        // Map page name → access token
+        const nameTokenMap = {};
+        pages.forEach(p => { if (p.pageName && p.accessToken) nameTokenMap[p.pageName] = p.accessToken; });
+
+        let updated = 0, errors = 0, skipped = 0;
+
+        for (const job of jobs) {
+            const results = job.results || [];
+            for (let i = 0; i < results.length; i++) {
+                const r = results[i];
+                if (r.status !== 'success' || !r.postUrl) { skipped++; continue; }
+                // Skip if already has good analytics
+                if (r.analytics && (r.analytics.likes || r.analytics.comments || r.analytics.shares || r.analytics.reach)) { skipped++; continue; }
+
+                // Extract post ID from URL
+                const m = r.postUrl.match(/\/posts\/(\d+)|story_fbid=(\d+)|\/permalink\/(\d+)/);
+                const postId = m ? (m[1] || m[2] || m[3]) : null;
+                if (!postId) { skipped++; continue; }
+
+                // Get page access token (by job.postAsPage or job.pageName)
+                const token = nameTokenMap[job.postAsPage] || nameTokenMap[job.pageName];
+                if (!token) { skipped++; continue; }
+
+                try {
+                    const analytics = await refreshPostAnalytics(postId, token);
+                    await groupJobStore.updateResultAnalytics(String(job._id), i, analytics);
+                    updated++;
+                } catch {
+                    errors++;
+                }
+            }
+        }
+
+        res.json({ ok: true, updated, errors, skipped });
     } catch (e) {
         res.status(500).json({ ok: false, error: e.message });
     }

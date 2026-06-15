@@ -22,6 +22,13 @@ const groupJobSchema = new mongoose.Schema({
         status:    String,
         error:     String,
         timestamp: String,
+        postUrl:   { type: String, default: null },
+        analytics: {
+            likes:    { type: Number, default: 0 },
+            comments: { type: Number, default: 0 },
+            shares:   { type: Number, default: 0 },
+            reach:    { type: Number, default: 0 },
+        },
     }],
     createdAt:    { type: Date, default: Date.now },
 }, { versionKey: false });
@@ -105,4 +112,13 @@ async function listScheduled() {
     } catch { return []; }
 }
 
-module.exports = { list, create, remove, listHistory, deleteHistory, getById, statsByDateRange, updateOne, listScheduled };
+// Update analytics for a specific result item inside a job
+async function updateResultAnalytics(jobId, resultIndex, analytics) {
+    try {
+        await connect();
+        const updateKey = `results.${resultIndex}.analytics`;
+        return GroupJob.findByIdAndUpdate(jobId, { $set: { [updateKey]: analytics } }, { new: true }).lean();
+    } catch { return null; }
+}
+
+module.exports = { list, create, remove, listHistory, deleteHistory, getById, statsByDateRange, updateOne, listScheduled, updateResultAnalytics };
