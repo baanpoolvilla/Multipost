@@ -114,7 +114,7 @@ exports.listJobs = async (req, res) => {
 };
 
 exports.createJob = async (req, res) => {
-    const { message, groups, delaySeconds, accountId, scheduledAt, images } = req.body;
+    const { message, groups, delaySeconds, accountId, scheduledAt, images, pageId, pageName } = req.body;
     if (!message?.trim()) return res.status(400).json({ error: 'กรุณากรอกข้อความ' });
     if (!Array.isArray(groups) || !groups.length) return res.status(400).json({ error: 'กรุณาเลือกกลุ่ม' });
     try {
@@ -122,6 +122,8 @@ exports.createJob = async (req, res) => {
         const job = await groupJobStore.create({
             message: message.trim(),
             groups,
+            pageId:   pageId   || null,
+            pageName: pageName || null,
             delaySeconds: delaySeconds || 5,
             accountId: accountId || null,
             scheduledAt: (schedDate && schedDate > new Date()) ? schedDate.toISOString() : null,
@@ -236,17 +238,13 @@ exports.showPageActivity = async (req, res) => {
                 pageResult: (p.results || []).find(r => r.pageId === pageId) || {},
             }));
 
-        // Group jobs — match by groupId overlap with page.groups.
-        // If page has no groups configured, fall back to showing ALL group jobs.
+        // Group jobs — primary: top-level pageId match; secondary: groupId intersection with page.groups
         const pageGroupIds = new Set((page.groups || []).map(g => g.groupId));
-        const jobs = (pageGroupIds.size === 0
-            ? allJobs
-            : allJobs.filter(j => (j.groups || []).some(g =>
-                (g.pageId && g.pageId === pageId) ||
-                (g.pageName && g.pageName === page.pageName) ||
-                pageGroupIds.has(g.groupId)
-            ))
-        )
+        const jobs = allJobs.filter(j => {
+            if (j.pageId) return j.pageId === pageId;
+            if (pageGroupIds.size > 0) return (j.groups || []).some(g => pageGroupIds.has(g.groupId));
+            return false;
+        })
             .map(j => ({
                 ...j,
                 _id: String(j._id),

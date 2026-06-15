@@ -101,6 +101,16 @@ ipcMain.handle('jobs:groups',       ()        => jobStore.getAllGroups());
 ipcMain.handle('jobs:recent-posts', ()        => jobStore.getRecentPosts());
 ipcMain.handle('jobs:history',      ()        => jobStore.getCompletedJobs());
 
+// ── IPC: Pages list (from web) ──────────────────────────────────
+ipcMain.handle('pages:list', async () => {
+    const base = process.env.WEB_URL || '';
+    if (!base) return [];
+    try {
+        const r = await fetch(`${base}/api/pages-list`);
+        return r.ok ? await r.json() : [];
+    } catch { return []; }
+});
+
 // ── IPC: Shell / image utilities ───────────────────────────────
 ipcMain.handle('shell:open', (_, url) => shell.openExternal(url));
 

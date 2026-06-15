@@ -9,6 +9,8 @@ const groupJobSchema = new mongoose.Schema({
         pageId:    String,
         pageName:  String,
     }],
+    pageId:       { type: String, default: null },
+    pageName:     { type: String, default: null },
     delaySeconds: { type: Number, default: 5 },
     accountId:    { type: String, default: null },
     scheduledAt:  { type: String, default: null },
