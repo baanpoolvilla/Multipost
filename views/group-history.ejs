@@ -35,6 +35,9 @@
     <a href="/agent" class="sidebar-item"><i class="fa-solid fa-robot"></i><span>ติดตั้ง Desktop Agent</span></a>
     <a href="/job-queue" class="sidebar-item"><i class="fa-solid fa-list-check"></i><span>คิวโพส</span></a>
     <a href="/group-history" class="sidebar-item active"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพสกลุ่ม</span></a>
+    <div class="sidebar-item" style="padding-left:2.5rem;font-size:.83rem;opacity:.45;cursor:default;pointer-events:none">
+      <i class="fa-solid fa-chart-bar" style="font-size:.78rem"></i><span>รายงานโพสกลุ่ม</span>
+    </div>
     <a href="/guide" class="sidebar-item"><i class="fa-solid fa-book-open"></i><span>คู่มือการใช้งาน</span></a>
   </aside>
 
@@ -240,11 +243,11 @@
         <% }); %>
       </div>
       <% } %>
-      <% const localVids = (job.images || []).filter(img => img && img.startsWith('localpath::')); %>
-      <% if (localVids.length > 0) { %>
+      <% const localFiles = (job.images || []).filter(img => img && img.startsWith('localpath::')); %>
+      <% if (localFiles.length > 0) { %>
       <div style="font-size:.78rem;color:#8a8d91;margin:.4rem 0 .2rem;display:flex;align-items:center;gap:.35rem">
-        <i class="fa-solid fa-video" style="color:#bbb"></i>
-        วิดีโอในเครื่อง <%= localVids.length %> ไฟล์ (แสดงได้เฉพาะบนเครื่อง Agent)
+        <i class="fa-solid fa-folder" style="color:#bbb"></i>
+        ไฟล์ในเครื่อง <%= localFiles.length %> ไฟล์ (แสดงได้เฉพาะบนเครื่อง Agent)
       </div>
       <% } %>
 

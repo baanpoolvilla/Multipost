@@ -112,11 +112,11 @@
         <% }); %>
       </div>
       <% } %>
-      <% const localVids = (job.images || []).filter(img => img && img.startsWith('localpath::')); %>
-      <% if (localVids.length > 0) { %>
+      <% const localFiles = (job.images || []).filter(img => img && img.startsWith('localpath::')); %>
+      <% if (localFiles.length > 0) { %>
       <div style="font-size:.78rem;color:#8a8d91;margin:.4rem 0;display:flex;align-items:center;gap:.35rem">
-        <i class="fa-solid fa-video" style="color:#bbb"></i>
-        วิดีโอในเครื่อง <%= localVids.length %> ไฟล์ (แสดงได้เฉพาะบนเครื่อง Agent)
+        <i class="fa-solid fa-folder" style="color:#bbb"></i>
+        ไฟล์ในเครื่อง <%= localFiles.length %> ไฟล์ (แสดงได้เฉพาะบนเครื่อง Agent)
       </div>
       <% } %>
 

@@ -925,19 +925,38 @@ function renderHistory() {
         const msg = (j.message||'');
         const display = msg.includes('|||') ? msg.slice(0, msg.indexOf('|||')).trim() || msg.slice(msg.indexOf('|||')+3).trim() : msg;
         const preview = display.length > 55 ? display.slice(0, 55) + '…' : display;
-        const imgBadge = (j.images||[]).length > 0
-            ? `<span style="font-size:10px;background:#e7f3ff;color:#1877f2;border-radius:4px;padding:.05rem .4rem;margin-left:.3rem">📸 ${j.images.length}</span>` : '';
         const failBadge = fail > 0
-            ? `<span style="font-size:10px;background:#fde8e8;color:#c62828;border-radius:4px;padding:.05rem .4rem;margin-left:.3rem">❌ ${fail}</span>` : '';
-        return `<div class="job-item">
+            ? `<span style="font-size:10px;background:#3d1a1a;color:#ff6b6b;border-radius:4px;padding:.05rem .4rem;margin-left:.3rem">❌ ${fail}</span>` : '';
+
+        // Images: show thumbnails for http URLs; localpath:: shown as folder icon
+        const httpImgs  = (j.images||[]).filter(p => p && p.startsWith('http'));
+        const localImgs = (j.images||[]).filter(p => p && p.startsWith('localpath::'));
+        const imgHtml = httpImgs.length > 0
+            ? `<div style="display:flex;gap:3px;margin-top:.4rem;flex-wrap:wrap">
+                 ${httpImgs.slice(0,4).map(url => {
+                     const isVid = /\.(mp4|mov|avi|webm)$/i.test(url);
+                     return isVid
+                         ? `<div style="width:52px;height:52px;background:#111;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:20px">🎬</div>`
+                         : `<img src="${url}" style="width:52px;height:52px;object-fit:cover;border-radius:4px;background:#2a2b2e" onerror="this.style.display='none'">`;
+                 }).join('')}
+                 ${httpImgs.length > 4 ? `<div style="width:52px;height:52px;background:#2a2b2e;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text3)">+${httpImgs.length-4}</div>` : ''}
+               </div>`
+            : localImgs.length > 0
+              ? `<div style="font-size:10.5px;color:var(--text3);margin-top:.3rem">📁 ${localImgs.length} ไฟล์ในเครื่อง</div>`
+              : '';
+
+        return `<div class="job-item" style="flex-wrap:wrap;gap:.3rem">
           <div class="job-icon">${icon}</div>
-          <div class="job-body">
-            <div class="job-msg">${esc(preview)}${imgBadge}${failBadge}</div>
+          <div class="job-body" style="flex:1;min-width:0">
+            <div class="job-msg">${esc(preview)}${failBadge}</div>
             <div class="job-meta">${ok}/${tot} กลุ่ม · ${fmtDate(j.createdAt)}</div>
+            ${imgHtml}
           </div>
-          <span class="job-status ${statusCls}">${statusTH}</span>
-          <button class="btn btn-primary" style="font-size:11px;padding:.3rem .6rem;white-space:nowrap"
-                  onclick="repostHistoryJob('${j._id}')">🔄 โพสอีกครั้ง</button>
+          <div style="display:flex;align-items:center;gap:.4rem;flex-shrink:0">
+            <span class="job-status ${statusCls}">${statusTH}</span>
+            <button class="btn btn-primary" style="font-size:11px;padding:.3rem .6rem;white-space:nowrap"
+                    onclick="repostHistoryJob('${j._id}')">🔄 โพสอีกครั้ง</button>
+          </div>
         </div>`;
     }).join('');
 }
@@ -945,19 +964,24 @@ function renderHistory() {
 async function repostHistoryJob(id) {
     const j = _history.find(h => h._id === id);
     if (!j) return;
-    const accId = document.getElementById('jobAccount').value || null;
-    if (!accId) { alert('กรุณาเลือกบัญชี Facebook ที่แท็บ "โพส&แชร์กลุ่ม" ก่อน'); return; }
-    if (!confirm(`โพสอีกครั้ง "${(j.message||'').slice(0,40)}..." ไปยัง ${(j.groups||[]).length} กลุ่ม?`)) return;
+    // Auto-use first logged-in account
+    const acc = _accounts.find(a => a.status === 'logged_in');
+    if (!acc) {
+        alert('ยังไม่มีบัญชีที่เข้าสู่ระบบ\nกรุณาไปที่แท็บ "บัญชี Facebook" แล้วเข้าสู่ระบบก่อน');
+        return;
+    }
+    const n = (j.groups||[]).length;
+    if (!confirm(`โพสอีกครั้ง "${(j.message||'').slice(0,40)}..." ไปยัง ${n} กลุ่ม\nบัญชี: ${acc.email}`)) return;
     const job = await agent.createJob({
         message:      j.message,
         groups:       j.groups,
         delaySeconds: j.delaySeconds || 5,
-        accountId:    accId,
+        accountId:    acc.id,
         images:       j.images || [],
     });
     if (job) {
         _jobs.unshift(job);
-        appendLog(`[📋] สร้างคิวโพสอีกครั้ง: "${(j.message||'').slice(0,40)}..." → ${(j.groups||[]).length} กลุ่ม`);
+        appendLog(`[📋] สร้างคิวโพสอีกครั้ง: "${(j.message||'').slice(0,40)}..." → ${n} กลุ่ม (${acc.email})`);
         document.querySelector('.nav-item[data-tab="jobs"]')?.click();
     }
 }
