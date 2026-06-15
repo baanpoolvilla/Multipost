@@ -634,6 +634,14 @@ async function onImageFilesSelected(input) {
     _selectedImages.push(...entries);
     renderImagePreviews();
 
+    // Generate video thumbnails in background (non-blocking)
+    entries.forEach(async (entry) => {
+        if (_isVideo(entry.name)) {
+            entry.thumb = await _generateVideoThumbnail(entry.url);
+            renderImagePreviews();
+        }
+    });
+
     // Upload each file via main process (Supabase if configured, else local fallback)
     await Promise.all(entries.map(async (entry, idx) => {
         try {
@@ -666,6 +674,29 @@ function removeImage(i) {
 const _VIDEO_EXTS = new Set(['mp4','mov','avi','webm','mkv']);
 function _isVideo(name) { return _VIDEO_EXTS.has((name||'').split('.').pop().toLowerCase()); }
 
+function _generateVideoThumbnail(blobUrl) {
+    return new Promise(resolve => {
+        const video = document.createElement('video');
+        video.muted = true;
+        video.preload = 'metadata';
+        video.src = blobUrl;
+        let done = false;
+        const finish = () => { if (!done) { done = true; resolve(null); } };
+        video.onloadedmetadata = () => { video.currentTime = 0.5; };
+        video.onseeked = () => {
+            if (done) return; done = true;
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = 160; canvas.height = 120;
+                canvas.getContext('2d').drawImage(video, 0, 0, 160, 120);
+                resolve(canvas.toDataURL('image/jpeg', 0.85));
+            } catch { resolve(null); }
+        };
+        video.onerror = finish;
+        setTimeout(finish, 4000);
+    });
+}
+
 function renderImagePreviews() {
     const row = document.getElementById('photoPreviewRow');
     if (!_selectedImages.length) { row.style.display = 'none'; row.innerHTML = ''; return; }
@@ -689,8 +720,17 @@ function renderImagePreviews() {
                  <span style="font-size:8px;color:#e67e22;font-weight:600">อัปโหลดใหม่</span>
                </div>`
             : _isVideo(img.name)
-              ? `<video src="${img.url}" style="width:100%;height:100%;object-fit:cover;border-radius:4px" muted></video>
-                 <span style="position:absolute;bottom:2px;left:3px;font-size:9px;background:rgba(0,0,0,.55);color:#fff;border-radius:3px;padding:1px 3px">▶ ${img.localOnly ? '📁' : '☁️'}</span>`
+              ? `<div style="width:100%;height:100%;position:relative;border-radius:4px;overflow:hidden;background:#0d0d0d">
+                   ${img.thumb
+                     ? `<img src="${img.thumb}" style="width:100%;height:100%;object-fit:cover">`
+                     : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center"><span style="font-size:22px">🎬</span></div>`}
+                   <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+                     <div style="background:rgba(0,0,0,.5);border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center">
+                       <span style="color:#fff;font-size:11px;margin-left:2px">▶</span>
+                     </div>
+                   </div>
+                   <span style="position:absolute;bottom:2px;left:3px;font-size:9px;background:rgba(0,0,0,.55);color:#fff;border-radius:3px;padding:1px 3px">${img.localOnly ? '📁' : '☁️'}</span>
+                 </div>`
               : `<img src="${img.url}" alt="${esc(img.name)}">
                  ${img.localOnly ? `<span style="position:absolute;bottom:2px;left:3px;font-size:9px;background:rgba(0,0,0,.55);color:#fff;border-radius:3px;padding:1px 3px">📁</span>` : ''}`}
         <button class="rm-btn" onclick="removeImage(${i})" title="ลบ">✕</button>
