@@ -95,37 +95,30 @@
       </div>
     </div>
 
-    <!-- Analytics cards (shown only when data available) -->
-    <% if (hasAnalytics) { %>
+    <!-- Analytics engagement cards (always visible) -->
     <div class="overview-grid">
-      <div class="metric-card purple">
+      <div class="metric-card purple" style="<%= hasAnalytics ? '' : 'opacity:.65' %>">
         <div class="metric-icon"><i class="fa-solid fa-thumbs-up"></i></div>
         <div class="metric-body">
           <div class="metric-val"><%= totalLikes.toLocaleString() %></div>
-          <div class="metric-label">ไลค์รวม</div>
+          <div class="metric-label">ไลค์รวม<% if (!hasAnalytics) { %><br><span style="font-size:.65rem;opacity:.8">กด อัปเดต Analytics</span><% } %></div>
         </div>
       </div>
-      <div class="metric-card orange">
+      <div class="metric-card orange" style="<%= hasAnalytics ? '' : 'opacity:.65' %>">
         <div class="metric-icon"><i class="fa-solid fa-comment"></i></div>
         <div class="metric-body">
           <div class="metric-val"><%= totalComments.toLocaleString() %></div>
-          <div class="metric-label">คอมเมนต์รวม</div>
+          <div class="metric-label">คอมเมนต์รวม<% if (!hasAnalytics) { %><br><span style="font-size:.65rem;opacity:.8">กด อัปเดต Analytics</span><% } %></div>
         </div>
       </div>
-      <div class="metric-card teal">
+      <div class="metric-card teal" style="<%= hasAnalytics ? '' : 'opacity:.65' %>">
         <div class="metric-icon"><i class="fa-solid fa-share-nodes"></i></div>
         <div class="metric-body">
           <div class="metric-val"><%= totalShares.toLocaleString() %></div>
-          <div class="metric-label">แชร์รวม</div>
+          <div class="metric-label">แชร์รวม<% if (!hasAnalytics) { %><br><span style="font-size:.65rem;opacity:.8">กด อัปเดต Analytics</span><% } %></div>
         </div>
       </div>
     </div>
-    <% } else { %>
-    <div style="background:#f8fdf8;border:1px dashed #b7d8b7;border-radius:10px;padding:.6rem 1rem;font-size:.82rem;color:#6a9a6a;display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem">
-      <i class="fa-solid fa-circle-info"></i>
-      ยังไม่มีข้อมูล ไลค์/คอมเมนต์/แชร์ — กด <b>อัปเดต Analytics</b> เพื่อดึงข้อมูลจาก Facebook (ต้องมี postUrl จากโพสใหม่ ๆ)
-    </div>
-    <% } %>
 
     <!-- Group stats table -->
     <% if (allGroupStats.length > 0) { %>
@@ -148,11 +141,9 @@
               <th><i class="fa-solid fa-paper-plane"></i> แชร์</th>
               <th><i class="fa-solid fa-circle-check" style="color:#2e7d32"></i> สำเร็จ</th>
               <th><i class="fa-solid fa-circle-xmark" style="color:#c62828"></i> ล้มเหลว</th>
-              <% if (hasAnalytics) { %>
               <th><i class="fa-solid fa-thumbs-up" style="color:#8b5cf6"></i> ไลค์</th>
               <th><i class="fa-solid fa-comment" style="color:#f59e0b"></i> คอม</th>
               <th><i class="fa-solid fa-share-nodes" style="color:#0891b2"></i> แชร์</th>
-              <% } %>
               <th>อัตราสำเร็จ</th>
             </tr>
           </thead>
@@ -172,11 +163,9 @@
               <td class="num"><%= totalAllTotal %></td>
               <td class="num" style="color:#2e7d32"><%= totalAllSuccess %></td>
               <td class="num" style="color:#c62828"><%= totalAllFail %></td>
-              <% if (hasAnalytics) { %>
-              <td class="num" style="color:#8b5cf6"><%= totalAllLikes.toLocaleString() %></td>
-              <td class="num" style="color:#f59e0b"><%= totalAllCom.toLocaleString() %></td>
-              <td class="num" style="color:#0891b2"><%= totalAllShares.toLocaleString() %></td>
-              <% } %>
+              <td class="num" style="color:#8b5cf6"><%= totalAllLikes > 0 ? totalAllLikes.toLocaleString() : '—' %></td>
+              <td class="num" style="color:#f59e0b"><%= totalAllCom > 0 ? totalAllCom.toLocaleString() : '—' %></td>
+              <td class="num" style="color:#0891b2"><%= totalAllShares > 0 ? totalAllShares.toLocaleString() : '—' %></td>
               <td>
                 <div class="rate-bar-wrap">
                   <div class="rate-bar" style="width:<%= totalAllRate %>%;background:#2e7d32"></div>
@@ -196,11 +185,9 @@
               <td class="num"><%= total %></td>
               <td class="num" style="color:#2e7d32"><%= g.success %></td>
               <td class="num" style="color:#c62828"><%= g.fail %></td>
-              <% if (hasAnalytics) { %>
-              <td class="num" style="color:#8b5cf6"><%= (g.likes||0).toLocaleString() || '—' %></td>
-              <td class="num" style="color:#f59e0b"><%= (g.comments||0).toLocaleString() || '—' %></td>
-              <td class="num" style="color:#0891b2"><%= (g.shares||0).toLocaleString() || '—' %></td>
-              <% } %>
+              <td class="num" style="color:#8b5cf6"><%= (g.likes||0) > 0 ? (g.likes||0).toLocaleString() : '—' %></td>
+              <td class="num" style="color:#f59e0b"><%= (g.comments||0) > 0 ? (g.comments||0).toLocaleString() : '—' %></td>
+              <td class="num" style="color:#0891b2"><%= (g.shares||0) > 0 ? (g.shares||0).toLocaleString() : '—' %></td>
               <td>
                 <div class="rate-bar-wrap">
                   <div class="rate-bar" style="width:<%= rate %>%;background:#2e7d32"></div>
@@ -349,31 +336,50 @@ function _rankRowsHtml(items) {
 }
 
 async function showGroupRangeModal() {
+  const _is = 'width:100%;padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none;box-sizing:border-box';
+  const _ls = 'font-size:.8rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem';
   const { value: dates } = await Swal.fire({
     title: '<i class="fa-solid fa-users" style="color:#2e7d32"></i> สถิติแชร์กลุ่มตามช่วงเวลา',
-    html: `<div style="display:flex;flex-wrap:wrap;gap:.6rem;justify-content:center;align-items:flex-end;margin-top:.5rem">
-      <div><label style="font-size:.78rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem">วันที่เริ่ม</label>
-        <input id="gr-from" type="date" style="padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none"></div>
-      <div><label style="font-size:.78rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem">วันที่สิ้นสุด</label>
-        <input id="gr-to" type="date" style="padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none"></div>
+    html: `<div style="text-align:left;display:flex;flex-direction:column;gap:.55rem">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
+        <div><label style="${_ls}">วันที่เริ่ม</label>
+          <input id="gr-from" type="date" style="${_is}"></div>
+        <div><label style="${_ls}">วันที่สิ้นสุด</label>
+          <input id="gr-to" type="date" style="${_is}"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
+        <div><label style="${_ls}">เวลาเริ่ม (ไม่บังคับ)</label>
+          <input id="gr-tfrom" type="time" style="${_is}"></div>
+        <div><label style="${_ls}">เวลาสิ้นสุด (ไม่บังคับ)</label>
+          <input id="gr-tto" type="time" style="${_is}"></div>
+      </div>
     </div>`,
     confirmButtonText: 'ดูสถิติ', confirmButtonColor: '#2e7d32',
     showCancelButton: true, cancelButtonText: 'ยกเลิก', focusConfirm: false,
-    preConfirm: () => ({ from: document.getElementById('gr-from').value, to: document.getElementById('gr-to').value }),
+    preConfirm: () => ({
+      from:  document.getElementById('gr-from').value,
+      to:    document.getElementById('gr-to').value,
+      tfrom: document.getElementById('gr-tfrom').value,
+      tto:   document.getElementById('gr-tto').value,
+    }),
   });
   if (!dates) return;
   Swal.fire({ title: 'กำลังโหลด...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
   try {
     const params = new URLSearchParams();
-    if (dates.from) params.set('from', dates.from);
-    if (dates.to)   params.set('to',   dates.to);
+    if (dates.from)  params.set('from', dates.from);
+    if (dates.to)    params.set('to',   dates.to);
+    if (dates.tfrom) params.set('timeFrom', dates.tfrom);
+    if (dates.tto)   params.set('timeTo',   dates.tto);
     const res  = await fetch('/api/stats/combined?' + params);
     const data = await res.json();
     if (!data.ok) throw new Error('API error');
     const g = data.groupStats;
-    const label = dates.from || dates.to
-      ? `ช่วง: ${dates.from ? _fmtDateTH(dates.from) : '—'} ถึง ${dates.to ? _fmtDateTH(dates.to) : '—'}`
+    const dateLabel = dates.from || dates.to
+      ? `${dates.from ? _fmtDateTH(dates.from) : '—'} ถึง ${dates.to ? _fmtDateTH(dates.to) : '—'}`
       : 'ข้อมูลทั้งหมด';
+    const timeLabel = dates.tfrom ? ` เวลา ${dates.tfrom}${dates.tto ? '–'+dates.tto : ''}` : '';
+    const label = (dates.from || dates.to) ? `ช่วง: ${dateLabel}${timeLabel}` : 'ข้อมูลทั้งหมด';
     Swal.fire({
       title: `<i class="fa-solid fa-users" style="color:#2e7d32"></i> แชร์ลงกลุ่ม`,
       html: `<div style="text-align:left">

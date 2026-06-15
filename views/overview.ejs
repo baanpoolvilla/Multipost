@@ -309,29 +309,33 @@ setInterval(async () => {
 /* ── สรุป Popup ── */
 async function showSummaryModal() {
   const today = new Date().toISOString().slice(0, 10);
+  const _is = 'width:100%;padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none;box-sizing:border-box';
+  const _ls = 'font-size:.8rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem';
 
   const { value: formValues } = await Swal.fire({
     title: '<i class="fa-solid fa-chart-pie" style="color:#1877f2"></i> สรุป',
     html: `
-      <div style="text-align:left;display:flex;flex-direction:column;gap:.6rem">
-        <div>
-          <label style="font-size:.8rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem">วันที่ <span style="color:#c62828">*</span></label>
-          <input id="sm-date" type="date" value="${today}"
-            style="width:100%;padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none;box-sizing:border-box">
+      <div style="text-align:left;display:flex;flex-direction:column;gap:.55rem">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
+          <div>
+            <label style="${_ls}">วันที่เริ่ม <span style="color:#c62828">*</span></label>
+            <input id="sm-dfrom" type="date" value="${today}" style="${_is}">
+          </div>
+          <div>
+            <label style="${_ls}">วันที่สิ้นสุด</label>
+            <input id="sm-dto" type="date" value="${today}" style="${_is}">
+          </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
           <div>
-            <label style="font-size:.8rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem">เวลาเริ่ม (ไม่บังคับ)</label>
-            <input id="sm-tfrom" type="time"
-              style="width:100%;padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none;box-sizing:border-box">
+            <label style="${_ls}">เวลาเริ่ม (ไม่บังคับ)</label>
+            <input id="sm-tfrom" type="time" style="${_is}">
           </div>
           <div>
-            <label style="font-size:.8rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem">เวลาสิ้นสุด (ไม่บังคับ)</label>
-            <input id="sm-tto" type="time"
-              style="width:100%;padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none;box-sizing:border-box">
+            <label style="${_ls}">เวลาสิ้นสุด (ไม่บังคับ)</label>
+            <input id="sm-tto" type="time" style="${_is}">
           </div>
         </div>
-        <div style="font-size:.75rem;color:#8a8d91"><i class="fa-solid fa-circle-info"></i> ถ้ากรอกเวลาต้องกรอกวันที่ด้วย</div>
       </div>`,
     confirmButtonText: 'ดูสรุป',
     confirmButtonColor: '#1877f2',
@@ -339,27 +343,28 @@ async function showSummaryModal() {
     cancelButtonText: 'ยกเลิก',
     focusConfirm: false,
     preConfirm: () => {
-      const date  = document.getElementById('sm-date').value;
+      const dfrom = document.getElementById('sm-dfrom').value;
+      const dto   = document.getElementById('sm-dto').value;
       const tfrom = document.getElementById('sm-tfrom').value;
       const tto   = document.getElementById('sm-tto').value;
-      if (!date) { Swal.showValidationMessage('กรุณากรอกวันที่'); return false; }
-      if ((tfrom || tto) && !date) { Swal.showValidationMessage('กรุณากรอกวันที่ก่อนกรอกเวลา'); return false; }
-      return { date, tfrom, tto };
+      if (!dfrom) { Swal.showValidationMessage('กรุณากรอกวันที่เริ่ม'); return false; }
+      return { dfrom, dto: dto || dfrom, tfrom, tto };
     },
   });
   if (!formValues) return;
 
-  const { date, tfrom, tto } = formValues;
+  const { dfrom, dto, tfrom, tto } = formValues;
   Swal.fire({ title: 'กำลังโหลด...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
   try {
-    const params = new URLSearchParams({ date });
+    const params = new URLSearchParams({ dateFrom: dfrom, dateTo: dto });
     if (tfrom) params.set('timeFrom', tfrom);
     if (tto)   params.set('timeTo',   tto);
     const res = await fetch(`/api/daily-summary?${params}`);
     const d   = await res.json();
 
-    const dateLabel = new Date(date + 'T00:00:00').toLocaleDateString('th-TH', { year:'numeric', month:'long', day:'numeric' });
+    const fmtD = dt => new Date(dt + 'T00:00:00').toLocaleDateString('th-TH', { year:'numeric', month:'long', day:'numeric' });
+    const dateLabel = dfrom === dto ? fmtD(dfrom) : `${fmtD(dfrom)} – ${fmtD(dto)}`;
     const timeLabel = tfrom ? ` เวลา ${tfrom}${tto ? '–'+tto : ''}` : '';
 
     const grp = d.groupStats || { total: 0, success: 0, fail: 0 };

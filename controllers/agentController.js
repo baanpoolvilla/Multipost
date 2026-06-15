@@ -276,9 +276,9 @@ exports.deleteGroupHistoryJob = async (req, res) => {
 // ── Combined stats API (page posts + group posts by date range) ─
 exports.getCombinedStats = async (req, res) => {
     try {
-        const { from, to } = req.query; // YYYY-MM-DD (Bangkok timezone)
-        const fromDate = from ? new Date(from + 'T00:00:00+07:00') : null;
-        const toDate   = to   ? new Date(to   + 'T23:59:59+07:00') : null;
+        const { from, to, timeFrom, timeTo } = req.query; // YYYY-MM-DD (Bangkok timezone)
+        const fromDate = from ? new Date(`${from}T${timeFrom || '00:00:00'}+07:00`) : null;
+        const toDate   = to   ? new Date(`${to}T${timeTo ? timeTo+':59' : '23:59:59'}+07:00`) : null;
 
         // Page posts
         let posts = await postStore.load();

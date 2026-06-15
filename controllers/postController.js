@@ -236,14 +236,16 @@ exports.refreshAnalytics = async (req, res) => {
 
 // ── Daily Summary ──────────────────────────────
 exports.dailySummary = async (req, res) => {
-    const posts = await postStore.load();
-    const today = new Date().toLocaleDateString('en-CA', { timeZone: TZ });
-    const date  = req.query.date || today;
+    const posts    = await postStore.load();
+    const today    = new Date().toLocaleDateString('en-CA', { timeZone: TZ });
+    // Support date range: dateFrom/dateTo (new) or single date (legacy)
+    const dateFrom = req.query.dateFrom || req.query.date || today;
+    const dateTo   = req.query.dateTo   || req.query.date || dateFrom;
     const timeFrom = req.query.timeFrom || null; // HH:MM
     const timeTo   = req.query.timeTo   || null; // HH:MM
 
-    const fromISO = timeFrom ? new Date(`${date}T${timeFrom}:00+07:00`) : new Date(`${date}T00:00:00+07:00`);
-    const toISO   = timeTo   ? new Date(`${date}T${timeTo}:59+07:00`)   : new Date(`${date}T23:59:59+07:00`);
+    const fromISO = timeFrom ? new Date(`${dateFrom}T${timeFrom}:00+07:00`) : new Date(`${dateFrom}T00:00:00+07:00`);
+    const toISO   = timeTo   ? new Date(`${dateTo}T${timeTo}:59+07:00`)     : new Date(`${dateTo}T23:59:59+07:00`);
 
     const dayPosts = posts.filter(p => {
         const t = new Date(p.createdAt).getTime();

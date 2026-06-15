@@ -560,33 +560,41 @@
 
 async function showSummaryModal() {
   const today = new Date().toISOString().slice(0, 10);
+  const _is = 'width:100%;padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none;box-sizing:border-box';
+  const _ls = 'font-size:.8rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem';
   const { value: fv } = await Swal.fire({
     title: '<i class="fa-solid fa-chart-pie" style="color:#1877f2"></i> สรุป',
-    html: `<div style="text-align:left;display:flex;flex-direction:column;gap:.6rem">
-      <div><label style="font-size:.8rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem">วันที่ <span style="color:#c62828">*</span></label>
-        <input id="sm-date" type="date" value="${today}" style="width:100%;padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none;box-sizing:border-box"></div>
+    html: `<div style="text-align:left;display:flex;flex-direction:column;gap:.55rem">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
-        <div><label style="font-size:.8rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem">เวลาเริ่ม (ไม่บังคับ)</label>
-          <input id="sm-tfrom" type="time" style="width:100%;padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none;box-sizing:border-box"></div>
-        <div><label style="font-size:.8rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem">เวลาสิ้นสุด (ไม่บังคับ)</label>
-          <input id="sm-tto" type="time" style="width:100%;padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none;box-sizing:border-box"></div>
+        <div><label style="${_ls}">วันที่เริ่ม <span style="color:#c62828">*</span></label>
+          <input id="sm-dfrom" type="date" value="${today}" style="${_is}"></div>
+        <div><label style="${_ls}">วันที่สิ้นสุด</label>
+          <input id="sm-dto" type="date" value="${today}" style="${_is}"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
+        <div><label style="${_ls}">เวลาเริ่ม (ไม่บังคับ)</label>
+          <input id="sm-tfrom" type="time" style="${_is}"></div>
+        <div><label style="${_ls}">เวลาสิ้นสุด (ไม่บังคับ)</label>
+          <input id="sm-tto" type="time" style="${_is}"></div>
       </div></div>`,
     confirmButtonText: 'ดูสรุป', confirmButtonColor: '#1877f2',
     showCancelButton: true, cancelButtonText: 'ยกเลิก', focusConfirm: false,
     preConfirm: () => {
-      const date = document.getElementById('sm-date').value;
-      if (!date) { Swal.showValidationMessage('กรุณากรอกวันที่'); return false; }
-      return { date, tfrom: document.getElementById('sm-tfrom').value, tto: document.getElementById('sm-tto').value };
+      const dfrom = document.getElementById('sm-dfrom').value;
+      const dto   = document.getElementById('sm-dto').value;
+      if (!dfrom) { Swal.showValidationMessage('กรุณากรอกวันที่เริ่ม'); return false; }
+      return { dfrom, dto: dto || dfrom, tfrom: document.getElementById('sm-tfrom').value, tto: document.getElementById('sm-tto').value };
     },
   });
   if (!fv) return;
   Swal.fire({ title: 'กำลังโหลด...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
   try {
-    const p = new URLSearchParams({ date: fv.date });
+    const p = new URLSearchParams({ dateFrom: fv.dfrom, dateTo: fv.dto });
     if (fv.tfrom) p.set('timeFrom', fv.tfrom);
     if (fv.tto)   p.set('timeTo', fv.tto);
     const d = await (await fetch('/api/daily-summary?' + p)).json();
-    const dl = new Date(fv.date + 'T00:00:00').toLocaleDateString('th-TH', { year:'numeric', month:'long', day:'numeric' });
+    const fmtD = dt => new Date(dt + 'T00:00:00').toLocaleDateString('th-TH', { year:'numeric', month:'long', day:'numeric' });
+    const dl = fv.dfrom === fv.dto ? fmtD(fv.dfrom) : `${fmtD(fv.dfrom)} – ${fmtD(fv.dto)}`;
     const tl = fv.tfrom ? ` เวลา ${fv.tfrom}${fv.tto?'–'+fv.tto:''}` : '';
     const grp = d.groupStats || { total:0, success:0, fail:0 };
     Swal.fire({
