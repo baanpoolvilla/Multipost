@@ -60,20 +60,33 @@
       </div>
     </div>
 
-    <!-- Tab bar -->
+    <!-- Tab bar + filter -->
     <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:.5rem">
       <button id="tabBtnPage" onclick="switchTab('page')"
         style="padding:.55rem 1.2rem;background:none;border:none;border-bottom:2.5px solid #1877f2;margin-bottom:-2px;font-size:.88rem;font-weight:700;color:#1877f2;cursor:pointer;font-family:inherit">
-        <i class="fa-brands fa-facebook"></i> โพสลงเพจ (<%= posts.length %>)
+        <i class="fa-brands fa-facebook"></i> โพสลงเพจ <span id="cntPage">(<%= posts.length %>)</span>
       </button>
       <button id="tabBtnGrp" onclick="switchTab('grp')"
         style="padding:.55rem 1.2rem;background:none;border:none;border-bottom:2.5px solid transparent;margin-bottom:-2px;font-size:.88rem;font-weight:600;color:var(--text3);cursor:pointer;font-family:inherit">
-        <i class="fa-solid fa-users"></i> แชร์ลงกลุ่ม (<%= jobs.length %>)
+        <i class="fa-solid fa-users"></i> แชร์ลงกลุ่ม <span id="cntGrp">(<%= jobs.length %>)</span>
       </button>
+    </div>
+
+    <!-- Filter bar -->
+    <div class="card" style="padding:.6rem .85rem;display:flex;flex-wrap:wrap;align-items:center;gap:.45rem;margin-bottom:.1rem">
+      <input id="paSearch" type="text" placeholder="🔍 ค้นหาข้อความ..." oninput="applyPageFilter()"
+        style="flex:2;min-width:130px;padding:.35rem .65rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.83rem;font-family:inherit;color:#333;outline:none">
+      <input id="paFrom" type="date" onchange="applyPageFilter()" title="ตั้งแต่วันที่"
+        style="padding:.35rem .5rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;color:#333;outline:none;cursor:pointer">
+      <span style="color:#bbb">—</span>
+      <input id="paTo" type="date" onchange="applyPageFilter()" title="ถึงวันที่"
+        style="padding:.35rem .5rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;color:#333;outline:none;cursor:pointer">
+      <button onclick="clearPageFilter()" style="padding:.35rem .6rem;background:#f0f2f5;border:none;border-radius:8px;font-size:.82rem;cursor:pointer;color:#666;font-family:inherit">✕ ล้าง</button>
     </div>
 
     <!-- ── PAGE POSTS TAB ── -->
     <div id="tabPage">
+    <div id="emptyPage" class="card" style="display:none"><div class="empty-state">ไม่พบโพสที่ตรงกับเงื่อนไข</div></div>
     <% if (posts.length === 0) { %>
     <div class="card"><div class="empty-state">ยังไม่มีโพสลงเพจนี้</div></div>
     <% } else { %>
@@ -85,7 +98,7 @@
       const display = msg.includes('|||') ? (msg.slice(0, msg.indexOf('|||')).trim() || msg.slice(msg.indexOf('|||')+3).trim()) : msg;
       const imgs    = (post.images || []).filter(img => img && !img.startsWith('localpath::') && !/^[A-Za-z]:[\\\/]/.test(img));
     %>
-    <div class="card history-card">
+    <div class="card history-card pa-card-page" data-at="<%= post.createdAt %>" data-msg="<%= (display||'').toLowerCase().replace(/"/g,'') %>" data-ok="<%= isOk ? 1 : 0 %>">
       <div class="fb-post-header">
         <div class="avatar avatar-<%= isOk ? 'green' : 'red' %>">
           <i class="fa-solid fa-<%= isOk ? 'circle-check' : 'circle-xmark' %>"></i>
@@ -157,6 +170,7 @@
 
     <!-- ── GROUP SHARES TAB ── -->
     <div id="tabGrp" style="display:none">
+    <div id="emptyGrp" class="card" style="display:none"><div class="empty-state">ไม่พบรายการที่ตรงกับเงื่อนไข</div></div>
     <% if (jobs.length === 0) { %>
     <div class="card"><div class="empty-state">ยังไม่มีการแชร์ลงกลุ่มจากเพจนี้</div></div>
     <% } else { %>
@@ -167,7 +181,7 @@
       const jmsg    = (job.message || '');
       const jdisplay = jmsg.includes('|||') ? (jmsg.slice(0, jmsg.indexOf('|||')).trim() || jmsg.slice(jmsg.indexOf('|||')+3).trim()) : jmsg;
     %>
-    <div class="card history-card">
+    <div class="card history-card pa-card-grp" data-at="<%= job.createdAt %>" data-msg="<%= (jdisplay||'').toLowerCase().replace(/"/g,'') %>" data-ok="<%= job.successCount %>" data-fail="<%= job.failCount %>">
       <div class="fb-post-header">
         <div class="avatar avatar-<%= allOk ? 'green' : allFail ? 'red' : 'orange' %>">
           <i class="fa-solid fa-users"></i>
@@ -193,13 +207,13 @@
         <%= jdisplay.length > 200 ? jdisplay.slice(0,200) + '…' : jdisplay %>
       </div>
       <!-- Groups involved -->
-      <% const pageGroups = (job.groups || []).filter(g => g.pageId === page.pageId); %>
-      <% if (pageGroups.length > 0) { %>
+      <% const allJobGroups = job.groups || []; %>
+      <% if (allJobGroups.length > 0) { %>
       <div style="display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.3rem">
-        <% pageGroups.slice(0,8).forEach(g => { %>
+        <% allJobGroups.slice(0,8).forEach(g => { %>
         <span style="background:var(--surface2);border-radius:999px;font-size:.7rem;padding:.1rem .5rem;color:var(--text2)"><%= g.groupName || g.groupId %></span>
         <% }); %>
-        <% if (pageGroups.length > 8) { %><span style="font-size:.7rem;color:var(--text3)">+<%= pageGroups.length-8 %> กลุ่ม</span><% } %>
+        <% if (allJobGroups.length > 8) { %><span style="font-size:.7rem;color:var(--text3)">+<%= allJobGroups.length-8 %> กลุ่ม</span><% } %>
       </div>
       <% } %>
     </div>
@@ -213,20 +227,23 @@
     <div class="card stats-card">
       <div class="stats-title"><i class="fa-solid fa-chart-simple"></i> สถิติเพจ</div>
       <div style="font-size:.72rem;font-weight:700;color:#1877f2;margin:.5rem 0 .25rem">โพสลงเพจ</div>
-      <div class="stats-row"><span>โพสทั้งหมด</span><span class="stats-val blue"><%= posts.length %></span></div>
-      <div class="stats-row"><span>สำเร็จ</span><span class="stats-val green"><%= pageSuccess %></span></div>
-      <div class="stats-row"><span>ล้มเหลว</span><span class="stats-val red"><%= pageFail %></span></div>
+      <div class="stats-row"><span>โพสทั้งหมด</span><span id="stPageTotal"   class="stats-val blue"><%= posts.length %></span></div>
+      <div class="stats-row"><span>สำเร็จ</span>    <span id="stPageSuccess" class="stats-val green"><%= pageSuccess %></span></div>
+      <div class="stats-row"><span>ล้มเหลว</span>  <span id="stPageFail"    class="stats-val red"><%= pageFail %></span></div>
       <div style="font-size:.72rem;font-weight:700;color:#2e7d32;margin:.75rem 0 .25rem">แชร์ลงกลุ่ม</div>
-      <div class="stats-row"><span>งาน (Job)</span><span class="stats-val green"><%= jobs.length %></span></div>
-      <div class="stats-row"><span>โพสสำเร็จ</span><span class="stats-val green"><%= grpSuccess %></span></div>
-      <div class="stats-row"><span>ล้มเหลว</span><span class="stats-val red"><%= grpFail %></span></div>
+      <div class="stats-row"><span>งาน (Job)</span>  <span id="stGrpTotal"   class="stats-val green"><%= jobs.length %></span></div>
+      <div class="stats-row"><span>โพสสำเร็จ</span> <span id="stGrpSuccess" class="stats-val green"><%= grpSuccess %></span></div>
+      <div class="stats-row"><span>ล้มเหลว</span>   <span id="stGrpFail"    class="stats-val red"><%= grpFail %></span></div>
     </div>
   </aside>
 
 </div>
 
 <script>
+  let _curTab = 'page';
+
   function switchTab(t) {
+    _curTab = t;
     document.getElementById('tabPage').style.display = t === 'page' ? '' : 'none';
     document.getElementById('tabGrp').style.display  = t === 'grp'  ? '' : 'none';
     const bp = document.getElementById('tabBtnPage');
@@ -237,7 +254,64 @@
     bg.style.borderBottomColor = t==='grp'  ? '#1877f2' : 'transparent';
     bg.style.color             = t==='grp'  ? '#1877f2' : 'var(--text3)';
     bg.style.fontWeight        = t==='grp'  ? '700' : '600';
+    applyPageFilter();
   }
+
+  function applyPageFilter() {
+    const q       = (document.getElementById('paSearch')?.value || '').toLowerCase().trim();
+    const fromVal = document.getElementById('paFrom')?.value || '';
+    const toVal   = document.getElementById('paTo')?.value   || '';
+    const fromMs  = fromVal ? new Date(fromVal + 'T00:00:00+07:00').getTime() : 0;
+    const toMs    = toVal   ? new Date(toVal   + 'T23:59:59+07:00').getTime() : Infinity;
+
+    // Filter page posts
+    let pageShown = 0, pageSuccess = 0, pageFail = 0;
+    document.querySelectorAll('.pa-card-page').forEach(el => {
+      const msg = el.dataset.msg || '';
+      const ts  = new Date(el.dataset.at).getTime();
+      const ok  = (!q || msg.includes(q)) && ts >= fromMs && ts <= toMs;
+      el.style.display = ok ? '' : 'none';
+      if (ok) { pageShown++; if (el.dataset.ok === '1') pageSuccess++; else pageFail++; }
+    });
+
+    // Filter group shares
+    let grpShown = 0, grpSuccess = 0, grpFail = 0;
+    document.querySelectorAll('.pa-card-grp').forEach(el => {
+      const msg = el.dataset.msg || '';
+      const ts  = new Date(el.dataset.at).getTime();
+      const ok  = (!q || msg.includes(q)) && ts >= fromMs && ts <= toMs;
+      el.style.display = ok ? '' : 'none';
+      if (ok) { grpShown++; grpSuccess += parseInt(el.dataset.ok || 0); grpFail += parseInt(el.dataset.fail || 0); }
+    });
+
+    const hasFilter = q || fromVal || toVal;
+
+    // Update tab counts
+    document.getElementById('cntPage').textContent = `(${pageShown})`;
+    document.getElementById('cntGrp').textContent  = `(${grpShown})`;
+
+    // Empty states
+    const ep = document.getElementById('emptyPage');
+    const eg = document.getElementById('emptyGrp');
+    if (ep) ep.style.display = (hasFilter && pageShown === 0 && <%- posts.length %> > 0) ? '' : 'none';
+    if (eg) eg.style.display = (hasFilter && grpShown  === 0 && <%- jobs.length  %> > 0) ? '' : 'none';
+
+    // Update stats
+    document.getElementById('stPageTotal').textContent   = pageShown;
+    document.getElementById('stPageSuccess').textContent = pageSuccess;
+    document.getElementById('stPageFail').textContent    = pageFail;
+    document.getElementById('stGrpTotal').textContent    = grpShown;
+    document.getElementById('stGrpSuccess').textContent  = grpSuccess;
+    document.getElementById('stGrpFail').textContent     = grpFail;
+  }
+
+  function clearPageFilter() {
+    const s = document.getElementById('paSearch'); if (s) s.value = '';
+    const f = document.getElementById('paFrom');   if (f) f.value = '';
+    const t = document.getElementById('paTo');     if (t) t.value = '';
+    applyPageFilter();
+  }
+
   function viewImage(src) {
     Swal.fire({ imageUrl: src, imageAlt: '', showConfirmButton:false, showCloseButton:true, width:'auto' });
   }

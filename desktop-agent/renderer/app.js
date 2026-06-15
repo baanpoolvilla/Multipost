@@ -18,8 +18,6 @@ async function _uploadFileToSupabase(file) {
 window.addEventListener('DOMContentLoaded', async () => {
     setupTabs();
     setupPushEvents();
-    const wuInput = document.getElementById('hWebUrl');
-    if (wuInput && _webUrl) wuInput.value = _webUrl;
     // Run each init step independently — a hanging IPC must not block the others
     try { await Promise.race([refreshStatus(), _timeout(4000)]); } catch {}
     try { await Promise.race([loadAccounts(),  _timeout(5000)]); } catch {}
@@ -921,17 +919,7 @@ function filterHistory(btn, filter) {
 function renderHistory() {
     const el = document.getElementById('historyList');
     if (!el) return;
-
-    const search  = (document.getElementById('hHistSearch')?.value || '').trim().toLowerCase();
-    const fromVal = document.getElementById('hHistFrom')?.value || '';
-    const toVal   = document.getElementById('hHistTo')?.value   || '';
-    const fromMs  = fromVal ? new Date(fromVal).getTime() : 0;
-    const toMs    = toVal   ? new Date(toVal + 'T23:59:59').getTime() : Infinity;
-
-    let list = _historyFilter === 'all' ? _history : _history.filter(j => j.status === _historyFilter);
-    if (search)  list = list.filter(j => (j.message||'').toLowerCase().includes(search));
-    if (fromVal) list = list.filter(j => new Date(j.createdAt).getTime() >= fromMs);
-    if (toVal)   list = list.filter(j => new Date(j.createdAt).getTime() <= toMs);
+    const list = _historyFilter === 'all' ? _history : _history.filter(j => j.status === _historyFilter);
 
     if (!list.length) {
         el.innerHTML = '<div class="empty-state">ไม่พบประวัติโพส</div>';
@@ -988,32 +976,16 @@ function renderHistory() {
     }).join('');
 }
 
-function clearHistoryFilter() {
-    const s = document.getElementById('hHistSearch');
-    const f = document.getElementById('hHistFrom');
-    const t = document.getElementById('hHistTo');
-    if (s) s.value = '';
-    if (f) f.value = '';
-    if (t) t.value = '';
-    renderHistory();
-}
-
-function saveWebUrl(val) {
-    _webUrl = val.trim();
-    if (_webUrl) localStorage.setItem('_webUrl', _webUrl);
-    else localStorage.removeItem('_webUrl');
-}
-
 function openReport(id) {
-    const input = document.getElementById('hWebUrl');
-    let base = (input?.value || '').trim() || _webUrl;
+    let base = _webUrl;
     if (!base) {
-        alert('กรุณาใส่ URL ของเว็บก่อน\nเช่น https://xxx.vercel.app\n(ดูช่อง "🌐 URL เว็บ" ด้านบน)');
-        input?.focus();
-        return;
+        base = prompt('กรุณาใส่ URL ของเว็บ เช่น https://xxx.vercel.app\n(ดาวน์โหลด Agent ใหม่เพื่อตั้งค่าอัตโนมัติ)');
+        if (!base) return;
+        base = base.trim().replace(/\/$/, '');
+        _webUrl = base;
+        localStorage.setItem('_webUrl', base);
     }
     base = base.replace(/\/$/, '');
-    if (base !== _webUrl) saveWebUrl(base);
     appendLog(`[🌐] เปิดรายงาน: ${base}/group-result/${id}`);
     agent.openUrl(`${base}/group-result/${id}`);
 }

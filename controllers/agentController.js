@@ -236,9 +236,14 @@ exports.showPageActivity = async (req, res) => {
                 pageResult: (p.results || []).find(r => r.pageId === pageId) || {},
             }));
 
-        // Group jobs where this page was used
+        // Group jobs where this page was used — match by pageId, pageName, or groupId overlap
+        const pageGroupIds = new Set((page.groups || []).map(g => g.groupId));
         const jobs = allJobs
-            .filter(j => (j.groups || []).some(g => g.pageId === pageId))
+            .filter(j => (j.groups || []).some(g =>
+                (g.pageId && g.pageId === pageId) ||
+                (g.pageName && g.pageName === page.pageName) ||
+                (pageGroupIds.size > 0 && pageGroupIds.has(g.groupId))
+            ))
             .map(j => ({
                 ...j,
                 _id: String(j._id),
