@@ -147,7 +147,8 @@ router.get('/guide',         (req, res) => res.render('guide'));
 router.get('/agent',         agentCtrl.showAgent);
 router.get('/groups',        agentCtrl.showGroups);
 router.get('/job-queue',     agentCtrl.showJobQueue);
-router.get('/group-history', agentCtrl.showGroupHistory);
+router.get('/group-history',        agentCtrl.showGroupHistory);
+router.get('/group-result/:id',     agentCtrl.showGroupResult);
 router.delete('/api/agent/history/:id', agentCtrl.deleteGroupHistoryJob);
 
 // Job Queue API

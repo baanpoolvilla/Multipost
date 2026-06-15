@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>รายงานโพสกลุ่ม - Multi Post System</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-inner">
+    <div class="navbar-brand">
+      <div class="fb-logo"><i class="fa-brands fa-facebook"></i></div>
+      <span>Multi Post System</span>
+    </div>
+    <div class="navbar-right">
+      <a href="/group-history" class="btn-back"><i class="fa-solid fa-clock-rotate-left"></i> ประวัติกลุ่ม</a>
+    </div>
+  </div>
+</nav>
+
+<div class="page-wrap">
+
+  <aside class="sidebar">
+    <div class="sidebar-label">โพสลงเพจ</div>
+    <a href="/" class="sidebar-item"><i class="fa-solid fa-pen-to-square"></i><span>โพสใหม่</span></a>
+    <a href="/overview" class="sidebar-item"><i class="fa-solid fa-chart-line"></i><span>ภาพรวม</span></a>
+    <a href="/history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพส</span></a>
+    <a href="/pages" class="sidebar-item"><i class="fa-brands fa-facebook"></i><span>จัดการเพจ</span></a>
+
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-label">โพส&amp;แชร์ ลงกลุ่ม</div>
+    <a href="/groups" class="sidebar-item"><i class="fa-solid fa-users-rectangle"></i><span>จัดการกลุ่ม</span></a>
+    <a href="/agent" class="sidebar-item"><i class="fa-solid fa-robot"></i><span>ติดตั้ง Desktop Agent</span></a>
+    <a href="/job-queue" class="sidebar-item"><i class="fa-solid fa-list-check"></i><span>คิวโพส</span></a>
+    <a href="/group-history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพสกลุ่ม</span></a>
+    <div class="sidebar-item active" style="padding-left:2.5rem;font-size:.83rem">
+      <i class="fa-solid fa-chart-bar" style="font-size:.78rem"></i><span>รายงานโพสกลุ่ม</span>
+    </div>
+    <a href="/guide" class="sidebar-item"><i class="fa-solid fa-book-open"></i><span>คู่มือการใช้งาน</span></a>
+  </aside>
+
+  <main class="feed">
+
+    <%
+      const sc    = job.successCount;
+      const fc    = job.failCount;
+      const total = (job.results || []).length;
+      const allOk = fc === 0 && sc > 0;
+    %>
+
+    <!-- Summary banner -->
+    <div class="card summary-banner <%= allOk ? 'all-success' : 'has-fail' %>">
+      <div class="summary-icon">
+        <% if (allOk) { %><i class="fa-solid fa-circle-check"></i><% } else { %><i class="fa-solid fa-triangle-exclamation"></i><% } %>
+      </div>
+      <div class="summary-text">
+        <h2><%= allOk ? 'โพสสำเร็จทุกกลุ่ม! 🎉' : `สำเร็จ ${sc} จาก ${total} กลุ่ม` %></h2>
+        <p><%= new Date(job.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) %></p>
+      </div>
+      <div class="summary-pills">
+        <span class="pill pill-success"><i class="fa-solid fa-check"></i> <%= sc %></span>
+        <% if (fc > 0) { %><span class="pill pill-fail"><i class="fa-solid fa-xmark"></i> <%= fc %></span><% } %>
+      </div>
+    </div>
+
+    <!-- Post preview -->
+    <div class="card fb-post-card">
+      <div class="fb-post-header">
+        <div class="avatar avatar-green"><i class="fa-solid fa-robot"></i></div>
+        <div>
+          <div class="fb-post-author">Desktop Agent</div>
+          <div class="fb-post-time">
+            <i class="fa-solid fa-clock"></i>
+            <%= new Date(job.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) %>
+            &nbsp;·&nbsp;<i class="fa-solid fa-users" style="color:#1877f2"></i> <%= (job.groups||[]).length %> กลุ่ม
+          </div>
+        </div>
+      </div>
+
+      <div class="fb-post-body"><%= job.message %></div>
+
+      <!-- Images -->
+      <% const imgs = (job.images || []).filter(img => img && !img.startsWith('localpath::') && !img.startsWith('/') && !/^[A-Za-z]:[\\\/]/.test(img)); %>
+      <% if (imgs.length > 0) { %>
+      <div class="post-img-grid post-img-<%= Math.min(imgs.length, 4) %>">
+        <% imgs.slice(0, 4).forEach((img, i) => { %>
+        <% const imgSrc = img.startsWith('http') ? img : '/uploads/' + img; %>
+        <% const isVid  = /\.(mp4|mov|avi|webm)$/i.test(img); %>
+        <div class="post-img-item <%= (i === 3 && imgs.length > 4) ? 'has-more' : '' %>"
+             onclick="<%= isVid ? `viewVideo('${imgSrc}')` : `viewImage('${imgSrc}')` %>">
+          <% if (isVid) { %>
+          <video src="<%= imgSrc %>" class="vid-thumb" style="width:100%;height:100%;object-fit:cover" muted playsinline crossorigin="anonymous"
+                 onerror="this.closest('.post-img-item').style.display='none'"></video>
+          <% } else { %>
+          <img src="<%= imgSrc %>" alt="รูปภาพ" loading="lazy"
+               onerror="this.closest('.post-img-item').style.display='none'">
+          <% } %>
+          <% if (i === 3 && imgs.length > 4) { %>
+          <div class="img-more-overlay">+<%= imgs.length - 4 %></div>
+          <% } %>
+        </div>
+        <% }); %>
+      </div>
+      <% } %>
+      <% const localVids = (job.images || []).filter(img => img && img.startsWith('localpath::')); %>
+      <% if (localVids.length > 0) { %>
+      <div style="font-size:.78rem;color:#8a8d91;margin:.4rem 0;display:flex;align-items:center;gap:.35rem">
+        <i class="fa-solid fa-video" style="color:#bbb"></i>
+        วิดีโอในเครื่อง <%= localVids.length %> ไฟล์ (แสดงได้เฉพาะบนเครื่อง Agent)
+      </div>
+      <% } %>
+
+      <div class="fb-post-footer">
+        <span><i class="fa-solid fa-users" style="color:#1877f2"></i> <%= total %> กลุ่มได้รับโพส</span>
+        <span class="pill pill-<%= allOk ? 'success' : 'fail' %>" style="font-size:.8rem">
+          <%= allOk ? 'สำเร็จทั้งหมด' : `สำเร็จ ${sc}/${total}` %>
+        </span>
+      </div>
+    </div>
+
+    <% const colors = ['purple','green','orange','blue','red']; %>
+    <% const SHOW = 5; %>
+
+    <!-- Per-group results -->
+    <div class="card">
+      <div class="card-title" style="margin-bottom:1rem">
+        <i class="fa-solid fa-users"></i> ผลลัพธ์แต่ละกลุ่ม
+        <span style="margin-left:auto;font-size:.8rem;font-weight:400;color:#65676b"><%= total %> กลุ่ม</span>
+      </div>
+      <% (job.results || []).forEach((r, i) => { %>
+      <div class="result-row<%= i >= SHOW ? ' result-row-hidden' : '' %>" style="<%= i >= SHOW ? 'display:none' : '' %>">
+        <div class="avatar avatar-<%= colors[i % colors.length] %> avatar-sm"><%= (r.groupName||'?').slice(0,1) %></div>
+        <div class="result-info">
+          <div class="result-page-name"><%= r.groupName || r.groupId %></div>
+          <div class="result-time">
+            <% if (r.timestamp) { %>
+            <i class="fa-regular fa-clock"></i>
+            <%= new Date(r.timestamp).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) %>
+            <% } %>
+            <% if (r.error) { %>&nbsp;·&nbsp;<span style="color:#c62828;font-size:.78rem"><%= r.error %></span><% } %>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:.5rem">
+          <span class="status-badge <%= r.status === 'success' ? 'success' : 'fail' %>">
+            <% if (r.status === 'success') { %><i class="fa-solid fa-circle-check"></i> สำเร็จ
+            <% } else { %><i class="fa-solid fa-circle-xmark"></i> ล้มเหลว<% } %>
+          </span>
+        </div>
+      </div>
+      <% }); %>
+      <% if ((job.results||[]).length > SHOW) { %>
+      <button id="showMoreResults" class="show-more-btn" onclick="toggleResultRows(this)">
+        <i class="fa-solid fa-chevron-down"></i> ดูเพิ่มเติม <%= (job.results||[]).length - SHOW %> กลุ่ม
+      </button>
+      <% } %>
+    </div>
+
+    <div style="text-align:center;margin-top:1rem;display:flex;gap:.75rem;justify-content:center">
+      <a href="/group-history" class="btn-post" style="text-decoration:none;background:#65676b">
+        <i class="fa-solid fa-clock-rotate-left"></i> กลับประวัติ
+      </a>
+      <a href="/job-queue" class="btn-post" style="text-decoration:none">
+        <i class="fa-solid fa-list-check"></i> คิวโพส
+      </a>
+    </div>
+
+  </main>
+
+  <aside class="right-panel">
+    <div class="card stats-card">
+      <div class="stats-title"><i class="fa-solid fa-chart-simple"></i> สรุปผล</div>
+      <div class="stats-row"><span>สำเร็จ</span><span class="stats-val green"><%= sc %></span></div>
+      <div class="stats-row"><span>ล้มเหลว</span><span class="stats-val red"><%= fc %></span></div>
+      <div class="stats-row"><span>ทั้งหมด</span><span class="stats-val blue"><%= total %></span></div>
+      <% if (job.delaySeconds) { %>
+      <div class="stats-row"><span>Delay</span><span class="stats-val blue"><%= job.delaySeconds %>s</span></div>
+      <% } %>
+    </div>
+  </aside>
+
+</div>
+
+<script>
+  function viewImage(src) {
+    Swal.fire({ imageUrl: src, imageAlt: 'รูปภาพ', showConfirmButton: false, showCloseButton: true, width: 'auto' });
+  }
+  function viewVideo(src) {
+    Swal.fire({
+      html: `<video src="${src}" controls autoplay style="max-width:100%;max-height:70vh;border-radius:8px"></video>`,
+      showConfirmButton: false, showCloseButton: true, width: 'auto', background: '#000', padding: '1rem',
+    });
+  }
+  function toggleResultRows(btn) {
+    const hidden = document.querySelectorAll('.result-row-hidden');
+    const isHidden = hidden[0]?.style.display === 'none';
+    hidden.forEach(r => r.style.display = isHidden ? 'flex' : 'none');
+    btn.innerHTML = isHidden
+      ? '<i class="fa-solid fa-chevron-up"></i> ซ่อน'
+      : `<i class="fa-solid fa-chevron-down"></i> ดูเพิ่มเติม ${hidden.length} กลุ่ม`;
+  }
+
+  // Fix black video thumbnails
+  document.querySelectorAll('video.vid-thumb').forEach(v => {
+    v.onloadedmetadata = () => { v.currentTime = 0.5; };
+    v.onseeked = () => {
+      try {
+        const c = document.createElement('canvas');
+        c.width = v.videoWidth || 320; c.height = v.videoHeight || 240;
+        c.getContext('2d').drawImage(v, 0, 0);
+        const img = document.createElement('img');
+        img.src = c.toDataURL('image/jpeg', 0.85);
+        img.style.cssText = 'width:100%;height:100%;object-fit:cover';
+        img.onclick = v.closest('.post-img-item').onclick;
+        img.onerror = () => {};
+        v.replaceWith(img);
+      } catch { v.currentTime = 0; }
+    };
+    v.load();
+  });
+</script>
+</body>
+</html>

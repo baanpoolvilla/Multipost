@@ -48,6 +48,14 @@ async function remove(id) {
     } catch { return null; }
 }
 
+async function getById(id) {
+    try {
+        await connect();
+        const mongoose = require('mongoose');
+        return GroupJob.findById(new mongoose.Types.ObjectId(id)).lean();
+    } catch { return null; }
+}
+
 async function listHistory() {
     try {
         await connect();
@@ -63,4 +71,4 @@ async function deleteHistory(id) {
     } catch { return null; }
 }
 
-module.exports = { list, create, remove, listHistory, deleteHistory };
+module.exports = { list, create, remove, listHistory, deleteHistory, getById };

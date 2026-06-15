@@ -189,6 +189,12 @@
           </div>
         </div>
         <div class="history-actions">
+          <a href="/group-result/<%= job._id %>"
+             style="display:inline-flex;align-items:center;gap:.28rem;background:#e7f0fd;color:#1877f2;border:none;border-radius:7px;padding:.28rem .65rem;font-size:.78rem;font-weight:700;text-decoration:none;transition:background .15s"
+             onmouseover="this.style.background='#cfe2ff'" onmouseout="this.style.background='#e7f0fd'"
+             title="ดูรายงาน">
+            <i class="fa-solid fa-chart-bar"></i> รายงาน
+          </a>
           <button class="icon-btn danger" title="ลบ" onclick="deleteJob('<%= job._id %>', this)">
             <i class="fa-solid fa-trash"></i>
           </button>
@@ -216,7 +222,7 @@
         <div class="post-img-item <%= (i === 3 && webImages.length > 4) ? 'has-more' : '' %>"
              onclick="<%= isVid ? `viewVideo('${imgSrc}')` : `viewImage('${imgSrc}')` %>">
           <% if (isVid) { %>
-          <video src="<%= imgSrc %>" style="width:100%;height:100%;object-fit:cover" muted playsinline
+          <video src="<%= imgSrc %>" class="vid-thumb" style="width:100%;height:100%;object-fit:cover" muted playsinline crossorigin="anonymous"
                  onerror="this.closest('.post-img-item').style.display='none'"></video>
           <% } else { %>
           <img src="<%= imgSrc %>" alt="รูปภาพ" loading="lazy"
@@ -474,6 +480,24 @@
     if (badge) badge.textContent = cards.length;
     if (cards.length === 0) location.reload();
   }
+
+  // Fix black video thumbnails
+  document.querySelectorAll('video.vid-thumb').forEach(v => {
+    v.onloadedmetadata = () => { v.currentTime = 0.5; };
+    v.onseeked = () => {
+      try {
+        const c = document.createElement('canvas');
+        c.width = v.videoWidth || 320; c.height = v.videoHeight || 240;
+        c.getContext('2d').drawImage(v, 0, 0);
+        const img = document.createElement('img');
+        img.src = c.toDataURL('image/jpeg', 0.85);
+        img.style.cssText = 'width:100%;height:100%;object-fit:cover';
+        img.onerror = () => {};
+        v.replaceWith(img);
+      } catch { v.currentTime = 0; }
+    };
+    v.load();
+  });
 
   async function confirmClearAll() {
     const result = await Swal.fire({

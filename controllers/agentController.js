@@ -172,3 +172,16 @@ exports.deleteGroupHistoryJob = async (req, res) => {
     const job = await groupJobStore.deleteHistory(req.params.id);
     res.json({ success: !!job });
 };
+
+exports.showGroupResult = async (req, res) => {
+    const job = await groupJobStore.getById(req.params.id);
+    if (!job) return res.status(404).send('ไม่พบรายการโพส');
+    const results  = job.results || [];
+    const enriched = {
+        ...job,
+        _id: String(job._id),
+        successCount: results.filter(r => r.status === 'success').length,
+        failCount:    results.filter(r => r.status === 'failed').length,
+    };
+    res.render('group-result', { job: enriched });
+};
