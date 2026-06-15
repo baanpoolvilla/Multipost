@@ -207,7 +207,7 @@
       </div>
 
       <!-- Images (skip localpath:: entries — local files) -->
-      <% const webImages = (job.images || []).filter(img => img && !img.startsWith('localpath::') && !require('path').isAbsolute(img)); %>
+      <% const webImages = (job.images || []).filter(img => img && !img.startsWith('localpath::') && !img.startsWith('/') && !/^[A-Za-z]:[\\\/]/.test(img)); %>
       <% if (webImages.length > 0) { %>
       <div class="post-img-grid post-img-<%= Math.min(webImages.length, 4) %>">
         <% webImages.slice(0, 4).forEach((img, i) => { %>
