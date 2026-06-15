@@ -238,11 +238,12 @@ exports.showPageActivity = async (req, res) => {
                 pageResult: (p.results || []).find(r => r.pageId === pageId) || {},
             }));
 
-        // Group jobs — primary: top-level pageId match; secondary: groupId intersection with page.groups
-        const pageGroupIds = new Set((page.groups || []).map(g => g.groupId));
+        // Group jobs — match job ที่มี pageId ใน groups.pageId หรือ top-level pageId
         const jobs = allJobs.filter(j => {
-            if (j.pageId) return j.pageId === pageId;
-            if (pageGroupIds.size > 0) return (j.groups || []).some(g => pageGroupIds.has(g.groupId));
+            // ตรวจเช็ก top-level pageId
+            if (j.pageId === pageId) return true;
+            // ตรวจเช็ก groups.pageId (สำหรับแชร์ลงกลุ่ม)
+            if ((j.groups || []).some(g => g.pageId === pageId)) return true;
             return false;
         })
             .map(j => ({
