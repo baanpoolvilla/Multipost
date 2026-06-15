@@ -970,34 +970,9 @@ function renderHistory() {
           </div>
           <div style="display:flex;align-items:center;gap:.4rem;flex-shrink:0">
             <span class="job-status ${statusCls}">${statusTH}</span>
-            <button class="btn btn-primary" style="font-size:11px;padding:.3rem .6rem;white-space:nowrap"
-                    onclick="repostHistoryJob('${j._id}')">🔄 โพสอีกครั้ง</button>
           </div>
         </div>`;
     }).join('');
-}
-
-async function repostHistoryJob(id) {
-    const j = _history.find(h => h._id === id);
-    if (!j) return;
-    const acc = _accounts.find(a => a.status === 'logged_in');
-    if (!acc) {
-        alert('ยังไม่มีบัญชีที่เข้าสู่ระบบ\nกรุณาไปที่แท็บ "บัญชี Facebook" แล้วเข้าสู่ระบบก่อน');
-        return;
-    }
-    const job = await agent.createJob({
-        message:      j.message,
-        groups:       j.groups,
-        delaySeconds: j.delaySeconds || 5,
-        accountId:    acc.id,
-        images:       j.images || [],
-    });
-    if (job) {
-        _jobs.unshift(job);
-        renderJobs();
-        appendLog(`[📋] สร้างคิวโพสอีกครั้ง: "${(j.message||'').slice(0,40)}..." → ${(j.groups||[]).length} กลุ่ม`);
-        document.querySelector('.nav-item[data-tab="jobs"]')?.click();
-    }
 }
 
 // ── Log ───────────────────────────────────────────────────────
