@@ -144,8 +144,9 @@ async function processJob(job) {
     }
 
     const status = ok>0 ? 'done' : 'failed';
-    await _store.updateJob(id, { status, results });
-    _emit?.('jobs:updated', { ...job, _id:id, status, results });
+    const pageData = sharedPageId ? { pageId: sharedPageId, pageName: job.postAsPage || null } : {};
+    await _store.updateJob(id, { status, results, ...pageData });
+    _emit?.('jobs:updated', { ...job, _id:id, status, results, ...pageData });
     log(`✅ เสร็จ: ${ok}/${job.groups.length} สำเร็จ`);
     log('─────────────────────────────');
 }

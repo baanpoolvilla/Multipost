@@ -3,7 +3,6 @@ const _timeout = ms => new Promise((_, rej) => setTimeout(() => rej(new Error('t
 let _accounts = [], _groups = [], _selected = [], _jobs = [], _jobFilter = 'all', _jobsVisible = 20;
 let _history = [], _historyFilter = 'all', _historyLoaded = false;
 let _webUrl = agent.webUrl || localStorage.getItem('_webUrl') || '';
-let _pages = [];  // pages list from web [{pageId, pageName}]
 let _catCollapsed = {}; // category → true (collapsed) / false (expanded)
 let _statusInterval = null;
 let _selectedPage = null;
@@ -24,7 +23,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     try { await Promise.race([loadAccounts(),  _timeout(5000)]); } catch {}
     try { await Promise.race([loadJobs(),      _timeout(5000)]); } catch {}
     try { loadGroups(); } catch {}
-    try { agent.getPagesList().then(p => { _pages = p || []; renderAccounts(); }); } catch {}
     _statusInterval = setInterval(() => { refreshStatus().catch(()=>{}); }, 5000);
 
     let _jobRefreshing = false;
@@ -130,31 +128,15 @@ async function loadAccounts() {
 
 let _loggingIn = new Set();
 
-// ── Account → Page mapping (stored in localStorage) ──────────
-function getAccountPageMap() {
-    try { return JSON.parse(localStorage.getItem('_accountPageMap') || '{}'); } catch { return {}; }
-}
-function setAccountPage(accId, pageId, pageName) {
-    const map = getAccountPageMap();
-    if (pageId) map[accId] = { pageId, pageName };
-    else delete map[accId];
-    localStorage.setItem('_accountPageMap', JSON.stringify(map));
-}
-function getAccountPage(accId) {
-    return getAccountPageMap()[accId] || null;
-}
-
 function renderAccounts() {
     const el = document.getElementById('accountsList');
     document.getElementById('accCount').textContent = _accounts.length;
     if (!_accounts.length) { el.innerHTML='<div class="empty-state">ยังไม่มีบัญชี — กด "+ เพิ่มบัญชี" ด้านบน</div>'; return; }
-    const map = getAccountPageMap();
     el.innerHTML = _accounts.map(a => {
         const init      = a.email[0].toUpperCase();
         const ts        = a.loginedAt ? fmtDate(a.loginedAt) : '—';
         const loading   = _loggingIn.has(a.id);
         const loggedIn  = a.status === 'logged_in';
-        const accPage   = map[a.id] || null;
 
         const loginBtn = loading
             ? `<button class="btn btn-secondary" style="font-size:11px;padding:.3rem .65rem;margin-left:.4rem" disabled>⏳ กำลังเข้าสู่ระบบ...</button>`
@@ -164,37 +146,19 @@ function renderAccounts() {
                 : `<button class="btn btn-primary" style="font-size:11px;padding:.3rem .65rem;margin-left:.4rem"
                      onclick="loginAcc('${a.id}')">เข้าสู่ระบบ</button>`;
 
-        const pageOptions = _pages.map(p =>
-            `<option value="${esc(p.pageId)}" ${accPage?.pageId === p.pageId ? 'selected' : ''}>${esc(p.pageName)}</option>`
-        ).join('');
-
-        const pageRow = `
-          <div style="margin-top:.35rem;display:flex;align-items:center;gap:.4rem;font-size:11px;color:var(--text3)">
-            <span>🏠 เพจ:</span>
-            <select style="font-size:11px;padding:.15rem .3rem;border-radius:5px;border:1px solid var(--border);background:var(--bg2);color:var(--text1);max-width:180px"
-                    onchange="setAccountPage('${a.id}', this.value, this.options[this.selectedIndex]?.text)">
-              <option value="">-- ไม่ระบุ --</option>
-              ${pageOptions}
-            </select>
-            ${accPage ? `<span style="color:var(--green);font-size:10px">✓ ใช้กับ "${esc(accPage.pageName)}"</span>` : ''}
-          </div>`;
-
         return `
-          <div class="acc-item" style="flex-wrap:wrap">
-            <div style="display:flex;align-items:center;gap:.5rem;width:100%">
-              <div class="acc-avatar">${init}</div>
-              <div class="acc-info" style="flex:1">
-                <div class="acc-email">${esc(a.email)}</div>
-                <div class="acc-meta">${loading ? '🔄 กำลัง auto-fill รหัสผ่านในเบราว์เซอร์...' : 'เข้าสู่ระบบล่าสุด: ' + ts}</div>
-              </div>
-              <span class="acc-status ${loading ? 'running' : a.status}">${loading ? 'กำลังเข้าสู่ระบบ' : statusAccTH(a.status)}</span>
-              ${loginBtn}
-              <button class="btn btn-secondary" style="font-size:11px;padding:.3rem .65rem"
-                onclick="logoutAcc('${a.id}')" ${!loggedIn||loading?'disabled':''}>ออกจากระบบ</button>
-              <button class="btn btn-secondary" style="font-size:11px;padding:.3rem .5rem;color:var(--red)"
-                onclick="removeAcc('${a.id}')" title="ลบบัญชี" ${loading?'disabled':''}>🗑</button>
+          <div class="acc-item">
+            <div class="acc-avatar">${init}</div>
+            <div class="acc-info">
+              <div class="acc-email">${esc(a.email)}</div>
+              <div class="acc-meta">${loading ? '🔄 กำลัง auto-fill รหัสผ่านในเบราว์เซอร์...' : 'เข้าสู่ระบบล่าสุด: ' + ts}</div>
             </div>
-            <div style="padding-left:2.8rem;width:100%">${pageRow}</div>
+            <span class="acc-status ${loading ? 'running' : a.status}">${loading ? 'กำลังเข้าสู่ระบบ' : statusAccTH(a.status)}</span>
+            ${loginBtn}
+            <button class="btn btn-secondary" style="font-size:11px;padding:.3rem .65rem"
+              onclick="logoutAcc('${a.id}')" ${!loggedIn||loading?'disabled':''}>ออกจากระบบ</button>
+            <button class="btn btn-secondary" style="font-size:11px;padding:.3rem .5rem;color:var(--red)"
+              onclick="removeAcc('${a.id}')" title="ลบบัญชี" ${loading?'disabled':''}>🗑</button>
           </div>`;
     }).join('');
 }
@@ -592,9 +556,8 @@ async function createJob() {
     if (_selAcc && _selAcc.status !== 'logged_in') { alert(`บัญชี "${_selAcc.email}" ยังไม่ได้เข้าสู่ระบบ\nกรุณากด "เข้าสู่ระบบ" ที่หน้าบัญชีก่อน`); return; }
 
     const imagePaths = _selectedImages.filter(i => !i.uploading).map(i => i.path).filter(Boolean);
-    const _accPage = accId ? getAccountPage(accId) : null;
 
-    const job = await agent.createJob({ message:msg, groups, delaySeconds:delay, accountId:accId||undefined, postAsPage:postAs||undefined, images:imagePaths, pageId:_accPage?.pageId||undefined, pageName:_accPage?.pageName||undefined });
+    const job = await agent.createJob({ message:msg, groups, delaySeconds:delay, accountId:accId||undefined, postAsPage:postAs||undefined, images:imagePaths });
     if (job) {
         _jobs.unshift(job); renderJobs();
         document.getElementById('jobMsg').value = '';
@@ -1038,15 +1001,12 @@ async function repostHistoryJob(id) {
         alert('ยังไม่มีบัญชีที่เข้าสู่ระบบ\nกรุณาไปที่แท็บ "บัญชี Facebook" แล้วเข้าสู่ระบบก่อน');
         return;
     }
-    const _rPage = j.pageId ? { pageId: j.pageId, pageName: j.pageName } : getAccountPage(acc.id);
     const job = await agent.createJob({
         message:      j.message,
         groups:       j.groups,
         delaySeconds: j.delaySeconds || 5,
         accountId:    acc.id,
         images:       j.images || [],
-        pageId:       _rPage?.pageId   || undefined,
-        pageName:     _rPage?.pageName || undefined,
     });
     if (job) {
         _jobs.unshift(job);
