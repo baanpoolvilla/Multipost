@@ -729,7 +729,6 @@ function renderImagePreviews() {
                        <span style="color:#fff;font-size:11px;margin-left:2px">▶</span>
                      </div>
                    </div>
-                   <span style="position:absolute;bottom:2px;left:3px;font-size:9px;background:rgba(0,0,0,.55);color:#fff;border-radius:3px;padding:1px 3px">${img.localOnly ? '📁' : '☁️'}</span>
                  </div>`
               : `<img src="${img.url}" alt="${esc(img.name)}">
                  ${img.localOnly ? `<span style="position:absolute;bottom:2px;left:3px;font-size:9px;background:rgba(0,0,0,.55);color:#fff;border-radius:3px;padding:1px 3px">📁</span>` : ''}`}
