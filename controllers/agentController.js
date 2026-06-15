@@ -113,7 +113,7 @@ exports.listJobs = async (req, res) => {
 };
 
 exports.createJob = async (req, res) => {
-    const { message, groups, delaySeconds, accountId, scheduledAt } = req.body;
+    const { message, groups, delaySeconds, accountId, scheduledAt, images } = req.body;
     if (!message?.trim()) return res.status(400).json({ error: 'กรุณากรอกข้อความ' });
     if (!Array.isArray(groups) || !groups.length) return res.status(400).json({ error: 'กรุณาเลือกกลุ่ม' });
     try {
@@ -124,6 +124,7 @@ exports.createJob = async (req, res) => {
             delaySeconds: delaySeconds || 5,
             accountId: accountId || null,
             scheduledAt: (schedDate && schedDate > new Date()) ? schedDate.toISOString() : null,
+            images: Array.isArray(images) ? images : [],
         });
         res.json({ ok: true, job });
     } catch(e) {

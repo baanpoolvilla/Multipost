@@ -13,6 +13,7 @@ const groupJobSchema = new mongoose.Schema({
     accountId:    { type: String, default: null },
     scheduledAt:  { type: String, default: null },
     status:       { type: String, enum: ['pending','running','done','failed'], default: 'pending' },
+    images:       { type: [String], default: [] },
     results:      [{
         groupId:   String,
         groupName: String,
