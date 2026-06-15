@@ -13,13 +13,14 @@ contextBridge.exposeInMainWorld('agent', {
     getAccountPages: (id)       => ipcRenderer.invoke('accounts:pages', id),
 
     // Jobs
-    listJobs:        ()         => ipcRenderer.invoke('jobs:list'),
-    createJob:       (data)     => ipcRenderer.invoke('jobs:create', data),
-    deleteJob:       (id)       => ipcRenderer.invoke('jobs:delete', id),
-    deleteAllJobs:   ()         => ipcRenderer.invoke('jobs:delete-all'),
-    getGroups:       ()         => ipcRenderer.invoke('jobs:groups'),
-    getRecentPosts:  ()         => ipcRenderer.invoke('jobs:recent-posts'),
-    getJobHistory:   ()         => ipcRenderer.invoke('jobs:history'),
+    listJobs:        ()               => ipcRenderer.invoke('jobs:list'),
+    createJob:       (data)           => ipcRenderer.invoke('jobs:create', data),
+    deleteJob:       (id)             => ipcRenderer.invoke('jobs:delete', id),
+    deleteAllJobs:   ()               => ipcRenderer.invoke('jobs:delete-all'),
+    getGroups:       ()               => ipcRenderer.invoke('jobs:groups'),
+    getRecentPosts:  ()               => ipcRenderer.invoke('jobs:recent-posts'),
+    getJobHistory:   ()               => ipcRenderer.invoke('jobs:history'),
+    rescheduleJob:   (id, schedAt)    => ipcRenderer.invoke('jobs:reschedule', id, schedAt),
 
     // Runner
     startRunner:     ()         => ipcRenderer.invoke('runner:start'),

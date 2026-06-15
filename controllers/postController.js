@@ -4,6 +4,7 @@ const postStore     = require('../services/postStore');
 const pageStore     = require('../services/pageStore');
 const settingsStore = require('../services/settingsStore');
 const templateStore = require('../services/templateStore');
+const groupJobStore = require('../services/groupJobStore');
 
 // ── Dashboard ──────────────────────────────────
 exports.showDashboard = async (req, res) => {
@@ -238,8 +239,16 @@ exports.dailySummary = async (req, res) => {
     const posts = await postStore.load();
     const today = new Date().toLocaleDateString('en-CA', { timeZone: TZ });
     const date  = req.query.date || today;
+    const timeFrom = req.query.timeFrom || null; // HH:MM
+    const timeTo   = req.query.timeTo   || null; // HH:MM
 
-    const dayPosts = posts.filter(p => toThaiDate(p.createdAt) === date);
+    const fromISO = timeFrom ? new Date(`${date}T${timeFrom}:00+07:00`) : new Date(`${date}T00:00:00+07:00`);
+    const toISO   = timeTo   ? new Date(`${date}T${timeTo}:59+07:00`)   : new Date(`${date}T23:59:59+07:00`);
+
+    const dayPosts = posts.filter(p => {
+        const t = new Date(p.createdAt).getTime();
+        return t >= fromISO.getTime() && t <= toISO.getTime();
+    });
     let totalLikes = 0, totalComments = 0, totalShares = 0, totalReach = 0;
 
     dayPosts.forEach(p => {
@@ -261,11 +270,16 @@ exports.dailySummary = async (req, res) => {
     const pagesSet = new Set();
     dayPosts.forEach(p => p.results.forEach(r => pagesSet.add(r.pageName)));
 
+    // Group share stats for the same period
+    const grpStats = await groupJobStore.statsByDateRange(fromISO, toISO);
+
     res.json({
-        date, totalPosts: dayPosts.length,
+        date, timeFrom, timeTo,
+        totalPosts: dayPosts.length,
         totalSuccess, totalFail, successRate,
         totalLikes, totalComments, totalShares, totalReach,
         pages: [...pagesSet],
+        groupStats: grpStats,
         posts: dayPosts.map(p => ({
             message:      p.message.length > 50 ? p.message.slice(0, 50) : p.message,
             successCount: p.successCount,
@@ -451,25 +465,33 @@ exports.deletePage = async (req, res) => {
 // ── Templates ──────────────────────────────
 exports.getTemplates = async (req, res) => {
     const templates = await templateStore.load();
-    res.json(templates);
+    const { folder } = req.query;
+    if (folder === '__folders__') {
+        const folders = await templateStore.listFolders();
+        return res.json({ folders });
+    }
+    const filtered = folder ? templates.filter(t => t.folder === folder) : templates;
+    res.json(filtered);
 };
 
 exports.createTemplate = async (req, res) => {
-    const { name, message, images } = req.body;
+    const { name, message, images, folder } = req.body;
     if (!message?.trim()) return res.status(400).json({ error: 'กรุณากรอกข้อความ' });
     const template = await templateStore.create({
         name: name?.trim() || '', message: message.trim(),
         images: Array.isArray(images) ? images : [],
+        folder: folder?.trim() || null,
     });
     res.json({ ok: true, template });
 };
 
 exports.updateTemplate = async (req, res) => {
-    const { name, message, images } = req.body;
+    const { name, message, images, folder } = req.body;
     if (!message?.trim()) return res.status(400).json({ error: 'กรุณากรอกข้อความ' });
     const updated = await templateStore.update(req.params.id, {
         name: name?.trim() || '', message: message.trim(),
         images: Array.isArray(images) ? images : [],
+        folder: folder?.trim() || null,
     });
     if (!updated) return res.status(404).json({ error: 'ไม่พบ Template' });
     res.json({ ok: true, template: updated });

@@ -160,9 +160,11 @@ router.delete('/api/agent/history/:id', agentCtrl.deleteGroupHistoryJob);
 router.get('/api/stats/combined', agentCtrl.getCombinedStats);
 
 // Job Queue API
-router.get('/api/agent/jobs',         agentCtrl.listJobs);
-router.post('/api/agent/jobs',        agentCtrl.createJob);
-router.delete('/api/agent/jobs/:id',  agentCtrl.deleteJob);
+router.get('/api/agent/jobs',                   agentCtrl.listJobs);
+router.post('/api/agent/jobs',                  agentCtrl.createJob);
+router.delete('/api/agent/jobs/:id',            agentCtrl.deleteJob);
+router.patch('/api/agent/jobs/:id/schedule',    agentCtrl.rescheduleJob);
+router.get('/api/agent/jobs/scheduled',         agentCtrl.listScheduledJobs);
 
 // Category API
 router.post('/api/agent/categories',         agentCtrl.addCategory);

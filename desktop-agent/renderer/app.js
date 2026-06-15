@@ -24,6 +24,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     try { await Promise.race([loadJobs(),      _timeout(5000)]); } catch {}
     try { loadGroups(); } catch {}
     _statusInterval = setInterval(() => { refreshStatus().catch(()=>{}); }, 5000);
+    checkScheduledNotifications();
 
     let _jobRefreshing = false;
     setInterval(async () => {
@@ -499,13 +500,22 @@ function renderJobs() {
         const meta = (j.status==='done'||j.status==='failed') ? `${ok}/${tot} กลุ่ม${pageTag}` : `${tot} กลุ่ม · ${j.delaySeconds}s${pageTag}`;
         const { display, modeTag } = _parseJobMsg(j.message);
         const imgBadge = (j.images||[]).length > 0 ? `<span style="font-size:10px;background:#e7f3ff;color:#1877f2;border-radius:4px;padding:.05rem .4rem;margin-left:.3rem">📸 ${j.images.length}</span>` : '';
+        const now = new Date();
+        const schedBadge = j.scheduledAt ? (() => {
+            const t = new Date(j.scheduledAt);
+            const overdue = t < now;
+            const label = fmtDate(j.scheduledAt);
+            return `<span style="font-size:10px;background:${overdue?'#fde8e8':'#fff3cd'};color:${overdue?'#c62828':'#856404'};border-radius:4px;padding:.05rem .4rem;margin-left:.3rem">${overdue?'⚠️':'⏰'} ${label}</span>`;
+        })() : '';
+        const reschedBtn = j.status === 'pending' ? `<button onclick="agentReschedule('${j._id}','${j.scheduledAt||''}')" style="background:none;border:none;cursor:pointer;font-size:13px;padding:.1rem .2rem" title="แก้ไขเวลา">🕐</button>` : '';
         return `<div class="job-item">
           <div class="job-icon">${icons[j.status]||'❓'}</div>
           <div class="job-body">
-            <div class="job-msg">${modeTag ? `<span class="job-mode-tag">${modeTag}</span> ` : ''}${esc(display)}${imgBadge}</div>
+            <div class="job-msg">${modeTag ? `<span class="job-mode-tag">${modeTag}</span> ` : ''}${esc(display)}${imgBadge}${schedBadge}</div>
             <div class="job-meta">${meta} · ${fmtDate(j.createdAt)}</div>
           </div>
           <span class="job-status ${j.status}">${statusJobTH(j.status)}</span>
+          ${reschedBtn}
           <button class="job-del" onclick="deleteJob('${j._id}')">🗑</button>
         </div>`;
     }).join('');
@@ -556,11 +566,19 @@ async function createJob() {
     if (_selAcc && _selAcc.status !== 'logged_in') { alert(`บัญชี "${_selAcc.email}" ยังไม่ได้เข้าสู่ระบบ\nกรุณากด "เข้าสู่ระบบ" ที่หน้าบัญชีก่อน`); return; }
 
     const imagePaths = _selectedImages.filter(i => !i.uploading).map(i => i.path).filter(Boolean);
+    const schedInput = document.getElementById('jobScheduledAt')?.value;
+    const scheduledAt = schedInput ? new Date(schedInput + ':00+07:00').toISOString() : null;
+    if (scheduledAt && new Date(scheduledAt) <= new Date()) {
+        alert('เวลาที่ตั้งไว้ต้องเป็นในอนาคต');
+        return;
+    }
 
-    const job = await agent.createJob({ message:msg, groups, delaySeconds:delay, accountId:accId||undefined, postAsPage:postAs||undefined, images:imagePaths });
+    const job = await agent.createJob({ message:msg, groups, delaySeconds:delay, accountId:accId||undefined, postAsPage:postAs||undefined, images:imagePaths, scheduledAt });
     if (job) {
         _jobs.unshift(job); renderJobs();
         document.getElementById('jobMsg').value = '';
+        const schedEl = document.getElementById('jobScheduledAt');
+        if (schedEl) schedEl.value = '';
         // Reset attachments
         _selectedImages.forEach(i => URL.revokeObjectURL(i.url));
         _selectedImages = [];
@@ -578,6 +596,23 @@ async function deleteJob(id) {
     await agent.deleteJob(id);
     _jobs = _jobs.filter(j=>j._id!==id);
     renderJobs();
+}
+
+async function agentReschedule(id, currentScheduledAt) {
+    const current = currentScheduledAt
+        ? new Date(currentScheduledAt).toLocaleString('sv-SE', { timeZone: 'Asia/Bangkok' }).slice(0, 16)
+        : '';
+    const val = prompt(`แก้ไขเวลาโพส (ปล่อยว่างเพื่อล้าง)\nรูปแบบ: YYYY-MM-DDTHH:MM\n\nเวลาปัจจุบัน: ${current || 'ยังไม่ได้ตั้ง'}`, current);
+    if (val === null) return; // cancelled
+    try {
+        const scheduledAt = val.trim() ? new Date(val.trim() + ':00+07:00').toISOString() : null;
+        await agent.rescheduleJob(id, scheduledAt);
+        const job = _jobs.find(j => j._id === id);
+        if (job) { job.scheduledAt = scheduledAt; renderJobs(); }
+        appendLog(`[🕐] แก้ไขเวลาโพส job ${id.slice(-6)} → ${scheduledAt ? new Date(scheduledAt).toLocaleString('th-TH', { timeZone:'Asia/Bangkok', hour12:false }) : 'ล้างแล้ว'}`);
+    } catch(e) {
+        alert('แก้ไขเวลาไม่สำเร็จ: ' + e.message);
+    }
 }
 
 // ── Page chips + account change ───────────────────────────────
@@ -775,10 +810,24 @@ async function loadTemplates() {
     renderTemplates();
 }
 
+let _agentTplFolder = '';
+
 function renderTemplates() {
     const el = document.getElementById('templatesList');
     if (!_templates.length) { el.innerHTML='<div class="empty-state">ยังไม่มีเทมเพลตที่บันทึก</div>'; return; }
-    el.innerHTML = _templates.map(t => {
+
+    // Render folder tabs
+    const folders = [...new Set(_templates.map(t => t.folder).filter(Boolean))].sort();
+    let tabHtml = `<div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.5rem">
+      <button onclick="_agentTplFolder='';renderTemplates()" style="padding:.2rem .5rem;border-radius:5px;border:1px solid ${_agentTplFolder===''?'var(--accent)':'var(--border)'};background:${_agentTplFolder===''?'var(--accent)':'transparent'};color:${_agentTplFolder===''?'#fff':'var(--text2)'};font-size:10px;cursor:pointer;font-family:inherit">ทั้งหมด</button>`;
+    folders.forEach(f => {
+        const active = _agentTplFolder === f;
+        tabHtml += `<button onclick="_agentTplFolder='${f.replace(/'/g,"\\'")}';renderTemplates()" style="padding:.2rem .5rem;border-radius:5px;border:1px solid ${active?'#f7b928':'var(--border)'};background:${active?'#f7b928':'transparent'};color:${active?'#1a1a1a':'var(--text2)'};font-size:10px;cursor:pointer;font-family:inherit">📁 ${esc(f)}</button>`;
+    });
+    tabHtml += '</div>';
+
+    const filtered = _agentTplFolder ? _templates.filter(t => t.folder === _agentTplFolder) : _templates;
+    const rows = filtered.map(t => {
         const hasLocalVid  = (t.images||[]).some(p => p.startsWith('localpath::'));
         const cloudCount   = (t.images||[]).filter(p => p.startsWith('http')).length;
         const localImgCount = (t.images||[]).filter(p => !p.startsWith('localpath::') && !p.startsWith('http')).length;
@@ -787,16 +836,18 @@ function renderTemplates() {
         if (imgCount)    meta += ` · 🖼 ${imgCount}`;
         if (cloudCount)  meta += ` · <span style="color:#27ae60">☁️ Cloud</span>`;
         if (hasLocalVid) meta += ` · <span style="color:#e67e22">🎬 วิดีโอ ต้องอัพโหลดใหม่ทุกครั้ง</span>`;
+        const folderBadge = t.folder ? `<span style="font-size:9px;background:rgba(247,185,40,.15);color:#f7b928;border-radius:3px;padding:.05rem .25rem;margin-left:.25rem">📁 ${esc(t.folder)}</span>` : '';
         return `
       <div class="tpl-item">
         <div class="tpl-info">
-          <div class="tpl-name">${esc(t.name||'ไม่มีชื่อ')}</div>
+          <div class="tpl-name">${esc(t.name||'ไม่มีชื่อ')}${folderBadge}</div>
           <div class="tpl-meta">${meta}</div>
         </div>
         <button class="btn btn-primary" style="font-size:11px;padding:.3rem .6rem" onclick="applyTemplate('${t.id}')">ใช้รูปแบบนี้</button>
         <button class="btn btn-secondary" style="font-size:11px;padding:.3rem .5rem;color:var(--red)" onclick="removeTemplate('${t.id}')" title="ลบรูปแบบนี้">🗑</button>
       </div>`;
     }).join('');
+    el.innerHTML = tabHtml + (rows || '<div class="empty-state" style="padding:.8rem">ไม่มีเทมเพลตใน folder นี้</div>');
 }
 
 function toggleTemplates() {
@@ -807,16 +858,18 @@ function toggleTemplates() {
 
 async function saveTemplate() {
     const name   = document.getElementById('templateName').value.trim() || `Template ${_templates.length+1}`;
+    const folder = document.getElementById('templateFolder')?.value.trim() || null;
     const msg    = document.getElementById('jobMsg').value.trim();
     const grps   = selectedGroups();
     const del    = parseInt(document.getElementById('jobDelay').value)||5;
     const postAs = _selectedPage || null;
     const imgs   = _selectedImages.filter(i => !i.uploading).map(i => i.path).filter(Boolean);
     if (!msg && !grps.length) { alert('กรุณากรอกข้อความหรือเลือกกลุ่มก่อนบันทึกรูปแบบ'); return; }
-    _templates = await agent.saveTemplate({ name, message:msg, groups:grps, delaySeconds:del, postAsPage:postAs||undefined, images: imgs });
+    _templates = await agent.saveTemplate({ name, folder, message:msg, groups:grps, delaySeconds:del, postAsPage:postAs||undefined, images: imgs });
     renderTemplates();
     document.getElementById('templateName').value = '';
-    appendLog(`[💾] บันทึกเทมเพลต: "${name}"${imgs.length ? ` · ${imgs.length} รูป` : ''}`);
+    if (document.getElementById('templateFolder')) document.getElementById('templateFolder').value = '';
+    appendLog(`[💾] บันทึกเทมเพลต: "${name}"${folder ? ` [${folder}]` : ''}${imgs.length ? ` · ${imgs.length} รูป` : ''}`);
 }
 
 async function applyTemplate(id) {
@@ -1024,3 +1077,44 @@ function fmtDate(iso){ try{ return new Date(iso).toLocaleString('th-TH',{timeZon
 function fmtUptime(s){ if(!s)return'—'; const h=Math.floor(s/3600),m=Math.floor((s%3600)/60); return h?`${h}h ${m}m`:`${m}m`; }
 function statusAccTH(s){ return {logged_in:'เข้าสู่ระบบแล้ว',logged_out:'ออกจากระบบ',error:'มีข้อผิดพลาด'}[s]||s; }
 function statusJobTH(s){ return {pending:'รอดำเนินการ',running:'กำลังโพส',done:'สำเร็จ',failed:'ล้มเหลว'}[s]||s; }
+
+// ── Scheduled job notifications ───────────────────────────────
+let _notifiedOverdue = new Set();
+
+async function checkScheduledNotifications() {
+    try {
+        const jobs = await agent.listJobs();
+        const now  = new Date();
+        const scheduled = jobs.filter(j => j.status === 'pending' && j.scheduledAt);
+        if (!scheduled.length) return;
+
+        const overdue  = scheduled.filter(j => new Date(j.scheduledAt) < now);
+        const upcoming = scheduled.filter(j => new Date(j.scheduledAt) >= now);
+
+        // Show overdue banner once per session per job
+        overdue.forEach(j => {
+            if (_notifiedOverdue.has(j._id)) return;
+            _notifiedOverdue.add(j._id);
+            const msg = j.message.length > 40 ? j.message.slice(0, 40) + '…' : j.message;
+            const schedTime = new Date(j.scheduledAt).toLocaleString('th-TH', { timeZone:'Asia/Bangkok', hour12:false, dateStyle:'short', timeStyle:'short' });
+            appendLog(`⚠️ [แจ้งเตือน] งานโพส "${msg}" เลยเวลาที่ตั้งไว้แล้ว (${schedTime}) — Agent ต้องเปิดอยู่เพื่อโพส`);
+        });
+
+        if (scheduled.length > 0) {
+            const banner = document.getElementById('scheduledBanner');
+            if (!banner) {
+                const b = document.createElement('div');
+                b.id = 'scheduledBanner';
+                b.style.cssText = 'background:#fff3cd;border:1px solid #ffe08a;border-radius:8px;padding:.5rem .85rem;margin:.4rem 0;font-size:12px;color:#856404;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap';
+                b.innerHTML = `<i class="fa-solid fa-clock"></i>
+                  <span>มีงานโพสที่ตั้งเวลาไว้ ${scheduled.length} งาน${overdue.length > 0 ? ` (เลยเวลาแล้ว ${overdue.length} งาน)` : ''} — Agent ต้องเปิดทิ้งไว้</span>
+                  <button onclick="document.querySelector('.nav-item[data-tab=\'jobs\']')?.click()" style="background:#856404;color:#fff;border:none;border-radius:5px;padding:.2rem .5rem;font-size:11px;cursor:pointer;font-family:inherit">ดูคิว</button>`;
+                const logEl = document.getElementById('agentLog') || document.querySelector('.log-panel');
+                if (logEl) logEl.parentNode.insertBefore(b, logEl);
+            }
+        }
+    } catch {}
+
+    // Re-check every 60s for overdue
+    setTimeout(checkScheduledNotifications, 60000);
+}

@@ -679,6 +679,7 @@ let _tplView          = 'card';
 let _tplSelected      = null;
 let _tplLoadedImages  = [];   // filenames from loaded template (sent as templateImages on submit)
 let _tplNewFiles      = [];   // files picked inside create-template Swal
+let _tplFolderFilter  = '';   // '' = all, 'FOLDER_NAME' = specific folder
 
 function renderTplImagePreviews() {
   const el = document.getElementById('tplImagePreview');
@@ -749,11 +750,31 @@ async function loadTemplates() {
   try {
     const res = await fetch('/api/templates');
     _templates = await res.json();
+    await renderFolderTabs();
     renderTemplates();
   } catch {
     const body = document.getElementById('tplBody');
     if (body) body.innerHTML = '<p style="text-align:center;color:#8a8d91;padding:2rem">เกิดข้อผิดพลาดในการโหลด</p>';
   }
+}
+
+async function renderFolderTabs() {
+  const container = document.getElementById('tplFolderTabs');
+  if (!container) return;
+  const folders = [...new Set(_templates.map(t => t.folder).filter(Boolean))].sort();
+  let html = `<button onclick="setFolderFilter('')" style="white-space:nowrap;padding:.25rem .6rem;border-radius:6px;border:1.5px solid ${_tplFolderFilter===''?'#1877f2':'#444'};background:${_tplFolderFilter===''?'#1877f2':'transparent'};color:${_tplFolderFilter===''?'#fff':'#ccc'};font-size:.75rem;cursor:pointer;font-family:inherit">ทั้งหมด (${_templates.length})</button>`;
+  folders.forEach(f => {
+    const cnt = _templates.filter(t => t.folder === f).length;
+    const active = _tplFolderFilter === f;
+    html += `<button onclick="setFolderFilter('${f.replace(/'/g,"\\'")}')" style="white-space:nowrap;padding:.25rem .6rem;border-radius:6px;border:1.5px solid ${active?'#f7b928':'#444'};background:${active?'#f7b928':'transparent'};color:${active?'#1a1a1a':'#ccc'};font-size:.75rem;cursor:pointer;font-family:inherit">📁 ${f} (${cnt})</button>`;
+  });
+  container.innerHTML = html;
+}
+
+function setFolderFilter(f) {
+  _tplFolderFilter = f.trim();
+  renderFolderTabs();
+  renderTemplates();
 }
 
 function setTplView(v) {
@@ -772,7 +793,10 @@ function renderTemplates() {
   if (!body) return;
 
   const query    = (document.getElementById('tplSearchInput')?.value || '').toLowerCase();
-  const filtered = _templates.filter(t => !query || t.message.toLowerCase().includes(query) || (t.name||'').toLowerCase().includes(query));
+  const filtered = _templates.filter(t => {
+    if (_tplFolderFilter && t.folder !== _tplFolderFilter) return false;
+    return !query || t.message.toLowerCase().includes(query) || (t.name||'').toLowerCase().includes(query) || (t.folder||'').toLowerCase().includes(query);
+  });
   if (badge) badge.textContent = _templates.length;
 
   if (!filtered.length) {
@@ -824,6 +848,7 @@ function renderTplCard(t, num) {
         <div style="flex:1;min-width:0">
           <div style="font-weight:700;font-size:.8rem;color:#1c1e21">โพสต์ #${num}</div>
           ${t.name ? `<div style="font-size:.7rem;color:#8a8d91;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.name}</div>` : ''}
+          ${t.folder ? `<div style="font-size:.68rem;background:#fff3cd;color:#856404;border-radius:4px;padding:.05rem .3rem;display:inline-block;margin-top:.1rem">📁 ${t.folder}</div>` : ''}
         </div>
         <div style="display:flex;gap:.15rem;flex-shrink:0" onclick="event.stopPropagation()">
           <button onclick="openEditTpl('${t.id}')" style="background:none;border:none;color:#8a8d91;cursor:pointer;font-size:.72rem;padding:.15rem .25rem" title="แก้ไข"><i class="fa-solid fa-pen"></i></button>
@@ -915,6 +940,9 @@ async function openCreateTemplate() {
         <label style="font-size:.82rem;color:#65676b;display:block;margin:.55rem 0 .3rem">ชื่อ Template (ไม่บังคับ):</label>
         <input id="stName" type="text" placeholder="เช่น โปรโมชั่น A"
           style="width:100%;padding:.48rem .75rem;border:1.5px solid #dbe0e6;border-radius:8px;font-family:inherit;font-size:.84rem;outline:none;box-sizing:border-box">
+        <label style="font-size:.82rem;color:#65676b;display:block;margin:.55rem 0 .3rem">📁 Folder (ไม่บังคับ):</label>
+        <input id="stFolder" type="text" placeholder="เช่น 001, ชุดโปรโมชั่น"
+          style="width:100%;padding:.48rem .75rem;border:1.5px solid #dbe0e6;border-radius:8px;font-family:inherit;font-size:.84rem;outline:none;box-sizing:border-box">
         <label style="font-size:.82rem;color:#65676b;display:block;margin:.55rem 0 .3rem">รูปภาพ/วิดีโอ (สูงสุด 10 ไฟล์):</label>
         <div id="stImgPrev" style="display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.4rem"></div>
         <input type="file" id="stFileInp" multiple accept="image/*,video/mp4,video/quicktime,video/x-msvideo,video/webm" style="display:none">
@@ -947,7 +975,7 @@ async function openCreateTemplate() {
     preConfirm: () => {
       const msg = document.getElementById('stMsg')?.value.trim();
       if (!msg) { Swal.showValidationMessage('กรุณากรอกข้อความ'); return false; }
-      return { message: msg, name: document.getElementById('stName')?.value.trim() || '' };
+      return { message: msg, name: document.getElementById('stName')?.value.trim() || '', folder: document.getElementById('stFolder')?.value.trim() || '' };
     },
   });
 
@@ -958,7 +986,7 @@ async function openCreateTemplate() {
     const images = await _uploadImages(_tplNewFiles);
     if (_tplNewFiles.length > 0 && images.length === 0) throw new Error('อัปโหลดรูปไม่สำเร็จ');
     _tplNewFiles = [];
-    const data = await _saveTemplate('/api/templates', 'POST', { message: value.message, name: value.name, images });
+    const data = await _saveTemplate('/api/templates', 'POST', { message: value.message, name: value.name, folder: value.folder || null, images });
     if (!data.ok) throw new Error(data.error || 'บันทึกไม่สำเร็จ');
     await Swal.fire({ icon: 'success', title: 'บันทึกแล้ว!', timer: 1200, showConfirmButton: false });
     openTemplateModal();
@@ -1011,6 +1039,9 @@ async function openEditTpl(id) {
         <label style="font-size:.82rem;color:#65676b;display:block;margin:.55rem 0 .3rem">ชื่อ Template:</label>
         <input id="etName" type="text" value="${t.name||''}"
           style="width:100%;padding:.48rem .75rem;border:1.5px solid #dbe0e6;border-radius:8px;font-family:inherit;font-size:.84rem;outline:none;box-sizing:border-box">
+        <label style="font-size:.82rem;color:#65676b;display:block;margin:.55rem 0 .3rem">📁 Folder (ไม่บังคับ):</label>
+        <input id="etFolder" type="text" value="${t.folder||''}" placeholder="เช่น 001, ชุดโปรโมชั่น"
+          style="width:100%;padding:.48rem .75rem;border:1.5px solid #dbe0e6;border-radius:8px;font-family:inherit;font-size:.84rem;outline:none;box-sizing:border-box">
         <label style="font-size:.82rem;color:#65676b;display:block;margin:.55rem 0 .3rem">
           รูปภาพ (สูงสุด 10 รูป):
           ${(t.images||[]).length ? `<span style="margin-left:.4rem;background:#e7f3ff;color:#1877f2;padding:.1rem .5rem;border-radius:4px;font-size:.75rem"><i class="fa-solid fa-image"></i> มีอยู่แล้ว ${t.images.length} รูป</span>` : ''}
@@ -1047,7 +1078,7 @@ async function openEditTpl(id) {
     preConfirm: () => {
       const msg = document.getElementById('etMsg')?.value.trim();
       if (!msg) { Swal.showValidationMessage('กรุณากรอกข้อความ'); return false; }
-      return { message: msg, name: document.getElementById('etName')?.value.trim() || '' };
+      return { message: msg, name: document.getElementById('etName')?.value.trim() || '', folder: document.getElementById('etFolder')?.value.trim() || '' };
     },
   });
 
@@ -1062,7 +1093,7 @@ async function openEditTpl(id) {
     const images = [..._etKeep, ...newFilenames];
     _etKeep = []; _etNew = [];
 
-    const data = await _saveTemplate(`/api/templates/${id}`, 'PUT', { message: value.message, name: value.name, images });
+    const data = await _saveTemplate(`/api/templates/${id}`, 'PUT', { message: value.message, name: value.name, folder: value.folder || null, images });
     if (!data.ok) throw new Error(data.error || 'บันทึกไม่สำเร็จ');
 
     const idx = _templates.findIndex(x => x.id === id);

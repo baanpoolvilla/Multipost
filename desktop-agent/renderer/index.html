@@ -257,11 +257,21 @@
 
       <div class="fb-divider"></div>
 
+      <!-- Schedule row -->
+      <div style="display:flex;align-items:center;gap:.5rem;padding:.35rem .6rem;background:rgba(255,200,0,.07);border:1px solid rgba(255,200,0,.2);border-radius:7px;margin-bottom:.4rem">
+        <span style="font-size:11px;color:var(--text2);white-space:nowrap">⏰ ตั้งเวลา</span>
+        <input type="datetime-local" id="jobScheduledAt"
+          style="flex:1;background:transparent;border:none;font-size:12px;color:var(--text);font-family:inherit;outline:none;min-width:0">
+        <button onclick="document.getElementById('jobScheduledAt').value=''"
+          style="background:none;border:none;font-size:11px;color:var(--text3);cursor:pointer;padding:0 .2rem" title="ล้างเวลา">✕</button>
+      </div>
+
       <!-- Footer: group count + template save + post button -->
       <div class="fb-footer">
         <span class="fb-count" id="fbGroupCount">เลือกแล้ว 0 กลุ่ม</span>
         <div class="fb-footer-actions">
           <input id="templateName" placeholder="ตั้งชื่อรูปแบบ" class="fb-tpl-input">
+          <input id="templateFolder" placeholder="📁 folder (ไม่บังคับ)" class="fb-tpl-input" style="width:110px">
           <button class="btn btn-secondary" style="padding:.35rem .65rem;font-size:12px;white-space:nowrap" onclick="saveTemplate()">💾 บันทึกเทมเพลต</button>
           <button class="btn btn-primary fb-post-btn" onclick="createJob()">โพส</button>
         </div>

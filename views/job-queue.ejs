@@ -216,6 +216,12 @@
           </div>
         </div>
         <span class="badge <%= statusCls[j.status]||'' %>" style="flex-shrink:0"><%= statusTH[j.status]||j.status %></span>
+        <% if (j.status === 'pending') { %>
+        <button onclick="rescheduleJob('<%= j._id %>', '<%= j.scheduledAt || '' %>')"
+          style="background:none;border:none;cursor:pointer;color:#856404;font-size:.85rem;padding:.1rem .3rem;border-radius:4px" title="แก้ไขเวลาโพส">
+          <i class="fa-solid fa-clock"></i>
+        </button>
+        <% } %>
         <button onclick="deleteJob('<%= j._id %>')" style="background:none;border:none;cursor:pointer;color:#c5c8d0;font-size:1rem;padding:.1rem .3rem;border-radius:4px" title="ลบ">
           <i class="fa-solid fa-trash"></i>
         </button>
@@ -388,6 +394,40 @@ async function submitJob() {
     location.reload();
   } catch(e) {
     Swal.fire({ icon:'error', title:'เกิดข้อผิดพลาด', text:e.message, confirmButtonColor:'#1877f2' });
+  }
+}
+
+async function rescheduleJob(id, currentScheduledAt) {
+  const current = currentScheduledAt
+    ? new Date(currentScheduledAt).toLocaleString('sv-SE', { timeZone: 'Asia/Bangkok' }).slice(0, 16)
+    : '';
+  const { value, isConfirmed } = await Swal.fire({
+    title: '<i class="fa-solid fa-clock" style="color:#856404"></i> แก้ไขเวลาโพส',
+    html: `<div style="text-align:left">
+      <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:.3rem">เวลาที่ต้องการโพส</label>
+      <input id="swal-schedAt" type="datetime-local" value="${current}"
+        style="width:100%;padding:.4rem .6rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none;box-sizing:border-box">
+      <div style="font-size:.75rem;color:#8a8d91;margin-top:.4rem">เว้นว่างไว้เพื่อล้างเวลาที่ตั้งไว้ (จะโพสทันที)</div>
+    </div>`,
+    confirmButtonText: 'บันทึก',
+    confirmButtonColor: '#1877f2',
+    showCancelButton: true,
+    cancelButtonText: 'ยกเลิก',
+    focusConfirm: false,
+    preConfirm: () => document.getElementById('swal-schedAt').value,
+  });
+  if (!isConfirmed) return;
+  try {
+    const scheduledAt = value ? new Date(value + ':00+07:00').toISOString() : null;
+    const r = await fetch(`/api/agent/jobs/${id}/schedule`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scheduledAt }),
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    location.reload();
+  } catch(e) {
+    Swal.fire({ icon:'error', title:'แก้ไขไม่สำเร็จ', text: e.message, confirmButtonColor:'#1877f2' });
   }
 }
 

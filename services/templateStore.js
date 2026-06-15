@@ -9,6 +9,7 @@ function fSave(t) { fs.writeFileSync(FILE, JSON.stringify(t, null, 2), 'utf-8');
 
 const schema = new mongoose.Schema({
     _id: String, name: String, message: String, images: [String], createdAt: String,
+    folder: { type: String, default: null },
 }, { versionKey: false });
 const Template = mongoose.models.Template || mongoose.model('Template', schema);
 
@@ -57,4 +58,12 @@ async function remove(id) {
     }
 }
 
-module.exports = { load, create, update, remove };
+async function listFolders() {
+    try {
+        const templates = await load();
+        const folders = [...new Set(templates.map(t => t.folder).filter(Boolean))].sort();
+        return folders;
+    } catch { return []; }
+}
+
+module.exports = { load, create, update, remove, listFolders };

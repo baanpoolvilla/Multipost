@@ -64,8 +64,9 @@ async function getPublicUrl(filename) {
         const doc = await MediaIndex.findById(filename).lean();
         if (doc?.url) return doc.url;
     } catch {}
-    // Construct Supabase URL if configured (file may already exist in bucket)
-    if (process.env.SUPABASE_URL) return supa.publicUrl(filename);
+    // Don't construct a Supabase URL blindly — the file may only be in MongoDB
+    // (uploaded by Agent as fallback). Returning a guessed URL causes the /uploads
+    // route to redirect to a 404 instead of falling back to MongoDB base64.
     return null;
 }
 

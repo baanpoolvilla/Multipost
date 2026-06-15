@@ -85,10 +85,24 @@ async function statsByDateRange(fromDate, toDate) {
         const jobs = await GroupJob.find(q).lean();
         return {
             total:   jobs.length,
-            success: jobs.reduce((s, j) => s + (j.successCount || 0), 0),
-            fail:    jobs.reduce((s, j) => s + (j.failCount    || 0), 0),
+            success: jobs.reduce((s, j) => s + (j.results || []).filter(r => r.status === 'success').length, 0),
+            fail:    jobs.reduce((s, j) => s + (j.results || []).filter(r => r.status === 'failed').length, 0),
         };
     } catch { return { total: 0, success: 0, fail: 0 }; }
 }
 
-module.exports = { list, create, remove, listHistory, deleteHistory, getById, statsByDateRange };
+async function updateOne(id, data) {
+    try {
+        await connect();
+        return GroupJob.findByIdAndUpdate(id, { $set: data }, { new: true }).lean();
+    } catch { return null; }
+}
+
+async function listScheduled() {
+    try {
+        await connect();
+        return GroupJob.find({ status: 'pending', scheduledAt: { $ne: null } }).sort({ scheduledAt: 1 }).lean();
+    } catch { return []; }
+}
+
+module.exports = { list, create, remove, listHistory, deleteHistory, getById, statsByDateRange, updateOne, listScheduled };

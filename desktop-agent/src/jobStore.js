@@ -153,6 +153,10 @@ async function getCompletedJobs() {
     } catch { return []; }
 }
 
+async function rescheduleJob(id, scheduledAt) {
+    return updateJob(id, { scheduledAt: scheduledAt || null });
+}
+
 function _s(j) { return j ? { ...j, _id: j._id?.toString?.()??j._id } : j; }
 
-module.exports = { connect, isDbConnected, setDataPath, getAllGroups, getRecentPosts, createJob, getJobs, getPendingJobs, updateJob, deleteJob, deleteAllJobs, getCompletedJobs };
+module.exports = { connect, isDbConnected, setDataPath, getAllGroups, getRecentPosts, createJob, getJobs, getPendingJobs, updateJob, deleteJob, deleteAllJobs, getCompletedJobs, rescheduleJob };

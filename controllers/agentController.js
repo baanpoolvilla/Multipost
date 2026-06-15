@@ -140,6 +140,35 @@ exports.deleteJob = async (req, res) => {
     res.json({ success: !!job });
 };
 
+exports.rescheduleJob = async (req, res) => {
+    const { scheduledAt } = req.body;
+    try {
+        const schedDate = scheduledAt ? new Date(scheduledAt) : null;
+        if (schedDate && isNaN(schedDate.getTime())) return res.status(400).json({ error: 'วันเวลาไม่ถูกต้อง' });
+        const job = await groupJobStore.updateOne(req.params.id, {
+            scheduledAt: schedDate ? schedDate.toISOString() : null,
+        });
+        res.json({ ok: !!job, job });
+    } catch(e) {
+        res.status(500).json({ error: e.message });
+    }
+};
+
+exports.listScheduledJobs = async (req, res) => {
+    try {
+        const jobs = await groupJobStore.listScheduled();
+        const now  = new Date();
+        const enriched = jobs.map(j => ({
+            ...j,
+            _id: String(j._id),
+            isOverdue: j.scheduledAt && new Date(j.scheduledAt) < now,
+        }));
+        res.json(enriched);
+    } catch(e) {
+        res.status(500).json({ error: e.message });
+    }
+};
+
 // ── Group History page ─────────────────────────────────────────
 exports.showGroupHistory = async (req, res) => {
     const [jobs, groups, dbCategories] = await Promise.all([
@@ -196,7 +225,42 @@ exports.getCombinedStats = async (req, res) => {
         // Group posts
         const groupStats = await groupJobStore.statsByDateRange(fromDate, toDate);
 
-        res.json({ ok: true, pageStats, groupStats });
+        // Top 5 pages by post count
+        const pageCounts = {};
+        posts.forEach(p => {
+            (p.results || []).forEach(r => {
+                const key = r.pageId || r.pageName || 'ไม่ทราบเพจ';
+                if (!pageCounts[key]) pageCounts[key] = { name: r.pageName || r.pageId || 'ไม่ทราบ', success: 0, fail: 0 };
+                if (r.status === 'published' || r.status === 'success') pageCounts[key].success++;
+                else pageCounts[key].fail++;
+            });
+        });
+        const topPages = Object.values(pageCounts)
+            .sort((a, b) => (b.success + b.fail) - (a.success + a.fail))
+            .slice(0, 5);
+
+        // Top 5 groups by share count
+        const grpJobs = await groupJobStore.listHistory();
+        const filteredGrpJobs = grpJobs.filter(j => {
+            const t = new Date(j.createdAt).getTime();
+            if (fromDate && t < fromDate.getTime()) return false;
+            if (toDate   && t > toDate.getTime())   return false;
+            return true;
+        });
+        const grpCounts = {};
+        filteredGrpJobs.forEach(j => {
+            (j.results || []).forEach(r => {
+                const key = r.groupId || r.groupName || 'ไม่ทราบ';
+                if (!grpCounts[key]) grpCounts[key] = { name: r.groupName || r.groupId || 'ไม่ทราบ', success: 0, fail: 0 };
+                if (r.status === 'success') grpCounts[key].success++;
+                else grpCounts[key].fail++;
+            });
+        });
+        const topGroups = Object.values(grpCounts)
+            .sort((a, b) => (b.success + b.fail) - (a.success + a.fail))
+            .slice(0, 5);
+
+        res.json({ ok: true, pageStats, groupStats, topPages, topGroups });
     } catch (e) {
         res.status(500).json({ ok: false, error: e.message });
     }
