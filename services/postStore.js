@@ -76,10 +76,12 @@ async function getDueScheduled() {
     const now = new Date().toISOString();
     try {
         await connect();
-        const posts = await Post.find({ status: 'scheduled', scheduledAt: { $lte: now } }).lean();
+        const posts = await Post.find({ status: 'scheduled', scheduledAt: { $lte: now } }).sort({ scheduledAt: 1 }).lean();
         return posts.map(p => ({ ...p, id: p._id }));
     } catch {
-        return fLoad().filter(p => p.status === 'scheduled' && p.scheduledAt && p.scheduledAt <= now);
+        return fLoad()
+            .filter(p => p.status === 'scheduled' && p.scheduledAt && p.scheduledAt <= now)
+            .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
     }
 }
 

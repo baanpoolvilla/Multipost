@@ -128,14 +128,21 @@ async function getJobs() {
     } catch { return fLoad().reverse().slice(0,100); }
 }
 
+// Effective "due time" of a job: its scheduledAt if set, otherwise it was due as soon as created.
+function _dueTime(j) { return new Date(j.scheduledAt || j.createdAt).getTime(); }
+function _byDueTime(a, b) { return _dueTime(a) - _dueTime(b); }
+
 async function getPendingJobs() {
     try {
         await connect();
         const now = new Date().toISOString();
-        return (await Job.find({ status:'pending', $or:[{ scheduledAt:null }, { scheduledAt:{ $lte: now } }] }).sort({ createdAt:1 }).lean()).map(_s);
+        const jobs = (await Job.find({ status:'pending', $or:[{ scheduledAt:null }, { scheduledAt:{ $lte: now } }] }).lean()).map(_s);
+        return jobs.sort(_byDueTime);
     } catch {
         const now = Date.now();
-        return fLoad().filter(j => j.status==='pending' && (!j.scheduledAt || new Date(j.scheduledAt).getTime() <= now));
+        return fLoad()
+            .filter(j => j.status==='pending' && (!j.scheduledAt || new Date(j.scheduledAt).getTime() <= now))
+            .sort(_byDueTime);
     }
 }
 
