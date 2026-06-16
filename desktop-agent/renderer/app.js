@@ -25,6 +25,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     try { loadGroups(); } catch {}
     _statusInterval = setInterval(() => { refreshStatus().catch(()=>{}); }, 5000);
     checkScheduledNotifications();
+    checkExpiredJobsBanner();
 
     let _jobRefreshing = false;
     setInterval(async () => {
@@ -40,9 +41,10 @@ window.addEventListener('DOMContentLoaded', async () => {
                 if (i !== -1) { if (_jobs[i].status !== j.status) { _jobs[i] = j; changed = true; } }
                 else { _jobs.unshift(j); changed = true; }
             });
-            // Remove pending/running jobs that left the server; keep done/failed visible
+            // Remove pending/running jobs that left the server; keep terminal-state jobs visible
+            const TERMINAL = ['success', 'failed', 'expired', 'cancelled'];
             const before = _jobs.length;
-            _jobs = _jobs.filter(j => j.status === 'done' || j.status === 'failed' || freshIds.has(j._id));
+            _jobs = _jobs.filter(j => TERMINAL.includes(j.status) || freshIds.has(j._id));
             if (_jobs.length !== before) changed = true;
             if (changed) renderJobs();
         } catch {} finally { _jobRefreshing = false; }
@@ -498,13 +500,13 @@ function renderJobs() {
     if (bulkBar && _jobFilter!=='scheduled') bulkBar.style.display='none';
 
     if (!filtered.length) { el.innerHTML='<div class="empty-state">ยังไม่มีรายการโพส</div>'; return; }
-    const icons = { pending:'⏳', running:'🔄', done:'✅', failed:'❌' };
+    const icons = { pending:'⏳', running:'🔄', success:'✅', failed:'❌', expired:'⏰', cancelled:'🚫' };
     const shown = filtered.slice(0, _jobsVisible);
     let html = shown.map(j=>{
         const ok  = (j.results||[]).filter(r=>r.status==='success').length;
         const tot = j.groups?.length||0;
         const pageTag = j.postAsPage ? ` · 🏢 ${esc(j.postAsPage)}` : '';
-        const meta = (j.status==='done'||j.status==='failed') ? `${ok}/${tot} กลุ่ม${pageTag}` : `${tot} กลุ่ม · ${j.delaySeconds}s${pageTag}`;
+        const meta = (j.status==='success'||j.status==='failed') ? `${ok}/${tot} กลุ่ม${pageTag}` : `${tot} กลุ่ม · ${j.delaySeconds}s${pageTag}`;
         const { display, modeTag } = _parseJobMsg(j.message);
         const imgBadge = (j.images||[]).length > 0 ? `<span style="font-size:10px;background:#e7f3ff;color:#1877f2;border-radius:4px;padding:.05rem .4rem;margin-left:.3rem">📸 ${j.images.length}</span>` : '';
         const now = new Date();
@@ -514,7 +516,8 @@ function renderJobs() {
             const label = fmtDate(j.scheduledAt);
             return `<span style="font-size:10px;background:${overdue?'#fde8e8':'#fff3cd'};color:${overdue?'#c62828':'#856404'};border-radius:4px;padding:.05rem .4rem;margin-left:.3rem">${overdue?'⚠️':'⏰'} ${label}</span>`;
         })() : '';
-        const reschedBtn = j.status === 'pending' ? `<button onclick="agentReschedule('${j._id}','${j.scheduledAt||''}')" style="background:none;border:none;cursor:pointer;font-size:13px;padding:.1rem .2rem" title="แก้ไขเวลา">🕐</button>` : '';
+        const reschedBtn = (j.status === 'pending' || j.status === 'expired') ? `<button onclick="agentReschedule('${j._id}','${j.scheduledAt||''}')" style="background:none;border:none;cursor:pointer;font-size:13px;padding:.1rem .2rem" title="${j.status==='expired'?'เลื่อนเวลา (ใช้ได้ทันที)':'แก้ไขเวลา'}">🕐</button>` : '';
+        const retryBtn = j.status === 'failed' ? `<button onclick="retryJobAgent('${j._id}')" style="background:none;border:none;cursor:pointer;font-size:13px;padding:.1rem .2rem" title="ลองใหม่">🔁</button>` : '';
         const selCb = (_jobFilter==='scheduled' && j.status==='pending' && j.scheduledAt)
             ? `<input type="checkbox" class="jqAgentSelCb" data-id="${j._id}" onchange="updateAgentJqSelection()" style="accent-color:#856404;cursor:pointer;width:15px;height:15px;margin-right:.2rem">`
             : '';
@@ -527,6 +530,7 @@ function renderJobs() {
           </div>
           <span class="job-status ${j.status}">${statusJobTH(j.status)}</span>
           ${reschedBtn}
+          ${retryBtn}
           <button class="job-del" onclick="deleteJob('${j._id}')">🗑</button>
         </div>`;
     }).join('');
@@ -762,6 +766,18 @@ async function deleteJob(id) {
     await agent.deleteJob(id);
     _jobs = _jobs.filter(j=>j._id!==id);
     renderJobs();
+}
+
+async function retryJobAgent(id) {
+    try {
+        const job = await agent.retryJob(id);
+        const i = _jobs.findIndex(j=>j._id===id);
+        if (i!==-1 && job) _jobs[i] = job;
+        renderJobs();
+        appendLog(`[🔁] นำงาน ${id.slice(-6)} เข้าคิวใหม่แล้ว`);
+    } catch(e) {
+        alert('ลองใหม่ไม่สำเร็จ: ' + e.message);
+    }
 }
 
 async function agentReschedule(id, currentScheduledAt) {
@@ -1179,9 +1195,9 @@ function renderHistory() {
         const ok  = (j.results||[]).filter(r => r.status === 'success').length;
         const tot = (j.groups||[]).length;
         const fail = tot - ok;
-        const done = j.status === 'done';
+        const done = j.status === 'success';
         const icon = done ? '✅' : '❌';
-        const statusCls = done ? 'done' : 'failed';
+        const statusCls = done ? 'done' : 'failed'; // CSS class names kept as-is (style.css)
         const statusTH  = done ? 'สำเร็จ' : 'ล้มเหลว';
         const msg = (j.message||'');
         const display = msg.includes('|||') ? msg.slice(0, msg.indexOf('|||')).trim() || msg.slice(msg.indexOf('|||')+3).trim() : msg;
@@ -1273,7 +1289,7 @@ function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').rep
 function fmtDate(iso){ try{ return new Date(iso).toLocaleString('th-TH',{timeZone:'Asia/Bangkok',hour12:false,dateStyle:'short',timeStyle:'short'}); }catch{return iso||'';} }
 function fmtUptime(s){ if(!s)return'—'; const h=Math.floor(s/3600),m=Math.floor((s%3600)/60); return h?`${h}h ${m}m`:`${m}m`; }
 function statusAccTH(s){ return {logged_in:'เข้าสู่ระบบแล้ว',logged_out:'ออกจากระบบ',error:'มีข้อผิดพลาด'}[s]||s; }
-function statusJobTH(s){ return {pending:'รอดำเนินการ',running:'กำลังโพส',done:'สำเร็จ',failed:'ล้มเหลว'}[s]||s; }
+function statusJobTH(s){ return {pending:'รอดำเนินการ',running:'กำลังโพส',success:'สำเร็จ',failed:'ล้มเหลว',expired:'หมดเวลา',cancelled:'ยกเลิก'}[s]||s; }
 
 // ── Scheduled job notifications ───────────────────────────────
 let _notifiedOverdue = new Set();
@@ -1314,4 +1330,43 @@ async function checkScheduledNotifications() {
 
     // Re-check every 60s for overdue
     setTimeout(checkScheduledNotifications, 60000);
+}
+
+// ── Expired job banner (Part 10) ────────────────────────────────
+// Jobs that fell into 'expired' (overdue past the grace window while the
+// Agent was offline) never auto-post — surface them so the user notices.
+async function checkExpiredJobsBanner() {
+    try {
+        const expired = await agent.getExpiredJobs();
+        const existing = document.getElementById('expiredBanner');
+        if (!expired || !expired.length) {
+            existing?.remove();
+        } else if (existing) {
+            existing.querySelector('span').textContent = `มีงานหมดเวลา ${expired.length} งาน — ระบบไม่โพสให้อัตโนมัติ`;
+        } else {
+            const b = document.createElement('div');
+            b.id = 'expiredBanner';
+            b.style.cssText = 'background:#fde8e8;border:1px solid #f5b5b5;border-radius:8px;padding:.5rem .85rem;margin:.4rem 0;font-size:12px;color:#c62828;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap';
+            b.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i>
+              <span>มีงานหมดเวลา ${expired.length} งาน — ระบบไม่โพสให้อัตโนมัติ</span>
+              <button onclick="document.querySelector('.nav-item[data-tab=\\'jobs\\']')?.click(); filterJobs(document.querySelector('[data-filter=expired]'), 'expired')"
+                style="background:#c62828;color:#fff;border:none;border-radius:5px;padding:.2rem .5rem;font-size:11px;cursor:pointer;font-family:inherit">ดูคิว</button>
+              <button onclick="deleteAllExpiredJobs()" style="background:none;border:1px solid #c62828;color:#c62828;border-radius:5px;padding:.18rem .5rem;font-size:11px;cursor:pointer;font-family:inherit">ลบทั้งหมด</button>`;
+            const logEl = document.getElementById('agentLog') || document.querySelector('.log-panel');
+            if (logEl) logEl.parentNode.insertBefore(b, logEl);
+        }
+    } catch {}
+
+    // Re-check every 60s regardless of outcome above
+    setTimeout(checkExpiredJobsBanner, 60000);
+}
+
+async function deleteAllExpiredJobs() {
+    const expired = await agent.getExpiredJobs().catch(() => []);
+    if (!expired.length) return;
+    if (!confirm(`ลบงานหมดเวลาทั้งหมด ${expired.length} รายการ? ลบแล้วกู้คืนไม่ได้`)) return;
+    await Promise.all(expired.map(j => agent.deleteJob(j._id).catch(() => {})));
+    _jobs = _jobs.filter(j => j.status !== 'expired');
+    renderJobs();
+    document.getElementById('expiredBanner')?.remove();
 }

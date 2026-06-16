@@ -745,6 +745,9 @@ let _tplSelected      = null;
 let _tplLoadedImages  = [];   // filenames from loaded template (sent as templateImages on submit)
 let _tplNewFiles      = [];   // files picked inside create-template Swal
 let _tplFolderFilter  = '';   // '' = all, 'FOLDER_NAME' = specific folder
+let _tplMultiMode     = false;
+let _tplMultiSelected = new Set();
+let _tplDragId        = null; // currently dragged template id (list view reorder)
 
 function renderTplImagePreviews() {
   const el = document.getElementById('tplImagePreview');
@@ -923,6 +926,8 @@ function renderTemplates() {
   const query   = (document.getElementById('tplSearchInput')?.value || '').toLowerCase();
   const folders = [...new Set(_templates.map(t => t.folder).filter(Boolean))].sort();
   if (badge) badge.textContent = _templates.length;
+  const selCntEl = document.getElementById('tplSelCount');
+  if (selCntEl) selCntEl.textContent = _tplMultiSelected.size;
 
   // ── Folder card view (root level, no search, folders exist) ──
   if (!_tplFolderFilter && !query && folders.length > 0) {
@@ -986,7 +991,7 @@ function renderTemplates() {
 }
 
 function renderTplCard(t, num) {
-  const sel       = _tplSelected === t.id;
+  const sel       = _tplMultiMode ? _tplMultiSelected.has(t.id) : _tplSelected === t.id;
   const msg       = t.message.length > 90 ? t.message.slice(0, 90) + '…' : t.message;
   const imgs      = (t.images || []);
   const cloudVids = imgs.filter(f => /\.(mp4|mov|avi|webm)$/i.test(f) && f.startsWith('http')).length;
@@ -1026,14 +1031,16 @@ function renderTplCard(t, num) {
 }
 
 function renderTplListRow(t, num) {
-  const sel      = _tplSelected === t.id;
+  const sel      = _tplMultiMode ? _tplMultiSelected.has(t.id) : _tplSelected === t.id;
   const msg      = t.message.length > 110 ? t.message.slice(0, 110) + '…' : t.message;
   const _imgs2     = (t.images||[]);
   const cloudVids2 = _imgs2.filter(f => /\.(mp4|mov|avi|webm)$/i.test(f) && f.startsWith('http')).length;
   const localVids2 = _imgs2.filter(f => /\.(mp4|mov|avi|webm)$/i.test(f) && !f.startsWith('http')).length;
   return `
-    <div onclick="selectTpl('${t.id}')"
+    <div onclick="selectTpl('${t.id}')" draggable="true"
+      ondragstart="tplDragStart('${t.id}')" ondragover="event.preventDefault()" ondrop="tplDragDrop('${t.id}')"
       style="background:#fff;border:2px solid ${sel ? '#1877f2' : '#e4e6eb'};border-radius:8px;padding:.6rem .85rem;cursor:pointer;display:flex;align-items:center;gap:.65rem;transition:border-color .12s">
+      <i class="fa-solid fa-grip-vertical" style="color:#ccc;cursor:grab;flex-shrink:0" title="ลากเพื่อเรียงลำดับใหม่"></i>
       ${sel
         ? `<i class="fa-solid fa-circle-check" style="color:#1877f2;flex-shrink:0;font-size:.95rem"></i>`
         : `<i class="fa-regular fa-circle" style="color:#e4e6eb;flex-shrink:0;font-size:.95rem"></i>`}
@@ -1052,7 +1059,109 @@ function renderTplListRow(t, num) {
 }
 
 function selectTpl(id) {
+  if (_tplMultiMode) { tplToggleMulti(id); return; }
   _tplSelected = _tplSelected === id ? null : id;
+  renderTemplates();
+}
+
+/* ── Multi-select + bulk folder actions (Part 7) ──
+   "Folder → Add Existing Saved Posts → Multi Select → Add Into Folder" */
+function toggleTplMultiSelect() {
+  _tplMultiMode = !_tplMultiMode;
+  _tplMultiSelected.clear();
+  const bar = document.getElementById('tplBulkBar');
+  const btn = document.getElementById('tplMultiBtn');
+  if (bar) bar.style.display = _tplMultiMode ? 'flex' : 'none';
+  if (btn) { btn.style.background = _tplMultiMode ? '#1877f2' : '#333'; btn.style.color = _tplMultiMode ? '#fff' : '#aaa'; }
+  renderTemplates();
+}
+
+function tplToggleMulti(id) {
+  if (_tplMultiSelected.has(id)) _tplMultiSelected.delete(id); else _tplMultiSelected.add(id);
+  const cnt = document.getElementById('tplSelCount');
+  if (cnt) cnt.textContent = _tplMultiSelected.size;
+  renderTemplates();
+}
+
+function tplSelectAll() {
+  const query   = (document.getElementById('tplSearchInput')?.value || '').toLowerCase();
+  const visible = _templates.filter(t => {
+    if (_tplFolderFilter && t.folder !== _tplFolderFilter) return false;
+    return !query || t.message.toLowerCase().includes(query) || (t.name||'').toLowerCase().includes(query);
+  });
+  visible.forEach(t => _tplMultiSelected.add(t.id));
+  renderTemplates();
+}
+
+async function tplBulkMove() {
+  if (!_tplMultiSelected.size) return;
+  const folders = [...new Set(_templates.map(t => t.folder).filter(Boolean))].sort();
+  const { value: folder, isConfirmed } = await Swal.fire({
+    title: `เพิ่ม ${_tplMultiSelected.size} รายการเข้าโฟลเดอร์`,
+    html: `<div style="text-align:left">
+      <label style="font-size:.82rem;color:#65676b;display:block;margin-bottom:.3rem">เลือกโฟลเดอร์ที่มีอยู่ หรือพิมพ์ชื่อใหม่</label>
+      <input id="swal-tplFolder" list="swal-tplFolderList" placeholder="เช่น 001, ชุดโปรโมชั่น"
+        style="width:100%;padding:.5rem .65rem;border:1.5px solid #dbe0e6;border-radius:8px;font-family:inherit;font-size:.86rem;box-sizing:border-box">
+      <datalist id="swal-tplFolderList">${folders.map(f=>`<option value="${f}">`).join('')}</datalist>
+    </div>`,
+    showCancelButton: true, confirmButtonText: 'เพิ่มเข้าโฟลเดอร์', cancelButtonText: 'ยกเลิก', confirmButtonColor: '#1877f2',
+    focusConfirm: false,
+    preConfirm: () => document.getElementById('swal-tplFolder').value.trim(),
+  });
+  if (!isConfirmed || !folder) return;
+  try {
+    const r = await fetch('/api/templates/bulk-move', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ids:[..._tplMultiSelected], folder }) });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
+    _templates = data.templates;
+    toggleTplMultiSelect();
+    Swal.fire({ icon:'success', title:'เพิ่มเข้าโฟลเดอร์แล้ว', timer:1300, showConfirmButton:false });
+  } catch(e) { Swal.fire({ icon:'error', title:'ทำไม่สำเร็จ', text:e.message }); }
+}
+
+async function tplBulkRemoveFromFolder() {
+  if (!_tplMultiSelected.size) return;
+  try {
+    const r = await fetch('/api/templates/bulk-move', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ids:[..._tplMultiSelected], folder: null }) });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
+    _templates = data.templates;
+    toggleTplMultiSelect();
+  } catch(e) { Swal.fire({ icon:'error', title:'ทำไม่สำเร็จ', text:e.message }); }
+}
+
+async function tplBulkDelete() {
+  if (!_tplMultiSelected.size) return;
+  const { isConfirmed } = await Swal.fire({ icon:'warning', title:`ลบ ${_tplMultiSelected.size} รายการ?`, text:'ลบแล้วกู้คืนไม่ได้', showCancelButton:true, confirmButtonText:'ลบ', confirmButtonColor:'#c62828', cancelButtonText:'ยกเลิก' });
+  if (!isConfirmed) return;
+  try {
+    const r = await fetch('/api/templates/bulk-delete', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ids:[..._tplMultiSelected] }) });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
+    _templates = data.templates;
+    toggleTplMultiSelect();
+  } catch(e) { Swal.fire({ icon:'error', title:'ทำไม่สำเร็จ', text:e.message }); }
+}
+
+/* ── Drag & Drop Reorder (list view) ── */
+function tplDragStart(id) { _tplDragId = id; }
+async function tplDragDrop(targetId) {
+  if (!_tplDragId || _tplDragId === targetId) return;
+  const query   = (document.getElementById('tplSearchInput')?.value || '').toLowerCase();
+  const visible = _templates.filter(t => {
+    if (_tplFolderFilter && t.folder !== _tplFolderFilter) return false;
+    return !query || t.message.toLowerCase().includes(query) || (t.name||'').toLowerCase().includes(query);
+  });
+  const ids = visible.map(t => t.id);
+  const from = ids.indexOf(_tplDragId), to = ids.indexOf(targetId);
+  if (from === -1 || to === -1) return;
+  ids.splice(to, 0, ids.splice(from, 1)[0]);
+  _tplDragId = null;
+  try {
+    const r = await fetch('/api/templates/reorder', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ids }) });
+    const data = await r.json();
+    if (r.ok) _templates = data.templates;
+  } catch {}
   renderTemplates();
 }
 

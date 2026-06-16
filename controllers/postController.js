@@ -5,13 +5,15 @@ const pageStore     = require('../services/pageStore');
 const settingsStore = require('../services/settingsStore');
 const templateStore = require('../services/templateStore');
 const groupJobStore = require('../services/groupJobStore');
+const { STATUS }    = require('../desktop-agent/src/scheduler/statuses');
 
 // ── Dashboard ──────────────────────────────────
 exports.showDashboard = async (req, res) => {
+    await postStore.expireOverdueScheduled().catch(() => {});
     const [allPages, posts] = await Promise.all([pageStore.load(), postStore.load()]);
     const pages         = allPages.filter(p => p.enabled !== false);
     const disabledPages = allPages.filter(p => p.enabled === false);
-    const scheduledPosts = posts.filter(p => p.status === 'scheduled').map(p => ({ id: p.id, msg: p.message, at: p.scheduledAt }));
+    const scheduledPosts = posts.filter(p => p.status === STATUS.PENDING).map(p => ({ id: p.id, msg: p.message, at: p.scheduledAt }));
     res.render('dashboard', { pages, disabledPages, recentPosts: posts.slice(0, 5), scheduledPosts });
 };
 
@@ -38,7 +40,7 @@ exports.sendPost = async (req, res) => {
                 message: message.trim(), feeling,
                 location: location || null, images,
                 results: [], successCount: 0, failCount: 0,
-                status: 'scheduled',
+                status: STATUS.PENDING,
                 scheduledAt: schedDate.toISOString(),
                 selectedPageIds: pageIds || null,
             });
@@ -63,36 +65,165 @@ exports.sendPost = async (req, res) => {
         message: message.trim(), feeling,
         location: location || null, images, results,
         successCount, failCount: results.length - successCount,
-        status: 'done',
+        status: STATUS.SUCCESS,
     });
 
     res.json({ id: post.id });
 };
 
 // ── Scheduled post runner (Vercel Cron) ────────
+// Shared by the cron runner and the Schedule Center "Post Now" action —
+// the only place that actually calls sendToPages for a queued post.
+async function executePost(post) {
+    try {
+        await postStore.updateOne(post.id, { status: STATUS.RUNNING });
+        const pageIds  = post.selectedPageIds?.length ? post.selectedPageIds : null;
+        const results  = await sendToPages(post.message, pageIds, post.images || []);
+        const success  = results.filter(r => r.status === 'success').length;
+        return postStore.updateOne(post.id, {
+            status: STATUS.SUCCESS, results,
+            successCount: success, failCount: results.length - success,
+        });
+    } catch (e) {
+        console.error('[scheduler] error:', e.message);
+        return postStore.updateOne(post.id, { status: STATUS.FAILED });
+    }
+}
+
 exports.runAllScheduled = async (req, res) => {
     try {
+        // Part 8/9/11: never auto-post a job that's been overdue past the
+        // grace window — flip it to 'expired' instead, before picking due jobs.
+        await postStore.expireOverdueScheduled();
         const due = await postStore.getDueScheduled();
         let executed = 0;
         for (const post of due) {
-            try {
-                await postStore.updateOne(post.id, { status: 'running' });
-                const pageIds  = post.selectedPageIds?.length ? post.selectedPageIds : null;
-                const results  = await sendToPages(post.message, pageIds, post.images || []);
-                const success  = results.filter(r => r.status === 'success').length;
-                await postStore.updateOne(post.id, {
-                    status: 'done', results,
-                    successCount: success, failCount: results.length - success,
-                });
-                executed++;
-            } catch (e) {
-                console.error('[scheduler] error:', e.message);
-                await postStore.updateOne(post.id, { status: 'failed' });
-            }
+            await executePost(post);
+            executed++;
         }
         res.json({ ok: true, executed });
     } catch (e) {
         res.status(500).json({ ok: false, error: e.message });
+    }
+};
+
+// ── Schedule Center actions ─────────────────────
+exports.editPost = async (req, res) => {
+    try {
+        const { message, scheduledAt, selectedPageIds } = req.body;
+        const patch = {};
+        if (typeof message === 'string' && message.trim()) patch.message = message.trim();
+        if (Array.isArray(selectedPageIds)) patch.selectedPageIds = selectedPageIds;
+        if ('scheduledAt' in req.body) {
+            const d = scheduledAt ? new Date(scheduledAt) : null;
+            if (scheduledAt && isNaN(d?.getTime())) return res.status(400).json({ error: 'วันเวลาไม่ถูกต้อง' });
+            patch.scheduledAt = d ? d.toISOString() : null;
+            patch.status      = d ? STATUS.PENDING : STATUS.CANCELLED;
+            patch.expiredAt   = null;
+        }
+        const post = await postStore.updateOne(req.params.id, patch);
+        if (!post) return res.status(404).json({ error: 'ไม่พบโพส' });
+        res.json({ ok: true, post });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+};
+
+exports.postNowPost = async (req, res) => {
+    try {
+        const post = await postStore.getById(req.params.id);
+        if (!post) return res.status(404).json({ error: 'ไม่พบโพส' });
+        if (![STATUS.PENDING, STATUS.EXPIRED, STATUS.FAILED].includes(post.status)) {
+            return res.status(400).json({ error: 'โพสนี้โพสไปแล้วหรือกำลังโพสอยู่' });
+        }
+        const updated = await executePost({ ...post, scheduledAt: null, expiredAt: null });
+        res.json({ ok: true, post: updated });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+};
+
+exports.cancelPost = async (req, res) => {
+    try {
+        const post = await postStore.getById(req.params.id);
+        if (!post) return res.status(404).json({ error: 'ไม่พบโพส' });
+        if (![STATUS.PENDING, STATUS.EXPIRED].includes(post.status)) {
+            return res.status(400).json({ error: 'ยกเลิกได้เฉพาะโพสที่ยังไม่ได้โพสเท่านั้น' });
+        }
+        const updated = await postStore.updateOne(req.params.id, { status: STATUS.CANCELLED });
+        res.json({ ok: true, post: updated });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+};
+
+exports.listExpiredPosts = async (req, res) => {
+    try {
+        const posts = await postStore.load();
+        res.json(posts.filter(p => p.status === STATUS.EXPIRED));
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+};
+
+// ── Schedule Center: page posts + group jobs in one place ─────
+// (Part 1/2/3/4/5/6 — single combined view; Web posts and Agent group jobs
+// each keep their own storage/execution model, this just merges them for
+// display/filter/calendar/edit so users don't have to check two pages.)
+async function buildScheduleCenterItems() {
+    const groupJobStore = require('../services/groupJobStore');
+    const pageStore     = require('../services/pageStore');
+    const groupStore    = require('../services/groupStore');
+
+    await Promise.all([postStore.expireOverdueScheduled(), groupJobStore.expireOverdueJobs()]);
+
+    const [posts, jobs, pages] = await Promise.all([postStore.load(), groupJobStore.list(), pageStore.load()]);
+    const pageNameMap = {};
+    pages.forEach(p => { pageNameMap[p.pageId] = p.pageName; });
+
+    const pageItems = posts.map(p => ({
+        id: p.id, type: 'page',
+        message: p.message || '',
+        status: p.status || STATUS.SUCCESS,
+        scheduledAt: p.scheduledAt || null,
+        createdAt: p.createdAt,
+        expiredAt: p.expiredAt || null,
+        targetPages: (p.selectedPageIds || []).map(id => pageNameMap[id] || id),
+        targetGroups: [],
+        sourceType: 'web',
+        agentId: null,
+        successCount: p.successCount || 0,
+        failCount: p.failCount || 0,
+    }));
+
+    const groupItems = jobs.map(j => ({
+        id: String(j._id), type: 'group',
+        message: j.message || '',
+        status: j.status || STATUS.PENDING,
+        scheduledAt: j.scheduledAt || null,
+        createdAt: j.createdAt,
+        expiredAt: j.expiredAt || null,
+        targetPages: j.postAsPage ? [j.postAsPage] : [],
+        targetGroups: (j.groups || []).map(g => g.groupName),
+        sourceType: j.sourceType || 'agent',
+        agentId: j.agentId || null,
+        successCount: (j.results || []).filter(r => r.status === 'success').length,
+        failCount: (j.results || []).filter(r => r.status === 'failed').length,
+    }));
+
+    return [...pageItems, ...groupItems].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+}
+
+exports.showScheduleCenter = async (req, res) => {
+    const items = await buildScheduleCenterItems();
+    res.render('schedule-center', { items });
+};
+
+exports.scheduleCenterItems = async (req, res) => {
+    try {
+        res.json(await buildScheduleCenterItems());
+    } catch (e) {
+        res.status(500).json({ error: e.message });
     }
 };
 
@@ -102,7 +233,7 @@ exports.getPostStatus = async (req, res) => {
     if (!post) return res.status(404).json({ error: 'not found' });
     res.json({
         id:           post.id,
-        status:       post.status || 'done',
+        status:       post.status || STATUS.SUCCESS,
         successCount: post.successCount || 0,
         failCount:    post.failCount    || 0,
         total:        (post.results || []).length,
@@ -123,6 +254,7 @@ exports.showHistory = async (req, res) => {
 };
 
 exports.showPostQueue = async (req, res) => {
+    await postStore.expireOverdueScheduled().catch(() => {});
     const [posts, pages] = await Promise.all([postStore.load(), pageStore.load()]);
     res.render('post-queue', { posts, pages });
 };
@@ -214,7 +346,13 @@ exports.reschedulePost = async (req, res) => {
         const { scheduledAt } = req.body;
         const schedDate = scheduledAt ? new Date(scheduledAt) : null;
         if (schedDate && isNaN(schedDate.getTime())) return res.status(400).json({ error: 'วันเวลาไม่ถูกต้อง' });
-        const post = await postStore.updateOne(req.params.id, { scheduledAt: schedDate ? schedDate.toISOString() : null });
+        // Rescheduling (incl. reviving an expired post) always lands back in
+        // 'pending' with expiredAt cleared — never silently re-queued as-is.
+        const post = await postStore.updateOne(req.params.id, {
+            scheduledAt: schedDate ? schedDate.toISOString() : null,
+            status: schedDate ? STATUS.PENDING : STATUS.CANCELLED,
+            expiredAt: null,
+        });
         if (!post) return res.status(404).json({ error: 'ไม่พบโพส' });
         res.json({ ok: true, scheduledAt: post.scheduledAt });
     } catch (e) {
@@ -521,4 +659,29 @@ exports.updateTemplate = async (req, res) => {
 exports.deleteTemplate = async (req, res) => {
     const t = await templateStore.remove(req.params.id);
     res.json({ success: !!t });
+};
+
+// ── Template Folder bulk actions (Part 7) ──────────────────────
+// Add Existing Saved Posts → Multi Select → Add Into Folder, plus
+// Remove / Move / Bulk Add all reduce to the same "set folder on many ids"
+// operation. Drag & Drop Reorder persists the new id order.
+exports.bulkMoveTemplates = async (req, res) => {
+    const { ids, folder } = req.body;
+    if (!Array.isArray(ids) || !ids.length) return res.status(400).json({ error: 'กรุณาเลือกโพสต์อย่างน้อย 1 รายการ' });
+    const templates = await templateStore.bulkSetFolder(ids, folder?.trim() || null);
+    res.json({ ok: true, templates });
+};
+
+exports.bulkDeleteTemplates = async (req, res) => {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || !ids.length) return res.status(400).json({ error: 'กรุณาเลือกโพสต์อย่างน้อย 1 รายการ' });
+    const templates = await templateStore.bulkDelete(ids);
+    res.json({ ok: true, templates });
+};
+
+exports.reorderTemplates = async (req, res) => {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || !ids.length) return res.status(400).json({ error: 'ลำดับไม่ถูกต้อง' });
+    const templates = await templateStore.reorder(ids);
+    res.json({ ok: true, templates });
 };

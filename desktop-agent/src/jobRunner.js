@@ -1,5 +1,6 @@
 const fs         = require('fs');
 const imgStore   = require('./agentImageStore');
+const { STATUS } = require('./scheduler/statuses');
 
 let _store   = null;
 let _bot     = null;
@@ -7,6 +8,8 @@ let _accounts = null;
 let _emit    = null;
 let _running = false;
 let _timer   = null;
+let _lastExpireSweep = 0;
+const EXPIRE_SWEEP_INTERVAL_MS = 30 * 1000; // don't hit the DB on every 3s poll tick
 
 function init(store, bot, accounts, emit) {
     _store    = store;
@@ -17,11 +20,21 @@ function init(store, bot, accounts, emit) {
 
 function isRunning() { return _running; }
 
-function start() {
+async function start() {
     if (_running) return;
     _running = true;
     log('▶ Runner เริ่มทำงาน');
     _emit?.('runner:status', { running: true });
+
+    // Part 9: catch up on expiry BEFORE the queue is ever polled, so a job
+    // that became overdue while the Agent was offline is never posted late.
+    try {
+        await _store.migrateLegacyStatuses?.();
+        const expired = await _store.expireOverdueJobs();
+        if (expired) log(`⏱ พบงานหมดเวลา ${expired} รายการ — ย้ายไปสถานะ "หมดเวลา" (ไม่โพสอัตโนมัติ)`);
+        _lastExpireSweep = Date.now();
+    } catch (e) { log(`⚠️ ตรวจสอบงานหมดเวลาไม่สำเร็จ: ${e.message}`); }
+
     scheduleNext(1000);
 }
 
@@ -46,6 +59,11 @@ function scheduleNext(delay=3000) {
 async function poll() {
     if (!_running) return;
     try {
+        if (Date.now() - _lastExpireSweep > EXPIRE_SWEEP_INTERVAL_MS) {
+            _lastExpireSweep = Date.now();
+            const expired = await _store.expireOverdueJobs();
+            if (expired) log(`⏱ พบงานหมดเวลา ${expired} รายการ — ย้ายไปสถานะ "หมดเวลา" (ไม่โพสอัตโนมัติ)`);
+        }
         const jobs = await _store.getPendingJobs();
         if (jobs.length) await processJob(jobs[0]);
     } catch(e) { log(`❌ Runner error: ${e.message}`); }
@@ -57,8 +75,8 @@ async function processJob(job) {
     log(`📋 เริ่ม Job: "${job.message.slice(0,50)}..."`);
     log(`   ${job.groups.length} กลุ่ม · delay ${job.delaySeconds}s`);
 
-    await _store.updateJob(id, { status:'running' });
-    _emit?.('jobs:updated', { ...job, _id:id, status:'running' });
+    await _store.updateJob(id, { status: STATUS.RUNNING });
+    _emit?.('jobs:updated', { ...job, _id:id, status: STATUS.RUNNING });
 
     // Determine which account to use
     const acc = job.accountId
@@ -67,8 +85,8 @@ async function processJob(job) {
 
     if (!acc) {
         log('❌ ไม่มี account ที่ login อยู่ — หยุด Job');
-        await _store.updateJob(id, { status:'failed', results: [] });
-        _emit?.('jobs:updated', { ...job, _id:id, status:'failed' });
+        await _store.updateJob(id, { status: STATUS.FAILED, results: [] });
+        _emit?.('jobs:updated', { ...job, _id:id, status: STATUS.FAILED });
         return;
     }
 
@@ -143,7 +161,7 @@ async function processJob(job) {
         try { if (p.startsWith(require('os').tmpdir())) fs.unlinkSync(p); } catch {}
     }
 
-    const status = ok>0 ? 'done' : 'failed';
+    const status = ok>0 ? STATUS.SUCCESS : STATUS.FAILED;
     const pageData = sharedPageId ? { pageId: sharedPageId, pageName: job.postAsPage || null } : {};
     await _store.updateJob(id, { status, results, ...pageData });
     _emit?.('jobs:updated', { ...job, _id:id, status, results, ...pageData });

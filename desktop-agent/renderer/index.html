@@ -293,7 +293,7 @@
       <h1>🕐 ประวัติโพส</h1>
       <div class="status-filter" style="margin-left:.5rem">
         <button class="filter-btn active" data-hfilter="all"    onclick="filterHistory(this,'all')">ทั้งหมด</button>
-        <button class="filter-btn"        data-hfilter="done"   onclick="filterHistory(this,'done')">สำเร็จ</button>
+        <button class="filter-btn"        data-hfilter="success" onclick="filterHistory(this,'success')">สำเร็จ</button>
         <button class="filter-btn"        data-hfilter="failed" onclick="filterHistory(this,'failed')">ล้มเหลว</button>
       </div>
       <button class="btn-link ml-auto" onclick="loadHistory()">🔄 อัพเดต</button>
@@ -311,8 +311,9 @@
         <button class="filter-btn active" data-filter="all"     onclick="filterJobs(this,'all')">ทั้งหมด</button>
         <button class="filter-btn"        data-filter="pending" onclick="filterJobs(this,'pending')">รอดำเนินการ</button>
         <button class="filter-btn"        data-filter="running" onclick="filterJobs(this,'running')">กำลังโพส</button>
-        <button class="filter-btn"        data-filter="done"    onclick="filterJobs(this,'done')">สำเร็จ</button>
+        <button class="filter-btn"        data-filter="success" onclick="filterJobs(this,'success')">สำเร็จ</button>
         <button class="filter-btn"        data-filter="failed"  onclick="filterJobs(this,'failed')">ล้มเหลว</button>
+        <button class="filter-btn"        data-filter="expired" onclick="filterJobs(this,'expired')">หมดเวลา</button>
         <button class="filter-btn"        data-filter="scheduled" onclick="filterJobs(this,'scheduled')">⏰ ตั้งเวลาไว้</button>
         <button id="btnAgentTimelineView" class="filter-btn" onclick="toggleAgentTimelineView()">📅 ปฏิทิน</button>
       </div>

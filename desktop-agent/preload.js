@@ -21,6 +21,9 @@ contextBridge.exposeInMainWorld('agent', {
     getRecentPosts:  ()               => ipcRenderer.invoke('jobs:recent-posts'),
     getJobHistory:   ()               => ipcRenderer.invoke('jobs:history'),
     rescheduleJob:   (id, schedAt)    => ipcRenderer.invoke('jobs:reschedule', id, schedAt),
+    getExpiredJobs:  ()               => ipcRenderer.invoke('jobs:expired'),
+    retryJob:        (id)             => ipcRenderer.invoke('jobs:retry', id),
+    cancelJob:       (id)             => ipcRenderer.invoke('jobs:cancel', id),
 
     // Runner
     startRunner:     ()         => ipcRenderer.invoke('runner:start'),

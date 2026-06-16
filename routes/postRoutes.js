@@ -79,6 +79,9 @@ router.get('/api/templates',        ctrl.getTemplates);
 router.post('/api/templates',       ctrl.createTemplate);
 router.put('/api/templates/:id',    ctrl.updateTemplate);
 router.delete('/api/templates/:id', ctrl.deleteTemplate);
+router.post('/api/templates/bulk-move',   ctrl.bulkMoveTemplates);
+router.post('/api/templates/bulk-delete', ctrl.bulkDeleteTemplates);
+router.post('/api/templates/reorder',     ctrl.reorderTemplates);
 
 // Cron / Scheduler
 router.post('/api/cron/run-scheduled', ctrl.runAllScheduled);
@@ -96,6 +99,10 @@ router.get('/group-overview',         agentCtrl.showGroupOverview);
 router.get('/api/stats',              ctrl.overviewStats);
 router.post('/api/refresh-analytics', ctrl.refreshAnalytics);
 router.patch('/posts/:id/reschedule', ctrl.reschedulePost);
+router.patch('/api/posts/:id/edit',     ctrl.editPost);
+router.post('/api/posts/:id/post-now',  ctrl.postNowPost);
+router.post('/api/posts/:id/cancel',    ctrl.cancelPost);
+router.get('/api/posts/expired',        ctrl.listExpiredPosts);
 router.get('/api/daily-summary',      ctrl.dailySummary);
 router.get('/api/check-tokens',       ctrl.checkTokens);
 router.post('/api/exchange-token',    ctrl.exchangeToken);
@@ -171,6 +178,15 @@ router.post('/api/agent/jobs',                  agentCtrl.createJob);
 router.delete('/api/agent/jobs/:id',            agentCtrl.deleteJob);
 router.patch('/api/agent/jobs/:id/schedule',    agentCtrl.rescheduleJob);
 router.get('/api/agent/jobs/scheduled',         agentCtrl.listScheduledJobs);
+router.get('/api/agent/jobs/expired',           agentCtrl.listExpiredJobs);
+router.post('/api/agent/jobs/:id/retry',        agentCtrl.retryJob);
+router.post('/api/agent/jobs/:id/cancel',       agentCtrl.cancelJob);
+router.patch('/api/agent/jobs/:id/edit',        agentCtrl.editJob);
+router.post('/api/agent/jobs/:id/post-now',     agentCtrl.postNowJob);
+
+// Schedule Center (unified calendar — page posts + group jobs)
+router.get('/schedule-center',          ctrl.showScheduleCenter);
+router.get('/api/schedule-center/items', ctrl.scheduleCenterItems);
 
 // Category API
 router.post('/api/agent/categories',         agentCtrl.addCategory);

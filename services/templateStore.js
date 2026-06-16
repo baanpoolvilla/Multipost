@@ -10,15 +10,19 @@ function fSave(t) { fs.writeFileSync(FILE, JSON.stringify(t, null, 2), 'utf-8');
 const schema = new mongoose.Schema({
     _id: String, name: String, message: String, images: [String], createdAt: String,
     folder: { type: String, default: null },
+    order:  { type: Number, default: 0 }, // drag-and-drop manual order within a folder
 }, { versionKey: false });
 const Template = mongoose.models.Template || mongoose.model('Template', schema);
 
 async function load() {
     try {
         await connect();
-        const docs = await Template.find().sort({ createdAt: -1 }).lean();
+        // order ascending first (drag-and-drop position), createdAt desc as
+        // the tiebreaker — every template starts at order:0, so until the
+        // user actually reorders something this is just "newest first" as before.
+        const docs = await Template.find().sort({ order: 1, createdAt: -1 }).lean();
         return docs.map(d => ({ ...d, id: d._id }));
-    } catch { return fLoad(); }
+    } catch { return fLoad().sort((a,b) => (a.order||0)-(b.order||0)); }
 }
 
 async function create(data) {
@@ -66,4 +70,44 @@ async function listFolders() {
     } catch { return []; }
 }
 
-module.exports = { load, create, update, remove, listFolders };
+// Bulk Add / Move / Remove (Part 7) — re-assign many already-saved
+// templates to a folder (or null to remove from any folder) in one go,
+// instead of opening each one's edit modal to retype the folder name.
+async function bulkSetFolder(ids, folder) {
+    try {
+        await connect();
+        await Template.updateMany({ _id: { $in: ids } }, { $set: { folder: folder || null } });
+    } catch {
+        const list = fLoad();
+        list.forEach(t => { if (ids.includes(t.id)) t.folder = folder || null; });
+        fSave(list);
+    }
+    return load();
+}
+
+async function bulkDelete(ids) {
+    try {
+        await connect();
+        await Template.deleteMany({ _id: { $in: ids } });
+    } catch {
+        const list = fLoad().filter(t => !ids.includes(t.id));
+        fSave(list);
+    }
+    return load();
+}
+
+// Drag & Drop Reorder — orderedIds is the full list of ids within a
+// folder (or root) in the new display order.
+async function reorder(orderedIds) {
+    try {
+        await connect();
+        await Promise.all(orderedIds.map((id, i) => Template.findByIdAndUpdate(id, { $set: { order: i } })));
+    } catch {
+        const list = fLoad();
+        orderedIds.forEach((id, i) => { const t = list.find(x => x.id === id); if (t) t.order = i; });
+        fSave(list);
+    }
+    return load();
+}
+
+module.exports = { load, create, update, remove, listFolders, bulkSetFolder, bulkDelete, reorder };

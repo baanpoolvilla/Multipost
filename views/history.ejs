@@ -26,6 +26,8 @@
 <div class="page-wrap">
 
   <aside class="sidebar">
+    <a href="/schedule-center" class="sidebar-item"><i class="fa-solid fa-calendar-days"></i><span>Schedule Center</span></a>
+    <div class="sidebar-divider"></div>
         <div class="sidebar-label">โพสลงเพจ</div>
     <a href="/" class="sidebar-item"><i class="fa-solid fa-pen-to-square"></i><span>โพสใหม่</span></a>
     <a href="/overview" class="sidebar-item"><i class="fa-solid fa-chart-line"></i><span>ภาพรวม</span></a>
@@ -194,7 +196,7 @@
 
     <% const colors = ['purple','green','orange','blue','red']; %>
     <% posts.forEach(post => { %>
-    <% const isScheduled = post.status === 'scheduled'; %>
+    <% const isScheduled = post.status === 'pending'; %>
     <div class="card history-card" id="card-<%= post.id %>">
 
       <!-- Card header -->
@@ -376,10 +378,10 @@
   const _hPosts = <%- JSON.stringify(posts.map(p => ({
     id:      p.id,
     msg:     p.message || '',
-    at:      p.status === 'scheduled' ? p.scheduledAt : p.createdAt,
+    at:      p.status === 'pending' ? p.scheduledAt : p.createdAt,
     success: p.successCount || 0,
     fail:    p.failCount || 0,
-    status:  p.status || 'done',
+    status:  p.status || 'success',
     pages:   (p.results || []).map(r => r.pageName)
   }))) %>;
 
@@ -426,7 +428,7 @@
       if (q  && !p.msg.toLowerCase().includes(q))       ok = false;
       if (st === 'success'   && p.fail > 0)              ok = false;
       if (st === 'partial'   && p.fail === 0)            ok = false;
-      if (st === 'scheduled' && p.status !== 'scheduled') ok = false;
+      if (st === 'scheduled' && p.status !== 'pending') ok = false;
       const postDate = new Date(p.at);
       const postTs   = postDate.getTime();
       if (fromTs !== null && postTs < fromTs)       ok = false;
@@ -591,7 +593,7 @@
 
   // ── Scheduled post polling + auto-trigger ──────────────────
   (function() {
-    const scheduled = _hPosts.filter(p => p.status === 'scheduled');
+    const scheduled = _hPosts.filter(p => p.status === 'pending');
     if (!scheduled.length) return;
 
     let pollTimer = null;
@@ -609,13 +611,13 @@
         try {
           const r = await fetch(`/api/post/${p.id}/status`);
           const d = await r.json();
-          if (d.status && d.status !== 'scheduled') {
+          if (d.status && d.status !== 'pending') {
             anyChanged = true;
             const card = document.getElementById('card-' + p.id);
             if (card) {
               const badge = card.querySelector('.fb-post-author span[style*="fff3cd"]');
               if (badge) {
-                if (d.status === 'done') {
+                if (d.status === 'success') {
                   badge.style.background = '#d1e7dd';
                   badge.style.color = '#0a3622';
                   badge.innerHTML = '<i class="fa-solid fa-check" style="font-size:.65rem"></i> โพสแล้ว';
@@ -623,10 +625,14 @@
                   badge.style.background = '#f8d7da';
                   badge.style.color = '#842029';
                   badge.innerHTML = '<i class="fa-solid fa-xmark" style="font-size:.65rem"></i> ล้มเหลว';
+                } else if (d.status === 'expired') {
+                  badge.style.background = '#f8d7da';
+                  badge.style.color = '#842029';
+                  badge.innerHTML = '<i class="fa-solid fa-clock" style="font-size:.65rem"></i> หมดเวลา — ไม่ได้โพส';
                 }
               }
               const actions = card.querySelector('.history-actions');
-              if (actions && d.status === 'done' && !actions.querySelector('a[href*="/result/"]')) {
+              if (actions && d.status === 'success' && !actions.querySelector('a[href*="/result/"]')) {
                 const a = document.createElement('a');
                 a.href = `/result/${p.id}`;
                 a.style = 'display:inline-flex;align-items:center;gap:.28rem;background:#e7f0fd;color:#1877f2;border:none;border-radius:7px;padding:.28rem .65rem;font-size:.78rem;font-weight:700;text-decoration:none';
@@ -639,7 +645,7 @@
           }
         } catch {}
       }
-      const stillPending = scheduled.filter(p => p.status === 'scheduled');
+      const stillPending = scheduled.filter(p => p.status === 'pending');
       if (stillPending.length) {
         pollTimer = setTimeout(pollScheduled, 30000);
       } else if (anyChanged) {
@@ -751,7 +757,7 @@ function toggleTimelineView() {
 
 function renderHistoryTimeline() {
   const view = document.getElementById('hTimelineView');
-  const items = _hPosts.filter(p => p.status === 'scheduled');
+  const items = _hPosts.filter(p => p.status === 'pending');
   if (!items.length) {
     view.innerHTML = '<div style="text-align:center;padding:2rem;color:#8a8d91">ไม่มีโพสต์ที่ตั้งเวลาไว้</div>';
     return;

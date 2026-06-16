@@ -2,6 +2,12 @@ const fs   = require('fs');
 const path = require('path');
 const mongoose = require('mongoose');
 const { connect } = require('./db');
+// Same status enum / grace window as the group-job scheduler — see
+// desktop-agent/src/scheduler/statuses.js. Page posts don't go through the
+// shared SchedulerService (different shape: single target, no `groups`,
+// cron-triggered rather than polled) but MUST use identical status values
+// and expiry rules so Web behaves consistently everywhere.
+const { STATUS, DEFAULT_GRACE_MS } = require('../desktop-agent/src/scheduler/statuses');
 
 /* ── File fallback ── */
 const FILE = process.env.VERCEL ? '/tmp/posts.json' : path.join(__dirname, '../data/posts.json');
@@ -14,8 +20,9 @@ const schema = new mongoose.Schema({
     feeling: mongoose.Schema.Types.Mixed, location: String,
     images: [String], results: [mongoose.Schema.Types.Mixed],
     successCount: Number, failCount: Number,
-    status:          { type: String, default: 'done' },
+    status:          { type: String, default: STATUS.SUCCESS },
     scheduledAt:     { type: String, default: null },
+    expiredAt:       { type: String, default: null },
     selectedPageIds: { type: [String], default: null },
 }, { versionKey: false });
 const Post = mongoose.models.Post || mongoose.model('Post', schema);
@@ -76,13 +83,48 @@ async function getDueScheduled() {
     const now = new Date().toISOString();
     try {
         await connect();
-        const posts = await Post.find({ status: 'scheduled', scheduledAt: { $lte: now } }).sort({ scheduledAt: 1 }).lean();
+        const posts = await Post.find({ status: STATUS.PENDING, scheduledAt: { $lte: now } }).sort({ scheduledAt: 1 }).lean();
         return posts.map(p => ({ ...p, id: p._id }));
     } catch {
         return fLoad()
-            .filter(p => p.status === 'scheduled' && p.scheduledAt && p.scheduledAt <= now)
+            .filter(p => p.status === STATUS.PENDING && p.scheduledAt && p.scheduledAt <= now)
             .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
     }
+}
+
+// Part 8/9/11: a pending post overdue past the grace window becomes
+// 'expired' instead of being posted late — must run before getDueScheduled()
+// on every entry point (cron run, dashboard load, status poll).
+async function expireOverdueScheduled(graceMs = DEFAULT_GRACE_MS) {
+    const cutoff = new Date(Date.now() - graceMs).toISOString();
+    const now    = new Date().toISOString();
+    try {
+        await connect();
+        const res = await Post.updateMany(
+            { status: STATUS.PENDING, scheduledAt: { $lte: cutoff } },
+            { $set: { status: STATUS.EXPIRED, expiredAt: now } },
+        );
+        return res.modifiedCount || res.nModified || 0;
+    } catch {
+        const posts = fLoad();
+        let n = 0;
+        posts.forEach(p => {
+            if (p.status === STATUS.PENDING && p.scheduledAt && p.scheduledAt <= cutoff) {
+                p.status = STATUS.EXPIRED; p.expiredAt = now; n++;
+            }
+        });
+        if (n) fSave(posts);
+        return n;
+    }
+}
+
+async function migrateLegacyStatuses() {
+    try {
+        await connect();
+        const r1 = await Post.updateMany({ status: 'done' }, { $set: { status: STATUS.SUCCESS } });
+        const r2 = await Post.updateMany({ status: 'scheduled' }, { $set: { status: STATUS.PENDING } });
+        return (r1.modifiedCount || r1.nModified || 0) + (r2.modifiedCount || r2.nModified || 0);
+    } catch { return 0; }
 }
 
 async function updateOne(id, data) {
@@ -98,4 +140,4 @@ async function updateOne(id, data) {
     }
 }
 
-module.exports = { load, create, getById, remove, saveAll, getDueScheduled, updateOne };
+module.exports = { load, create, getById, remove, saveAll, getDueScheduled, updateOne, expireOverdueScheduled, migrateLegacyStatuses };

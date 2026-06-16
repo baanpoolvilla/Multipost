@@ -24,6 +24,8 @@
 <div class="page-wrap">
 
   <aside class="sidebar">
+    <a href="/schedule-center" class="sidebar-item"><i class="fa-solid fa-calendar-days"></i><span>Schedule Center</span></a>
+    <div class="sidebar-divider"></div>
         <div class="sidebar-label">โพสลงเพจ</div>
     <a href="/" class="sidebar-item"><i class="fa-solid fa-pen-to-square"></i><span>โพสใหม่</span></a>
     <a href="/overview" class="sidebar-item"><i class="fa-solid fa-chart-line"></i><span>ภาพรวม</span></a>
@@ -211,9 +213,9 @@
       <% if (jobs.length === 0) { %>
       <div style="color:var(--text-secondary);text-align:center;padding:1.5rem;font-size:.9rem">ยังไม่มี Job</div>
       <% } else { %>
-      <% const icons = { pending:'⏳', running:'🔄', done:'✅', failed:'❌' }; %>
-      <% const statusTH = { pending:'รอ', running:'กำลังทำ', done:'เสร็จ', failed:'ล้มเหลว' }; %>
-      <% const statusCls = { pending:'badge-yellow', running:'badge-blue', done:'badge-green', failed:'badge-red' }; %>
+      <% const icons = { pending:'⏳', running:'🔄', success:'✅', failed:'❌', expired:'⏰', cancelled:'🚫' }; %>
+      <% const statusTH = { pending:'รอ', running:'กำลังทำ', success:'เสร็จ', failed:'ล้มเหลว', expired:'หมดเวลา', cancelled:'ยกเลิก' }; %>
+      <% const statusCls = { pending:'badge-yellow', running:'badge-blue', success:'badge-green', failed:'badge-red', expired:'badge-red', cancelled:'badge-red' }; %>
       <% jobs.forEach((j, idx) => {
            // parse display text — strip |||URL
            let dispMsg = j.message||'';
@@ -240,13 +242,13 @@
             <% if (j.scheduledAt) { %>
             · <span style="color:#856404;font-weight:600"><i class="fa-solid fa-clock" style="font-size:.7rem"></i> โพส <%= new Date(j.scheduledAt).toLocaleString('th-TH',{timeZone:'Asia/Bangkok',hour12:false,dateStyle:'short',timeStyle:'short'}) %></span>
             <% } %>
-            <% if (j.status==='done'||j.status==='failed') { %>
+            <% if (j.status==='success'||j.status==='failed') { %>
             · <strong><%= (j.results||[]).filter(r=>r.status==='success').length %>/<%= (j.groups||[]).length %></strong> สำเร็จ
             <% } %>
           </div>
         </div>
         <span class="badge <%= statusCls[j.status]||'' %>" style="flex-shrink:0"><%= statusTH[j.status]||j.status %></span>
-        <% if (j.status === 'pending') { %>
+        <% if (j.status === 'pending' || j.status === 'expired') { %>
         <% if (j.scheduledAt) { %>
         <input type="checkbox" class="jqSelCb" data-id="<%= j._id %>" onchange="updateJqSelection()"
           style="accent-color:#856404;cursor:pointer;width:16px;height:16px" title="เลือกเพื่อเลื่อนเวลาทั้งหมด">

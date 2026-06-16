@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Schedule Center - Multi Post System</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-inner">
+    <div class="navbar-brand">
+      <div class="fb-logo"><i class="fa-brands fa-facebook"></i></div>
+      <span>Multi Post System</span>
+    </div>
+  </div>
+</nav>
+
+<div class="page-wrap">
+
+  <aside class="sidebar">
+    <a href="/schedule-center" class="sidebar-item active"><i class="fa-solid fa-calendar-days"></i><span>Schedule Center</span></a>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-label">โพสลงเพจ</div>
+    <a href="/" class="sidebar-item"><i class="fa-solid fa-pen-to-square"></i><span>โพสใหม่</span></a>
+    <a href="/overview" class="sidebar-item"><i class="fa-solid fa-chart-line"></i><span>ภาพรวม</span></a>
+    <a href="/history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพส</span></a>
+    <a href="/post-queue" class="sidebar-item"><i class="fa-solid fa-list-check"></i><span>คิวโพส</span></a>
+    <a href="/pages" class="sidebar-item"><i class="fa-brands fa-facebook"></i><span>จัดการเพจ</span></a>
+
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-label">โพส&amp;แชร์ ลงกลุ่ม</div>
+    <a href="/group-overview" class="sidebar-item"><i class="fa-solid fa-chart-line" style="color:#2e7d32"></i><span>ภาพรวม</span></a>
+    <a href="/groups" class="sidebar-item"><i class="fa-solid fa-users-rectangle"></i><span>จัดการกลุ่ม</span></a>
+    <a href="/agent" class="sidebar-item"><i class="fa-solid fa-robot"></i><span>ติดตั้ง Desktop Agent</span></a>
+    <a href="/job-queue" class="sidebar-item"><i class="fa-solid fa-list-check"></i><span>คิวโพสกลุ่ม</span></a>
+    <a href="/group-history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพสกลุ่ม</span></a>
+    <a href="/guide" class="sidebar-item"><i class="fa-solid fa-book-open"></i><span>คู่มือการใช้งาน</span></a>
+  </aside>
+
+  <main class="feed">
+
+    <!-- Header -->
+    <div class="card" style="padding:.85rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">
+      <div class="card-title" style="font-size:1.05rem">
+        <i class="fa-solid fa-calendar-days"></i> Schedule Center
+        <span style="background:#e4e6ea;padding:.15rem .55rem;border-radius:999px;font-size:.8rem;margin-left:.4rem" id="scCount">0</span>
+      </div>
+      <div style="display:flex;gap:.4rem">
+        <button class="btn-link-sm" id="scViewList" onclick="scSetView('list')"><i class="fa-solid fa-list"></i> รายการ</button>
+        <button class="btn-link-sm" id="scViewCal"  onclick="scSetView('calendar')"><i class="fa-solid fa-calendar"></i> ปฏิทิน</button>
+        <button class="btn-link-sm" onclick="scRefresh()"><i class="fa-solid fa-rotate-right"></i> รีเฟรช</button>
+      </div>
+    </div>
+
+    <!-- Metrics cards (Part 13) -->
+    <div class="card" style="padding:.85rem 1rem">
+      <div id="scMetricCards" style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.7rem"></div>
+      <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem">
+        <strong style="font-size:.85rem;color:#555">กราฟจำนวนรายการ</strong>
+        <div class="status-filter" style="margin-left:auto">
+          <button class="filter-btn active" data-chartunit="day"   onclick="scSetChartUnit('day')">รายวัน</button>
+          <button class="filter-btn"        data-chartunit="month" onclick="scSetChartUnit('month')">รายเดือน</button>
+          <button class="filter-btn"        data-chartunit="year"  onclick="scSetChartUnit('year')">รายปี</button>
+        </div>
+      </div>
+      <canvas id="scChart" height="70"></canvas>
+    </div>
+
+    <!-- Filters -->
+    <div class="card" style="padding:.7rem 1rem">
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
+        <input id="scSearch" type="text" placeholder="ค้นหาข้อความ..." style="flex:1;min-width:160px;padding:.4rem .6rem;border:1px solid var(--border-color);border-radius:7px;font-size:.85rem;font-family:inherit">
+
+        <select id="scStatus" style="padding:.4rem .5rem;border:1px solid var(--border-color);border-radius:7px;font-size:.82rem">
+          <option value="">สถานะ: ทั้งหมด</option>
+          <option value="pending">รอ (Pending)</option>
+          <option value="running">กำลังโพส (Running)</option>
+          <option value="success">สำเร็จ (Success)</option>
+          <option value="failed">ล้มเหลว (Failed)</option>
+          <option value="expired">หมดเวลา (Expired)</option>
+          <option value="cancelled">ยกเลิก (Cancelled)</option>
+        </select>
+
+        <select id="scSource" style="padding:.4rem .5rem;border:1px solid var(--border-color);border-radius:7px;font-size:.82rem">
+          <option value="">แหล่งที่มา: ทั้งหมด</option>
+          <option value="web">Web</option>
+          <option value="agent">Agent</option>
+        </select>
+
+        <select id="scPage" style="padding:.4rem .5rem;border:1px solid var(--border-color);border-radius:7px;font-size:.82rem">
+          <option value="">เพจ: ทั้งหมด</option>
+        </select>
+
+        <select id="scGroup" style="padding:.4rem .5rem;border:1px solid var(--border-color);border-radius:7px;font-size:.82rem">
+          <option value="">กลุ่ม: ทั้งหมด</option>
+        </select>
+
+        <input id="scDateFrom" type="date" style="padding:.38rem .5rem;border:1px solid var(--border-color);border-radius:7px;font-size:.82rem">
+        <span style="font-size:.8rem;color:var(--text-secondary)">ถึง</span>
+        <input id="scDateTo" type="date" style="padding:.38rem .5rem;border:1px solid var(--border-color);border-radius:7px;font-size:.82rem">
+
+        <select id="scGroupBy" style="padding:.4rem .5rem;border:1px solid var(--border-color);border-radius:7px;font-size:.82rem">
+          <option value="none">จัดกลุ่ม: ไม่จัดกลุ่ม</option>
+          <option value="status">จัดกลุ่มตามสถานะ</option>
+          <option value="page">จัดกลุ่มตามเพจ</option>
+          <option value="agent">จัดกลุ่มตาม Agent</option>
+          <option value="day">จัดกลุ่มตามวัน</option>
+          <option value="month">จัดกลุ่มตามเดือน</option>
+        </select>
+
+        <button class="btn-link-sm" onclick="scClearFilters()">ล้างตัวกรอง</button>
+      </div>
+    </div>
+
+    <!-- Expired banner -->
+    <div id="scExpiredBanner" class="card" style="display:none;padding:.65rem 1rem;background:#fde8e8;border:1px solid #f5b5b5;display:none;align-items:center;gap:.6rem;flex-wrap:wrap">
+      <i class="fa-solid fa-triangle-exclamation" style="color:#c62828"></i>
+      <span style="font-weight:600;color:#842029" id="scExpiredMsg"></span>
+      <button class="btn-link-sm" onclick="scFilterExpiredOnly()">ดูทั้งหมด</button>
+      <button class="btn-link-sm" style="color:#842029" onclick="scDeleteAllExpired()">ลบทั้งหมด</button>
+    </div>
+
+    <!-- List view -->
+    <div id="scListView" class="card" style="padding:.5rem .75rem"></div>
+
+    <!-- Calendar view -->
+    <div id="scCalView" class="card" style="display:none;padding:.75rem 1rem">
+      <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem;flex-wrap:wrap">
+        <div class="status-filter">
+          <button class="filter-btn active" data-unit="month" onclick="scSetCalUnit('month')">เดือน</button>
+          <button class="filter-btn" data-unit="week"  onclick="scSetCalUnit('week')">สัปดาห์</button>
+          <button class="filter-btn" data-unit="day"   onclick="scSetCalUnit('day')">วัน</button>
+          <button class="filter-btn" data-unit="year"  onclick="scSetCalUnit('year')">ปี</button>
+        </div>
+        <div style="display:flex;gap:.3rem;margin-left:auto">
+          <button class="btn-link-sm" onclick="scCalNav(-1)"><i class="fa-solid fa-chevron-left"></i></button>
+          <button class="btn-link-sm" onclick="scCalToday()">วันนี้</button>
+          <button class="btn-link-sm" onclick="scCalNav(1)"><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+        <strong id="scCalLabel" style="font-size:.95rem"></strong>
+      </div>
+      <div id="scCalBody"></div>
+    </div>
+
+  </main>
+</div>
+
+<style>
+.sc-row { display:flex; align-items:flex-start; gap:.7rem; padding:.55rem .4rem; border-bottom:1px solid var(--border-color) }
+.sc-row:last-child { border-bottom:none }
+.sc-group-header { font-size:.78rem; font-weight:700; color:#666; padding:.5rem .4rem .25rem; text-transform:uppercase; letter-spacing:.02em }
+.sc-day-cell { border:1px solid #eee; border-radius:6px; min-height:78px; padding:.25rem; font-size:.7rem; cursor:pointer; background:#fff }
+.sc-day-cell:hover { background:#f7f9fc }
+.sc-day-cell.today { border-color:#1877f2; box-shadow:inset 0 0 0 1px #1877f2 }
+.sc-day-num { font-weight:700; color:#444; font-size:.72rem }
+.sc-chip { background:#fff3cd; color:#856404; border-radius:4px; padding:.05rem .3rem; margin-top:.15rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:.64rem }
+.sc-chip.failed, .sc-chip.expired { background:#fde8e8; color:#c62828 }
+.sc-chip.success { background:#d1e7dd; color:#0a3622 }
+.badge-purple { background:#e7e0fb; color:#5b3fa3 }
+</style>
+
+<script>
+let _scItems = <%- JSON.stringify(items) %>;
+let _scView  = 'list';
+let _scCalUnit = 'month';
+let _scCalDate = new Date();
+const _scIcons = { pending:'⏳', running:'🔄', success:'✅', failed:'❌', expired:'⏰', cancelled:'🚫' };
+const _scStatusTH = { pending:'รอ', running:'กำลังโพส', success:'สำเร็จ', failed:'ล้มเหลว', expired:'หมดเวลา', cancelled:'ยกเลิก' };
+const _scStatusCls = { pending:'badge-yellow', running:'badge-blue', success:'badge-green', failed:'badge-red', expired:'badge-red', cancelled:'badge-red' };
+
+function esc(s) { return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fmtDT(s) { return s ? new Date(s).toLocaleString('th-TH', { timeZone:'Asia/Bangkok', hour12:false, dateStyle:'short', timeStyle:'short' }) : ''; }
+function dayKey(s) { return new Date(s).toLocaleDateString('en-CA'); }
+function displayAt(it) { return it.scheduledAt || it.createdAt; }
+
+function dt24Get(prefix) {
+  const d = document.getElementById(prefix+'_d')?.value;
+  if (!d) return '';
+  const h = String(document.getElementById(prefix+'_h').value||0).padStart(2,'0');
+  const m = String(document.getElementById(prefix+'_m').value||0).padStart(2,'0');
+  return `${d}T${h}:${m}`;
+}
+function dt24Set(prefix, localStr) {
+  const [d,t] = (localStr||'').split('T');
+  document.getElementById(prefix+'_d').value = d||'';
+  const [h,m] = (t||'').split(':');
+  document.getElementById(prefix+'_h').value = h||'';
+  document.getElementById(prefix+'_m').value = m||'';
+}
+function dt24Html(prefix, localStr) {
+  const [d,t] = (localStr||'').split('T');
+  const [h,m] = (t||'').split(':');
+  return `<div class="dt24-wrap" style="display:flex;gap:.3rem;align-items:center">
+    <input type="date" id="${prefix}_d" value="${d||''}" style="padding:.35rem;border:1px solid #ddd;border-radius:6px">
+    <input type="number" id="${prefix}_h" value="${h||''}" min="0" max="23" placeholder="HH" style="width:55px;padding:.35rem;border:1px solid #ddd;border-radius:6px">
+    :
+    <input type="number" id="${prefix}_m" value="${m||''}" min="0" max="59" placeholder="MM" style="width:55px;padding:.35rem;border:1px solid #ddd;border-radius:6px">
+  </div>`;
+}
+
+// ── Populate filter dropdowns from data ─────────────────────────
+(function initFilterOptions() {
+  const pages = new Set(), groups = new Set();
+  _scItems.forEach(it => { (it.targetPages||[]).forEach(p=>pages.add(p)); (it.targetGroups||[]).forEach(g=>groups.add(g)); });
+  const pageSel = document.getElementById('scPage'), groupSel = document.getElementById('scGroup');
+  [...pages].sort().forEach(p => pageSel.insertAdjacentHTML('beforeend', `<option value="${esc(p)}">${esc(p)}</option>`));
+  [...groups].sort().forEach(g => groupSel.insertAdjacentHTML('beforeend', `<option value="${esc(g)}">${esc(g)}</option>`));
+})();
+
+['scSearch','scStatus','scSource','scPage','scGroup','scDateFrom','scDateTo','scGroupBy'].forEach(id => {
+  document.getElementById(id).addEventListener('input', scRender);
+  document.getElementById(id).addEventListener('change', scRender);
+});
+
+function scClearFilters() {
+  ['scSearch','scDateFrom','scDateTo'].forEach(id => document.getElementById(id).value = '');
+  ['scStatus','scSource','scPage','scGroup'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('scGroupBy').value = 'none';
+  scRender();
+}
+
+function scFilterExpiredOnly() { document.getElementById('scStatus').value = 'expired'; scSetView('list'); scRender(); }
+
+function getFilteredItems() {
+  const q      = document.getElementById('scSearch').value.toLowerCase().trim();
+  const status = document.getElementById('scStatus').value;
+  const source = document.getElementById('scSource').value;
+  const page   = document.getElementById('scPage').value;
+  const group  = document.getElementById('scGroup').value;
+  const from   = document.getElementById('scDateFrom').value;
+  const to     = document.getElementById('scDateTo').value;
+  return _scItems.filter(it => {
+    if (q && !it.message.toLowerCase().includes(q)) return false;
+    if (status && it.status !== status) return false;
+    if (source && it.sourceType !== source) return false;
+    if (page  && !(it.targetPages||[]).includes(page)) return false;
+    if (group && !(it.targetGroups||[]).includes(group)) return false;
+    const at = displayAt(it);
+    if (from && at && dayKey(at) < from) return false;
+    if (to   && at && dayKey(at) > to)   return false;
+    return true;
+  }).sort((a,b) => new Date(displayAt(b)) - new Date(displayAt(a)));
+}
+
+// ── Metrics cards + chart (Part 13) ─────────────────────────────
+let _scChartUnit = 'day';
+let _scChart = null;
+const _scMetricStatuses = ['pending','running','success','failed','expired','cancelled'];
+
+function scRenderMetrics() {
+  const items = getFilteredItems();
+  const counts = {};
+  _scMetricStatuses.forEach(s => counts[s] = 0);
+  items.forEach(it => { if (counts[it.status] !== undefined) counts[it.status]++; });
+  const cardColor = { pending:'#856404', running:'#084298', success:'#0a3622', failed:'#842029', expired:'#842029', cancelled:'#666' };
+  const cardBg    = { pending:'#fff3cd', running:'#cfe2ff', success:'#d1e7dd', failed:'#f8d7da', expired:'#fde2cd', cancelled:'#eee' };
+  document.getElementById('scMetricCards').innerHTML = _scMetricStatuses.map(s => `
+    <div style="flex:1;min-width:100px;background:${cardBg[s]};border-radius:8px;padding:.55rem .7rem">
+      <div style="font-size:1.3rem;font-weight:800;color:${cardColor[s]}">${counts[s]}</div>
+      <div style="font-size:.74rem;color:${cardColor[s]};font-weight:600">${_scStatusTH[s]}</div>
+    </div>`).join('');
+}
+
+function scChartBucketKey(at, unit) {
+  const d = new Date(at);
+  if (unit === 'day')   return d.toLocaleDateString('en-CA');
+  if (unit === 'month') return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  return String(d.getFullYear());
+}
+
+function scSetChartUnit(u) {
+  _scChartUnit = u;
+  document.querySelectorAll('[data-chartunit]').forEach(b => b.classList.toggle('active', b.dataset.chartunit===u));
+  scRenderChart();
+}
+
+function scRenderChart() {
+  if (typeof Chart === 'undefined') return;
+  const items = getFilteredItems().filter(it => displayAt(it));
+  const buckets = {};
+  items.forEach(it => { const k = scChartBucketKey(displayAt(it), _scChartUnit); (buckets[k] = buckets[k]||0); buckets[k]++; });
+  const keys = Object.keys(buckets).sort().slice(-30); // last 30 buckets max, keeps chart readable
+  const data = keys.map(k => buckets[k]);
+  const ctx = document.getElementById('scChart');
+  if (_scChart) _scChart.destroy();
+  _scChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: keys, datasets: [{ label: 'จำนวนรายการ', data, backgroundColor: '#1877f2' }] },
+    options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } },
+  });
+}
+
+function scSetView(v) {
+  _scView = v;
+  document.getElementById('scListView').style.display = v==='list' ? '' : 'none';
+  document.getElementById('scCalView').style.display   = v==='calendar' ? '' : 'none';
+  document.getElementById('scViewList').style.fontWeight = v==='list' ? '800':'400';
+  document.getElementById('scViewCal').style.fontWeight  = v==='calendar' ? '800':'400';
+  scRender();
+}
+
+function scGroupKey(it, by) {
+  const at = displayAt(it);
+  switch (by) {
+    case 'status': return _scStatusTH[it.status] || it.status;
+    case 'page':   return (it.targetPages||[])[0] || 'ไม่ระบุเพจ';
+    case 'agent':  return it.sourceType==='agent' ? (it.agentId ? `Agent (${it.agentId})` : 'Desktop Agent') : 'Web';
+    case 'day':    return at ? new Date(at).toLocaleDateString('th-TH',{dateStyle:'medium'}) : 'ไม่ระบุวัน';
+    case 'month':  return at ? new Date(at).toLocaleDateString('th-TH',{year:'numeric',month:'long'}) : 'ไม่ระบุเดือน';
+    default: return null;
+  }
+}
+
+function scActionButtons(it) {
+  const btn = (label, fn, color) => `<button class="btn-link-sm" style="${color?`color:${color}`:''}" onclick="${fn}">${label}</button>`;
+  const ref = `'${it.type}','${it.id}'`;
+  const out = [];
+  if (it.status === 'pending') {
+    out.push(btn('แก้ไข', `scEdit(${ref})`));
+    out.push(btn('โพสเลย', `scPostNow(${ref})`, '#1877f2'));
+    out.push(btn('ยกเลิก', `scCancel(${ref})`, '#856404'));
+  } else if (it.status === 'expired') {
+    out.push(btn('เลื่อนเวลา', `scEdit(${ref})`, '#856404'));
+    out.push(btn('โพสเลย', `scPostNow(${ref})`, '#1877f2'));
+  } else if (it.status === 'failed') {
+    out.push(btn(it.type==='group' ? 'ลองใหม่' : 'โพสอีกครั้ง', `scRetry(${ref})`, '#1877f2'));
+  }
+  if (['pending','expired','failed','cancelled'].includes(it.status)) {
+    out.push(btn('ลบ', `scDelete(${ref})`, '#c5c8d0'));
+  }
+  return out.join('');
+}
+
+function scRowHtml(it) {
+  const icon = _scIcons[it.status] || '❓';
+  const targets = [...(it.targetPages||[]).map(p=>'🏢 '+p), ...(it.targetGroups||[]).map(g=>'👥 '+g)].join(', ') || '—';
+  const srcBadge = it.sourceType==='agent'
+    ? `<span class="badge badge-purple" title="Desktop Agent">🤖 Agent</span>`
+    : `<span class="badge" style="background:#e7f3ff;color:#1877f2">🌐 Web</span>`;
+  const msg = (it.message||'').slice(0,90);
+  return `<div class="sc-row">
+    <span style="font-size:1.1rem;flex-shrink:0;margin-top:.1rem">${icon}</span>
+    <div style="flex:1;min-width:0">
+      <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(msg)}</div>
+      <div style="font-size:.76rem;color:var(--text-secondary);margin-top:.15rem">
+        ${esc(targets)} ·
+        ${it.scheduledAt ? `<i class="fa-solid fa-clock" style="font-size:.68rem"></i> ${fmtDT(it.scheduledAt)}` : fmtDT(it.createdAt)}
+        ${(it.status==='success'||it.status==='failed') ? ` · <strong>${it.successCount}/${it.successCount+it.failCount}</strong> สำเร็จ` : ''}
+      </div>
+    </div>
+    <span class="badge ${_scStatusCls[it.status]||''}" style="flex-shrink:0">${_scStatusTH[it.status]||it.status}</span>
+    ${srcBadge}
+    <div style="flex-shrink:0;white-space:nowrap">${scActionButtons(it)}</div>
+  </div>`;
+}
+
+function scRenderList() {
+  const items = getFilteredItems();
+  document.getElementById('scCount').textContent = items.length;
+  const el = document.getElementById('scListView');
+  if (!items.length) { el.innerHTML = '<div style="color:var(--text-secondary);text-align:center;padding:1.5rem;font-size:.9rem">ไม่พบรายการ</div>'; return; }
+
+  const groupBy = document.getElementById('scGroupBy').value;
+  if (groupBy === 'none') {
+    el.innerHTML = items.map(scRowHtml).join('');
+    return;
+  }
+  const buckets = {};
+  items.forEach(it => { const k = scGroupKey(it, groupBy); (buckets[k] = buckets[k] || []).push(it); });
+  el.innerHTML = Object.keys(buckets).sort().map(k =>
+    `<div class="sc-group-header">${esc(k)} (${buckets[k].length})</div>${buckets[k].map(scRowHtml).join('')}`
+  ).join('');
+}
+
+// ── Calendar ─────────────────────────────────────────────────
+function scSetCalUnit(u) {
+  _scCalUnit = u;
+  document.querySelectorAll('#scCalView .filter-btn').forEach(b => b.classList.toggle('active', b.dataset.unit===u));
+  scRenderCalendar();
+}
+function scCalToday() { _scCalDate = new Date(); scRenderCalendar(); }
+function scCalNav(dir) {
+  const d = new Date(_scCalDate);
+  if (_scCalUnit==='day') d.setDate(d.getDate()+dir);
+  else if (_scCalUnit==='week') d.setDate(d.getDate()+dir*7);
+  else if (_scCalUnit==='month') d.setMonth(d.getMonth()+dir);
+  else d.setFullYear(d.getFullYear()+dir);
+  _scCalDate = d;
+  scRenderCalendar();
+}
+
+function scItemsByDay(items) {
+  const map = {};
+  items.forEach(it => { const at = displayAt(it); if (!at) return; (map[dayKey(at)] = map[dayKey(at)] || []).push(it); });
+  return map;
+}
+
+function scChip(it) {
+  const t = new Date(displayAt(it));
+  const time = t.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',hour12:false});
+  return `<div class="sc-chip ${it.status}" title="${esc(it.message)}" onclick="scEdit('${it.type}','${it.id}')">${time} ${esc((it.message||'').slice(0,16))}</div>`;
+}
+
+function scRenderCalendar() {
+  const items = getFilteredItems();
+  document.getElementById('scCount').textContent = items.length;
+  const byDay = scItemsByDay(items);
+  const body  = document.getElementById('scCalBody');
+  const label = document.getElementById('scCalLabel');
+  const d = _scCalDate;
+
+  if (_scCalUnit === 'month') {
+    label.textContent = d.toLocaleDateString('th-TH', { year:'numeric', month:'long' });
+    const first = new Date(d.getFullYear(), d.getMonth(), 1);
+    const startOffset = first.getDay();
+    const daysInMonth = new Date(d.getFullYear(), d.getMonth()+1, 0).getDate();
+    const todayKey = dayKey(new Date());
+    let cells = '';
+    for (let i=0; i<startOffset; i++) cells += `<div></div>`;
+    for (let day=1; day<=daysInMonth; day++) {
+      const cellDate = new Date(d.getFullYear(), d.getMonth(), day);
+      const key = dayKey(cellDate);
+      const dayItems = byDay[key] || [];
+      const isToday = key === todayKey;
+      cells += `<div class="sc-day-cell ${isToday?'today':''}" onclick="scGoToDay('${key}')">
+        <div class="sc-day-num">${day}</div>
+        ${dayItems.slice(0,3).map(scChip).join('')}
+        ${dayItems.length>3 ? `<div style="font-size:.62rem;color:#888">+${dayItems.length-3} เพิ่มเติม</div>` : ''}
+      </div>`;
+    }
+    body.innerHTML = `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;font-size:.7rem;color:#888;margin-bottom:4px">
+        ${['อา','จ','อ','พ','พฤ','ศ','ส'].map(x=>`<div style="text-align:center;font-weight:700">${x}</div>`).join('')}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">${cells}</div>`;
+
+  } else if (_scCalUnit === 'week') {
+    const start = new Date(d); start.setDate(d.getDate() - d.getDay());
+    label.textContent = `${start.toLocaleDateString('th-TH',{dateStyle:'medium'})} — ${new Date(start.getTime()+6*86400000).toLocaleDateString('th-TH',{dateStyle:'medium'})}`;
+    let cols = '';
+    for (let i=0;i<7;i++) {
+      const cellDate = new Date(start.getTime()+i*86400000);
+      const key = dayKey(cellDate);
+      const dayItems = (byDay[key]||[]).sort((a,b)=>new Date(displayAt(a))-new Date(displayAt(b)));
+      cols += `<div style="flex:1;min-width:130px">
+        <div style="font-size:.78rem;font-weight:700;text-align:center;margin-bottom:.3rem;cursor:pointer" onclick="scGoToDay('${key}')">${cellDate.toLocaleDateString('th-TH',{weekday:'short',day:'numeric',month:'short'})}</div>
+        <div style="border:1px solid #eee;border-radius:8px;min-height:300px;padding:.3rem;background:#fafbfc">${dayItems.map(scChip).join('') || '<div style="color:#ccc;font-size:.7rem;text-align:center;padding-top:1rem">—</div>'}</div>
+      </div>`;
+    }
+    body.innerHTML = `<div style="display:flex;gap:.5rem;overflow-x:auto">${cols}</div>`;
+
+  } else if (_scCalUnit === 'day') {
+    const key = dayKey(d);
+    label.textContent = d.toLocaleDateString('th-TH',{dateStyle:'full'});
+    const dayItems = (byDay[key]||[]).sort((a,b)=>new Date(displayAt(a))-new Date(displayAt(b)));
+    body.innerHTML = dayItems.length ? dayItems.map(scRowHtml).join('') : '<div style="color:var(--text-secondary);text-align:center;padding:1.5rem">ไม่มีรายการในวันนี้</div>';
+
+  } else { // year
+    label.textContent = String(d.getFullYear());
+    let months = '';
+    for (let m=0; m<12; m++) {
+      const mDate = new Date(d.getFullYear(), m, 1);
+      const count = items.filter(it => { const at=displayAt(it); return at && new Date(at).getFullYear()===d.getFullYear() && new Date(at).getMonth()===m; }).length;
+      months += `<div class="sc-day-cell" style="min-height:70px;cursor:pointer" onclick="scGoToMonth(${m})">
+        <div class="sc-day-num">${mDate.toLocaleDateString('th-TH',{month:'long'})}</div>
+        <div style="font-size:1.3rem;font-weight:700;color:${count?'#1877f2':'#ccc'};text-align:center;margin-top:.3rem">${count}</div>
+        <div style="font-size:.65rem;color:#888;text-align:center">รายการ</div>
+      </div>`;
+    }
+    body.innerHTML = `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${months}</div>`;
+  }
+}
+function scGoToDay(key) { _scCalDate = new Date(key+'T00:00:00'); scSetCalUnit('day'); }
+function scGoToMonth(m) { _scCalDate = new Date(_scCalDate.getFullYear(), m, 1); scSetCalUnit('month'); }
+
+function scRender() {
+  if (_scView === 'list') scRenderList(); else scRenderCalendar();
+  scRenderExpiredBanner();
+  scRenderMetrics();
+  scRenderChart();
+}
+
+function scRenderExpiredBanner() {
+  const n = _scItems.filter(it => it.status === 'expired').length;
+  const el = document.getElementById('scExpiredBanner');
+  if (!n) { el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+  document.getElementById('scExpiredMsg').textContent = `มีงานหมดเวลาแล้ว ${n} รายการ — ระบบไม่โพสให้อัตโนมัติ ต้องเลื่อนเวลาหรือโพสเองใหม่`;
+}
+
+// ── Actions ──────────────────────────────────────────────────
+function scApiBase(type, id) { return type==='page' ? `/api/posts/${id}` : `/api/agent/jobs/${id}`; }
+
+async function scEdit(type, id) {
+  const it = _scItems.find(x => x.type===type && x.id===id);
+  if (!it) return;
+  const { value, isConfirmed } = await Swal.fire({
+    title: 'แก้ไขรายการที่ตั้งเวลาไว้',
+    html: `<div style="text-align:left">
+      <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:.3rem">ข้อความ</label>
+      <textarea id="swal-scMsg" rows="4" style="width:100%;padding:.5rem;border:1px solid #ddd;border-radius:6px;font-family:inherit">${esc(it.message)}</textarea>
+      <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin:.6rem 0 .3rem">เวลาโพส (เว้นว่าง = โพสทันที)</label>
+      ${dt24Html('swal-scAt', it.scheduledAt ? new Date(it.scheduledAt).toISOString().slice(0,16) : '')}
+      ${it.type==='group' ? `<div style="font-size:.74rem;color:#888;margin-top:.5rem">เป้าหมาย: ${esc((it.targetGroups||[]).join(', ') || '—')} (แก้กลุ่มเป้าหมาย/รูปภาพ — กรุณาลบแล้วสร้างใหม่)</div>` : ''}
+    </div>`,
+    showCancelButton: true,
+    confirmButtonText: 'บันทึก',
+    cancelButtonText: 'ยกเลิก',
+    confirmButtonColor: '#1877f2',
+    focusConfirm: false,
+    preConfirm: () => ({ message: document.getElementById('swal-scMsg').value, scheduledAt: dt24Get('swal-scAt') }),
+  });
+  if (!isConfirmed) return;
+  const body = {
+    message: value.message,
+    scheduledAt: value.scheduledAt ? new Date(value.scheduledAt+':00+07:00').toISOString() : null,
+  };
+  try {
+    const r = await fetch(`${scApiBase(type,id)}/edit`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    if (!r.ok) throw new Error((await r.json()).error || `HTTP ${r.status}`);
+    await scRefresh();
+  } catch(e) { Swal.fire({ icon:'error', title:'บันทึกไม่สำเร็จ', text:e.message }); }
+}
+
+async function scPostNow(type, id) {
+  const { isConfirmed } = await Swal.fire({ icon:'question', title:'โพสทันทีเลยหรือไม่?', showCancelButton:true, confirmButtonText:'โพสเลย', cancelButtonText:'ยกเลิก', confirmButtonColor:'#1877f2' });
+  if (!isConfirmed) return;
+  try {
+    const r = await fetch(`${scApiBase(type,id)}/post-now`, { method:'POST' });
+    if (!r.ok) throw new Error((await r.json()).error || `HTTP ${r.status}`);
+    await scRefresh();
+    if (type==='page') Swal.fire({ icon:'success', title:'โพสแล้ว', timer:1500, showConfirmButton:false });
+    else Swal.fire({ icon:'success', title:'นำเข้าคิวแล้ว', text:'Agent จะหยิบไปโพสในรอบถัดไป', timer:2000, showConfirmButton:false });
+  } catch(e) { Swal.fire({ icon:'error', title:'ทำไม่สำเร็จ', text:e.message }); }
+}
+
+async function scRetry(type, id) {
+  try {
+    const url = type==='group' ? `/api/agent/jobs/${id}/retry` : `/api/posts/${id}/post-now`;
+    const r = await fetch(url, { method:'POST' });
+    if (!r.ok) throw new Error((await r.json()).error || `HTTP ${r.status}`);
+    await scRefresh();
+  } catch(e) { Swal.fire({ icon:'error', title:'ทำไม่สำเร็จ', text:e.message }); }
+}
+
+async function scCancel(type, id) {
+  const { isConfirmed } = await Swal.fire({ icon:'warning', title:'ยกเลิกรายการนี้?', showCancelButton:true, confirmButtonText:'ยกเลิกรายการ', cancelButtonText:'ปิด', confirmButtonColor:'#856404' });
+  if (!isConfirmed) return;
+  try {
+    const r = await fetch(`${scApiBase(type,id)}/cancel`, { method:'POST' });
+    if (!r.ok) throw new Error((await r.json()).error || `HTTP ${r.status}`);
+    await scRefresh();
+  } catch(e) { Swal.fire({ icon:'error', title:'ทำไม่สำเร็จ', text:e.message }); }
+}
+
+async function scDelete(type, id) {
+  const { isConfirmed } = await Swal.fire({ icon:'warning', title:'ลบรายการนี้?', text:'ลบแล้วกู้คืนไม่ได้', showCancelButton:true, confirmButtonText:'ลบ', confirmButtonColor:'#c62828', cancelButtonText:'ยกเลิก' });
+  if (!isConfirmed) return;
+  try {
+    const url = type==='page' ? `/history/${id}` : `/api/agent/jobs/${id}`;
+    const r = await fetch(url, { method:'DELETE' });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    await scRefresh();
+  } catch(e) { Swal.fire({ icon:'error', title:'ลบไม่สำเร็จ', text:e.message }); }
+}
+
+async function scDeleteAllExpired() {
+  const expired = _scItems.filter(it => it.status === 'expired');
+  if (!expired.length) return;
+  const { isConfirmed } = await Swal.fire({ icon:'warning', title:`ลบงานหมดเวลาทั้งหมด ${expired.length} รายการ?`, text:'ลบแล้วกู้คืนไม่ได้', showCancelButton:true, confirmButtonText:'ลบทั้งหมด', confirmButtonColor:'#c62828', cancelButtonText:'ยกเลิก' });
+  if (!isConfirmed) return;
+  await Promise.all(expired.map(it => fetch(it.type==='page' ? `/history/${it.id}` : `/api/agent/jobs/${it.id}`, { method:'DELETE' }).catch(()=>{})));
+  await scRefresh();
+}
+
+async function scRefresh() {
+  try {
+    const r = await fetch('/api/schedule-center/items');
+    _scItems = await r.json();
+    scRender();
+  } catch {}
+}
+
+// initial render + light auto-refresh so expired/running states stay fresh
+scRender();
+setInterval(scRefresh, 30000);
+</script>
+
+</body>
+</html>

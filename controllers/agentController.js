@@ -3,6 +3,7 @@ const groupStore     = require('../services/groupStore');
 const categoryStore  = require('../services/categoryStore');
 const postStore      = require('../services/postStore');
 const { refreshPostAnalytics } = require('../services/facebookService');
+const { STATUS }     = require('../desktop-agent/src/scheduler/statuses');
 
 // ── Group Overview Dashboard ───────────────────────────────────
 exports.showGroupOverview = async (req, res) => {
@@ -171,12 +172,14 @@ exports.bulkRenameCategory = async (req, res) => {
 
 // ── Job Queue page ─────────────────────────────────────────────
 exports.showJobQueue = async (req, res) => {
+    await groupJobStore.expireOverdueJobs().catch(() => {});
     const [groups, jobs] = await Promise.all([groupStore.list(), groupJobStore.list()]);
     res.render('job-queue', { jobs, groups });
 };
 
 // ── Job API ────────────────────────────────────────────────────
 exports.listJobs = async (req, res) => {
+    await groupJobStore.expireOverdueJobs().catch(() => {});
     const jobs = await groupJobStore.list();
     res.json(jobs);
 };
@@ -213,6 +216,8 @@ exports.rescheduleJob = async (req, res) => {
     try {
         const schedDate = scheduledAt ? new Date(scheduledAt) : null;
         if (schedDate && isNaN(schedDate.getTime())) return res.status(400).json({ error: 'วันเวลาไม่ถูกต้อง' });
+        // Rescheduling (incl. reviving an expired job) lands back in
+        // 'pending' with expiredAt cleared — handled by SchedulerService.UpdateJob.
         const job = await groupJobStore.updateOne(req.params.id, {
             scheduledAt: schedDate ? schedDate.toISOString() : null,
         });
@@ -224,16 +229,84 @@ exports.rescheduleJob = async (req, res) => {
 
 exports.listScheduledJobs = async (req, res) => {
     try {
+        await groupJobStore.expireOverdueJobs();
         const jobs = await groupJobStore.listScheduled();
         const now  = new Date();
         const enriched = jobs.map(j => ({
             ...j,
             _id: String(j._id),
+            // Kept for UI: true once a due job is about to be picked up by
+            // the runner, but it never sits "overdue" for long — anything
+            // genuinely missed already flipped to status:'expired' above
+            // and dropped out of listScheduled() (which only returns pending).
             isOverdue: j.scheduledAt && new Date(j.scheduledAt) < now,
         }));
         res.json(enriched);
     } catch(e) {
         res.status(500).json({ error: e.message });
+    }
+};
+
+// ── Schedule Center actions ───────────────────────────────────
+exports.editJob = async (req, res) => {
+    try {
+        const { message, groups, delaySeconds, scheduledAt, pageId, pageName } = req.body;
+        const patch = {};
+        if (typeof message === 'string' && message.trim()) patch.message = message.trim();
+        if (Array.isArray(groups) && groups.length) patch.groups = groups;
+        if (delaySeconds !== undefined) patch.delaySeconds = delaySeconds;
+        if (pageId   !== undefined) patch.pageId   = pageId   || null;
+        if (pageName !== undefined) patch.pageName = pageName || null;
+        if ('scheduledAt' in req.body) {
+            const d = scheduledAt ? new Date(scheduledAt) : null;
+            if (scheduledAt && isNaN(d?.getTime())) return res.status(400).json({ error: 'วันเวลาไม่ถูกต้อง' });
+            patch.scheduledAt = d ? d.toISOString() : null;
+        }
+        const job = await groupJobStore.updateOne(req.params.id, patch);
+        if (!job) return res.status(404).json({ error: 'ไม่พบงาน' });
+        res.json({ ok: true, job });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+};
+
+// "Post Now": clears the schedule so the next Agent poll (or Web queue
+// view) picks it up immediately as a normal due job — group jobs are only
+// ever executed by the Desktop Agent runner, never by Web directly.
+exports.postNowJob = async (req, res) => {
+    try {
+        const job = await groupJobStore.updateOne(req.params.id, { scheduledAt: null, status: STATUS.PENDING, expiredAt: null });
+        if (!job) return res.status(404).json({ error: 'ไม่พบงาน' });
+        res.json({ ok: true, job });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+};
+
+exports.listExpiredJobs = async (req, res) => {
+    try {
+        const jobs = await groupJobStore.listExpired();
+        res.json(jobs.map(j => ({ ...j, _id: String(j._id) })));
+    } catch(e) {
+        res.status(500).json({ error: e.message });
+    }
+};
+
+exports.retryJob = async (req, res) => {
+    try {
+        const job = await groupJobStore.retryJob(req.params.id);
+        res.json({ ok: true, job });
+    } catch(e) {
+        res.status(400).json({ error: e.message });
+    }
+};
+
+exports.cancelJob = async (req, res) => {
+    try {
+        const job = await groupJobStore.cancelJob(req.params.id);
+        res.json({ ok: true, job });
+    } catch(e) {
+        res.status(400).json({ error: e.message });
     }
 };
 

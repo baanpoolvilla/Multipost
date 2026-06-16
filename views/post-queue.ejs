@@ -24,6 +24,8 @@
 <div class="page-wrap">
 
   <aside class="sidebar">
+    <a href="/schedule-center" class="sidebar-item"><i class="fa-solid fa-calendar-days"></i><span>Schedule Center</span></a>
+    <div class="sidebar-divider"></div>
         <div class="sidebar-label">โพสลงเพจ</div>
     <a href="/" class="sidebar-item"><i class="fa-solid fa-pen-to-square"></i><span>โพสใหม่</span></a>
     <a href="/overview" class="sidebar-item"><i class="fa-solid fa-chart-line"></i><span>ภาพรวม</span></a>
@@ -60,7 +62,7 @@
     <div class="card">
       <div class="card-title">
         <i class="fa-solid fa-clock-rotate-left"></i> รายการโพส
-        <% const schedCount = posts.filter(p => p.status==='scheduled').length; %>
+        <% const schedCount = posts.filter(p => p.status==='pending').length; %>
         <button id="btnSchedFilter" onclick="toggleSchedFilter()"
           style="margin-left:.6rem;background:#fff3cd;border:1px solid #ffe08a;border-radius:7px;padding:.18rem .55rem;font-size:.78rem;font-weight:600;color:#856404;cursor:pointer;font-family:inherit">
           <i class="fa-solid fa-clock"></i> ตั้งเวลาไว้ (<%= schedCount %>)
@@ -92,16 +94,16 @@
       <% if (posts.length === 0) { %>
       <div style="color:var(--text-secondary);text-align:center;padding:1.5rem;font-size:.9rem">ยังไม่มีโพส</div>
       <% } else { %>
-      <% const icons = { scheduled:'⏳', running:'🔄', done:'✅', failed:'❌' }; %>
-      <% const statusTH = { scheduled:'รอ', running:'กำลังโพส', done:'เสร็จ', failed:'ล้มเหลว' }; %>
-      <% const statusCls = { scheduled:'badge-yellow', running:'badge-blue', done:'badge-green', failed:'badge-red' }; %>
+      <% const icons = { pending:'⏳', running:'🔄', success:'✅', failed:'❌', expired:'⏰', cancelled:'🚫' }; %>
+      <% const statusTH = { pending:'รอ', running:'กำลังโพส', success:'เสร็จ', failed:'ล้มเหลว', expired:'หมดเวลา', cancelled:'ยกเลิก' }; %>
+      <% const statusCls = { pending:'badge-yellow', running:'badge-blue', success:'badge-green', failed:'badge-red', expired:'badge-red', cancelled:'badge-red' }; %>
       <% posts.forEach((p, idx) => {
            let dispMsg = p.message||'';
            if (dispMsg.length>70) dispMsg = dispMsg.slice(0,70)+'…';
            const pageNames = (p.selectedPageIds||[]).map(id => pageNameMap[id]||id).join(', ') || 'ทุกเพจ';
       %>
       <div style="display:flex;align-items:flex-start;gap:.7rem;padding:.65rem .5rem;border-bottom:1px solid var(--border-color)"
-           id="post_<%= p.id %>" class="post-row" data-idx="<%= idx %>" data-scheduled="<%= p.status==='scheduled' ? '1' : '0' %>">
+           id="post_<%= p.id %>" class="post-row" data-idx="<%= idx %>" data-scheduled="<%= p.status==='pending' ? '1' : '0' %>">
         <span style="font-size:1.2rem;flex-shrink:0;margin-top:.1rem"><%= icons[p.status]||'❓' %></span>
         <div style="flex:1;min-width:0">
           <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><%= dispMsg %></div>
@@ -111,13 +113,13 @@
             <% if (p.scheduledAt) { %>
             · <span style="color:#856404;font-weight:600"><i class="fa-solid fa-clock" style="font-size:.7rem"></i> โพส <%= new Date(p.scheduledAt).toLocaleString('th-TH',{timeZone:'Asia/Bangkok',hour12:false,dateStyle:'short',timeStyle:'short'}) %></span>
             <% } %>
-            <% if (p.status==='done'||p.status==='failed') { %>
+            <% if (p.status==='success'||p.status==='failed') { %>
             · <strong><%= p.successCount||0 %>/<%= (p.results||[]).length %></strong> สำเร็จ
             <% } %>
           </div>
         </div>
         <span class="badge <%= statusCls[p.status]||'' %>" style="flex-shrink:0"><%= statusTH[p.status]||p.status %></span>
-        <% if (p.status === 'scheduled') { %>
+        <% if (p.status === 'pending' || p.status === 'expired') { %>
         <input type="checkbox" class="pqSelCb" data-id="<%= p.id %>" onchange="updatePqSelection()"
           style="accent-color:#856404;cursor:pointer;width:16px;height:16px" title="เลือกเพื่อเลื่อนเวลาทั้งหมด">
         <button onclick="reschedulePostQ('<%= p.id %>', '<%= p.scheduledAt || '' %>')"
@@ -168,7 +170,7 @@ function dt24Set(prefix, localStr) {
   document.getElementById(prefix+'_m').value = m||'';
 }
 
-const _pqScheduled = <%- JSON.stringify(posts.filter(p => p.status==='scheduled').map(p => ({ id: p.id, msg: p.message, at: p.scheduledAt }))) %>;
+const _pqScheduled = <%- JSON.stringify(posts.filter(p => p.status==='pending').map(p => ({ id: p.id, msg: p.message, at: p.scheduledAt }))) %>;
 let _pqVisible = 20;
 
 document.querySelectorAll('.post-row').forEach(r => {

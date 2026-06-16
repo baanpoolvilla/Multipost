@@ -38,6 +38,12 @@ app.whenReady().then(async () => {
     // jobTemplateStore now uses MongoDB — no local init needed
     await jobStore.connect().catch(() => {});
 
+    // Part 9: catch up on expiry as soon as the Agent has a DB connection —
+    // before the queue is ever shown or polled, regardless of whether
+    // auto-posting is turned on yet.
+    await jobStore.migrateLegacyStatuses().catch(() => {});
+    await jobStore.expireOverdueJobs().catch(() => {});
+
     // Start local API
     apiServer.init(jobStore, jobRunner);
     apiServer.start();
@@ -101,6 +107,9 @@ ipcMain.handle('jobs:groups',       ()            => jobStore.getAllGroups());
 ipcMain.handle('jobs:recent-posts', ()            => jobStore.getRecentPosts());
 ipcMain.handle('jobs:history',      ()            => jobStore.getCompletedJobs());
 ipcMain.handle('jobs:reschedule',   (_, id, at)   => jobStore.rescheduleJob(id, at));
+ipcMain.handle('jobs:expired',      ()            => jobStore.listExpiredJobs());
+ipcMain.handle('jobs:retry',        (_, id)       => jobStore.retryJob(id));
+ipcMain.handle('jobs:cancel',       (_, id)       => jobStore.cancelJob(id));
 
 ipcMain.handle('notify:show', (_, title, body) => {
     if (Notification.isSupported()) new Notification({ title, body }).show();

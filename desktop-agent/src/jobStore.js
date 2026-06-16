@@ -1,11 +1,14 @@
 const mongoose = require('mongoose');
 const path     = require('path');
 const fs       = require('fs');
+const { createSchedulerService } = require('./scheduler/schedulerService');
+const { STATUS } = require('./scheduler/statuses');
 
 let _conn = null;
 let _dbOk = false;
 let _dataPath = null;
 let Job, Page, WebPost, FbGroup;
+let _scheduler = null;
 
 // ── Schemas ───────────────────────────────────────────────────
 const resultSchema = new mongoose.Schema({
@@ -21,9 +24,12 @@ const resultSchema = new mongoose.Schema({
     },
 }, { _id: false });
 
+// Status lifecycle is shared with Web — see scheduler/statuses.js. Both
+// sides write to the SAME `groupjobs` collection, so this enum must stay
+// identical to the one in services/groupJobStore.js.
 const jobSchema = new mongoose.Schema({
     type:         { type: String, default: 'group-post' },
-    status:       { type: String, enum: ['pending','running','done','failed'], default: 'pending' },
+    status:       { type: String, enum: Object.values(STATUS), default: STATUS.PENDING },
     message:      { type: String, required: true },
     groups:       [{ groupId: String, groupName: String, pageId: String, pageName: String }],
     delaySeconds: { type: Number, default: 5 },
@@ -32,6 +38,10 @@ const jobSchema = new mongoose.Schema({
     pageId:       { type: String, default: null },
     pageName:     { type: String, default: null },
     scheduledAt:  { type: String, default: null },
+    expiredAt:      { type: String, default: null },
+    lastAttemptAt:  { type: String, default: null },
+    sourceType:     { type: String, default: 'agent' }, // 'web' | 'agent'
+    agentId:        { type: String, default: null },
     images:       { type: [String], default: [] },
     results:      [resultSchema],
     createdAt:    { type: String, default: () => new Date().toISOString() },
@@ -66,6 +76,11 @@ async function connect() {
     WebPost = mongoose.models.AgentPost2  || mongoose.model('AgentPost2',  postSchema,    'posts');
     FbGroup = mongoose.models.AgentFbGrp  || mongoose.model('AgentFbGrp',  fbGroupSchema, 'fbgroups');
     _dbOk = true;
+}
+
+function scheduler() {
+    if (!_scheduler) _scheduler = createSchedulerService(Job, { sourceType: 'agent' });
+    return _scheduler;
 }
 
 function isDbConnected() { return _dbOk && mongoose.connection.readyState === 1; }
@@ -108,15 +123,15 @@ async function getRecentPosts() {
     } catch { return []; }
 }
 
-// ── CRUD ──────────────────────────────────────────────────────
+// ── CRUD (delegates to SchedulerService — see scheduler/) ───────
 async function createJob(data) {
     try {
         await connect();
-        const j = await Job.create({ ...data, status:'pending', results:[] });
-        return _s(j.toObject());
-    } catch {
+        return await scheduler().CreateJob(data);
+    } catch (e) {
+        if (e.validationErrors) throw e;
         const jobs = fLoad();
-        const j = { _id: fId(), ...data, status:'pending', results:[], createdAt: new Date().toISOString() };
+        const j = { _id: fId(), ...data, status: STATUS.PENDING, results: [], createdAt: new Date().toISOString() };
         jobs.push(j); fSave(jobs); return j;
     }
 }
@@ -128,29 +143,38 @@ async function getJobs() {
     } catch { return fLoad().reverse().slice(0,100); }
 }
 
-// Effective "due time" of a job: its scheduledAt if set, otherwise it was due as soon as created.
-function _dueTime(j) { return new Date(j.scheduledAt || j.createdAt).getTime(); }
-function _byDueTime(a, b) { return _dueTime(a) - _dueTime(b); }
+// Run BEFORE every queue poll: flips any pending job overdue past the
+// grace window to 'expired' so it can never be auto-posted late.
+async function expireOverdueJobs() {
+    try { await connect(); return await scheduler().expireOverdueJobs(); }
+    catch { return 0; }
+}
+
+async function migrateLegacyStatuses() {
+    try { await connect(); return await scheduler().migrateLegacyStatuses(); }
+    catch { return 0; }
+}
 
 async function getPendingJobs() {
     try {
         await connect();
-        const now = new Date().toISOString();
-        const jobs = (await Job.find({ status:'pending', $or:[{ scheduledAt:null }, { scheduledAt:{ $lte: now } }] }).lean()).map(_s);
-        return jobs.sort(_byDueTime);
+        return await scheduler().getDueJobs();
     } catch {
         const now = Date.now();
         return fLoad()
-            .filter(j => j.status==='pending' && (!j.scheduledAt || new Date(j.scheduledAt).getTime() <= now))
+            .filter(j => j.status===STATUS.PENDING && (!j.scheduledAt || new Date(j.scheduledAt).getTime() <= now))
             .sort(_byDueTime);
     }
 }
 
+// Effective "due time" of a job: its scheduledAt if set, otherwise it was due as soon as created.
+function _dueTime(j) { return new Date(j.scheduledAt || j.createdAt).getTime(); }
+function _byDueTime(a, b) { return _dueTime(a) - _dueTime(b); }
+
 async function updateJob(id, data) {
     try {
         await connect();
-        const j = await Job.findByIdAndUpdate(id, { $set:{ ...data, updatedAt: new Date().toISOString() } }, { new:true }).lean();
-        return _s(j);
+        return await scheduler().UpdateJob(id, data);
     } catch {
         const jobs = fLoad(); const j = jobs.find(x=>x._id===id);
         if (j) { Object.assign(j,data); fSave(jobs); } return j;
@@ -158,7 +182,7 @@ async function updateJob(id, data) {
 }
 
 async function deleteJob(id) {
-    try { await connect(); await Job.findByIdAndDelete(id); }
+    try { await connect(); await scheduler().DeleteJob(id); }
     catch { const jobs=fLoad(); const i=jobs.findIndex(x=>x._id===id); if(i!==-1){ jobs.splice(i,1); fSave(jobs); } }
 }
 
@@ -170,7 +194,7 @@ async function deleteAllJobs() {
 async function getCompletedJobs() {
     try {
         await connect();
-        return (await Job.find({ status: { $in: ['done', 'failed'] } }).sort({ createdAt: -1 }).limit(200).lean()).map(_s);
+        return (await Job.find({ status: { $in: [STATUS.SUCCESS, STATUS.FAILED, 'done'] } }).sort({ createdAt: -1 }).limit(200).lean()).map(_s);
     } catch { return []; }
 }
 
@@ -178,6 +202,26 @@ async function rescheduleJob(id, scheduledAt) {
     return updateJob(id, { scheduledAt: scheduledAt || null });
 }
 
+async function retryJob(id) {
+    try { await connect(); return await scheduler().RetryJob(id); }
+    catch (e) { throw e; }
+}
+
+async function cancelJob(id) {
+    try { await connect(); return await scheduler().CancelJob(id); }
+    catch (e) { throw e; }
+}
+
+async function listExpiredJobs() {
+    try { await connect(); return await scheduler().listExpired(); }
+    catch { return []; }
+}
+
 function _s(j) { return j ? { ...j, _id: j._id?.toString?.()??j._id } : j; }
 
-module.exports = { connect, isDbConnected, setDataPath, getAllGroups, getRecentPosts, createJob, getJobs, getPendingJobs, updateJob, deleteJob, deleteAllJobs, getCompletedJobs, rescheduleJob };
+module.exports = {
+    connect, isDbConnected, setDataPath, getAllGroups, getRecentPosts,
+    createJob, getJobs, getPendingJobs, updateJob, deleteJob, deleteAllJobs,
+    getCompletedJobs, rescheduleJob, expireOverdueJobs, migrateLegacyStatuses,
+    retryJob, cancelJob, listExpiredJobs,
+};

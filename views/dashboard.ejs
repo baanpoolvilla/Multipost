@@ -27,6 +27,8 @@
 
   <!-- Sidebar -->
   <aside class="sidebar">
+    <a href="/schedule-center" class="sidebar-item"><i class="fa-solid fa-calendar-days"></i><span>Schedule Center</span></a>
+    <div class="sidebar-divider"></div>
         <div class="sidebar-label">โพสลงเพจ</div>
     <a href="/" class="sidebar-item active"><i class="fa-solid fa-pen-to-square"></i><span>โพสใหม่</span></a>
     <a href="/overview" class="sidebar-item"><i class="fa-solid fa-chart-line"></i><span>ภาพรวม</span></a>
@@ -230,7 +232,7 @@
       <% } else { %>
       <% recentPosts.forEach(post => { %>
       <%
-        const isSchd = post.status === 'scheduled';
+        const isSchd = post.status === 'pending';
         const refDt  = new Date(isSchd ? post.scheduledAt : post.createdAt);
         const hm     = refDt.toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit', hour12:false, timeZone:'Asia/Bangkok'});
         const allOk  = post.failCount === 0;
@@ -309,6 +311,10 @@
           <input id="tplSearchInput" type="text" placeholder="ค้นหา..." oninput="renderTemplates()"
             style="background:#333;color:#fff;border:none;border-radius:7px;padding:.32rem .6rem .32rem 1.6rem;font-size:.78rem;font-family:inherit;outline:none;width:130px">
         </div>
+        <button id="tplMultiBtn" onclick="toggleTplMultiSelect()"
+          style="background:#333;color:#aaa;border:none;border-radius:7px;padding:.35rem .65rem;font-size:.78rem;cursor:pointer;font-family:inherit" title="เลือกหลายรายการ">
+          <i class="fa-solid fa-square-check"></i>
+        </button>
         <button onclick="openCreateTemplate()"
           style="background:#1877f2;color:#fff;border:none;border-radius:7px;padding:.35rem .85rem;font-size:.8rem;cursor:pointer;font-family:inherit;font-weight:700;display:flex;align-items:center;gap:.35rem">
           <i class="fa-solid fa-plus"></i> สร้างโพสต์
@@ -320,6 +326,15 @@
     </div>
     <!-- Folder tabs -->
     <div id="tplFolderTabs" style="display:flex;gap:.35rem;flex-wrap:wrap;padding:.4rem .85rem;background:#222;border-bottom:1px solid #333;overflow-x:auto"></div>
+    <!-- Bulk action bar (multi-select mode) -->
+    <div id="tplBulkBar" style="display:none;align-items:center;gap:.5rem;flex-wrap:wrap;padding:.5rem .85rem;background:#fff3cd;border-bottom:1px solid #ffe08a">
+      <span style="font-size:.8rem;color:#856404;font-weight:600"><strong id="tplSelCount">0</strong> รายการที่เลือก</span>
+      <button onclick="tplBulkMove()" style="background:#1877f2;color:#fff;border:none;border-radius:7px;padding:.3rem .65rem;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit"><i class="fa-solid fa-folder-plus"></i> เพิ่มเข้าโฟลเดอร์</button>
+      <button onclick="tplBulkRemoveFromFolder()" style="background:#fff;border:1px solid #856404;color:#856404;border-radius:7px;padding:.3rem .65rem;font-size:.78rem;cursor:pointer;font-family:inherit">เอาออกจากโฟลเดอร์</button>
+      <button onclick="tplBulkDelete()" style="background:#fff;border:1px solid #c62828;color:#c62828;border-radius:7px;padding:.3rem .65rem;font-size:.78rem;cursor:pointer;font-family:inherit"><i class="fa-solid fa-trash"></i> ลบ</button>
+      <button onclick="tplSelectAll()" style="background:none;border:none;color:#856404;font-size:.78rem;cursor:pointer;font-family:inherit;margin-left:auto">เลือกทั้งหมด</button>
+      <button onclick="toggleTplMultiSelect()" style="background:none;border:none;color:#856404;font-size:.78rem;cursor:pointer;font-family:inherit">ปิด</button>
+    </div>
     <!-- Body -->
     <div id="tplBody" style="flex:1;overflow-y:auto;padding:1rem;background:#f0f2f5;min-height:180px"></div>
     <!-- Footer (use button) -->
@@ -373,9 +388,48 @@
     anonKey: '<%- (process.env.SUPABASE_ANON_KEY   || "") %>',
     bucket:  '<%- (process.env.SUPABASE_BUCKET     || "multipost-storage") %>',
   };
-  <% if (recentPosts.some(p => p.status === 'scheduled')) { %>
+  <% if (recentPosts.some(p => p.status === 'pending')) { %>
   fetch('/api/cron/run-scheduled', { method: 'POST' }).catch(() => {});
   <% } %>
+</script>
+<script>
+  // Part 10: expired-jobs popup — shown once per page load if anything
+  // from either Web posts or Agent group jobs has fallen into 'expired'
+  // (overdue past the grace window, never auto-posted).
+  (async function checkExpiredJobs() {
+    try {
+      const [postsRes, jobsRes] = await Promise.all([
+        fetch('/api/posts/expired'),
+        fetch('/api/agent/jobs/expired'),
+      ]);
+      const expiredPosts = postsRes.ok ? await postsRes.json() : [];
+      const expiredJobs  = jobsRes.ok  ? await jobsRes.json()  : [];
+      const total = expiredPosts.length + expiredJobs.length;
+      if (!total) return;
+
+      const { isConfirmed, isDenied } = await Swal.fire({
+        icon: 'warning',
+        title: `มีงานหมดเวลา ${total} รายการ`,
+        html: `ระบบไม่โพสงานที่หมดเวลาให้อัตโนมัติ เพื่อป้องกันการโพสย้อนหลัง<br>กรุณาเลื่อนเวลาใหม่ หรือลบรายการที่ไม่ต้องการแล้ว`,
+        showCancelButton: true,
+        showDenyButton: true,
+        confirmButtonText: '<i class="fa-solid fa-eye"></i> ดูรายการ',
+        denyButtonText: '<i class="fa-solid fa-trash"></i> ลบทั้งหมด',
+        cancelButtonText: 'ปิด',
+        confirmButtonColor: '#1877f2',
+        denyButtonColor: '#c62828',
+      });
+      if (isConfirmed) {
+        location.href = '/schedule-center';
+      } else if (isDenied) {
+        await Promise.all([
+          ...expiredPosts.map(p => fetch(`/history/${p.id}`, { method: 'DELETE' }).catch(() => {})),
+          ...expiredJobs.map(j  => fetch(`/api/agent/jobs/${j._id}`, { method: 'DELETE' }).catch(() => {})),
+        ]);
+        Swal.fire({ icon: 'success', title: 'ลบแล้ว', timer: 1500, showConfirmButton: false });
+      }
+    } catch {}
+  })();
 </script>
 <script src="/js/app.js"></script>
 </body>

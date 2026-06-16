@@ -17,7 +17,11 @@
       "Bash(node -c desktop-agent/preload.js)",
       "Bash(node -c controllers/postController.js)",
       "Bash(node -c \"d:\\\\Oneclick\\\\multi-post-system\\\\desktop-agent\\\\src\\\\jobStore.js\")",
-      "Bash(node -c \"d:\\\\Oneclick\\\\multi-post-system\\\\services\\\\postStore.js\")"
+      "Bash(node -c \"d:\\\\Oneclick\\\\multi-post-system\\\\services\\\\postStore.js\")",
+      "Bash(node -e ' *)",
+      "Bash(grep -v \":1$\\\\|:2$\")",
+      "Bash(node scripts/_tmp_ejs_check.js)",
+      "Bash(node -c ./public/js/app.js)"
     ]
   }
 }
