@@ -306,9 +306,15 @@
         <button class="filter-btn"        data-filter="running" onclick="filterJobs(this,'running')">กำลังโพส</button>
         <button class="filter-btn"        data-filter="done"    onclick="filterJobs(this,'done')">สำเร็จ</button>
         <button class="filter-btn"        data-filter="failed"  onclick="filterJobs(this,'failed')">ล้มเหลว</button>
+        <button class="filter-btn"        data-filter="scheduled" onclick="filterJobs(this,'scheduled')">⏰ ตั้งเวลาไว้</button>
       </div>
       <button class="btn-link" style="color:var(--red);margin-left:.5rem" onclick="deleteAllJobs()">🗑 ลบทั้งหมด</button>
       <button class="btn-link ml-auto" onclick="loadJobs()">🔄 อัพเดต</button>
+    </div>
+    <div id="jqAgentBulkBar" style="display:none;align-items:center;gap:.5rem;flex-wrap:wrap;padding:.5rem .65rem;margin-bottom:.5rem;background:#fff3cd;border:1px solid #ffe08a;border-radius:8px">
+      <span style="font-size:12px;color:#856404;font-weight:600">เลือกแล้ว <strong id="jqAgentSelCount">0</strong> รายการ</span>
+      <button class="btn btn-secondary" style="font-size:12px;padding:.3rem .7rem" onclick="bulkRescheduleAgentJobs()">🕐 เลื่อนเวลาทั้งหมด</button>
+      <button class="btn btn-secondary" style="font-size:12px;padding:.3rem .7rem" onclick="clearAgentJqSelection()">ล้างที่เลือก</button>
     </div>
     <div class="card">
       <div id="jobsList"></div>

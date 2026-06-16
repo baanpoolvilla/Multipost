@@ -484,11 +484,16 @@ function filterJobs(btn, filter) {
 
 function renderJobs() {
     const el = document.getElementById('jobsList');
-    const filtered = _jobFilter==='all' ? _jobs : _jobs.filter(j=>j.status===_jobFilter);
+    const filtered = _jobFilter==='all' ? _jobs
+        : _jobFilter==='scheduled' ? _jobs.filter(j=>j.status==='pending' && j.scheduledAt)
+        : _jobs.filter(j=>j.status===_jobFilter);
     const pending = _jobs.filter(j=>j.status==='pending').length;
     const badge = document.getElementById('pendingBadge');
     if (pending>0) { badge.textContent=pending; badge.style.display=''; }
     else badge.style.display='none';
+
+    const bulkBar = document.getElementById('jqAgentBulkBar');
+    if (bulkBar && _jobFilter!=='scheduled') bulkBar.style.display='none';
 
     if (!filtered.length) { el.innerHTML='<div class="empty-state">ยังไม่มีรายการโพส</div>'; return; }
     const icons = { pending:'⏳', running:'🔄', done:'✅', failed:'❌' };
@@ -508,7 +513,11 @@ function renderJobs() {
             return `<span style="font-size:10px;background:${overdue?'#fde8e8':'#fff3cd'};color:${overdue?'#c62828':'#856404'};border-radius:4px;padding:.05rem .4rem;margin-left:.3rem">${overdue?'⚠️':'⏰'} ${label}</span>`;
         })() : '';
         const reschedBtn = j.status === 'pending' ? `<button onclick="agentReschedule('${j._id}','${j.scheduledAt||''}')" style="background:none;border:none;cursor:pointer;font-size:13px;padding:.1rem .2rem" title="แก้ไขเวลา">🕐</button>` : '';
+        const selCb = (_jobFilter==='scheduled' && j.status==='pending' && j.scheduledAt)
+            ? `<input type="checkbox" class="jqAgentSelCb" data-id="${j._id}" onchange="updateAgentJqSelection()" style="accent-color:#856404;cursor:pointer;width:15px;height:15px;margin-right:.2rem">`
+            : '';
         return `<div class="job-item">
+          ${selCb}
           <div class="job-icon">${icons[j.status]||'❓'}</div>
           <div class="job-body">
             <div class="job-msg">${modeTag ? `<span class="job-mode-tag">${modeTag}</span> ` : ''}${esc(display)}${imgBadge}${schedBadge}</div>
@@ -527,6 +536,37 @@ function renderJobs() {
         </div>`;
     }
     el.innerHTML = html;
+    updateAgentJqSelection();
+}
+
+function updateAgentJqSelection() {
+    const bar = document.getElementById('jqAgentBulkBar');
+    if (!bar) return;
+    if (_jobFilter !== 'scheduled') { bar.style.display = 'none'; return; }
+    const checked = document.querySelectorAll('.jqAgentSelCb:checked').length;
+    bar.style.display = checked ? 'flex' : 'none';
+    const cnt = document.getElementById('jqAgentSelCount');
+    if (cnt) cnt.textContent = checked;
+}
+
+function clearAgentJqSelection() {
+    document.querySelectorAll('.jqAgentSelCb').forEach(cb => cb.checked = false);
+    updateAgentJqSelection();
+}
+
+async function bulkRescheduleAgentJobs() {
+    const ids = [...document.querySelectorAll('.jqAgentSelCb')].filter(cb => cb.checked).map(cb => cb.dataset.id);
+    if (!ids.length) return;
+    const val = prompt(`เลื่อนเวลาโพส ${ids.length} รายการ ไปเป็นเวลาใหม่\nรูปแบบ: YYYY-MM-DDTHH:MM`, '');
+    if (val === null || !val.trim()) return;
+    try {
+        const scheduledAt = new Date(val.trim() + ':00+07:00').toISOString();
+        await Promise.all(ids.map(id => agent.rescheduleJob(id, scheduledAt)));
+        await loadJobs();
+        appendLog(`[🕐] เลื่อนเวลาโพส ${ids.length} รายการ → ${new Date(scheduledAt).toLocaleString('th-TH', { timeZone:'Asia/Bangkok', hour12:false })}`);
+    } catch(e) {
+        alert('เลื่อนเวลาไม่สำเร็จ: ' + e.message);
+    }
 }
 
 function showMoreJobs() {

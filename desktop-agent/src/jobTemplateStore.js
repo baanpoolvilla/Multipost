@@ -13,6 +13,7 @@ const MIME = {
 const schema = new mongoose.Schema({
     _id:          String,
     name:         String,
+    folder:       { type: String, default: null },
     message:      { type: String, default: '' },
     groups:       { type: Array,  default: [] },
     delaySeconds: { type: Number, default: 5 },
@@ -33,7 +34,7 @@ async function list() {
 }
 
 // imagePaths: Supabase URLs, absolute fs paths, or stored refs
-async function save({ id, name, message, groups, delaySeconds, postAsPage, images: imagePaths }) {
+async function save({ id, name, folder, message, groups, delaySeconds, postAsPage, images: imagePaths }) {
     await connect();
 
     const filenames = [];
@@ -100,7 +101,7 @@ async function save({ id, name, message, groups, delaySeconds, postAsPage, image
     const tplId = id || Date.now().toString();
     await Tpl.findByIdAndUpdate(
         tplId,
-        { $set: { _id: tplId, name, message, groups, delaySeconds, postAsPage: postAsPage || null, images: filenames, createdAt: new Date().toISOString() } },
+        { $set: { _id: tplId, name, folder: folder || null, message, groups, delaySeconds, postAsPage: postAsPage || null, images: filenames, createdAt: new Date().toISOString() } },
         { upsert: true }
     );
     return (await Tpl.find().sort({ createdAt: -1 }).lean()).map(_normalize);

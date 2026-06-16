@@ -280,7 +280,7 @@
       <% } %>
       <% const medals = ['🥇','🥈','🥉','4️⃣','5️⃣']; %>
       <%
-        const grpEngScore = g => g.success*10 + (g.likes||0)*1 + (g.comments||0)*2 + (g.shares||0)*3;
+        const grpEngScore = g => (g.likes||0)*1 + (g.comments||0)*2 + (g.shares||0)*3;
         const topSortedByEng = [...allGroupStats].sort((a,b) => grpEngScore(b) - grpEngScore(a)).slice(0,3);
       %>
       <% topSortedByEng.forEach((g, i) => { %>
@@ -416,17 +416,16 @@ function showGrpEngInfo() {
   Swal.fire({
     title: '<i class="fa-solid fa-circle-info" style="color:#2e7d32"></i> วิธีคำนวณ Top กลุ่ม',
     html: `<div style="text-align:left;font-size:.88rem">
-      <p style="color:#555;margin-bottom:.75rem">เรียงตาม <b>คะแนน Engagement กลุ่ม</b> ที่รวมอัตราความสำเร็จในการโพสกับ Engagement ที่ได้จาก Facebook</p>
+      <p style="color:#555;margin-bottom:.75rem">เรียงตาม <b>คะแนน Engagement กลุ่ม</b> จาก Facebook เท่านั้น — ไม่นับจำนวนโพสสำเร็จ/ล้มเหลว</p>
       <div style="background:#f0fdf4;border-radius:10px;padding:.75rem 1rem;margin-bottom:.75rem">
         <div style="font-weight:700;color:#2e7d32;margin-bottom:.5rem">สูตรคะแนน</div>
         <div style="display:grid;grid-template-columns:auto 1fr;gap:.3rem .75rem;font-size:.85rem">
-          <span style="color:#059669;font-weight:700">✅ โพสสำเร็จ</span><span>× 10 (หลักการโพสเข้ากลุ่มได้)</span>
           <span style="color:#8b5cf6;font-weight:700">👍 ไลค์</span><span>× 1 (Reaction)</span>
           <span style="color:#f59e0b;font-weight:700">💬 คอมเมนต์</span><span>× 2 (มีส่วนร่วมสูง)</span>
           <span style="color:#0891b2;font-weight:700">🔁 แชร์</span><span>× 3 (เผยแพร่ต่อ)</span>
         </div>
       </div>
-      <p style="font-size:.78rem;color:#8a8d91">ใช้สูตรต่างจากเพจเพราะกลุ่มวัดด้วยการโพสสำเร็จเป็นหลัก ข้อมูล Analytics จะเข้มขึ้นหลังกด "อัปเดต Analytics"</p>
+      <p style="font-size:.78rem;color:#8a8d91">ข้อมูล Analytics จะเข้มขึ้นหลังกด "อัปเดต Analytics"</p>
     </div>`,
     confirmButtonText: 'รับทราบ', confirmButtonColor: '#2e7d32', width: '430px',
   });

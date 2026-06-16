@@ -148,6 +148,21 @@
         <i class="fa-solid fa-circle-info" style="color:#1877f2;margin-right:.3rem"></i>
         แสดง <strong id="hShown" style="color:#1877f2">0</strong> จาก <strong><%= posts.length %></strong> โพสต์
       </div>
+
+      <!-- Bulk reschedule bar — shown only when filtering by "รอโพส" and items selected -->
+      <div id="hBulkBar" style="display:none;margin-top:.6rem;padding-top:.6rem;border-top:1px solid #f0f2f5;align-items:center;gap:.5rem;flex-wrap:wrap">
+        <span style="font-size:.8rem;color:#856404;font-weight:600">
+          <i class="fa-solid fa-clock"></i> เลือกแล้ว <strong id="hSelCount">0</strong> รายการ
+        </span>
+        <button onclick="bulkReschedule()"
+          style="background:#856404;color:#fff;border:none;border-radius:7px;padding:.32rem .7rem;font-size:.79rem;font-weight:600;cursor:pointer;font-family:inherit">
+          <i class="fa-solid fa-clock-rotate-left"></i> เลื่อนเวลาทั้งหมด
+        </button>
+        <button onclick="clearSelection()"
+          style="background:#f0f2f5;border:none;border-radius:7px;padding:.32rem .7rem;font-size:.79rem;cursor:pointer;color:#65676b;font-family:inherit">
+          ล้างที่เลือก
+        </button>
+      </div>
     </div>
     <% } %>
 
@@ -206,6 +221,8 @@
           </a>
           <% } %>
           <% if (isScheduled) { %>
+          <input type="checkbox" class="hSelCb" data-id="<%= post.id %>" onchange="updateSelection()"
+            style="accent-color:#856404;cursor:pointer;width:16px;height:16px" title="เลือกเพื่อเลื่อนเวลาทั้งหมด">
           <button onclick="reschedulePost('<%= post.id %>', '<%= post.scheduledAt || '' %>')"
             style="background:none;border:none;cursor:pointer;color:#856404;font-size:.85rem;padding:.1rem .3rem;border-radius:4px" title="แก้ไขเวลาโพส">
             <i class="fa-solid fa-clock"></i>
@@ -404,6 +421,7 @@
       btnClear.style.opacity = hasFilter ? '1' : '.35';
       btnClear.style.pointerEvents = hasFilter ? '' : 'none';
     }
+    updateSelection();
   }
 
   function clearFilters() {
@@ -412,6 +430,51 @@
       if (el) el.value = '';
     });
     applyFilters();
+  }
+
+  function updateSelection() {
+    const checked = [...document.querySelectorAll('.hSelCb')].filter(cb => cb.checked && cb.closest('.history-card').style.display !== 'none');
+    const bar = document.getElementById('hBulkBar');
+    if (bar) bar.style.display = checked.length ? 'flex' : 'none';
+    const cnt = document.getElementById('hSelCount');
+    if (cnt) cnt.textContent = checked.length;
+  }
+
+  function clearSelection() {
+    document.querySelectorAll('.hSelCb').forEach(cb => cb.checked = false);
+    updateSelection();
+  }
+
+  async function bulkReschedule() {
+    const ids = [...document.querySelectorAll('.hSelCb')].filter(cb => cb.checked).map(cb => cb.dataset.id);
+    if (!ids.length) return;
+    const { value, isConfirmed } = await Swal.fire({
+      title: `<i class="fa-solid fa-clock" style="color:#856404"></i> เลื่อนเวลาโพส ${ids.length} รายการ`,
+      html: `<div style="text-align:left;display:flex;flex-direction:column;gap:.4rem">
+        <label style="font-size:.8rem;font-weight:600;color:#555">วันที่และเวลาใหม่ (ใช้กับทุกรายการที่เลือก)</label>
+        <input id="swal-bulkAt" type="datetime-local"
+          style="padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.88rem;font-family:inherit;color:#333;outline:none;width:100%;box-sizing:border-box">
+      </div>`,
+      confirmButtonText: 'บันทึกทั้งหมด', confirmButtonColor: '#856404',
+      showCancelButton: true, cancelButtonText: 'ยกเลิก', focusConfirm: false,
+      preConfirm: () => {
+        const v = document.getElementById('swal-bulkAt').value;
+        if (!v) { Swal.showValidationMessage('กรุณาเลือกวันที่และเวลา'); return false; }
+        return v;
+      },
+    });
+    if (!isConfirmed) return;
+    const scheduledAt = new Date(value + ':00+07:00').toISOString();
+    try {
+      await Promise.all(ids.map(id => fetch(`/posts/${id}/reschedule`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scheduledAt }),
+      })));
+      location.reload();
+    } catch(e) {
+      Swal.fire({ icon: 'error', title: 'เลื่อนเวลาไม่สำเร็จ', text: e.message, confirmButtonColor: '#1877f2' });
+    }
   }
 
   function viewImage(src) {

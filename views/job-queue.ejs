@@ -176,7 +176,27 @@
     <div class="card">
       <div class="card-title">
         <i class="fa-solid fa-clock-rotate-left"></i> รายการ Jobs
+        <% const schedCount = jobs.filter(j => j.status==='pending' && j.scheduledAt).length; %>
+        <button id="btnSchedFilter" onclick="toggleSchedFilter()"
+          style="margin-left:.6rem;background:#fff3cd;border:1px solid #ffe08a;border-radius:7px;padding:.18rem .55rem;font-size:.78rem;font-weight:600;color:#856404;cursor:pointer;font-family:inherit">
+          <i class="fa-solid fa-clock"></i> ตั้งเวลาไว้ (<%= schedCount %>)
+        </button>
         <button class="btn-link-sm" style="margin-left:auto" onclick="location.reload()"><i class="fa-solid fa-rotate-right"></i> รีเฟรช</button>
+      </div>
+
+      <!-- Bulk reschedule bar — shown only while "ตั้งเวลาไว้" filter is active and rows selected -->
+      <div id="jqBulkBar" style="display:none;align-items:center;gap:.5rem;flex-wrap:wrap;padding:.5rem .65rem;border-bottom:1px solid var(--border-color)">
+        <span style="font-size:.8rem;color:#856404;font-weight:600">
+          <i class="fa-solid fa-clock"></i> เลือกแล้ว <strong id="jqSelCount">0</strong> รายการ
+        </span>
+        <button onclick="bulkRescheduleJobs()"
+          style="background:#856404;color:#fff;border:none;border-radius:7px;padding:.32rem .7rem;font-size:.79rem;font-weight:600;cursor:pointer;font-family:inherit">
+          <i class="fa-solid fa-clock-rotate-left"></i> เลื่อนเวลาทั้งหมด
+        </button>
+        <button onclick="clearJqSelection()"
+          style="background:#f0f2f5;border:none;border-radius:7px;padding:.32rem .7rem;font-size:.79rem;cursor:pointer;color:#65676b;font-family:inherit">
+          ล้างที่เลือก
+        </button>
       </div>
 
       <% if (jobs.length === 0) { %>
@@ -199,7 +219,7 @@
            if (dispMsg.length>70) dispMsg = dispMsg.slice(0,70)+'…';
       %>
       <div style="display:flex;align-items:flex-start;gap:.7rem;padding:.65rem .5rem;border-bottom:1px solid var(--border-color)"
-           id="job_<%= j._id %>" class="job-row" data-idx="<%= idx %>">
+           id="job_<%= j._id %>" class="job-row" data-idx="<%= idx %>" data-scheduled="<%= (j.status==='pending' && j.scheduledAt) ? '1' : '0' %>">
         <span style="font-size:1.2rem;flex-shrink:0;margin-top:.1rem"><%= icons[j.status]||'❓' %></span>
         <div style="flex:1;min-width:0">
           <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
@@ -218,6 +238,10 @@
         </div>
         <span class="badge <%= statusCls[j.status]||'' %>" style="flex-shrink:0"><%= statusTH[j.status]||j.status %></span>
         <% if (j.status === 'pending') { %>
+        <% if (j.scheduledAt) { %>
+        <input type="checkbox" class="jqSelCb" data-id="<%= j._id %>" onchange="updateJqSelection()"
+          style="accent-color:#856404;cursor:pointer;width:16px;height:16px" title="เลือกเพื่อเลื่อนเวลาทั้งหมด">
+        <% } %>
         <button onclick="rescheduleJob('<%= j._id %>', '<%= j.scheduledAt || '' %>')"
           style="background:none;border:none;cursor:pointer;color:#856404;font-size:.85rem;padding:.1rem .3rem;border-radius:4px" title="แก้ไขเวลาโพส">
           <i class="fa-solid fa-clock"></i>
@@ -292,6 +316,74 @@ function showMoreJobs() {
   const btn = document.getElementById('showMoreRow');
   const remaining = document.querySelectorAll('.job-row[style*="display: none"], .job-row[style*="display:none"]').length;
   if (remaining === 0 && btn) btn.style.display = 'none';
+}
+
+/* ── "ตั้งเวลาไว้" filter ── */
+let _schedFilterActive = false;
+
+function toggleSchedFilter() {
+  _schedFilterActive = !_schedFilterActive;
+  const btn = document.getElementById('btnSchedFilter');
+  const moreRow = document.getElementById('showMoreRow');
+  if (_schedFilterActive) {
+    if (btn) { btn.style.background = '#856404'; btn.style.color = '#fff'; }
+    if (moreRow) moreRow.style.display = 'none';
+    document.querySelectorAll('.job-row').forEach(r => {
+      r.style.display = r.dataset.scheduled === '1' ? 'flex' : 'none';
+    });
+  } else {
+    if (btn) { btn.style.background = '#fff3cd'; btn.style.color = '#856404'; }
+    document.querySelectorAll('.job-row').forEach(r => {
+      r.style.display = parseInt(r.dataset.idx) < _visibleJobs ? 'flex' : 'none';
+    });
+    if (moreRow) moreRow.style.display = '';
+  }
+  updateJqSelection();
+}
+
+function updateJqSelection() {
+  const checked = [...document.querySelectorAll('.jqSelCb')].filter(cb => cb.checked && cb.closest('.job-row').style.display !== 'none');
+  const bar = document.getElementById('jqBulkBar');
+  if (bar) bar.style.display = checked.length ? 'flex' : 'none';
+  const cnt = document.getElementById('jqSelCount');
+  if (cnt) cnt.textContent = checked.length;
+}
+
+function clearJqSelection() {
+  document.querySelectorAll('.jqSelCb').forEach(cb => cb.checked = false);
+  updateJqSelection();
+}
+
+async function bulkRescheduleJobs() {
+  const ids = [...document.querySelectorAll('.jqSelCb')].filter(cb => cb.checked).map(cb => cb.dataset.id);
+  if (!ids.length) return;
+  const { value, isConfirmed } = await Swal.fire({
+    title: `<i class="fa-solid fa-clock" style="color:#856404"></i> เลื่อนเวลาโพส ${ids.length} รายการ`,
+    html: `<div style="text-align:left">
+      <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:.3rem">เวลาที่ต้องการโพส (ใช้กับทุกรายการที่เลือก)</label>
+      <input id="swal-jqBulkAt" type="datetime-local"
+        style="width:100%;padding:.4rem .6rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none;box-sizing:border-box">
+    </div>`,
+    confirmButtonText: 'บันทึกทั้งหมด', confirmButtonColor: '#856404',
+    showCancelButton: true, cancelButtonText: 'ยกเลิก', focusConfirm: false,
+    preConfirm: () => {
+      const v = document.getElementById('swal-jqBulkAt').value;
+      if (!v) { Swal.showValidationMessage('กรุณาเลือกวันที่และเวลา'); return false; }
+      return v;
+    },
+  });
+  if (!isConfirmed) return;
+  const scheduledAt = new Date(value + ':00+07:00').toISOString();
+  try {
+    await Promise.all(ids.map(id => fetch(`/api/agent/jobs/${id}/schedule`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scheduledAt }),
+    })));
+    location.reload();
+  } catch(e) {
+    Swal.fire({ icon:'error', title:'เลื่อนเวลาไม่สำเร็จ', text: e.message, confirmButtonColor:'#1877f2' });
+  }
 }
 
 function toggleForm() {

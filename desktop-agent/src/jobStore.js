@@ -12,16 +12,26 @@ const resultSchema = new mongoose.Schema({
     groupId: String, groupName: String,
     status:  { type: String, enum: ['pending','success','failed'], default: 'pending' },
     error: String, timestamp: String,
+    postUrl:   { type: String, default: null },
+    analytics: {
+        likes:    { type: Number, default: 0 },
+        comments: { type: Number, default: 0 },
+        shares:   { type: Number, default: 0 },
+        reach:    { type: Number, default: 0 },
+    },
 }, { _id: false });
 
 const jobSchema = new mongoose.Schema({
     type:         { type: String, default: 'group-post' },
     status:       { type: String, enum: ['pending','running','done','failed'], default: 'pending' },
     message:      { type: String, required: true },
-    groups:       [{ groupId: String, groupName: String }],
+    groups:       [{ groupId: String, groupName: String, pageId: String, pageName: String }],
     delaySeconds: { type: Number, default: 5 },
     accountId:    String,
     postAsPage:   { type: String, default: null },
+    pageId:       { type: String, default: null },
+    pageName:     { type: String, default: null },
+    scheduledAt:  { type: String, default: null },
     images:       { type: [String], default: [] },
     results:      [resultSchema],
     createdAt:    { type: String, default: () => new Date().toISOString() },
@@ -121,8 +131,12 @@ async function getJobs() {
 async function getPendingJobs() {
     try {
         await connect();
-        return (await Job.find({ status:'pending' }).sort({ createdAt:1 }).lean()).map(_s);
-    } catch { return fLoad().filter(j=>j.status==='pending'); }
+        const now = new Date().toISOString();
+        return (await Job.find({ status:'pending', $or:[{ scheduledAt:null }, { scheduledAt:{ $lte: now } }] }).sort({ createdAt:1 }).lean()).map(_s);
+    } catch {
+        const now = Date.now();
+        return fLoad().filter(j => j.status==='pending' && (!j.scheduledAt || new Date(j.scheduledAt).getTime() <= now));
+    }
 }
 
 async function updateJob(id, data) {
