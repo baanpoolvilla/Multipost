@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>คิวโพส - Multi Post System</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-inner">
+    <div class="navbar-brand">
+      <div class="fb-logo"><i class="fa-brands fa-facebook"></i></div>
+      <span>Multi Post System</span>
+    </div>
+
+  </div>
+</nav>
+
+<div class="page-wrap">
+
+  <aside class="sidebar">
+        <div class="sidebar-label">โพสลงเพจ</div>
+    <a href="/" class="sidebar-item"><i class="fa-solid fa-pen-to-square"></i><span>โพสใหม่</span></a>
+    <a href="/overview" class="sidebar-item"><i class="fa-solid fa-chart-line"></i><span>ภาพรวม</span></a>
+    <a href="/history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพส</span></a>
+    <a href="/post-queue" class="sidebar-item active"><i class="fa-solid fa-list-check"></i><span>คิวโพส</span></a>
+    <a href="/pages" class="sidebar-item"><i class="fa-brands fa-facebook"></i><span>จัดการเพจ</span></a>
+
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-label">โพส&amp;แชร์ ลงกลุ่ม</div>
+    <a href="/group-overview" class="sidebar-item"><i class="fa-solid fa-chart-line" style="color:#2e7d32"></i><span>ภาพรวม</span></a>
+    <a href="/groups" class="sidebar-item"><i class="fa-solid fa-users-rectangle"></i><span>จัดการกลุ่ม</span></a>
+    <a href="/agent" class="sidebar-item"><i class="fa-solid fa-robot"></i><span>ติดตั้ง Desktop Agent</span></a>
+    <a href="/job-queue" class="sidebar-item"><i class="fa-solid fa-list-check"></i><span>คิวโพสกลุ่ม</span></a>
+    <a href="/group-history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพสกลุ่ม</span></a>
+    <a href="/guide" class="sidebar-item"><i class="fa-solid fa-book-open"></i><span>คู่มือการใช้งาน</span></a>
+  </aside>
+
+  <main class="feed">
+
+    <!-- Header -->
+    <div class="card" style="padding:.85rem 1.25rem;display:flex;align-items:center;justify-content:space-between">
+      <div class="card-title" style="font-size:1.05rem">
+        <i class="fa-solid fa-list-check"></i> คิวโพสลงเพจ
+        <span style="background:#e4e6ea;padding:.15rem .55rem;border-radius:999px;font-size:.8rem;margin-left:.4rem" id="postCount"><%= posts.length %></span>
+      </div>
+    </div>
+
+    <%
+    const pageNameMap = {};
+    pages.forEach(p => { pageNameMap[p.pageId] = p.pageName; });
+    %>
+
+    <!-- Posts list -->
+    <div class="card">
+      <div class="card-title">
+        <i class="fa-solid fa-clock-rotate-left"></i> รายการโพส
+        <% const schedCount = posts.filter(p => p.status==='scheduled').length; %>
+        <button id="btnSchedFilter" onclick="toggleSchedFilter()"
+          style="margin-left:.6rem;background:#fff3cd;border:1px solid #ffe08a;border-radius:7px;padding:.18rem .55rem;font-size:.78rem;font-weight:600;color:#856404;cursor:pointer;font-family:inherit">
+          <i class="fa-solid fa-clock"></i> ตั้งเวลาไว้ (<%= schedCount %>)
+        </button>
+        <button id="btnPqTimelineView" onclick="togglePqTimelineView()"
+          style="margin-left:.4rem;background:#fff3cd;border:1px solid #ffe08a;border-radius:7px;padding:.18rem .55rem;font-size:.78rem;font-weight:600;color:#856404;cursor:pointer;font-family:inherit">
+          <i class="fa-solid fa-calendar-days"></i> ปฏิทิน
+        </button>
+        <button class="btn-link-sm" style="margin-left:auto" onclick="location.reload()"><i class="fa-solid fa-rotate-right"></i> รีเฟรช</button>
+      </div>
+
+      <!-- Bulk reschedule bar — shown only while "ตั้งเวลาไว้" filter is active and rows selected -->
+      <div id="pqBulkBar" style="display:none;align-items:center;gap:.5rem;flex-wrap:wrap;padding:.5rem .65rem;border-bottom:1px solid var(--border-color)">
+        <span style="font-size:.8rem;color:#856404;font-weight:600">
+          <i class="fa-solid fa-clock"></i> เลือกแล้ว <strong id="pqSelCount">0</strong> รายการ
+        </span>
+        <button onclick="bulkReschedulePosts()"
+          style="background:#856404;color:#fff;border:none;border-radius:7px;padding:.32rem .7rem;font-size:.79rem;font-weight:600;cursor:pointer;font-family:inherit">
+          <i class="fa-solid fa-clock-rotate-left"></i> เลื่อนเวลาทั้งหมด
+        </button>
+        <button onclick="clearPqSelection()"
+          style="background:#f0f2f5;border:none;border-radius:7px;padding:.32rem .7rem;font-size:.79rem;cursor:pointer;color:#65676b;font-family:inherit">
+          ล้างที่เลือก
+        </button>
+      </div>
+
+      <div id="pqTimelineView" style="display:none;padding:1rem .85rem;overflow-x:auto"></div>
+
+      <% if (posts.length === 0) { %>
+      <div style="color:var(--text-secondary);text-align:center;padding:1.5rem;font-size:.9rem">ยังไม่มีโพส</div>
+      <% } else { %>
+      <% const icons = { scheduled:'⏳', running:'🔄', done:'✅', failed:'❌' }; %>
+      <% const statusTH = { scheduled:'รอ', running:'กำลังโพส', done:'เสร็จ', failed:'ล้มเหลว' }; %>
+      <% const statusCls = { scheduled:'badge-yellow', running:'badge-blue', done:'badge-green', failed:'badge-red' }; %>
+      <% posts.forEach((p, idx) => {
+           let dispMsg = p.message||'';
+           if (dispMsg.length>70) dispMsg = dispMsg.slice(0,70)+'…';
+           const pageNames = (p.selectedPageIds||[]).map(id => pageNameMap[id]||id).join(', ') || 'ทุกเพจ';
+      %>
+      <div style="display:flex;align-items:flex-start;gap:.7rem;padding:.65rem .5rem;border-bottom:1px solid var(--border-color)"
+           id="post_<%= p.id %>" class="post-row" data-idx="<%= idx %>" data-scheduled="<%= p.status==='scheduled' ? '1' : '0' %>">
+        <span style="font-size:1.2rem;flex-shrink:0;margin-top:.1rem"><%= icons[p.status]||'❓' %></span>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><%= dispMsg %></div>
+          <div style="font-size:.78rem;color:var(--text-secondary);margin-top:.2rem">
+            <%= pageNames %> ·
+            <%= new Date(p.createdAt).toLocaleString('th-TH',{timeZone:'Asia/Bangkok',hour12:false,dateStyle:'short',timeStyle:'short'}) %>
+            <% if (p.scheduledAt) { %>
+            · <span style="color:#856404;font-weight:600"><i class="fa-solid fa-clock" style="font-size:.7rem"></i> โพส <%= new Date(p.scheduledAt).toLocaleString('th-TH',{timeZone:'Asia/Bangkok',hour12:false,dateStyle:'short',timeStyle:'short'}) %></span>
+            <% } %>
+            <% if (p.status==='done'||p.status==='failed') { %>
+            · <strong><%= p.successCount||0 %>/<%= (p.results||[]).length %></strong> สำเร็จ
+            <% } %>
+          </div>
+        </div>
+        <span class="badge <%= statusCls[p.status]||'' %>" style="flex-shrink:0"><%= statusTH[p.status]||p.status %></span>
+        <% if (p.status === 'scheduled') { %>
+        <input type="checkbox" class="pqSelCb" data-id="<%= p.id %>" onchange="updatePqSelection()"
+          style="accent-color:#856404;cursor:pointer;width:16px;height:16px" title="เลือกเพื่อเลื่อนเวลาทั้งหมด">
+        <button onclick="reschedulePostQ('<%= p.id %>', '<%= p.scheduledAt || '' %>')"
+          style="background:none;border:none;cursor:pointer;color:#856404;font-size:.85rem;padding:.1rem .3rem;border-radius:4px" title="แก้ไขเวลาโพส">
+          <i class="fa-solid fa-clock"></i>
+        </button>
+        <% } %>
+        <button onclick="deletePostQ('<%= p.id %>')" style="background:none;border:none;cursor:pointer;color:#c5c8d0;font-size:1rem;padding:.1rem .3rem;border-radius:4px" title="ลบ">
+          <i class="fa-solid fa-trash"></i>
+        </button>
+      </div>
+      <% }); %>
+      <% if (posts.length > 20) { %>
+      <div id="showMoreRow" style="padding:.65rem;text-align:center">
+        <button onclick="showMorePosts()" style="background:#f0f2f5;border:none;border-radius:8px;padding:.45rem 1.1rem;font-size:.85rem;cursor:pointer;font-family:inherit;color:#1877f2;font-weight:600">
+          เพิ่มเติม (<%= posts.length-20 %> รายการ)
+        </button>
+      </div>
+      <% } %>
+      <% } %>
+    </div>
+
+  </main>
+</div>
+
+<style>
+.btn-link-sm { background:none; border:none; color:#1877f2; font-size:.8rem; cursor:pointer; font-family:inherit; padding:0 .3rem }
+.btn-link-sm:hover { text-decoration:underline }
+.badge-yellow { background:#fff3cd; color:#856404 }
+.badge-blue   { background:#cfe2ff; color:#084298 }
+.badge-green  { background:#d1e7dd; color:#0a3622 }
+.badge-red    { background:#f8d7da; color:#842029 }
+</style>
+
+<script>
+function dt24Get(prefix) {
+  const d = document.getElementById(prefix+'_d')?.value;
+  if (!d) return '';
+  const h = String(document.getElementById(prefix+'_h').value||0).padStart(2,'0');
+  const m = String(document.getElementById(prefix+'_m').value||0).padStart(2,'0');
+  return `${d}T${h}:${m}`;
+}
+function dt24Set(prefix, localStr) {
+  const [d,t] = (localStr||'').split('T');
+  document.getElementById(prefix+'_d').value = d||'';
+  const [h,m] = (t||'').split(':');
+  document.getElementById(prefix+'_h').value = h||'';
+  document.getElementById(prefix+'_m').value = m||'';
+}
+
+const _pqScheduled = <%- JSON.stringify(posts.filter(p => p.status==='scheduled').map(p => ({ id: p.id, msg: p.message, at: p.scheduledAt }))) %>;
+let _pqVisible = 20;
+
+document.querySelectorAll('.post-row').forEach(r => {
+  if (parseInt(r.dataset.idx) >= _pqVisible) r.style.display = 'none';
+});
+
+function showMorePosts() {
+  _pqVisible += 20;
+  document.querySelectorAll('.post-row').forEach(r => {
+    if (parseInt(r.dataset.idx) < _pqVisible) r.style.display = 'flex';
+  });
+  const btn = document.getElementById('showMoreRow');
+  const remaining = document.querySelectorAll('.post-row[style*="display: none"], .post-row[style*="display:none"]').length;
+  if (remaining === 0 && btn) btn.style.display = 'none';
+}
+
+/* ── "ตั้งเวลาไว้" filter ── */
+let _schedFilterActive = false;
+
+function toggleSchedFilter() {
+  _schedFilterActive = !_schedFilterActive;
+  const btn = document.getElementById('btnSchedFilter');
+  const moreRow = document.getElementById('showMoreRow');
+  if (_schedFilterActive) {
+    if (btn) { btn.style.background = '#856404'; btn.style.color = '#fff'; }
+    if (moreRow) moreRow.style.display = 'none';
+    document.querySelectorAll('.post-row').forEach(r => {
+      r.style.display = r.dataset.scheduled === '1' ? 'flex' : 'none';
+    });
+  } else {
+    if (btn) { btn.style.background = '#fff3cd'; btn.style.color = '#856404'; }
+    document.querySelectorAll('.post-row').forEach(r => {
+      r.style.display = parseInt(r.dataset.idx) < _pqVisible ? 'flex' : 'none';
+    });
+    if (moreRow) moreRow.style.display = '';
+  }
+  updatePqSelection();
+}
+
+let _pqTimelineOn = false;
+function togglePqTimelineView() {
+  _pqTimelineOn = !_pqTimelineOn;
+  const view = document.getElementById('pqTimelineView');
+  const btn  = document.getElementById('btnPqTimelineView');
+  document.querySelectorAll('.post-row').forEach(r => { if (_pqTimelineOn) r.style.display = 'none'; });
+  const moreRow = document.getElementById('showMoreRow');
+  if (_pqTimelineOn) {
+    renderPostQueueTimeline();
+    view.style.display = '';
+    btn.style.background = '#856404'; btn.style.color = '#fff';
+    if (moreRow) moreRow.style.display = 'none';
+  } else {
+    view.style.display = 'none';
+    btn.style.background = '#fff3cd'; btn.style.color = '#856404';
+    if (_schedFilterActive) {
+      document.querySelectorAll('.post-row').forEach(r => {
+        r.style.display = r.dataset.scheduled === '1' ? 'flex' : 'none';
+      });
+    } else {
+      document.querySelectorAll('.post-row').forEach(r => {
+        r.style.display = parseInt(r.dataset.idx) < _pqVisible ? 'flex' : 'none';
+      });
+      if (moreRow) moreRow.style.display = '';
+    }
+  }
+  updatePqSelection();
+}
+
+function renderPostQueueTimeline() {
+  const view = document.getElementById('pqTimelineView');
+  const items = _pqScheduled;
+  if (!items.length) {
+    view.innerHTML = '<div style="text-align:center;padding:2rem;color:#8a8d91">ไม่มีโพสที่ตั้งเวลาไว้</div>';
+    return;
+  }
+  const byDate = {};
+  items.forEach(p => {
+    const d = new Date(p.at);
+    const key = d.toLocaleDateString('en-CA');
+    (byDate[key] = byDate[key] || []).push(p);
+  });
+  const now = new Date();
+  const hourLines = [0, 4, 8, 12, 16, 20];
+  const cols = Object.keys(byDate).sort().map(key => {
+    const d = new Date(key + 'T00:00:00');
+    const label = d.toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' });
+    const chips = byDate[key].map(p => {
+      const t = new Date(p.at);
+      const top = ((t.getHours() + t.getMinutes() / 60) / 24 * 100).toFixed(2);
+      const overdue = t < now;
+      const time = t.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false });
+      const msg = (p.msg || '').slice(0, 30).replace(/'/g, '&#39;');
+      return `<div onclick="reschedulePostQ('${p.id}','${p.at}')" title="${time} — ${msg}"
+        style="position:absolute;left:4px;right:4px;top:${top}%;background:${overdue ? '#fde8e8' : '#fff3cd'};color:${overdue ? '#c62828' : '#856404'};border:1px solid ${overdue ? '#f5b5b5' : '#ffe08a'};border-radius:5px;padding:.15rem .35rem;font-size:.68rem;font-weight:600;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;z-index:1">
+        ${overdue ? '⚠️' : '⏰'} ${time} ${msg}</div>`;
+    }).join('');
+    const lines = hourLines.map(h => `<div style="position:absolute;left:0;right:0;top:${(h/24*100).toFixed(2)}%;border-top:1px dashed #eee;font-size:.62rem;color:#bbb;padding-left:2px">${String(h).padStart(2,'0')}:00</div>`).join('');
+    return `<div style="flex:0 0 150px;min-width:150px">
+      <div style="font-size:.78rem;font-weight:700;color:#444;text-align:center;margin-bottom:.4rem">${label}</div>
+      <div style="position:relative;height:360px;background:#fafbfc;border:1px solid #eee;border-radius:8px">${lines}${chips}</div>
+    </div>`;
+  }).join('');
+  view.innerHTML = `<div style="display:flex;gap:.6rem">${cols}</div>`;
+}
+
+function updatePqSelection() {
+  const checked = [...document.querySelectorAll('.pqSelCb')].filter(cb => cb.checked && cb.closest('.post-row').style.display !== 'none');
+  const bar = document.getElementById('pqBulkBar');
+  if (bar) bar.style.display = checked.length ? 'flex' : 'none';
+  const cnt = document.getElementById('pqSelCount');
+  if (cnt) cnt.textContent = checked.length;
+}
+
+function clearPqSelection() {
+  document.querySelectorAll('.pqSelCb').forEach(cb => cb.checked = false);
+  updatePqSelection();
+}
+
+async function bulkReschedulePosts() {
+  const ids = [...document.querySelectorAll('.pqSelCb')].filter(cb => cb.checked).map(cb => cb.dataset.id);
+  if (!ids.length) return;
+  const { value, isConfirmed } = await Swal.fire({
+    title: `<i class="fa-solid fa-clock" style="color:#856404"></i> เลื่อนเวลาโพส ${ids.length} รายการ`,
+    html: `<div style="text-align:left">
+      <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:.3rem">เวลาที่ต้องการโพส (ใช้กับทุกรายการที่เลือก)</label>
+      <div class="dt24-wrap">
+        <input type="date" id="swal-pqBulkAt_d">
+        <input type="number" id="swal-pqBulkAt_h" min="0" max="23" placeholder="ชม.">
+        <span>:</span>
+        <input type="number" id="swal-pqBulkAt_m" min="0" max="59" placeholder="นาที">
+      </div>
+    </div>`,
+    confirmButtonText: 'บันทึกทั้งหมด', confirmButtonColor: '#856404',
+    showCancelButton: true, cancelButtonText: 'ยกเลิก', focusConfirm: false,
+    preConfirm: () => {
+      const v = dt24Get('swal-pqBulkAt');
+      if (!v) { Swal.showValidationMessage('กรุณาเลือกวันที่และเวลา'); return false; }
+      return v;
+    },
+  });
+  if (!isConfirmed) return;
+  const scheduledAt = new Date(value + ':00+07:00').toISOString();
+  try {
+    await Promise.all(ids.map(id => fetch(`/posts/${id}/reschedule`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scheduledAt }),
+    })));
+    location.reload();
+  } catch(e) {
+    Swal.fire({ icon:'error', title:'เลื่อนเวลาไม่สำเร็จ', text: e.message, confirmButtonColor:'#1877f2' });
+  }
+}
+
+async function reschedulePostQ(id, currentScheduledAt) {
+  const current = currentScheduledAt
+    ? new Date(currentScheduledAt).toLocaleString('sv-SE', { timeZone: 'Asia/Bangkok' }).slice(0, 16)
+    : '';
+  const { value, isConfirmed } = await Swal.fire({
+    title: '<i class="fa-solid fa-clock" style="color:#856404"></i> แก้ไขเวลาโพส',
+    html: `<div style="text-align:left">
+      <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:.3rem">เวลาที่ต้องการโพส</label>
+      <div class="dt24-wrap">
+        <input type="date" id="swal-pqAt_d">
+        <input type="number" id="swal-pqAt_h" min="0" max="23" placeholder="ชม.">
+        <span>:</span>
+        <input type="number" id="swal-pqAt_m" min="0" max="59" placeholder="นาที">
+      </div>
+      <div style="font-size:.75rem;color:#8a8d91;margin-top:.4rem">เว้นว่างไว้เพื่อล้างเวลาที่ตั้งไว้ (จะโพสทันที)</div>
+    </div>`,
+    confirmButtonText: 'บันทึก',
+    confirmButtonColor: '#1877f2',
+    showCancelButton: true,
+    cancelButtonText: 'ยกเลิก',
+    focusConfirm: false,
+    didOpen: () => dt24Set('swal-pqAt', current),
+    preConfirm: () => dt24Get('swal-pqAt'),
+  });
+  if (!isConfirmed) return;
+  try {
+    const scheduledAt = value ? new Date(value + ':00+07:00').toISOString() : null;
+    const r = await fetch(`/posts/${id}/reschedule`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scheduledAt }),
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    location.reload();
+  } catch(e) {
+    Swal.fire({ icon:'error', title:'แก้ไขไม่สำเร็จ', text: e.message, confirmButtonColor:'#1877f2' });
+  }
+}
+
+async function deletePostQ(id) {
+  const res = await Swal.fire({ title:'ลบโพส?', icon:'warning', showCancelButton:true, confirmButtonColor:'#fa5252', confirmButtonText:'ลบ', cancelButtonText:'ยกเลิก' });
+  if (!res.isConfirmed) return;
+  try {
+    const r = await fetch(`/history/${id}`, { method:'DELETE' });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    document.getElementById(`post_${id}`)?.remove();
+    const cnt = document.querySelectorAll('[id^="post_"]').length;
+    document.getElementById('postCount').textContent = cnt;
+  } catch (e) {
+    Swal.fire({ icon:'error', title:'ลบไม่สำเร็จ', text: e.message, confirmButtonColor:'#1877f2' });
+  }
+}
+</script>
+
+</body>
+</html>

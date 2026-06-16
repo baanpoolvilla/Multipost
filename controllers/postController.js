@@ -11,7 +11,8 @@ exports.showDashboard = async (req, res) => {
     const [allPages, posts] = await Promise.all([pageStore.load(), postStore.load()]);
     const pages         = allPages.filter(p => p.enabled !== false);
     const disabledPages = allPages.filter(p => p.enabled === false);
-    res.render('dashboard', { pages, disabledPages, recentPosts: posts.slice(0, 5) });
+    const scheduledPosts = posts.filter(p => p.status === 'scheduled').map(p => ({ id: p.id, msg: p.message, at: p.scheduledAt }));
+    res.render('dashboard', { pages, disabledPages, recentPosts: posts.slice(0, 5), scheduledPosts });
 };
 
 // ── Send post ──────────────────────────────────
@@ -119,6 +120,11 @@ exports.showResult = async (req, res) => {
 exports.showHistory = async (req, res) => {
     const posts = await postStore.load();
     res.render('history', { posts });
+};
+
+exports.showPostQueue = async (req, res) => {
+    const [posts, pages] = await Promise.all([postStore.load(), pageStore.load()]);
+    res.render('post-queue', { posts, pages });
 };
 
 exports.deletePost = async (req, res) => {

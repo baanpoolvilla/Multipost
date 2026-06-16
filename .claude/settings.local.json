@@ -3,7 +3,19 @@
     "allow": [
       "PowerShell(New-Item -ItemType Directory -Force \"d:\\\\Oneclick\\\\multi-post-system\\\\logs\")",
       "PowerShell(New-Item -ItemType File -Force \"d:\\\\Oneclick\\\\multi-post-system\\\\logs\\\\post.log\")",
-      "PowerShell(Stop-Process -Name \"node\" -Force -Confirm:$false -ErrorAction SilentlyContinue)"
+      "PowerShell(Stop-Process -Name \"node\" -Force -Confirm:$false -ErrorAction SilentlyContinue)",
+      "Bash(git fetch *)",
+      "Bash(git merge *)",
+      "Bash(git pull *)",
+      "Bash(node -c \"public/js/app.js\")",
+      "Bash(node -c \"desktop-agent/renderer/app.js\")",
+      "WebSearch",
+      "WebFetch(domain:www.yadeep.com)",
+      "Bash(node -c public/js/app.js)",
+      "Bash(node -c desktop-agent/renderer/app.js)",
+      "Bash(node -c desktop-agent/main.js)",
+      "Bash(node -c desktop-agent/preload.js)",
+      "Bash(node -c controllers/postController.js)"
     ]
   }
 }

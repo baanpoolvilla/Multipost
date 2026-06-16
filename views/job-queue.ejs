@@ -28,6 +28,7 @@
     <a href="/" class="sidebar-item"><i class="fa-solid fa-pen-to-square"></i><span>โพสใหม่</span></a>
     <a href="/overview" class="sidebar-item"><i class="fa-solid fa-chart-line"></i><span>ภาพรวม</span></a>
     <a href="/history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพส</span></a>
+    <a href="/post-queue" class="sidebar-item"><i class="fa-solid fa-list-check"></i><span>คิวโพส</span></a>
     <a href="/pages" class="sidebar-item"><i class="fa-brands fa-facebook"></i><span>จัดการเพจ</span></a>
 
     <div class="sidebar-divider"></div>
@@ -153,10 +154,12 @@
         </div>
         <div>
           <label class="form-label">ตั้งเวลาโพส (ไม่บังคับ)</label>
-          <div style="display:flex;align-items:center;gap:.4rem">
-            <input type="datetime-local" id="fScheduledAt"
-              style="padding:.4rem .6rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.83rem;font-family:inherit;color:#444;outline:none">
-            <button type="button" onclick="document.getElementById('fScheduledAt').value=''"
+          <div class="dt24-wrap">
+            <input type="date" id="fScheduledAt_d">
+            <input type="number" id="fScheduledAt_h" min="0" max="23" placeholder="ชม.">
+            <span>:</span>
+            <input type="number" id="fScheduledAt_m" min="0" max="59" placeholder="นาที">
+            <button type="button" onclick="dt24Set('fScheduledAt','')"
               style="background:#f0f2f5;border:none;border-radius:7px;padding:.4rem .6rem;font-size:.78rem;cursor:pointer;color:#65676b" title="ล้าง">
               <i class="fa-solid fa-xmark"></i>
             </button>
@@ -304,6 +307,21 @@
 </style>
 
 <script>
+function dt24Get(prefix) {
+  const d = document.getElementById(prefix+'_d')?.value;
+  if (!d) return '';
+  const h = String(document.getElementById(prefix+'_h').value||0).padStart(2,'0');
+  const m = String(document.getElementById(prefix+'_m').value||0).padStart(2,'0');
+  return `${d}T${h}:${m}`;
+}
+function dt24Set(prefix, localStr) {
+  const [d,t] = (localStr||'').split('T');
+  document.getElementById(prefix+'_d').value = d||'';
+  const [h,m] = (t||'').split(':');
+  document.getElementById(prefix+'_h').value = h||'';
+  document.getElementById(prefix+'_m').value = m||'';
+}
+
 const _groups = <%- JSON.stringify(groups) %>;
 // Map: category index -> array of group indices in _groups
 const _catIdxMap = <%- JSON.stringify(Object.fromEntries(jqCats.map((cat, ci) => [ci, jqCatMap[cat].map(g => g._idx)]))) %>;
@@ -434,13 +452,17 @@ async function bulkRescheduleJobs() {
     title: `<i class="fa-solid fa-clock" style="color:#856404"></i> เลื่อนเวลาโพส ${ids.length} รายการ`,
     html: `<div style="text-align:left">
       <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:.3rem">เวลาที่ต้องการโพส (ใช้กับทุกรายการที่เลือก)</label>
-      <input id="swal-jqBulkAt" type="datetime-local"
-        style="width:100%;padding:.4rem .6rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none;box-sizing:border-box">
+      <div class="dt24-wrap">
+        <input type="date" id="swal-jqBulkAt_d">
+        <input type="number" id="swal-jqBulkAt_h" min="0" max="23" placeholder="ชม.">
+        <span>:</span>
+        <input type="number" id="swal-jqBulkAt_m" min="0" max="59" placeholder="นาที">
+      </div>
     </div>`,
     confirmButtonText: 'บันทึกทั้งหมด', confirmButtonColor: '#856404',
     showCancelButton: true, cancelButtonText: 'ยกเลิก', focusConfirm: false,
     preConfirm: () => {
-      const v = document.getElementById('swal-jqBulkAt').value;
+      const v = dt24Get('swal-jqBulkAt');
       if (!v) { Swal.showValidationMessage('กรุณาเลือกวันที่และเวลา'); return false; }
       return v;
     },
@@ -534,7 +556,7 @@ function toggleJqCat(ci) {
 async function submitJob() {
   const msg     = document.getElementById('fMsg').value.trim();
   const delay   = parseInt(document.getElementById('fDelay').value) || 5;
-  const schedAt = document.getElementById('fScheduledAt')?.value || '';
+  const schedAt = dt24Get('fScheduledAt');
   const sel     = _groups.filter((_,i)=>document.getElementById(`gc_${i}`)?.checked);
 
   if (!msg)       { Swal.fire({ icon:'warning', title:'กรุณากรอกข้อความ', confirmButtonColor:'#1877f2' }); return; }
@@ -571,8 +593,12 @@ async function rescheduleJob(id, currentScheduledAt) {
     title: '<i class="fa-solid fa-clock" style="color:#856404"></i> แก้ไขเวลาโพส',
     html: `<div style="text-align:left">
       <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:.3rem">เวลาที่ต้องการโพส</label>
-      <input id="swal-schedAt" type="datetime-local" value="${current}"
-        style="width:100%;padding:.4rem .6rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none;box-sizing:border-box">
+      <div class="dt24-wrap">
+        <input type="date" id="swal-schedAt_d">
+        <input type="number" id="swal-schedAt_h" min="0" max="23" placeholder="ชม.">
+        <span>:</span>
+        <input type="number" id="swal-schedAt_m" min="0" max="59" placeholder="นาที">
+      </div>
       <div style="font-size:.75rem;color:#8a8d91;margin-top:.4rem">เว้นว่างไว้เพื่อล้างเวลาที่ตั้งไว้ (จะโพสทันที)</div>
     </div>`,
     confirmButtonText: 'บันทึก',
@@ -580,7 +606,8 @@ async function rescheduleJob(id, currentScheduledAt) {
     showCancelButton: true,
     cancelButtonText: 'ยกเลิก',
     focusConfirm: false,
-    preConfirm: () => document.getElementById('swal-schedAt').value,
+    didOpen: () => dt24Set('swal-schedAt', current),
+    preConfirm: () => dt24Get('swal-schedAt'),
   });
   if (!isConfirmed) return;
   try {

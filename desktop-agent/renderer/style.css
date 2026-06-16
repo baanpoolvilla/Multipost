@@ -186,3 +186,9 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent)}
 .phmode{white-space:nowrap;font-weight:600;color:#fff;min-width:110px;flex-shrink:0}
 .phdesc{color:var(--text2);line-height:1.45}
 .phdesc code{background:var(--bg4);border-radius:4px;padding:.05rem .35rem;font-family:'Cascadia Code','Consolas',monospace;font-size:11px;color:var(--accent)}
+
+/* ── 24h date/time widget ── */
+.dt24-wrap{display:inline-flex;gap:.3rem;align-items:center}
+.dt24-wrap input[type=date]{flex:0 0 auto;width:auto;padding:.3rem .4rem;font-size:12px}
+.dt24-wrap input[type=number]{width:42px;text-align:center;padding:.3rem .2rem;font-size:12px}
+.dt24-wrap span{color:var(--text2)}

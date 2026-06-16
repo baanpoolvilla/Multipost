@@ -484,6 +484,7 @@ function filterJobs(btn, filter) {
 }
 
 function renderJobs() {
+    _jobs.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
     const el = document.getElementById('jobsList');
     const filtered = _jobFilter==='all' ? _jobs
         : _jobFilter==='scheduled' ? _jobs.filter(j=>j.status==='pending' && j.scheduledAt)
@@ -556,6 +557,70 @@ function toggleAgentTimelineView() {
         card.style.display = '';
         btn.classList.remove('active');
     }
+}
+
+function dt24Get(prefix) {
+    const d = document.getElementById(prefix+'_d')?.value;
+    if (!d) return '';
+    const h = String(document.getElementById(prefix+'_h').value||0).padStart(2,'0');
+    const m = String(document.getElementById(prefix+'_m').value||0).padStart(2,'0');
+    return `${d}T${h}:${m}`;
+}
+function dt24Set(prefix, localStr) {
+    const [d,t] = (localStr||'').split('T');
+    document.getElementById(prefix+'_d').value = d||'';
+    const [h,m] = (t||'').split(':');
+    document.getElementById(prefix+'_h').value = h||'';
+    document.getElementById(prefix+'_m').value = m||'';
+}
+
+function toggleComposeTimeline() {
+    const view = document.getElementById('composeTimelineView');
+    const show = view.style.display === 'none';
+    view.style.display = show ? '' : 'none';
+    if (show) renderComposeTimeline();
+}
+
+function renderComposeTimeline() {
+    const view = document.getElementById('composeTimelineView');
+    const items = _jobs.filter(j => j.status === 'pending' && j.scheduledAt);
+    if (!items.length) {
+        view.innerHTML = '<div class="empty-state">ยังไม่มีรายการที่ตั้งเวลาไว้</div>';
+        return;
+    }
+    const byDate = {};
+    items.forEach(j => {
+        const d = new Date(j.scheduledAt);
+        const key = d.toLocaleDateString('en-CA');
+        (byDate[key] = byDate[key] || []).push(j);
+    });
+    const now = new Date();
+    const hourLines = [0, 4, 8, 12, 16, 20];
+    const cols = Object.keys(byDate).sort().map(key => {
+        const d = new Date(key + 'T00:00:00');
+        const label = d.toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' });
+        const chips = byDate[key].map(j => {
+            const t = new Date(j.scheduledAt);
+            const top = ((t.getHours() + t.getMinutes() / 60) / 24 * 100).toFixed(2);
+            const overdue = t < now;
+            const time = t.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false });
+            const { display } = _parseJobMsg(j.message);
+            const msg = (display || '').slice(0, 30);
+            return `<div onclick="dt24Set('jobScheduledAt','${_toBkkLocalAgent(t)}')" title="${time} — ${esc(msg)}"
+              style="position:absolute;left:4px;right:4px;top:${top}%;background:${overdue ? '#fde8e8' : '#fff3cd'};color:${overdue ? '#c62828' : '#856404'};border:1px solid ${overdue ? '#f5b5b5' : '#ffe08a'};border-radius:5px;padding:.15rem .35rem;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;z-index:1">
+              ${overdue ? '⚠️' : '⏰'} ${time} ${esc(msg)}</div>`;
+        }).join('');
+        const lines = hourLines.map(h => `<div style="position:absolute;left:0;right:0;top:${(h/24*100).toFixed(2)}%;border-top:1px dashed var(--border);font-size:10px;color:var(--text2);padding-left:2px">${String(h).padStart(2,'0')}:00</div>`).join('');
+        return `<div style="flex:0 0 150px;min-width:150px">
+          <div style="font-size:12px;font-weight:700;color:var(--text);text-align:center;margin-bottom:.4rem">${label}</div>
+          <div style="position:relative;height:360px;background:var(--bg3);border:1px solid var(--border);border-radius:8px">${lines}${chips}</div>
+        </div>`;
+    }).join('');
+    view.innerHTML = `<div style="display:flex;gap:.6rem">${cols}</div>`;
+}
+
+function _toBkkLocalAgent(date) {
+    return date.toLocaleString('sv', { timeZone: 'Asia/Bangkok' }).replace(' ', 'T').slice(0, 16);
 }
 
 function renderAgentTimeline() {
@@ -663,7 +728,7 @@ async function createJob() {
     if (_selAcc && _selAcc.status !== 'logged_in') { alert(`บัญชี "${_selAcc.email}" ยังไม่ได้เข้าสู่ระบบ\nกรุณากด "เข้าสู่ระบบ" ที่หน้าบัญชีก่อน`); return; }
 
     const imagePaths = _selectedImages.filter(i => !i.uploading).map(i => i.path).filter(Boolean);
-    const schedInput = document.getElementById('jobScheduledAt')?.value;
+    const schedInput = dt24Get('jobScheduledAt');
     const scheduledAt = schedInput ? new Date(schedInput + ':00+07:00').toISOString() : null;
     if (scheduledAt && new Date(scheduledAt) <= new Date()) {
         alert('เวลาที่ตั้งไว้ต้องเป็นในอนาคต');
@@ -674,8 +739,8 @@ async function createJob() {
     if (job) {
         _jobs.unshift(job); renderJobs();
         document.getElementById('jobMsg').value = '';
-        const schedEl = document.getElementById('jobScheduledAt');
-        if (schedEl) schedEl.value = '';
+        dt24Set('jobScheduledAt', '');
+        document.getElementById('composeTimelineView').style.display = 'none';
         // Reset attachments
         _selectedImages.forEach(i => URL.revokeObjectURL(i.url));
         _selectedImages = [];
@@ -685,6 +750,10 @@ async function createJob() {
         document.querySelectorAll('.pick-item.selected').forEach(e => e.classList.remove('selected'));
         const info = [groups.length + ' กลุ่ม', postAs ? postAs : null, imagePaths.length ? imagePaths.length+' รูป' : null].filter(Boolean).join(' · ');
         appendLog(`[📋] สร้างคิวโพสแล้ว: "${msg.slice(0,40)}..." → ${info}`);
+        if (scheduledAt) {
+            const when = new Date(scheduledAt).toLocaleString('th-TH', { timeZone:'Asia/Bangkok', hour12:false, dateStyle:'short', timeStyle:'short' });
+            agent.notify('ตั้งเวลาโพสสำเร็จ', `"${msg.slice(0,50)}" จะโพสเวลา ${when}`);
+        }
         document.querySelector('.nav-item[data-tab="jobs"]')?.click();
     }
 }

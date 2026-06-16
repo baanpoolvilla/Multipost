@@ -27,6 +27,7 @@
     <a href="/" class="sidebar-item"><i class="fa-solid fa-pen-to-square"></i><span>โพสใหม่</span></a>
     <a href="/overview" class="sidebar-item"><i class="fa-solid fa-chart-line"></i><span>ภาพรวม</span></a>
     <a href="/history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพส</span></a>
+    <a href="/post-queue" class="sidebar-item"><i class="fa-solid fa-list-check"></i><span>คิวโพส</span></a>
     <a href="/pages" class="sidebar-item"><i class="fa-brands fa-facebook"></i><span>จัดการเพจ</span></a>
 
     <div class="sidebar-divider"></div>
@@ -127,8 +128,11 @@
           <div style="font-size:.73rem;color:#8a8d91;font-weight:600;margin-bottom:.28rem">
             <i class="fa-solid fa-clock" style="width:12px"></i> เวลา
           </div>
-          <input type="time" id="hTimeFrom" onchange="applyFilters()"
-            style="padding:.4rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;color:#444;outline:none;cursor:pointer">
+          <div class="dt24-wrap">
+            <input type="number" id="hTimeFrom_h" min="0" max="23" placeholder="ชม." onchange="applyFilters()">
+            <span>:</span>
+            <input type="number" id="hTimeFrom_m" min="0" max="59" placeholder="นาที" onchange="applyFilters()">
+          </div>
         </div>
         <div style="padding-bottom:.5rem;color:#bbb;font-size:.9rem">—</div>
         <div>
@@ -140,8 +144,11 @@
           <div style="font-size:.73rem;color:#8a8d91;font-weight:600;margin-bottom:.28rem">
             <i class="fa-solid fa-clock" style="width:12px"></i> เวลา
           </div>
-          <input type="time" id="hTimeTo" onchange="applyFilters()"
-            style="padding:.4rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;color:#444;outline:none;cursor:pointer">
+          <div class="dt24-wrap">
+            <input type="number" id="hTimeTo_h" min="0" max="23" placeholder="ชม." onchange="applyFilters()">
+            <span>:</span>
+            <input type="number" id="hTimeTo_m" min="0" max="59" placeholder="นาที" onchange="applyFilters()">
+          </div>
         </div>
       </div>
 
@@ -321,6 +328,18 @@
 </div>
 
 <script>
+  function t24Get(prefix) {
+    const h = document.getElementById(prefix+'_h')?.value;
+    if (h === '' || h == null) return '';
+    const m = document.getElementById(prefix+'_m')?.value;
+    return `${String(h).padStart(2,'0')}:${String(m||0).padStart(2,'0')}`;
+  }
+  function t24Set(prefix, hhmm) {
+    const [h,m] = (hhmm||'').split(':');
+    document.getElementById(prefix+'_h').value = h||'';
+    document.getElementById(prefix+'_m').value = m||'';
+  }
+
   const _groupCatMap = <%- JSON.stringify(groupCatMap) %>;
 
   const _hJobs = <%- JSON.stringify(jobs.map(j => ({
@@ -352,8 +371,8 @@
     const cat      = document.getElementById('hCat')?.value      || '';
     const fromVal  = document.getElementById('hDateFrom')?.value || '';
     const toVal    = document.getElementById('hDateTo')?.value   || '';
-    const timeFrom = document.getElementById('hTimeFrom')?.value || '';
-    const timeTo   = document.getElementById('hTimeTo')?.value   || '';
+    const timeFrom = t24Get('hTimeFrom');
+    const timeTo   = t24Get('hTimeTo');
 
     let fromTs = null, toTs = null;
     if (fromVal) {
@@ -428,10 +447,11 @@
   }
 
   function clearFilters() {
-    ['hSearch','hStatus','hGroup','hCat','hDateFrom','hDateTo','hTimeFrom','hTimeTo'].forEach(id => {
+    ['hSearch','hStatus','hGroup','hCat','hDateFrom','hDateTo'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
+    t24Set('hTimeFrom', ''); t24Set('hTimeTo', '');
     applyFilters();
   }
 

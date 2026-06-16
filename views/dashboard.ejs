@@ -31,6 +31,7 @@
     <a href="/" class="sidebar-item active"><i class="fa-solid fa-pen-to-square"></i><span>โพสใหม่</span></a>
     <a href="/overview" class="sidebar-item"><i class="fa-solid fa-chart-line"></i><span>ภาพรวม</span></a>
     <a href="/history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพส</span></a>
+    <a href="/post-queue" class="sidebar-item"><i class="fa-solid fa-list-check"></i><span>คิวโพส</span></a>
     <a href="/pages" class="sidebar-item"><i class="fa-brands fa-facebook"></i><span>จัดการเพจ</span></a>
 
     <div class="sidebar-divider"></div>
@@ -181,14 +182,24 @@
             <div style="margin-top:.35rem;font-size:.74rem;color:#8a8d91">💡 ยิ่งโพสหลายเพจหรือบัญชีใหม่ ควรตั้งหน่วงเวลานานขึ้น</div>
           </div>
         </div>
-        <div style="display:flex;align-items:center;gap:.35rem">
+        <div style="display:flex;align-items:center;gap:.35rem;flex-wrap:wrap">
           <button type="button" id="scheduleToggleBtn" onclick="toggleSchedule()"
             style="display:inline-flex;align-items:center;gap:.3rem;background:#f0f2f5;border:none;border-radius:7px;padding:.28rem .65rem;font-size:.78rem;cursor:pointer;font-family:inherit;color:#65676b;transition:background .15s">
             <i class="fa-solid fa-clock"></i> ตั้งเวลา
           </button>
-          <input type="datetime-local" id="scheduledAt" style="display:none;padding:.28rem .55rem;border:1.5px solid #1877f2;border-radius:7px;font-size:.82rem;font-family:inherit;color:#444;outline:none">
+          <div id="scheduledAtWrap" class="dt24-wrap" style="display:none">
+            <input type="date" id="scheduledAt_d">
+            <input type="number" id="scheduledAt_h" min="0" max="23" placeholder="ชม.">
+            <span>:</span>
+            <input type="number" id="scheduledAt_m" min="0" max="59" placeholder="นาที">
+            <button type="button" id="composeTimelineBtn" onclick="toggleComposeTimeline()" title="ดูปฏิทินคิวที่ตั้งไว้"
+              style="background:#e7f0fd;border:none;border-radius:7px;padding:.28rem .5rem;font-size:.78rem;cursor:pointer;color:#1877f2">
+              <i class="fa-solid fa-calendar-days"></i>
+            </button>
+          </div>
         </div>
       </div>
+      <div id="composeTimelineView" class="card" style="display:none;padding:1rem 1.25rem;overflow-x:auto;margin-top:.6rem"></div>
 
       <div class="composer-submit-row">
         <div class="pages-badge">
@@ -356,6 +367,7 @@
 <script>
   const ALL_PAGES = <%- JSON.stringify(pages) %>;
   let DISABLED_PAGES = <%- JSON.stringify(disabledPages) %>;
+  const _composeScheduled = <%- JSON.stringify(scheduledPosts || []) %>;
   window.SUPABASE_CONFIG = {
     url:     '<%- (process.env.SUPABASE_URL        || "") %>',
     anonKey: '<%- (process.env.SUPABASE_ANON_KEY   || "") %>',

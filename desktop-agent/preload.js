@@ -41,6 +41,9 @@ contextBridge.exposeInMainWorld('agent', {
     // Local image — read local file as base64 data URL (for localpath:: images)
     getLocalImage: (filePath) => ipcRenderer.invoke('image:get-local', filePath),
 
+    // Native OS notification
+    notify: (title, body) => ipcRenderer.invoke('notify:show', title, body),
+
     // Web URL — set in .env on download, fallback to localStorage
     webUrl: process.env.WEB_URL || null,
 

@@ -31,6 +31,7 @@
     <a href="/" class="sidebar-item"><i class="fa-solid fa-pen-to-square"></i><span>โพสใหม่</span></a>
     <a href="/overview" class="sidebar-item"><i class="fa-solid fa-chart-line"></i><span>ภาพรวม</span></a>
     <a href="/history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพส</span></a>
+    <a href="/post-queue" class="sidebar-item"><i class="fa-solid fa-list-check"></i><span>คิวโพส</span></a>
     <a href="/pages" class="sidebar-item"><i class="fa-brands fa-facebook"></i><span>จัดการเพจ</span></a>
 
     <div class="sidebar-divider"></div>
@@ -305,6 +306,18 @@
 </div>
 
 <script>
+function t24Get(prefix) {
+  const h = document.getElementById(prefix+'_h')?.value;
+  if (h === '' || h == null) return '';
+  const m = document.getElementById(prefix+'_m')?.value;
+  return `${String(h).padStart(2,'0')}:${String(m||0).padStart(2,'0')}`;
+}
+function t24Set(prefix, hhmm) {
+  const [h,m] = (hhmm||'').split(':');
+  document.getElementById(prefix+'_h').value = h||'';
+  document.getElementById(prefix+'_m').value = m||'';
+}
+
 const RANK_MEDALS = ['🥇','🥈','🥉','4️⃣','5️⃣'];
 
 /* ── Group table filter + show-more ── */
@@ -354,9 +367,9 @@ async function showGroupRangeModal() {
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
         <div><label style="${_ls}">เวลาเริ่ม (ไม่บังคับ)</label>
-          <input id="gr-tfrom" type="time" style="${_is}"></div>
+          <div class="dt24-wrap"><input type="number" id="gr-tfrom_h" min="0" max="23" placeholder="ชม."><span>:</span><input type="number" id="gr-tfrom_m" min="0" max="59" placeholder="นาที"></div></div>
         <div><label style="${_ls}">เวลาสิ้นสุด (ไม่บังคับ)</label>
-          <input id="gr-tto" type="time" style="${_is}"></div>
+          <div class="dt24-wrap"><input type="number" id="gr-tto_h" min="0" max="23" placeholder="ชม."><span>:</span><input type="number" id="gr-tto_m" min="0" max="59" placeholder="นาที"></div></div>
       </div>
     </div>`,
     confirmButtonText: 'ดูสถิติ', confirmButtonColor: '#2e7d32',
@@ -364,8 +377,8 @@ async function showGroupRangeModal() {
     preConfirm: () => ({
       from:  document.getElementById('gr-from').value,
       to:    document.getElementById('gr-to').value,
-      tfrom: document.getElementById('gr-tfrom').value,
-      tto:   document.getElementById('gr-tto').value,
+      tfrom: t24Get('gr-tfrom'),
+      tto:   t24Get('gr-tto'),
     }),
   });
   if (!dates) return;

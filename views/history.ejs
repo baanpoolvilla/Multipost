@@ -30,6 +30,7 @@
     <a href="/" class="sidebar-item"><i class="fa-solid fa-pen-to-square"></i><span>โพสใหม่</span></a>
     <a href="/overview" class="sidebar-item"><i class="fa-solid fa-chart-line"></i><span>ภาพรวม</span></a>
     <a href="/history" class="sidebar-item active"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพส</span></a>
+    <a href="/post-queue" class="sidebar-item"><i class="fa-solid fa-list-check"></i><span>คิวโพส</span></a>
     <a href="#" class="sidebar-item" style="padding-left:2.5rem;font-size:.83rem;color:#8a8d91;pointer-events:none">
       <i class="fa-solid fa-chart-bar" style="font-size:.78rem;color:#bbb"></i><span>รายงานการโพส</span>
     </a>
@@ -131,8 +132,11 @@
           <div style="font-size:.73rem;color:#8a8d91;font-weight:600;margin-bottom:.28rem">
             <i class="fa-solid fa-clock" style="width:12px"></i> เวลา
           </div>
-          <input type="time" id="hTimeFrom" onchange="applyFilters()"
-            style="padding:.4rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;color:#444;outline:none;cursor:pointer">
+          <div class="dt24-wrap">
+            <input type="number" id="hTimeFrom_h" min="0" max="23" placeholder="ชม." onchange="applyFilters()">
+            <span>:</span>
+            <input type="number" id="hTimeFrom_m" min="0" max="59" placeholder="นาที" onchange="applyFilters()">
+          </div>
         </div>
         <div style="padding-bottom:.5rem;color:#bbb;font-size:.9rem">—</div>
         <div>
@@ -144,8 +148,11 @@
           <div style="font-size:.73rem;color:#8a8d91;font-weight:600;margin-bottom:.28rem">
             <i class="fa-solid fa-clock" style="width:12px"></i> เวลา
           </div>
-          <input type="time" id="hTimeTo" onchange="applyFilters()"
-            style="padding:.4rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;color:#444;outline:none;cursor:pointer">
+          <div class="dt24-wrap">
+            <input type="number" id="hTimeTo_h" min="0" max="23" placeholder="ชม." onchange="applyFilters()">
+            <span>:</span>
+            <input type="number" id="hTimeTo_m" min="0" max="59" placeholder="นาที" onchange="applyFilters()">
+          </div>
         </div>
       </div>
 
@@ -339,6 +346,32 @@
 </div>
 
 <script>
+  function dt24Get(prefix) {
+    const d = document.getElementById(prefix+'_d')?.value;
+    if (!d) return '';
+    const h = String(document.getElementById(prefix+'_h').value||0).padStart(2,'0');
+    const m = String(document.getElementById(prefix+'_m').value||0).padStart(2,'0');
+    return `${d}T${h}:${m}`;
+  }
+  function dt24Set(prefix, localStr) {
+    const [d,t] = (localStr||'').split('T');
+    document.getElementById(prefix+'_d').value = d||'';
+    const [h,m] = (t||'').split(':');
+    document.getElementById(prefix+'_h').value = h||'';
+    document.getElementById(prefix+'_m').value = m||'';
+  }
+  function t24Get(prefix) {
+    const h = document.getElementById(prefix+'_h')?.value;
+    if (h === '' || h == null) return '';
+    const m = document.getElementById(prefix+'_m')?.value;
+    return `${String(h).padStart(2,'0')}:${String(m||0).padStart(2,'0')}`;
+  }
+  function t24Set(prefix, hhmm) {
+    const [h,m] = (hhmm||'').split(':');
+    document.getElementById(prefix+'_h').value = h||'';
+    document.getElementById(prefix+'_m').value = m||'';
+  }
+
   // Embedded post data for client-side filtering
   const _hPosts = <%- JSON.stringify(posts.map(p => ({
     id:      p.id,
@@ -368,8 +401,8 @@
     const st        = document.getElementById('hStatus')?.value   || '';
     const fromVal   = document.getElementById('hDateFrom')?.value || '';
     const toVal     = document.getElementById('hDateTo')?.value   || '';
-    const timeFrom  = document.getElementById('hTimeFrom')?.value || '';
-    const timeTo    = document.getElementById('hTimeTo')?.value   || '';
+    const timeFrom  = t24Get('hTimeFrom');
+    const timeTo    = t24Get('hTimeTo');
     const pg        = document.getElementById('hPage')?.value     || '';
 
     let fromTs = null, toTs = null;
@@ -433,10 +466,11 @@
   }
 
   function clearFilters() {
-    ['hSearch','hStatus','hDateFrom','hDateTo','hTimeFrom','hTimeTo','hPage'].forEach(id => {
+    ['hSearch','hStatus','hDateFrom','hDateTo','hPage'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
+    t24Set('hTimeFrom', ''); t24Set('hTimeTo', '');
     applyFilters();
   }
 
@@ -460,13 +494,17 @@
       title: `<i class="fa-solid fa-clock" style="color:#856404"></i> เลื่อนเวลาโพส ${ids.length} รายการ`,
       html: `<div style="text-align:left;display:flex;flex-direction:column;gap:.4rem">
         <label style="font-size:.8rem;font-weight:600;color:#555">วันที่และเวลาใหม่ (ใช้กับทุกรายการที่เลือก)</label>
-        <input id="swal-bulkAt" type="datetime-local"
-          style="padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.88rem;font-family:inherit;color:#333;outline:none;width:100%;box-sizing:border-box">
+        <div class="dt24-wrap">
+          <input type="date" id="swal-bulkAt_d">
+          <input type="number" id="swal-bulkAt_h" min="0" max="23" placeholder="ชม.">
+          <span>:</span>
+          <input type="number" id="swal-bulkAt_m" min="0" max="59" placeholder="นาที">
+        </div>
       </div>`,
       confirmButtonText: 'บันทึกทั้งหมด', confirmButtonColor: '#856404',
       showCancelButton: true, cancelButtonText: 'ยกเลิก', focusConfirm: false,
       preConfirm: () => {
-        const v = document.getElementById('swal-bulkAt').value;
+        const v = dt24Get('swal-bulkAt');
         if (!v) { Swal.showValidationMessage('กรุณาเลือกวันที่และเวลา'); return false; }
         return v;
       },
@@ -650,9 +688,9 @@ async function showSummaryModal() {
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
         <div><label style="${_ls}">เวลาเริ่ม (ไม่บังคับ)</label>
-          <input id="sm-tfrom" type="time" style="${_is}"></div>
+          <div class="dt24-wrap"><input type="number" id="sm-tfrom_h" min="0" max="23" placeholder="ชม."><span>:</span><input type="number" id="sm-tfrom_m" min="0" max="59" placeholder="นาที"></div></div>
         <div><label style="${_ls}">เวลาสิ้นสุด (ไม่บังคับ)</label>
-          <input id="sm-tto" type="time" style="${_is}"></div>
+          <div class="dt24-wrap"><input type="number" id="sm-tto_h" min="0" max="23" placeholder="ชม."><span>:</span><input type="number" id="sm-tto_m" min="0" max="59" placeholder="นาที"></div></div>
       </div></div>`,
     confirmButtonText: 'ดูสรุป', confirmButtonColor: '#1877f2',
     showCancelButton: true, cancelButtonText: 'ยกเลิก', focusConfirm: false,
@@ -660,7 +698,7 @@ async function showSummaryModal() {
       const dfrom = document.getElementById('sm-dfrom').value;
       const dto   = document.getElementById('sm-dto').value;
       if (!dfrom) { Swal.showValidationMessage('กรุณากรอกวันที่เริ่ม'); return false; }
-      return { dfrom, dto: dto || dfrom, tfrom: document.getElementById('sm-tfrom').value, tto: document.getElementById('sm-tto').value };
+      return { dfrom, dto: dto || dfrom, tfrom: t24Get('sm-tfrom'), tto: t24Get('sm-tto') };
     },
   });
   if (!fv) return;
@@ -756,13 +794,18 @@ async function reschedulePost(id, currentScheduledAt) {
     title: '<i class="fa-solid fa-clock" style="color:#856404"></i> แก้ไขเวลาโพส',
     html: `<div style="text-align:left;display:flex;flex-direction:column;gap:.4rem">
       <label style="font-size:.8rem;font-weight:600;color:#555">วันที่และเวลาใหม่</label>
-      <input id="swal-postAt" type="datetime-local" value="${current}"
-        style="padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.88rem;font-family:inherit;color:#333;outline:none;width:100%;box-sizing:border-box">
+      <div class="dt24-wrap">
+        <input type="date" id="swal-postAt_d">
+        <input type="number" id="swal-postAt_h" min="0" max="23" placeholder="ชม.">
+        <span>:</span>
+        <input type="number" id="swal-postAt_m" min="0" max="59" placeholder="นาที">
+      </div>
       <div style="font-size:.75rem;color:#8a8d91"><i class="fa-solid fa-circle-info"></i> ล้างค่าแล้ว Save = ยกเลิก Schedule</div>
     </div>`,
     confirmButtonText: 'บันทึก', confirmButtonColor: '#856404',
     showCancelButton: true, cancelButtonText: 'ยกเลิก', focusConfirm: false,
-    preConfirm: () => document.getElementById('swal-postAt').value,
+    didOpen: () => dt24Set('swal-postAt', current),
+    preConfirm: () => dt24Get('swal-postAt'),
   });
   if (!isConfirmed) return;
   try {

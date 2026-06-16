@@ -89,6 +89,7 @@ router.post('/send',          upload.array('images', 30), multerErrorHandler, sa
 router.get('/result/:id',     ctrl.showResult);
 router.get('/api/post/:id/status', ctrl.getPostStatus);
 router.get('/history',        ctrl.showHistory);
+router.get('/post-queue',     ctrl.showPostQueue);
 router.delete('/history/:id', ctrl.deletePost);
 router.get('/overview',               ctrl.showOverview);
 router.get('/group-overview',         agentCtrl.showGroupOverview);

@@ -510,7 +510,7 @@ function chooseFeel(e, l) {
 ═══════════════════════════════════════════ */
 async function submitPost() {
   const msg     = messageEl?.value.trim();
-  const schedAt = document.getElementById('scheduledAt')?.value || '';
+  const schedAt = dt24Get('scheduledAt');
   const delay   = parseInt(document.getElementById('postDelay')?.value) || 0;
 
   if (!msg) {
@@ -612,21 +612,86 @@ async function submitPost() {
 }
 
 function toggleSchedule() {
-  const inp = document.getElementById('scheduledAt');
-  const btn = document.getElementById('scheduleToggleBtn');
-  const show = inp.style.display === 'none';
-  inp.style.display = show ? 'inline-block' : 'none';
+  const wrap = document.getElementById('scheduledAtWrap');
+  const btn  = document.getElementById('scheduleToggleBtn');
+  const show = wrap.style.display === 'none';
+  wrap.style.display = show ? 'inline-flex' : 'none';
   btn.style.background = show ? '#e7f0fd' : '#f0f2f5';
   btn.style.color      = show ? '#1877f2'  : '#65676b';
-  if (show && !inp.value) {
-    inp.value = _toBkkLocal(new Date());
+  if (show && !dt24Get('scheduledAt')) {
+    dt24Set('scheduledAt', _toBkkLocal(new Date()));
   }
-  if (!show) inp.value = '';
+  if (!show) {
+    dt24Set('scheduledAt', '');
+    document.getElementById('composeTimelineView').style.display = 'none';
+  }
 }
 
 function _toBkkLocal(date) {
   // คืนค่า "YYYY-MM-DDTHH:mm" ในเวลาไทย สำหรับ datetime-local input
   return date.toLocaleString('sv', { timeZone: 'Asia/Bangkok' }).replace(' ', 'T').slice(0, 16);
+}
+
+/* ═══════════════════════════════════════════
+   24-hour date/time widget helpers
+═══════════════════════════════════════════ */
+function dt24Get(prefix) {
+  const d = document.getElementById(prefix+'_d')?.value;
+  if (!d) return '';
+  const h = String(document.getElementById(prefix+'_h').value||0).padStart(2,'0');
+  const m = String(document.getElementById(prefix+'_m').value||0).padStart(2,'0');
+  return `${d}T${h}:${m}`;
+}
+function dt24Set(prefix, localStr) {
+  const [d,t] = (localStr||'').split('T');
+  document.getElementById(prefix+'_d').value = d||'';
+  const [h,m] = (t||'').split(':');
+  document.getElementById(prefix+'_h').value = h||'';
+  document.getElementById(prefix+'_m').value = m||'';
+}
+
+function toggleComposeTimeline() {
+  const view = document.getElementById('composeTimelineView');
+  const show = view.style.display === 'none';
+  view.style.display = show ? '' : 'none';
+  if (show) renderComposeTimeline();
+}
+
+function renderComposeTimeline() {
+  const view = document.getElementById('composeTimelineView');
+  const items = _composeScheduled || [];
+  if (!items.length) {
+    view.innerHTML = '<div style="text-align:center;padding:2rem;color:#8a8d91">ไม่มีโพสต์ที่ตั้งเวลาไว้</div>';
+    return;
+  }
+  const byDate = {};
+  items.forEach(p => {
+    const d = new Date(p.at);
+    const key = d.toLocaleDateString('en-CA');
+    (byDate[key] = byDate[key] || []).push(p);
+  });
+  const now = new Date();
+  const hourLines = [0, 4, 8, 12, 16, 20];
+  const cols = Object.keys(byDate).sort().map(key => {
+    const d = new Date(key + 'T00:00:00');
+    const label = d.toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' });
+    const chips = byDate[key].map(p => {
+      const t = new Date(p.at);
+      const top = ((t.getHours() + t.getMinutes() / 60) / 24 * 100).toFixed(2);
+      const overdue = t < now;
+      const time = t.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false });
+      const msg = (p.msg || '').slice(0, 30).replace(/'/g, '&#39;');
+      return `<div onclick="dt24Set('scheduledAt','${_toBkkLocal(t)}')" title="${time} — ${msg}"
+        style="position:absolute;left:4px;right:4px;top:${top}%;background:${overdue ? '#fde8e8' : '#fff3cd'};color:${overdue ? '#c62828' : '#856404'};border:1px solid ${overdue ? '#f5b5b5' : '#ffe08a'};border-radius:5px;padding:.15rem .35rem;font-size:.68rem;font-weight:600;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;z-index:1">
+        ${overdue ? '⚠️' : '⏰'} ${time} ${msg}</div>`;
+    }).join('');
+    const lines = hourLines.map(h => `<div style="position:absolute;left:0;right:0;top:${(h/24*100).toFixed(2)}%;border-top:1px dashed #eee;font-size:.62rem;color:#bbb;padding-left:2px">${String(h).padStart(2,'0')}:00</div>`).join('');
+    return `<div style="flex:0 0 150px;min-width:150px">
+      <div style="font-size:.78rem;font-weight:700;color:#444;text-align:center;margin-bottom:.4rem">${label}</div>
+      <div style="position:relative;height:360px;background:#fafbfc;border:1px solid #eee;border-radius:8px">${lines}${chips}</div>
+    </div>`;
+  }).join('');
+  view.innerHTML = `<div style="display:flex;gap:.6rem">${cols}</div>`;
 }
 
 /* ═══════════════════════════════════════════

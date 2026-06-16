@@ -1,6 +1,6 @@
 require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 
-const { app, BrowserWindow, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, Notification } = require('electron');
 const path = require('path');
 
 const apiServer        = require('./api/server');
@@ -101,6 +101,11 @@ ipcMain.handle('jobs:groups',       ()            => jobStore.getAllGroups());
 ipcMain.handle('jobs:recent-posts', ()            => jobStore.getRecentPosts());
 ipcMain.handle('jobs:history',      ()            => jobStore.getCompletedJobs());
 ipcMain.handle('jobs:reschedule',   (_, id, at)   => jobStore.rescheduleJob(id, at));
+
+ipcMain.handle('notify:show', (_, title, body) => {
+    if (Notification.isSupported()) new Notification({ title, body }).show();
+    return { ok: true };
+});
 
 // ── IPC: Shell / image utilities ───────────────────────────────
 ipcMain.handle('shell:open', (_, url) => shell.openExternal(url));
