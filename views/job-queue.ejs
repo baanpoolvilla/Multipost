@@ -181,6 +181,10 @@
           style="margin-left:.6rem;background:#fff3cd;border:1px solid #ffe08a;border-radius:7px;padding:.18rem .55rem;font-size:.78rem;font-weight:600;color:#856404;cursor:pointer;font-family:inherit">
           <i class="fa-solid fa-clock"></i> ตั้งเวลาไว้ (<%= schedCount %>)
         </button>
+        <button id="btnJqTimelineView" onclick="toggleJqTimelineView()"
+          style="margin-left:.4rem;background:#fff3cd;border:1px solid #ffe08a;border-radius:7px;padding:.18rem .55rem;font-size:.78rem;font-weight:600;color:#856404;cursor:pointer;font-family:inherit">
+          <i class="fa-solid fa-calendar-days"></i> ปฏิทิน
+        </button>
         <button class="btn-link-sm" style="margin-left:auto" onclick="location.reload()"><i class="fa-solid fa-rotate-right"></i> รีเฟรช</button>
       </div>
 
@@ -198,6 +202,8 @@
           ล้างที่เลือก
         </button>
       </div>
+
+      <div id="jqTimelineView" style="display:none;padding:1rem .85rem;overflow-x:auto"></div>
 
       <% if (jobs.length === 0) { %>
       <div style="color:var(--text-secondary);text-align:center;padding:1.5rem;font-size:.9rem">ยังไม่มี Job</div>
@@ -301,6 +307,7 @@
 const _groups = <%- JSON.stringify(groups) %>;
 // Map: category index -> array of group indices in _groups
 const _catIdxMap = <%- JSON.stringify(Object.fromEntries(jqCats.map((cat, ci) => [ci, jqCatMap[cat].map(g => g._idx)]))) %>;
+const _jqScheduled = <%- JSON.stringify(jobs.filter(j => j.status==='pending' && j.scheduledAt).map(j => ({ id: j._id, msg: j.message, at: j.scheduledAt }))) %>;
 let _visibleJobs = 20;
 
 // Hide jobs beyond 20 on load
@@ -339,6 +346,72 @@ function toggleSchedFilter() {
     if (moreRow) moreRow.style.display = '';
   }
   updateJqSelection();
+}
+
+let _jqTimelineOn = false;
+function toggleJqTimelineView() {
+  _jqTimelineOn = !_jqTimelineOn;
+  const view = document.getElementById('jqTimelineView');
+  const btn  = document.getElementById('btnJqTimelineView');
+  document.querySelectorAll('.job-row').forEach(r => { if (_jqTimelineOn) r.style.display = 'none'; });
+  const moreRow = document.getElementById('showMoreRow');
+  if (_jqTimelineOn) {
+    renderJobQueueTimeline();
+    view.style.display = '';
+    btn.style.background = '#856404'; btn.style.color = '#fff';
+    if (moreRow) moreRow.style.display = 'none';
+  } else {
+    view.style.display = 'none';
+    btn.style.background = '#fff3cd'; btn.style.color = '#856404';
+    if (_schedFilterActive) {
+      document.querySelectorAll('.job-row').forEach(r => {
+        r.style.display = r.dataset.scheduled === '1' ? 'flex' : 'none';
+      });
+    } else {
+      document.querySelectorAll('.job-row').forEach(r => {
+        r.style.display = parseInt(r.dataset.idx) < _visibleJobs ? 'flex' : 'none';
+      });
+      if (moreRow) moreRow.style.display = '';
+    }
+  }
+  updateJqSelection();
+}
+
+function renderJobQueueTimeline() {
+  const view = document.getElementById('jqTimelineView');
+  const items = _jqScheduled;
+  if (!items.length) {
+    view.innerHTML = '<div style="text-align:center;padding:2rem;color:#8a8d91">ไม่มีงานที่ตั้งเวลาไว้</div>';
+    return;
+  }
+  const byDate = {};
+  items.forEach(j => {
+    const d = new Date(j.at);
+    const key = d.toLocaleDateString('en-CA');
+    (byDate[key] = byDate[key] || []).push(j);
+  });
+  const now = new Date();
+  const hourLines = [0, 4, 8, 12, 16, 20];
+  const cols = Object.keys(byDate).sort().map(key => {
+    const d = new Date(key + 'T00:00:00');
+    const label = d.toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' });
+    const chips = byDate[key].map(j => {
+      const t = new Date(j.at);
+      const top = ((t.getHours() + t.getMinutes() / 60) / 24 * 100).toFixed(2);
+      const overdue = t < now;
+      const time = t.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false });
+      const msg = (j.msg || '').slice(0, 30).replace(/'/g, '&#39;');
+      return `<div onclick="rescheduleJob('${j.id}','${j.at}')" title="${time} — ${msg}"
+        style="position:absolute;left:4px;right:4px;top:${top}%;background:${overdue ? '#fde8e8' : '#fff3cd'};color:${overdue ? '#c62828' : '#856404'};border:1px solid ${overdue ? '#f5b5b5' : '#ffe08a'};border-radius:5px;padding:.15rem .35rem;font-size:.68rem;font-weight:600;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;z-index:1">
+        ${overdue ? '⚠️' : '⏰'} ${time} ${msg}</div>`;
+    }).join('');
+    const lines = hourLines.map(h => `<div style="position:absolute;left:0;right:0;top:${(h/24*100).toFixed(2)}%;border-top:1px dashed #eee;font-size:.62rem;color:#bbb;padding-left:2px">${String(h).padStart(2,'0')}:00</div>`).join('');
+    return `<div style="flex:0 0 150px;min-width:150px">
+      <div style="font-size:.78rem;font-weight:700;color:#444;text-align:center;margin-bottom:.4rem">${label}</div>
+      <div style="position:relative;height:360px;background:#fafbfc;border:1px solid #eee;border-radius:8px">${lines}${chips}</div>
+    </div>`;
+  }).join('');
+  view.innerHTML = `<div style="display:flex;gap:.6rem">${cols}</div>`;
 }
 
 function updateJqSelection() {

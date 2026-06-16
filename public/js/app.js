@@ -773,7 +773,10 @@ async function renderFolderTabs() {
       <span style="display:flex;align-items:center;gap:.3rem;color:#f7b928;font-weight:700;font-size:.8rem">
         📁 ${_tplFolderFilter}
         <span style="color:#888;font-weight:400">(${cnt} โพสต์)</span>
-      </span>`;
+      </span>
+      <button onclick="postAllInFolder()" style="display:flex;align-items:center;gap:.35rem;white-space:nowrap;padding:.25rem .65rem;border-radius:6px;border:none;background:#1877f2;color:#fff;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit;margin-left:auto">
+        <i class="fa-solid fa-play"></i> โพสต์ทั้งหมด
+      </button>`;
     container.style.display = 'flex';
   } else if (folders.length > 0) {
     // Folder list view: hide tabs (folders shown as cards in body)
@@ -790,6 +793,51 @@ function setFolderFilter(f) {
   _tplFolderFilter = f.trim();
   renderFolderTabs();
   renderTemplates();
+}
+
+const _sleep = ms => new Promise(r => setTimeout(r, ms));
+
+async function postAllInFolder() {
+  if (selectedPageIds.size === 0) {
+    Swal.fire({ icon: 'warning', title: 'กรุณาเลือกเพจอย่างน้อย 1 เพจก่อน', confirmButtonColor: '#1877f2', confirmButtonText: 'ตกลง' });
+    return;
+  }
+  const items = _templates.filter(t => t.folder === _tplFolderFilter);
+  if (!items.length) return;
+
+  const { value: spacingMin } = await Swal.fire({
+    title: `โพสต์ทั้งหมด ${items.length} รายการในโฟลเดอร์ "${_tplFolderFilter}"`,
+    html: `<p style="color:#65676b;font-size:.85rem">จะโพสต์ไปยัง ${selectedPageIds.size} เพจที่เลือกไว้ เรียงทีละโพสต์ เว้นช่วงเวลาตามที่กำหนด</p>`,
+    input: 'number', inputValue: 5, inputLabel: 'เว้นช่วงกี่นาทีระหว่างโพสต์',
+    inputAttributes: { min: 0, step: 1 },
+    showCancelButton: true, confirmButtonText: 'เริ่มโพสต์', cancelButtonText: 'ยกเลิก', confirmButtonColor: '#1877f2',
+  });
+  if (spacingMin === undefined) return;
+  const spacingMs = Math.max(0, parseInt(spacingMin) || 0) * 60000;
+
+  closeTemplateModal();
+
+  for (let i = 0; i < items.length; i++) {
+    const t = items[i];
+    Swal.fire({
+      title: `กำลังโพสต์ ${i + 1}/${items.length}...`,
+      html: `<i class="fa-brands fa-facebook" style="font-size:2rem;color:#1877f2"></i>`,
+      allowOutsideClick: false, allowEscapeKey: false, showConfirmButton: false,
+      didOpen: () => Swal.showLoading(),
+    });
+    try {
+      const fd = new FormData();
+      fd.append('message', t.message);
+      selectedPageIds.forEach(id => fd.append('selectedPages', id));
+      (t.images || []).forEach(img => fd.append('templateImages', img));
+      await fetch('/send', { method: 'POST', body: fd });
+    } catch (e) {
+      console.error('postAllInFolder failed for', t.id, e);
+    }
+    if (i < items.length - 1 && spacingMs > 0) await _sleep(spacingMs);
+  }
+
+  Swal.fire({ icon: 'success', title: `โพสต์ครบ ${items.length} รายการแล้ว`, confirmButtonColor: '#1877f2', confirmButtonText: 'ตกลง' });
 }
 
 function setTplView(v) {

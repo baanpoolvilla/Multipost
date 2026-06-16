@@ -68,10 +68,16 @@
         <span style="font-weight:700;font-size:.88rem;color:#444">
           <i class="fa-solid fa-filter" style="color:#1877f2;font-size:.8rem;margin-right:.3rem"></i>ค้นหาและกรอง
         </span>
-        <button onclick="clearFilters()" id="btnClearFilter"
-          style="background:#fff0f0;border:1px solid #fcc;border-radius:7px;padding:.22rem .6rem;font-size:.77rem;font-family:inherit;color:#c62828;cursor:pointer;font-weight:600;transition:opacity .15s;opacity:.35;pointer-events:none">
-          <i class="fa-solid fa-rotate-left"></i> ล้างตัวกรอง
-        </button>
+        <div style="display:flex;gap:.4rem">
+          <button onclick="toggleTimelineView()" id="btnTimelineView"
+            style="background:#fff3cd;border:1px solid #ffe08a;border-radius:7px;padding:.22rem .6rem;font-size:.77rem;font-family:inherit;color:#856404;cursor:pointer;font-weight:600">
+            <i class="fa-solid fa-calendar-days"></i> ปฏิทิน
+          </button>
+          <button onclick="clearFilters()" id="btnClearFilter"
+            style="background:#fff0f0;border:1px solid #fcc;border-radius:7px;padding:.22rem .6rem;font-size:.77rem;font-family:inherit;color:#c62828;cursor:pointer;font-weight:600;transition:opacity .15s;opacity:.35;pointer-events:none">
+            <i class="fa-solid fa-rotate-left"></i> ล้างตัวกรอง
+          </button>
+        </div>
       </div>
 
       <!-- Main filters grid -->
@@ -165,6 +171,8 @@
       </div>
     </div>
     <% } %>
+
+    <div id="hTimelineView" class="card" style="display:none;padding:1rem 1.25rem;overflow-x:auto"></div>
 
     <% if (posts.length === 0) { %>
     <div class="card empty-state">
@@ -684,6 +692,60 @@ async function showSummaryModal() {
       confirmButtonText: 'ปิด', confirmButtonColor: '#1877f2', width: '440px',
     });
   } catch { Swal.fire({ icon:'error', title:'เกิดข้อผิดพลาด', text:'ไม่สามารถโหลดข้อมูลได้' }); }
+}
+
+let _hTimelineOn = false;
+function toggleTimelineView() {
+  _hTimelineOn = !_hTimelineOn;
+  const view = document.getElementById('hTimelineView');
+  const btn  = document.getElementById('btnTimelineView');
+  document.querySelectorAll('.history-card').forEach(c => { if (_hTimelineOn) c.style.display = 'none'; });
+  if (_hTimelineOn) {
+    renderHistoryTimeline();
+    view.style.display = '';
+    btn.style.background = '#856404'; btn.style.color = '#fff';
+  } else {
+    view.style.display = 'none';
+    btn.style.background = '#fff3cd'; btn.style.color = '#856404';
+    applyFilters();
+  }
+}
+
+function renderHistoryTimeline() {
+  const view = document.getElementById('hTimelineView');
+  const items = _hPosts.filter(p => p.status === 'scheduled');
+  if (!items.length) {
+    view.innerHTML = '<div style="text-align:center;padding:2rem;color:#8a8d91">ไม่มีโพสต์ที่ตั้งเวลาไว้</div>';
+    return;
+  }
+  const byDate = {};
+  items.forEach(p => {
+    const d = new Date(p.at);
+    const key = d.toLocaleDateString('en-CA');
+    (byDate[key] = byDate[key] || []).push(p);
+  });
+  const now = new Date();
+  const hourLines = [0, 4, 8, 12, 16, 20];
+  const cols = Object.keys(byDate).sort().map(key => {
+    const d = new Date(key + 'T00:00:00');
+    const label = d.toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' });
+    const chips = byDate[key].map(p => {
+      const t = new Date(p.at);
+      const top = ((t.getHours() + t.getMinutes() / 60) / 24 * 100).toFixed(2);
+      const overdue = t < now;
+      const time = t.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false });
+      const msg = (p.msg || '').slice(0, 30).replace(/'/g, '&#39;');
+      return `<div onclick="reschedulePost('${p.id}','${p.at}')" title="${time} — ${msg}"
+        style="position:absolute;left:4px;right:4px;top:${top}%;background:${overdue ? '#fde8e8' : '#fff3cd'};color:${overdue ? '#c62828' : '#856404'};border:1px solid ${overdue ? '#f5b5b5' : '#ffe08a'};border-radius:5px;padding:.15rem .35rem;font-size:.68rem;font-weight:600;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;z-index:1">
+        ${overdue ? '⚠️' : '⏰'} ${time} ${msg}</div>`;
+    }).join('');
+    const lines = hourLines.map(h => `<div style="position:absolute;left:0;right:0;top:${(h/24*100).toFixed(2)}%;border-top:1px dashed #eee;font-size:.62rem;color:#bbb;padding-left:2px">${String(h).padStart(2,'0')}:00</div>`).join('');
+    return `<div style="flex:0 0 150px;min-width:150px">
+      <div style="font-size:.78rem;font-weight:700;color:#444;text-align:center;margin-bottom:.4rem">${label}</div>
+      <div style="position:relative;height:360px;background:#fafbfc;border:1px solid #eee;border-radius:8px">${lines}${chips}</div>
+    </div>`;
+  }).join('');
+  view.innerHTML = `<div style="display:flex;gap:.6rem">${cols}</div>`;
 }
 
 async function reschedulePost(id, currentScheduledAt) {

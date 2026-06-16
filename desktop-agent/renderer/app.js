@@ -479,6 +479,7 @@ function filterJobs(btn, filter) {
     btn.classList.add('active');
     _jobFilter = filter;
     _jobsVisible = 20;
+    if (_agentTimelineOn) toggleAgentTimelineView();
     renderJobs();
 }
 
@@ -537,6 +538,62 @@ function renderJobs() {
     }
     el.innerHTML = html;
     updateAgentJqSelection();
+}
+
+let _agentTimelineOn = false;
+function toggleAgentTimelineView() {
+    _agentTimelineOn = !_agentTimelineOn;
+    const view = document.getElementById('agentTimelineView');
+    const card = document.getElementById('jobsListCard');
+    const btn  = document.getElementById('btnAgentTimelineView');
+    if (_agentTimelineOn) {
+        renderAgentTimeline();
+        view.style.display = '';
+        card.style.display = 'none';
+        btn.classList.add('active');
+    } else {
+        view.style.display = 'none';
+        card.style.display = '';
+        btn.classList.remove('active');
+    }
+}
+
+function renderAgentTimeline() {
+    const view = document.getElementById('agentTimelineView');
+    const items = _jobs.filter(j => j.status === 'pending' && j.scheduledAt);
+    if (!items.length) {
+        view.innerHTML = '<div class="empty-state">ยังไม่มีรายการที่ตั้งเวลาไว้</div>';
+        return;
+    }
+    const byDate = {};
+    items.forEach(j => {
+        const d = new Date(j.scheduledAt);
+        const key = d.toLocaleDateString('en-CA');
+        (byDate[key] = byDate[key] || []).push(j);
+    });
+    const now = new Date();
+    const hourLines = [0, 4, 8, 12, 16, 20];
+    const cols = Object.keys(byDate).sort().map(key => {
+        const d = new Date(key + 'T00:00:00');
+        const label = d.toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' });
+        const chips = byDate[key].map(j => {
+            const t = new Date(j.scheduledAt);
+            const top = ((t.getHours() + t.getMinutes() / 60) / 24 * 100).toFixed(2);
+            const overdue = t < now;
+            const time = t.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false });
+            const { display } = _parseJobMsg(j.message);
+            const msg = (display || '').slice(0, 30);
+            return `<div onclick="agentReschedule('${j._id}','${j.scheduledAt||''}')" title="${time} — ${esc(msg)}"
+              style="position:absolute;left:4px;right:4px;top:${top}%;background:${overdue ? '#fde8e8' : '#fff3cd'};color:${overdue ? '#c62828' : '#856404'};border:1px solid ${overdue ? '#f5b5b5' : '#ffe08a'};border-radius:5px;padding:.15rem .35rem;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;z-index:1">
+              ${overdue ? '⚠️' : '⏰'} ${time} ${esc(msg)}</div>`;
+        }).join('');
+        const lines = hourLines.map(h => `<div style="position:absolute;left:0;right:0;top:${(h/24*100).toFixed(2)}%;border-top:1px dashed var(--border);font-size:10px;color:var(--text2);padding-left:2px">${String(h).padStart(2,'0')}:00</div>`).join('');
+        return `<div style="flex:0 0 150px;min-width:150px">
+          <div style="font-size:12px;font-weight:700;color:var(--text);text-align:center;margin-bottom:.4rem">${label}</div>
+          <div style="position:relative;height:360px;background:var(--bg3);border:1px solid var(--border);border-radius:8px">${lines}${chips}</div>
+        </div>`;
+    }).join('');
+    view.innerHTML = `<div style="display:flex;gap:.6rem">${cols}</div>`;
 }
 
 function updateAgentJqSelection() {
@@ -864,6 +921,9 @@ function renderTemplates() {
         const active = _agentTplFolder === f;
         tabHtml += `<button onclick="_agentTplFolder='${f.replace(/'/g,"\\'")}';renderTemplates()" style="padding:.2rem .5rem;border-radius:5px;border:1px solid ${active?'#f7b928':'var(--border)'};background:${active?'#f7b928':'transparent'};color:${active?'#1a1a1a':'var(--text2)'};font-size:10px;cursor:pointer;font-family:inherit">📁 ${esc(f)}</button>`;
     });
+    if (_agentTplFolder) {
+        tabHtml += `<button onclick="postAllInFolder()" style="padding:.2rem .5rem;border-radius:5px;border:none;background:var(--accent);color:#fff;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;margin-left:auto">▶ โพสต์ทั้งหมด</button>`;
+    }
     tabHtml += '</div>';
 
     const filtered = _agentTplFolder ? _templates.filter(t => t.folder === _agentTplFolder) : _templates;
@@ -979,6 +1039,34 @@ async function applyTemplate(id) {
     document.getElementById('templatesPanel').style.display='none';
     const mediaCount = _selectedImages.filter(i => !i.missing).length;
     appendLog(`[📁] โหลดเทมเพลต: "${t.name}"${mediaCount ? ` · ${mediaCount} ไฟล์` : ''}`);
+}
+
+async function postAllInFolder() {
+    const items = _templates.filter(t => t.folder === _agentTplFolder);
+    if (!items.length) return;
+
+    const accId = document.getElementById('jobAccount').value || null;
+    if (!accId) { alert('กรุณาเลือกบัญชี Facebook ก่อนโพส (เลือกที่แท็บสร้างโพส)'); return; }
+    const _selAcc = _accounts.find(a => a.id === accId);
+    if (_selAcc && _selAcc.status !== 'logged_in') { alert(`บัญชี "${_selAcc.email}" ยังไม่ได้เข้าสู่ระบบ`); return; }
+
+    const spacingMin = prompt(`โพสต์ทั้งหมด ${items.length} รายการในโฟลเดอร์ "${_agentTplFolder}"\nเว้นช่วงกี่นาทีระหว่างโพสต์?`, '5');
+    if (spacingMin === null) return;
+    const spacingMs = Math.max(0, parseInt(spacingMin) || 0) * 60000;
+
+    const now = Date.now();
+    for (let i = 0; i < items.length; i++) {
+        const t = items[i];
+        const scheduledAt = new Date(now + i * spacingMs).toISOString();
+        const job = await agent.createJob({
+            message: t.message || '', groups: t.groups || [], delaySeconds: t.delaySeconds || 5,
+            accountId: accId, postAsPage: t.postAsPage || undefined, images: t.images || [], scheduledAt,
+        });
+        if (job) _jobs.unshift(job);
+    }
+    renderJobs();
+    appendLog(`[📁▶] คิวโพสต์ทั้งหมด ${items.length} รายการจากโฟลเดอร์ "${_agentTplFolder}" เว้นช่วง ${spacingMin || 0} นาที`);
+    document.querySelector('.nav-item[data-tab="jobs"]')?.click();
 }
 
 async function removeTemplate(id) {

@@ -307,6 +307,7 @@
         <button class="filter-btn"        data-filter="done"    onclick="filterJobs(this,'done')">สำเร็จ</button>
         <button class="filter-btn"        data-filter="failed"  onclick="filterJobs(this,'failed')">ล้มเหลว</button>
         <button class="filter-btn"        data-filter="scheduled" onclick="filterJobs(this,'scheduled')">⏰ ตั้งเวลาไว้</button>
+        <button id="btnAgentTimelineView" class="filter-btn" onclick="toggleAgentTimelineView()">📅 ปฏิทิน</button>
       </div>
       <button class="btn-link" style="color:var(--red);margin-left:.5rem" onclick="deleteAllJobs()">🗑 ลบทั้งหมด</button>
       <button class="btn-link ml-auto" onclick="loadJobs()">🔄 อัพเดต</button>
@@ -316,7 +317,8 @@
       <button class="btn btn-secondary" style="font-size:12px;padding:.3rem .7rem" onclick="bulkRescheduleAgentJobs()">🕐 เลื่อนเวลาทั้งหมด</button>
       <button class="btn btn-secondary" style="font-size:12px;padding:.3rem .7rem" onclick="clearAgentJqSelection()">ล้างที่เลือก</button>
     </div>
-    <div class="card">
+    <div id="agentTimelineView" class="card" style="display:none;padding:1rem .85rem;overflow-x:auto"></div>
+    <div class="card" id="jobsListCard">
       <div id="jobsList"></div>
     </div>
   </section>
