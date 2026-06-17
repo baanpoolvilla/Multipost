@@ -71,24 +71,42 @@ if "%ELECTRON_OK%"=="1" (
     echo [2/3] Electron already exists. Skipping.
     echo.
 ) else (
-    echo [2/3] Electron binary missing or incomplete. Downloading...
+    echo [2/3] Electron binary missing. Downloading via PowerShell...
     echo       This may take 2-5 minutes. Please wait...
     echo.
-    set force_no_cache=true
-    node node_modules\electron\install.js
+    powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+        "$ver = (Get-Content 'node_modules\electron\package.json' -Raw | ConvertFrom-Json).version;" ^
+        "$dist = 'node_modules\electron\dist';" ^
+        "$urls = @(" ^
+        "  \"https://github.com/electron/electron/releases/download/v$ver/electron-v$ver-win32-x64.zip\"," ^
+        "  \"https://npmmirror.com/mirrors/electron/v$ver/electron-v$ver-win32-x64.zip\"" ^
+        ");" ^
+        "$ok = $false;" ^
+        "foreach ($url in $urls) {" ^
+        "  try {" ^
+        "    Write-Host \"Trying: $url\";" ^
+        "    Invoke-WebRequest -Uri $url -OutFile '_electron_tmp.zip' -TimeoutSec 300;" ^
+        "    $ok = $true; break" ^
+        "  } catch { Write-Host \"Failed, trying next mirror...\" }" ^
+        "};" ^
+        "if (-not $ok) { Write-Host 'ERROR: download failed'; exit 1 };" ^
+        "Add-Type -Assembly System.IO.Compression.FileSystem;" ^
+        "if (Test-Path $dist) { Remove-Item $dist -Recurse -Force };" ^
+        "New-Item -ItemType Directory -Force $dist | Out-Null;" ^
+        "[System.IO.Compression.ZipFile]::ExtractToDirectory('_electron_tmp.zip', $dist);" ^
+        "Remove-Item '_electron_tmp.zip';" ^
+        "Set-Content 'node_modules\electron\path.txt' 'electron.exe';" ^
+        "Write-Host 'Electron downloaded and extracted OK'"
     if %errorlevel% neq 0 (
-        echo       Retrying with mirror...
-        set ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/
-        set npm_config_electron_mirror=https://npmmirror.com/mirrors/electron/
-        set force_no_cache=true
-        node node_modules\electron\install.js
+        echo.
+        echo [!] Electron download failed. Check your internet connection and try again.
+        echo.
+        pause
+        exit /b 1
     )
     if not exist "node_modules\electron\path.txt" (
         echo.
-        echo [!] Electron download failed. Check internet connection and try again.
-        echo     Or run manually:
-        echo     cd /d "%~dp0"
-        echo     node node_modules\electron\install.js
+        echo [!] Electron extraction failed. Try running install.bat again.
         echo.
         pause
         exit /b 1
