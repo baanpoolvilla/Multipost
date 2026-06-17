@@ -1063,6 +1063,7 @@ function renderTemplates() {
           <div class="tpl-meta">${meta}</div>
         </div>
         <button class="btn btn-primary" style="font-size:11px;padding:.3rem .6rem" onclick="applyTemplate('${t.id}')">ใช้รูปแบบนี้</button>
+        <button class="btn btn-secondary" style="font-size:11px;padding:.3rem .5rem" onclick="agentMoveTplFolder('${t.id}')" title="ย้ายเข้าโฟลเดอร์">📁</button>
         <button class="btn btn-secondary" style="font-size:11px;padding:.3rem .5rem;color:var(--red)" onclick="removeTemplate('${t.id}')" title="ลบรูปแบบนี้">🗑</button>
       </div>`;
     }).join('');
@@ -1192,6 +1193,71 @@ async function postAllInFolder() {
 async function removeTemplate(id) {
     if (!confirm('ต้องการลบรูปแบบโพสนี้หรือไม่?')) return;
     _templates = await agent.deleteTemplate(id);
+    renderTemplates();
+}
+
+async function agentMoveTplFolder(id) {
+    const t = _templates.find(x => x.id === id || x._id === id);
+    if (!t) return;
+    const folders = [...new Set(_templates.map(x => x.folder).filter(Boolean))].sort();
+    const cur = t.folder || '';
+
+    // Build chips HTML
+    const chipsHtml = folders.map(f => {
+        const sel = f === cur;
+        const fEsc = f.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+        const fJs  = f.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        return `<button type="button" onclick="_agentFolderChipClick('${fJs}',this)"
+            style="padding:.22rem .6rem;border-radius:999px;border:1.5px solid ${sel?'#f7b928':'var(--border)'};background:${sel?'rgba(247,185,40,.18)':'transparent'};color:${sel?'#1a1a1a':'var(--text2)'};font-size:.8rem;cursor:pointer;font-family:inherit">📁 ${fEsc}</button>`;
+    }).join('');
+
+    const box = document.createElement('div');
+    box.innerHTML = `
+      <div style="font-size:12px;color:var(--text2);margin-bottom:.35rem">เลือกโฟลเดอร์ที่มีอยู่ หรือพิมพ์ชื่อใหม่</div>
+      <div id="moveFolderChips" style="display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.4rem">${chipsHtml}</div>
+      <input id="moveFolderInput" type="text" value="${cur}" placeholder="${folders.length?'เลือกด้านบน หรือพิมพ์ใหม่':'เช่น 001, ชุดโปรโมชั่น'}"
+        style="width:100%;padding:.38rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--bg2);color:var(--text);box-sizing:border-box;font-family:inherit"
+        oninput="document.getElementById('moveFolderChips')?.querySelectorAll('button').forEach(b=>{b.style.borderColor='var(--border)';b.style.background='transparent';b.style.color='var(--text2)'})">`;
+    document.body.appendChild(box);
+
+    // override chip click for this dialog
+    const origChipClick = window._agentFolderChipClick;
+    window._agentFolderChipClick = (val, btn) => {
+        document.getElementById('moveFolderChips')?.querySelectorAll('button').forEach(b => {
+            b.style.borderColor='var(--border)'; b.style.background='transparent'; b.style.color='var(--text2)';
+        });
+        const inp = document.getElementById('moveFolderInput');
+        if (inp && inp.value !== val) {
+            inp.value = val;
+            btn.style.borderColor='#f7b928'; btn.style.background='rgba(247,185,40,.18)'; btn.style.color='#1a1a1a';
+        } else if (inp) { inp.value = ''; }
+    };
+
+    const confirmed = await new Promise(resolve => {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center';
+        const dialog = document.createElement('div');
+        dialog.style.cssText = 'background:var(--bg1,#1a1b1e);border:1px solid var(--border,#333);border-radius:12px;padding:1.1rem 1.25rem;min-width:300px;max-width:360px;width:90%';
+        dialog.innerHTML = `
+          <div style="font-weight:700;font-size:.95rem;color:var(--text,#e0e0e0);margin-bottom:.65rem">📁 ย้ายเข้าโฟลเดอร์</div>
+          <div id="moveFolderBody"></div>
+          <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:.85rem">
+            <button id="moveFolderCancel" style="padding:.4rem .85rem;border:1px solid var(--border,#333);border-radius:7px;background:transparent;color:var(--text2,#aaa);cursor:pointer;font-family:inherit;font-size:.82rem">ยกเลิก</button>
+            <button id="moveFolderOk"     style="padding:.4rem .9rem;border:none;border-radius:7px;background:#f7b928;color:#1a1a1a;font-weight:700;cursor:pointer;font-family:inherit;font-size:.82rem">ย้าย</button>
+          </div>`;
+        overlay.appendChild(dialog);
+        document.body.appendChild(overlay);
+        dialog.querySelector('#moveFolderBody').appendChild(box);
+        dialog.querySelector('#moveFolderCancel').onclick = () => { overlay.remove(); resolve(null); };
+        dialog.querySelector('#moveFolderOk').onclick = () => {
+            const v = document.getElementById('moveFolderInput')?.value.trim() || null;
+            overlay.remove(); resolve(v === '' ? null : v);
+        };
+    });
+
+    window._agentFolderChipClick = origChipClick;
+    if (confirmed === undefined) return; // cancelled (null means "remove from folder")
+    _templates = await agent.moveTemplateFolder(id, confirmed);
     renderTemplates();
 }
 

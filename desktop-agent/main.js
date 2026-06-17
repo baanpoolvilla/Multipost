@@ -135,10 +135,11 @@ ipcMain.handle('runner:start', () => { jobRunner.start(); return { ok: true }; }
 ipcMain.handle('runner:stop',  () => { jobRunner.stop();  return { ok: true }; });
 
 // ── IPC: Templates ─────────────────────────────────────────────
-ipcMain.handle('templates:list',   ()         => jobTemplateStore.list());
-ipcMain.handle('templates:save',   (_, tpl)   => jobTemplateStore.save(tpl));
-ipcMain.handle('templates:get',    (_, id)    => jobTemplateStore.getWithImages(id));
-ipcMain.handle('templates:delete', (_, id)    => jobTemplateStore.remove(id));
+ipcMain.handle('templates:list',        ()              => jobTemplateStore.list());
+ipcMain.handle('templates:save',        (_, tpl)        => jobTemplateStore.save(tpl));
+ipcMain.handle('templates:get',         (_, id)         => jobTemplateStore.getWithImages(id));
+ipcMain.handle('templates:delete',      (_, id)         => jobTemplateStore.remove(id));
+ipcMain.handle('templates:move-folder', (_, id, folder) => jobTemplateStore.updateFolder(id, folder));
 
 // ── IPC: Upload file from disk path → Supabase (best) → MongoDB (images) → localpath (videos) ──
 ipcMain.handle('file:upload', async (_, filePath, contentType) => {

@@ -30,10 +30,11 @@ contextBridge.exposeInMainWorld('agent', {
     stopRunner:      ()         => ipcRenderer.invoke('runner:stop'),
 
     // Templates
-    listTemplates:   ()         => ipcRenderer.invoke('templates:list'),
-    saveTemplate:    (tpl)      => ipcRenderer.invoke('templates:save', tpl),
-    getTemplate:     (id)       => ipcRenderer.invoke('templates:get', id),
-    deleteTemplate:  (id)       => ipcRenderer.invoke('templates:delete', id),
+    listTemplates:        ()              => ipcRenderer.invoke('templates:list'),
+    saveTemplate:         (tpl)          => ipcRenderer.invoke('templates:save', tpl),
+    getTemplate:          (id)           => ipcRenderer.invoke('templates:get', id),
+    deleteTemplate:       (id)           => ipcRenderer.invoke('templates:delete', id),
+    moveTemplateFolder:   (id, folder)   => ipcRenderer.invoke('templates:move-folder', id, folder),
 
     // Supabase — upload file from disk path (main process reads file, uploads with service key)
     uploadFile: (filePath, contentType) => ipcRenderer.invoke('file:upload', filePath, contentType),

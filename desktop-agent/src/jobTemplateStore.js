@@ -167,4 +167,10 @@ function hasLocalVideo(tpl) {
     return (tpl.images || []).some(p => p.startsWith('localpath::'));
 }
 
-module.exports = { list, save, getWithImages, remove, hasLocalVideo };
+async function updateFolder(id, folder) {
+    await connect();
+    await Tpl.findByIdAndUpdate(id, { $set: { folder: folder || null } });
+    return (await Tpl.find().sort({ createdAt: -1 }).lean()).map(_normalize);
+}
+
+module.exports = { list, save, getWithImages, remove, hasLocalVideo, updateFolder };

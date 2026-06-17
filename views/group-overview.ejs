@@ -56,9 +56,6 @@
           ภาพรวมแชร์กลุ่ม
         </div>
         <div style="display:flex;gap:.4rem;flex-wrap:wrap">
-          <button onclick="refreshGroupAnalytics()" id="btn-refresh-grp" style="background:#e8fde8;color:#2e7d32;border:1.5px solid #2e7d32;border-radius:8px;padding:.35rem .85rem;font-size:.82rem;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:.4rem">
-            <i class="fa-solid fa-rotate"></i> อัปเดต Analytics
-          </button>
           <button onclick="showGroupRangeModal()" style="background:#e8fde8;color:#2e7d32;border:1.5px solid #2e7d32;border-radius:8px;padding:.35rem .85rem;font-size:.82rem;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:.4rem">
             <i class="fa-solid fa-chart-bar"></i> สรุปช่วงเวลา
           </button>
@@ -94,31 +91,6 @@
         <div class="metric-body">
           <div class="metric-val" style="color:#2e7d32"><%= successRate %>%</div>
           <div class="metric-label">อัตราสำเร็จ</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Analytics engagement cards (always visible) -->
-    <div class="overview-grid">
-      <div class="metric-card purple" style="<%= hasAnalytics ? '' : 'opacity:.65' %>">
-        <div class="metric-icon"><i class="fa-solid fa-thumbs-up"></i></div>
-        <div class="metric-body">
-          <div class="metric-val"><%= totalLikes.toLocaleString() %></div>
-          <div class="metric-label">ไลค์รวม<% if (!hasAnalytics) { %><br><span style="font-size:.65rem;opacity:.8">กด อัปเดต Analytics</span><% } %></div>
-        </div>
-      </div>
-      <div class="metric-card orange" style="<%= hasAnalytics ? '' : 'opacity:.65' %>">
-        <div class="metric-icon"><i class="fa-solid fa-comment"></i></div>
-        <div class="metric-body">
-          <div class="metric-val"><%= totalComments.toLocaleString() %></div>
-          <div class="metric-label">คอมเมนต์รวม<% if (!hasAnalytics) { %><br><span style="font-size:.65rem;opacity:.8">กด อัปเดต Analytics</span><% } %></div>
-        </div>
-      </div>
-      <div class="metric-card teal" style="<%= hasAnalytics ? '' : 'opacity:.65' %>">
-        <div class="metric-icon"><i class="fa-solid fa-share-nodes"></i></div>
-        <div class="metric-body">
-          <div class="metric-val"><%= totalShares.toLocaleString() %></div>
-          <div class="metric-label">แชร์รวม<% if (!hasAnalytics) { %><br><span style="font-size:.65rem;opacity:.8">กด อัปเดต Analytics</span><% } %></div>
         </div>
       </div>
     </div>
@@ -440,34 +412,10 @@ function showGrpEngInfo() {
           <span style="color:#0891b2;font-weight:700">🔁 แชร์</span><span>× 3 (เผยแพร่ต่อ)</span>
         </div>
       </div>
-      <p style="font-size:.78rem;color:#8a8d91">ข้อมูล Analytics จะเข้มขึ้นหลังกด "อัปเดต Analytics"</p>
+      <p style="font-size:.78rem;color:#8a8d91">ข้อมูล Analytics แสดงเฉพาะที่ Agent บันทึกไว้ตอนโพส</p>
     </div>`,
     confirmButtonText: 'รับทราบ', confirmButtonColor: '#2e7d32', width: '430px',
   });
-}
-
-/* ── Refresh Group Analytics ── */
-async function refreshGroupAnalytics() {
-  const btn = document.getElementById('btn-refresh-grp');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังอัปเดต...'; }
-  try {
-    const res  = await fetch('/api/agent/refresh-group-analytics', { method: 'POST' });
-    const data = await res.json();
-    if (!data.ok) throw new Error(data.error || 'API error');
-    await Swal.fire({
-      icon: data.updated > 0 ? 'success' : 'info',
-      title: data.updated > 0 ? 'อัปเดตสำเร็จ' : 'ไม่มีข้อมูลใหม่',
-      text: data.updated > 0
-        ? `อัปเดต Analytics ${data.updated} รายการ (ข้อผิดพลาด: ${data.errors})`
-        : 'ยังไม่มีข้อมูล postUrl ในผลลัพธ์ที่เก็บไว้ — ต้องโพสใหม่ด้วย Agent เวอร์ชันล่าสุดก่อน',
-      confirmButtonColor: '#2e7d32',
-    });
-    if (data.updated > 0) location.reload();
-  } catch (e) {
-    Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: e.message });
-  } finally {
-    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate"></i> อัปเดต Analytics'; }
-  }
 }
 
 /* ── Chart ── */
