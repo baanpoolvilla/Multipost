@@ -700,6 +700,17 @@ async function showSummaryModal() {
       </div></div>`,
     confirmButtonText: 'ดูสรุป', confirmButtonColor: '#1877f2',
     showCancelButton: true, cancelButtonText: 'ยกเลิก', focusConfirm: false,
+    didOpen: () => {
+      const _bkk = () => new Date(new Date().toLocaleString('en-US', { timeZone:'Asia/Bangkok' }));
+      const _pad = n => String(n).padStart(2,'0');
+      const _now = _bkk();
+      const _today = `${_now.getFullYear()}-${_pad(_now.getMonth()+1)}-${_pad(_now.getDate())}`;
+      const _fillTime = (hId, mId) => { const n=_bkk(); document.getElementById(hId).value=n.getHours(); document.getElementById(mId).value=n.getMinutes(); };
+      if (document.getElementById('sm-dfrom').value === _today) _fillTime('sm-tfrom_h','sm-tfrom_m');
+      if (document.getElementById('sm-dto').value   === _today) _fillTime('sm-tto_h','sm-tto_m');
+      document.getElementById('sm-dfrom').addEventListener('change', e => { if(e.target.value===_today) _fillTime('sm-tfrom_h','sm-tfrom_m'); });
+      document.getElementById('sm-dto').addEventListener('change',   e => { if(e.target.value===_today) _fillTime('sm-tto_h','sm-tto_m'); });
+    },
     preConfirm: () => {
       const dfrom = document.getElementById('sm-dfrom').value;
       const dto   = document.getElementById('sm-dto').value;

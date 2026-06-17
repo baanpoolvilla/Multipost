@@ -347,6 +347,15 @@ async function showGroupRangeModal() {
     </div>`,
     confirmButtonText: 'ดูสถิติ', confirmButtonColor: '#2e7d32',
     showCancelButton: true, cancelButtonText: 'ยกเลิก', focusConfirm: false,
+    didOpen: () => {
+      const _bkk = () => new Date(new Date().toLocaleString('en-US', { timeZone:'Asia/Bangkok' }));
+      const _pad = n => String(n).padStart(2,'0');
+      const _now = _bkk();
+      const _today = `${_now.getFullYear()}-${_pad(_now.getMonth()+1)}-${_pad(_now.getDate())}`;
+      const _fillTime = (hId, mId) => { const n=_bkk(); document.getElementById(hId).value=n.getHours(); document.getElementById(mId).value=n.getMinutes(); };
+      document.getElementById('gr-from').addEventListener('change', e => { if(e.target.value===_today) _fillTime('gr-tfrom_h','gr-tfrom_m'); });
+      document.getElementById('gr-to').addEventListener('change',   e => { if(e.target.value===_today) _fillTime('gr-tto_h','gr-tto_m'); });
+    },
     preConfirm: () => ({
       from:  document.getElementById('gr-from').value,
       to:    document.getElementById('gr-to').value,
