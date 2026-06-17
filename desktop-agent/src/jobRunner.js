@@ -28,9 +28,12 @@ async function start() {
 
     // Part 9: catch up on expiry BEFORE the queue is ever polled, so a job
     // that became overdue while the Agent was offline is never posted late.
+    // Use grace=0 at startup: any scheduled job past its time is expired
+    // immediately (no leeway). Periodic sweeps use DEFAULT_GRACE_MS to let
+    // sequential jobs survive while a previous job is being processed.
     try {
         await _store.migrateLegacyStatuses?.();
-        const expired = await _store.expireOverdueJobs();
+        const expired = await _store.expireOverdueJobs(0);
         if (expired) log(`⏱ พบงานหมดเวลา ${expired} รายการ — ย้ายไปสถานะ "หมดเวลา" (ไม่โพสอัตโนมัติ)`);
         _lastExpireSweep = Date.now();
     } catch (e) { log(`⚠️ ตรวจสอบงานหมดเวลาไม่สำเร็จ: ${e.message}`); }

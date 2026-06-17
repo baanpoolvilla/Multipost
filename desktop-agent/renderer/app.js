@@ -564,18 +564,24 @@ function toggleAgentTimelineView() {
 }
 
 function dt24Get(prefix) {
-    const d = document.getElementById(prefix+'_d')?.value;
-    if (!d) return '';
-    const h = String(document.getElementById(prefix+'_h').value||0).padStart(2,'0');
-    const m = String(document.getElementById(prefix+'_m').value||0).padStart(2,'0');
-    return `${d}T${h}:${m}`;
+    return document.getElementById(prefix+'_dt')?.value || '';
 }
 function dt24Set(prefix, localStr) {
-    const [d,t] = (localStr||'').split('T');
-    document.getElementById(prefix+'_d').value = d||'';
-    const [h,m] = (t||'').split(':');
-    document.getElementById(prefix+'_h').value = h||'';
-    document.getElementById(prefix+'_m').value = m||'';
+    const el = document.getElementById(prefix+'_dt');
+    if (el) el.value = localStr || '';
+}
+// Advance the datetime-local input by +minutes from now (or from current value)
+function dtQuick(id, minutes) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const base = el.value ? new Date(el.value) : new Date();
+    // Round up to next minute to avoid "time in the past" edge
+    if (!el.value) base.setSeconds(0, 0);
+    base.setMinutes(base.getMinutes() + minutes);
+    // Format as local datetime-local value (YYYY-MM-DDTHH:MM) in Bangkok time
+    const bkk = new Date(base.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
+    const pad = n => String(n).padStart(2, '0');
+    el.value = `${bkk.getFullYear()}-${pad(bkk.getMonth()+1)}-${pad(bkk.getDate())}T${pad(bkk.getHours())}:${pad(bkk.getMinutes())}`;
 }
 
 function toggleComposeTimeline() {
@@ -1405,27 +1411,36 @@ async function checkScheduledNotifications() {
         const overdue  = scheduled.filter(j => new Date(j.scheduledAt) < now);
         const upcoming = scheduled.filter(j => new Date(j.scheduledAt) >= now);
 
-        // Show overdue banner once per session per job
+        // Show overdue banner + OS notification once per session per job
         overdue.forEach(j => {
             if (_notifiedOverdue.has(j._id)) return;
             _notifiedOverdue.add(j._id);
             const msg = j.message.length > 40 ? j.message.slice(0, 40) + '…' : j.message;
             const schedTime = new Date(j.scheduledAt).toLocaleString('th-TH', { timeZone:'Asia/Bangkok', hour12:false, dateStyle:'short', timeStyle:'short' });
             appendLog(`⚠️ [แจ้งเตือน] งานโพส "${msg}" เลยเวลาที่ตั้งไว้แล้ว (${schedTime}) — Agent ต้องเปิดอยู่เพื่อโพส`);
+            agent.notify('⚠️ งานโพสเลยเวลาแล้ว', `"${msg}" ควรโพสเวลา ${schedTime} — เปิด Agent ค้างไว้`);
         });
 
+        // Notify once when upcoming jobs exist but agent might be closed
+        const upcoming = scheduled.filter(j => new Date(j.scheduledAt) >= now);
+
+        const banner = document.getElementById('scheduledBanner');
         if (scheduled.length > 0) {
-            const banner = document.getElementById('scheduledBanner');
+            const txt = `มีงานโพสที่ตั้งเวลาไว้ ${scheduled.length} งาน${overdue.length > 0 ? ` (เลยเวลาแล้ว ${overdue.length} งาน)` : ''} — Agent ต้องเปิดทิ้งไว้`;
             if (!banner) {
                 const b = document.createElement('div');
                 b.id = 'scheduledBanner';
                 b.style.cssText = 'background:#fff3cd;border:1px solid #ffe08a;border-radius:8px;padding:.5rem .85rem;margin:.4rem 0;font-size:12px;color:#856404;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap';
                 b.innerHTML = `<i class="fa-solid fa-clock"></i>
-                  <span>มีงานโพสที่ตั้งเวลาไว้ ${scheduled.length} งาน${overdue.length > 0 ? ` (เลยเวลาแล้ว ${overdue.length} งาน)` : ''} — Agent ต้องเปิดทิ้งไว้</span>
-                  <button onclick="document.querySelector('.nav-item[data-tab=\'jobs\']')?.click()" style="background:#856404;color:#fff;border:none;border-radius:5px;padding:.2rem .5rem;font-size:11px;cursor:pointer;font-family:inherit">ดูคิว</button>`;
+                  <span>${txt}</span>
+                  <button onclick="document.querySelector('.nav-item[data-tab=\\'jobs\\']')?.click()" style="background:#856404;color:#fff;border:none;border-radius:5px;padding:.2rem .5rem;font-size:11px;cursor:pointer;font-family:inherit">ดูคิว</button>`;
                 const logEl = document.getElementById('agentLog') || document.querySelector('.log-panel');
                 if (logEl) logEl.parentNode.insertBefore(b, logEl);
+            } else {
+                banner.querySelector('span').textContent = txt;
             }
+        } else if (banner) {
+            banner.remove();
         }
     } catch {}
 

@@ -145,8 +145,9 @@ async function getJobs() {
 
 // Run BEFORE every queue poll: flips any pending job overdue past the
 // grace window to 'expired' so it can never be auto-posted late.
-async function expireOverdueJobs() {
-    try { await connect(); return await scheduler().expireOverdueJobs(); }
+// Pass graceMs=0 at startup to expire ALL scheduled-but-overdue jobs.
+async function expireOverdueJobs(graceMs) {
+    try { await connect(); return await scheduler().expireOverdueJobs(graceMs); }
     catch { return 0; }
 }
 

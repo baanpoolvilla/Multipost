@@ -258,18 +258,20 @@
       <div class="fb-divider"></div>
 
       <!-- Schedule row -->
-      <div style="display:flex;align-items:center;gap:.5rem;padding:.35rem .6rem;background:rgba(255,200,0,.07);border:1px solid rgba(255,200,0,.2);border-radius:7px;margin-bottom:.4rem;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:.4rem;padding:.35rem .6rem;background:rgba(255,200,0,.07);border:1px solid rgba(255,200,0,.2);border-radius:7px;margin-bottom:.4rem;flex-wrap:wrap">
         <span style="font-size:11px;color:var(--text2);white-space:nowrap">⏰ ตั้งเวลา</span>
-        <div class="dt24-wrap">
-          <input type="date" id="jobScheduledAt_d">
-          <input type="number" id="jobScheduledAt_h" min="0" max="23" placeholder="ชม.">
-          <span>:</span>
-          <input type="number" id="jobScheduledAt_m" min="0" max="59" placeholder="นาที">
-        </div>
+        <input type="datetime-local" id="jobScheduledAt_dt"
+          style="font-size:12px;padding:.25rem .4rem;border:1px solid var(--border);border-radius:5px;background:var(--bg);color:var(--text1);cursor:pointer">
+        <button onclick="dtQuick('jobScheduledAt_dt', 60)" title="+1 ชม."
+          style="background:var(--bg2);border:1px solid var(--border);border-radius:5px;font-size:11px;padding:.2rem .45rem;cursor:pointer;color:var(--text1)">+1ชม.</button>
+        <button onclick="dtQuick('jobScheduledAt_dt', 180)" title="+3 ชม."
+          style="background:var(--bg2);border:1px solid var(--border);border-radius:5px;font-size:11px;padding:.2rem .45rem;cursor:pointer;color:var(--text1)">+3ชม.</button>
+        <button onclick="dtQuick('jobScheduledAt_dt', 1440)" title="+1 วัน"
+          style="background:var(--bg2);border:1px solid var(--border);border-radius:5px;font-size:11px;padding:.2rem .45rem;cursor:pointer;color:var(--text1)">+1วัน</button>
         <button onclick="toggleComposeTimeline()" title="ดูปฏิทินคิวที่ตั้งไว้"
-          style="background:none;border:none;font-size:13px;color:var(--accent);cursor:pointer;padding:0 .2rem">📅</button>
-        <button onclick="dt24Set('jobScheduledAt','')"
-          style="background:none;border:none;font-size:11px;color:var(--text3);cursor:pointer;padding:0 .2rem" title="ล้างเวลา">✕</button>
+          style="background:none;border:none;font-size:13px;color:var(--accent);cursor:pointer;padding:0 .1rem">📅</button>
+        <button onclick="document.getElementById('jobScheduledAt_dt').value=''"
+          style="background:none;border:none;font-size:11px;color:var(--text3);cursor:pointer;padding:0 .1rem" title="ล้างเวลา">✕</button>
       </div>
       <div id="composeTimelineView" style="display:none;padding:.6rem;overflow-x:auto;margin-bottom:.4rem;background:var(--bg2);border-radius:7px"></div>
 
