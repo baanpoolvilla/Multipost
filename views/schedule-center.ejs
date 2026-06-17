@@ -249,8 +249,8 @@ function scDateRangeValid() {
 }
 
 ['scSearch','scStatus','scSource','scPage','scGroup','scDateFrom','scDateTo','scGroupBy'].forEach(id => {
-  document.getElementById(id).addEventListener('input',  () => { if (scDateRangeValid()) scRender(); });
-  document.getElementById(id).addEventListener('change', () => { if (scDateRangeValid()) scRender(); });
+  document.getElementById(id).addEventListener('input',  () => { _scListLimit = 20; if (scDateRangeValid()) scRender(); });
+  document.getElementById(id).addEventListener('change', () => { _scListLimit = 20; if (scDateRangeValid()) scRender(); });
 });
 
 function scClearFilters() {
@@ -260,6 +260,7 @@ function scClearFilters() {
   document.getElementById('scDateFrom').style.borderColor = '';
   document.getElementById('scDateTo').style.borderColor   = '';
   document.getElementById('scDateRangeErr').style.display = 'none';
+  _scListLimit = 20;
   scRender();
 }
 
@@ -398,22 +399,31 @@ function scRowHtml(it) {
   </div>`;
 }
 
+let _scListLimit = 20;
+
 function scRenderList() {
   const items = getFilteredItems();
   document.getElementById('scCount').textContent = items.length;
   const el = document.getElementById('scListView');
   if (!items.length) { el.innerHTML = '<div style="color:var(--text-secondary);text-align:center;padding:1.5rem;font-size:.9rem">ไม่พบรายการ</div>'; return; }
 
+  const shown   = items.slice(0, _scListLimit);
   const groupBy = document.getElementById('scGroupBy').value;
+  let html = '';
   if (groupBy === 'none') {
-    el.innerHTML = items.map(scRowHtml).join('');
-    return;
+    html = shown.map(scRowHtml).join('');
+  } else {
+    const buckets = {};
+    shown.forEach(it => { const k = scGroupKey(it, groupBy); (buckets[k] = buckets[k] || []).push(it); });
+    html = Object.keys(buckets).sort().map(k =>
+      `<div class="sc-group-header">${esc(k)} (${buckets[k].length})</div>${buckets[k].map(scRowHtml).join('')}`
+    ).join('');
   }
-  const buckets = {};
-  items.forEach(it => { const k = scGroupKey(it, groupBy); (buckets[k] = buckets[k] || []).push(it); });
-  el.innerHTML = Object.keys(buckets).sort().map(k =>
-    `<div class="sc-group-header">${esc(k)} (${buckets[k].length})</div>${buckets[k].map(scRowHtml).join('')}`
-  ).join('');
+  if (items.length > _scListLimit) {
+    const rem = items.length - _scListLimit;
+    html += `<div style="text-align:center;padding:.75rem 0"><button onclick="_scListLimit+=20;scRenderList()" style="background:#f0f2f5;border:none;border-radius:8px;padding:.42rem 1.2rem;font-size:.83rem;cursor:pointer;color:#555;font-family:inherit;font-weight:600">ดูเพิ่มเติม (${rem} รายการ)</button></div>`;
+  }
+  el.innerHTML = html;
 }
 
 // ── Calendar ─────────────────────────────────────────────────

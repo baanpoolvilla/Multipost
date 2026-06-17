@@ -85,6 +85,7 @@
       <span style="color:#bbb">—</span>
       <input id="paTo" type="date" onchange="applyPageFilter()" title="ถึงวันที่"
         style="padding:.35rem .5rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;color:#333;outline:none;cursor:pointer">
+      <span id="paDateRangeErr" style="display:none;font-size:.75rem;color:#c62828;font-weight:600">⚠️ วันที่เริ่มต้องไม่เกินวันที่สิ้นสุด</span>
       <button onclick="clearPageFilter()" style="padding:.35rem .6rem;background:#f0f2f5;border:none;border-radius:8px;font-size:.82rem;cursor:pointer;color:#666;font-family:inherit">✕ ล้าง</button>
     </div>
 
@@ -265,6 +266,13 @@
     const q       = (document.getElementById('paSearch')?.value || '').toLowerCase().trim();
     const fromVal = document.getElementById('paFrom')?.value || '';
     const toVal   = document.getElementById('paTo')?.value   || '';
+
+    const _drBad = fromVal && toVal && fromVal > toVal;
+    document.getElementById('paFrom').style.borderColor        = _drBad ? '#c62828' : '';
+    document.getElementById('paTo').style.borderColor          = _drBad ? '#c62828' : '';
+    document.getElementById('paDateRangeErr').style.display    = _drBad ? 'inline' : 'none';
+    if (_drBad) return;
+
     const fromMs  = fromVal ? new Date(fromVal + 'T00:00:00+07:00').getTime() : 0;
     const toMs    = toVal   ? new Date(toVal   + 'T23:59:59+07:00').getTime() : Infinity;
 
@@ -311,8 +319,9 @@
 
   function clearPageFilter() {
     const s = document.getElementById('paSearch'); if (s) s.value = '';
-    const f = document.getElementById('paFrom');   if (f) f.value = '';
-    const t = document.getElementById('paTo');     if (t) t.value = '';
+    const f = document.getElementById('paFrom');   if (f) { f.value = ''; f.style.borderColor = ''; }
+    const t = document.getElementById('paTo');     if (t) { t.value = ''; t.style.borderColor = ''; }
+    document.getElementById('paDateRangeErr').style.display = 'none';
     applyPageFilter();
   }
 
