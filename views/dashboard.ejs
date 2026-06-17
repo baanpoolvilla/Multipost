@@ -194,6 +194,8 @@
             <input type="number" id="scheduledAt_h" min="0" max="23" placeholder="ชม." style="width:44px;text-align:center">
             <span>:</span>
             <input type="number" id="scheduledAt_m" min="0" max="59" placeholder="น." style="width:44px;text-align:center">
+            <button type="button" onclick="dtToday('scheduledAt')" title="วันนี้ตอนนี้"
+              style="background:#e7f0fd;border:none;border-radius:6px;padding:.2rem .4rem;font-size:.72rem;cursor:pointer;color:#1877f2;font-family:inherit;font-weight:600">วันนี้</button>
             <button type="button" onclick="dtQuick('scheduledAt',60)" title="+1 ชั่วโมง"
               style="background:#f0f2f5;border:none;border-radius:6px;padding:.2rem .4rem;font-size:.72rem;cursor:pointer;color:#444;font-family:inherit">+1ชม.</button>
             <button type="button" onclick="dtQuick('scheduledAt',180)" title="+3 ชั่วโมง"

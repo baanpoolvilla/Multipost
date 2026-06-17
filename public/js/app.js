@@ -649,6 +649,15 @@ function dt24Set(prefix, localStr) {
   document.getElementById(prefix+'_h').value = h||'';
   document.getElementById(prefix+'_m').value = m||'';
 }
+function dtToday(prefix) {
+  const bkk = new Date(new Date().toLocaleString('en-US', { timeZone:'Asia/Bangkok' }));
+  const pad  = n => String(n).padStart(2,'0');
+  document.getElementById(prefix+'_d').value = `${bkk.getFullYear()}-${pad(bkk.getMonth()+1)}-${pad(bkk.getDate())}`;
+  document.getElementById(prefix+'_h').value = bkk.getHours();
+  document.getElementById(prefix+'_m').value = bkk.getMinutes();
+  const wrap = document.getElementById('scheduledAtWrap');
+  if (wrap && wrap.style.display === 'none') toggleSchedule();
+}
 function dtQuick(prefix, minutes) {
   const dEl = document.getElementById(prefix+'_d');
   const hEl = document.getElementById(prefix+'_h');

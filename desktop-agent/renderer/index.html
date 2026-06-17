@@ -270,6 +270,8 @@
           <input type="number" id="jobScheduledAt_m" min="0" max="59" placeholder="น."
             style="width:44px;font-size:12px;padding:.25rem .2rem;border:1px solid var(--border);border-radius:5px;background:var(--bg);color:var(--text1);text-align:center">
         </div>
+        <button onclick="dtToday('jobScheduledAt')" title="วันนี้ตอนนี้"
+          style="background:var(--accent);border:none;border-radius:5px;font-size:11px;padding:.2rem .45rem;cursor:pointer;color:#fff;font-weight:600">วันนี้</button>
         <button onclick="dtQuick('jobScheduledAt', 60)" title="+1 ชม."
           style="background:var(--bg2);border:1px solid var(--border);border-radius:5px;font-size:11px;padding:.2rem .45rem;cursor:pointer;color:var(--text1)">+1ชม.</button>
         <button onclick="dtQuick('jobScheduledAt', 180)" title="+3 ชม."

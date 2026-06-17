@@ -516,7 +516,8 @@ function renderJobs() {
             const label = fmtDate(j.scheduledAt);
             return `<span style="font-size:10px;background:${overdue?'#fde8e8':'#fff3cd'};color:${overdue?'#c62828':'#856404'};border-radius:4px;padding:.05rem .4rem;margin-left:.3rem">${overdue?'⚠️':'⏰'} ${label}</span>`;
         })() : '';
-        const reschedBtn = (j.status === 'pending' || j.status === 'expired') ? `<button onclick="agentReschedule('${j._id}','${j.scheduledAt||''}')" style="background:none;border:none;cursor:pointer;font-size:13px;padding:.1rem .2rem" title="${j.status==='expired'?'เลื่อนเวลา (ใช้ได้ทันที)':'แก้ไขเวลา'}">🕐</button>` : '';
+        const reschedBtn = (j.status === 'pending' || j.status === 'expired') ? `<button onclick="agentReschedule('${j._id}','${j.scheduledAt||''}')" style="background:none;border:none;cursor:pointer;font-size:13px;padding:.1rem .2rem" title="${j.status==='expired'?'เลื่อนเวลา':'แก้ไขเวลา'}">🕐</button>` : '';
+        const repostBtn = j.status === 'expired' ? `<button onclick="agentRepostNow('${j._id}')" style="background:#f0faf0;border:1px solid #c3e6cb;border-radius:5px;cursor:pointer;font-size:11px;padding:.1rem .35rem;color:#2e7d32;font-family:inherit" title="โพสเลยโดยไม่ตั้งเวลา">โพสเลย</button>` : '';
         const retryBtn = j.status === 'failed' ? `<button onclick="retryJobAgent('${j._id}')" style="background:none;border:none;cursor:pointer;font-size:13px;padding:.1rem .2rem" title="ลองใหม่">🔁</button>` : '';
         const selCb = (_jobFilter==='scheduled' && j.status==='pending' && j.scheduledAt)
             ? `<input type="checkbox" class="jqAgentSelCb" data-id="${j._id}" onchange="updateAgentJqSelection()" style="accent-color:#856404;cursor:pointer;width:15px;height:15px;margin-right:.2rem">`
@@ -529,6 +530,7 @@ function renderJobs() {
             <div class="job-meta">${meta} · ${fmtDate(j.createdAt)}</div>
           </div>
           <span class="job-status ${j.status}">${statusJobTH(j.status)}</span>
+          ${repostBtn}
           ${reschedBtn}
           ${retryBtn}
           <button class="job-del" onclick="deleteJob('${j._id}')">🗑</button>
@@ -576,6 +578,14 @@ function dt24Set(prefix, localStr) {
     const [h,m] = (t||'').split(':');
     document.getElementById(prefix+'_h').value = h||'';
     document.getElementById(prefix+'_m').value = m||'';
+}
+// Set date+time inputs to current Bangkok time (Today button)
+function dtToday(prefix) {
+    const bkk = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
+    const pad  = n => String(n).padStart(2, '0');
+    document.getElementById(prefix+'_d').value = `${bkk.getFullYear()}-${pad(bkk.getMonth()+1)}-${pad(bkk.getDate())}`;
+    document.getElementById(prefix+'_h').value = bkk.getHours();
+    document.getElementById(prefix+'_m').value = bkk.getMinutes();
 }
 // Advance date+time inputs by +minutes from current value (or from now if empty)
 function dtQuick(prefix, minutes) {
@@ -798,6 +808,19 @@ async function retryJobAgent(id) {
         appendLog(`[🔁] นำงาน ${id.slice(-6)} เข้าคิวใหม่แล้ว`);
     } catch(e) {
         alert('ลองใหม่ไม่สำเร็จ: ' + e.message);
+    }
+}
+
+async function agentRepostNow(id) {
+    if (!confirm('โพสงานนี้ทันทีโดยไม่ตั้งเวลา?')) return;
+    try {
+        const job = await agent.rescheduleJob(id, null);
+        const i = _jobs.findIndex(j=>j._id===id);
+        if (i!==-1 && job) _jobs[i] = job;
+        renderJobs();
+        appendLog(`[▶️] นำงาน ${id.slice(-6)} เข้าคิวโพสทันที`);
+    } catch(e) {
+        alert('ไม่สำเร็จ: ' + e.message);
     }
 }
 

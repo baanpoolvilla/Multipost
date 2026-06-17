@@ -323,6 +323,32 @@ function dt24Set(prefix, localStr) {
   document.getElementById(prefix+'_h').value = h||'';
   document.getElementById(prefix+'_m').value = m||'';
 }
+function dtQuick(prefix, minutes) {
+  const dEl = document.getElementById(prefix+'_d');
+  const hEl = document.getElementById(prefix+'_h');
+  const mEl = document.getElementById(prefix+'_m');
+  if (!dEl) return;
+  let base;
+  if (dEl.value) {
+    const h = parseInt(hEl.value)||0, m = parseInt(mEl.value)||0;
+    base = new Date(`${dEl.value}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00+07:00`);
+  } else {
+    base = new Date(); base.setSeconds(0,0);
+  }
+  base.setMinutes(base.getMinutes() + minutes);
+  const bkk = new Date(base.toLocaleString('en-US', { timeZone:'Asia/Bangkok' }));
+  const pad  = n => String(n).padStart(2,'0');
+  dEl.value = `${bkk.getFullYear()}-${pad(bkk.getMonth()+1)}-${pad(bkk.getDate())}`;
+  hEl.value = bkk.getHours();
+  mEl.value = bkk.getMinutes();
+}
+function dtToday(prefix) {
+  const bkk = new Date(new Date().toLocaleString('en-US', { timeZone:'Asia/Bangkok' }));
+  const pad  = n => String(n).padStart(2,'0');
+  document.getElementById(prefix+'_d').value = `${bkk.getFullYear()}-${pad(bkk.getMonth()+1)}-${pad(bkk.getDate())}`;
+  document.getElementById(prefix+'_h').value = bkk.getHours();
+  document.getElementById(prefix+'_m').value = bkk.getMinutes();
+}
 
 const _groups = <%- JSON.stringify(groups) %>;
 // Map: category index -> array of group indices in _groups
@@ -461,6 +487,7 @@ async function bulkRescheduleJobs() {
         <input type="number" id="swal-jqBulkAt_m" min="0" max="59" placeholder="น." style="width:50px;text-align:center">
       </div>
       <div style="display:flex;gap:.3rem;flex-wrap:wrap">
+        <button type="button" onclick="dtToday('swal-jqBulkAt')" style="background:#e7f0fd;border:none;border-radius:6px;padding:.25rem .5rem;font-size:.72rem;cursor:pointer;color:#1877f2;font-family:inherit;font-weight:600">วันนี้</button>
         <button type="button" onclick="dtQuick('swal-jqBulkAt',60)" style="background:#f0f2f5;border:none;border-radius:6px;padding:.25rem .5rem;font-size:.72rem;cursor:pointer;color:#444;font-family:inherit">+1ชม.</button>
         <button type="button" onclick="dtQuick('swal-jqBulkAt',180)" style="background:#f0f2f5;border:none;border-radius:6px;padding:.25rem .5rem;font-size:.72rem;cursor:pointer;color:#444;font-family:inherit">+3ชม.</button>
         <button type="button" onclick="dtQuick('swal-jqBulkAt',1440)" style="background:#f0f2f5;border:none;border-radius:6px;padding:.25rem .5rem;font-size:.72rem;cursor:pointer;color:#444;font-family:inherit">+1วัน</button>
@@ -607,6 +634,7 @@ async function rescheduleJob(id, currentScheduledAt) {
         <input type="number" id="swal-schedAt_m" min="0" max="59" placeholder="น." style="width:50px;text-align:center">
       </div>
       <div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.4rem">
+        <button type="button" onclick="dtToday('swal-schedAt')" style="background:#e7f0fd;border:none;border-radius:6px;padding:.25rem .5rem;font-size:.72rem;cursor:pointer;color:#1877f2;font-family:inherit;font-weight:600">วันนี้</button>
         <button type="button" onclick="dtQuick('swal-schedAt',60)" style="background:#f0f2f5;border:none;border-radius:6px;padding:.25rem .5rem;font-size:.72rem;cursor:pointer;color:#444;font-family:inherit">+1ชม.</button>
         <button type="button" onclick="dtQuick('swal-schedAt',180)" style="background:#f0f2f5;border:none;border-radius:6px;padding:.25rem .5rem;font-size:.72rem;cursor:pointer;color:#444;font-family:inherit">+3ชม.</button>
         <button type="button" onclick="dtQuick('swal-schedAt',1440)" style="background:#f0f2f5;border:none;border-radius:6px;padding:.25rem .5rem;font-size:.72rem;cursor:pointer;color:#444;font-family:inherit">+1วัน</button>
