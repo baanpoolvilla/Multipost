@@ -104,6 +104,7 @@
         <input id="scDateFrom" type="date" style="padding:.38rem .5rem;border:1px solid var(--border-color);border-radius:7px;font-size:.82rem">
         <span style="font-size:.8rem;color:var(--text-secondary)">ถึง</span>
         <input id="scDateTo" type="date" style="padding:.38rem .5rem;border:1px solid var(--border-color);border-radius:7px;font-size:.82rem">
+        <span id="scDateRangeErr" style="display:none;font-size:.75rem;color:#c62828;font-weight:600">⚠️ วันที่เริ่มต้องไม่เกินวันที่สิ้นสุด</span>
 
         <select id="scGroupBy" style="padding:.4rem .5rem;border:1px solid var(--border-color);border-radius:7px;font-size:.82rem">
           <option value="none">จัดกลุ่ม: ไม่จัดกลุ่ม</option>
@@ -236,15 +237,29 @@ function dtQuick(prefix, minutes) {
   [...groups].sort().forEach(g => groupSel.insertAdjacentHTML('beforeend', `<option value="${esc(g)}">${esc(g)}</option>`));
 })();
 
+function scDateRangeValid() {
+  const from = document.getElementById('scDateFrom').value;
+  const to   = document.getElementById('scDateTo').value;
+  const err  = document.getElementById('scDateRangeErr');
+  const bad  = from && to && from > to;
+  document.getElementById('scDateFrom').style.borderColor = bad ? '#c62828' : '';
+  document.getElementById('scDateTo').style.borderColor   = bad ? '#c62828' : '';
+  err.style.display = bad ? 'inline' : 'none';
+  return !bad;
+}
+
 ['scSearch','scStatus','scSource','scPage','scGroup','scDateFrom','scDateTo','scGroupBy'].forEach(id => {
-  document.getElementById(id).addEventListener('input', scRender);
-  document.getElementById(id).addEventListener('change', scRender);
+  document.getElementById(id).addEventListener('input',  () => { if (scDateRangeValid()) scRender(); });
+  document.getElementById(id).addEventListener('change', () => { if (scDateRangeValid()) scRender(); });
 });
 
 function scClearFilters() {
   ['scSearch','scDateFrom','scDateTo'].forEach(id => document.getElementById(id).value = '');
   ['scStatus','scSource','scPage','scGroup'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('scGroupBy').value = 'none';
+  document.getElementById('scDateFrom').style.borderColor = '';
+  document.getElementById('scDateTo').style.borderColor   = '';
+  document.getElementById('scDateRangeErr').style.display = 'none';
   scRender();
 }
 

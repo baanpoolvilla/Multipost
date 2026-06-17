@@ -156,6 +156,7 @@
             <input type="number" id="hTimeTo_m" min="0" max="59" placeholder="นาที" onchange="applyFilters()">
           </div>
         </div>
+        <div id="hDateRangeErr" style="display:none;font-size:.75rem;color:#c62828;font-weight:600;align-self:flex-end;padding-bottom:.35rem">⚠️ วันที่เริ่มต้องไม่เกินวันที่สิ้นสุด</div>
       </div>
 
       <!-- Result info -->
@@ -406,6 +407,13 @@
     const timeFrom  = t24Get('hTimeFrom');
     const timeTo    = t24Get('hTimeTo');
     const pg        = document.getElementById('hPage')?.value     || '';
+
+    // Date range validation
+    const _drBad = fromVal && toVal && fromVal > toVal;
+    document.getElementById('hDateFrom').style.borderColor = _drBad ? '#c62828' : '';
+    document.getElementById('hDateTo').style.borderColor   = _drBad ? '#c62828' : '';
+    document.getElementById('hDateRangeErr').style.display = _drBad ? 'flex' : 'none';
+    if (_drBad) return;
 
     let fromTs = null, toTs = null;
     if (fromVal) {
