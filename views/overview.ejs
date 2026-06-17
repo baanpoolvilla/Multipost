@@ -363,14 +363,11 @@ async function showSummaryModal() {
     focusConfirm: false,
     didOpen: () => {
       const _bkk = () => new Date(new Date().toLocaleString('en-US', { timeZone:'Asia/Bangkok' }));
-      const _pad = n => String(n).padStart(2,'0');
-      const _now = _bkk();
-      const _today = `${_now.getFullYear()}-${_pad(_now.getMonth()+1)}-${_pad(_now.getDate())}`;
       const _fillTime = (hId, mId) => { const n=_bkk(); document.getElementById(hId).value=n.getHours(); document.getElementById(mId).value=n.getMinutes(); };
-      if (document.getElementById('sm-dfrom').value === _today) _fillTime('sm-tfrom_h','sm-tfrom_m');
-      if (document.getElementById('sm-dto').value   === _today) _fillTime('sm-tto_h','sm-tto_m');
-      document.getElementById('sm-dfrom').addEventListener('change', e => { if(e.target.value===_today) _fillTime('sm-tfrom_h','sm-tfrom_m'); });
-      document.getElementById('sm-dto').addEventListener('change',   e => { if(e.target.value===_today) _fillTime('sm-tto_h','sm-tto_m'); });
+      if (document.getElementById('sm-dfrom').value === today) _fillTime('sm-tfrom_h','sm-tfrom_m');
+      if (document.getElementById('sm-dto').value   === today) _fillTime('sm-tto_h','sm-tto_m');
+      document.getElementById('sm-dfrom').addEventListener('change', e => { if(e.target.value===today) _fillTime('sm-tfrom_h','sm-tfrom_m'); });
+      document.getElementById('sm-dto').addEventListener('change',   e => { if(e.target.value===today) _fillTime('sm-tto_h','sm-tto_m'); });
     },
     preConfirm: () => {
       const dfrom = document.getElementById('sm-dfrom').value;
@@ -535,25 +532,54 @@ async function _fetchCombined(from, to) {
 
 /* ── สรุปช่วงเวลา โพสเพจ ── */
 async function showPageRangeModal() {
+  const _prIs = 'width:100%;padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none;box-sizing:border-box';
+  const _prLs = 'font-size:.8rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem';
+  const prToday = new Date().toISOString().slice(0, 10);
   const { value: dates } = await Swal.fire({
     title: '<i class="fa-brands fa-facebook" style="color:#1877f2"></i> สถิติโพสเพจตามช่วงเวลา',
-    html: `<div style="display:flex;flex-wrap:wrap;gap:.6rem;justify-content:center;align-items:flex-end;margin-top:.5rem">
-      <div><label style="font-size:.78rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem">วันที่เริ่ม</label>
-        <input id="pr-from" type="date" style="padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none"></div>
-      <div><label style="font-size:.78rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem">วันที่สิ้นสุด</label>
-        <input id="pr-to" type="date" style="padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none"></div>
+    html: `<div style="text-align:left;display:flex;flex-direction:column;gap:.55rem">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
+        <div><label style="${_prLs}">วันที่เริ่ม</label>
+          <input id="pr-from" type="date" style="${_prIs}"></div>
+        <div><label style="${_prLs}">วันที่สิ้นสุด</label>
+          <input id="pr-to" type="date" style="${_prIs}"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
+        <div><label style="${_prLs}">เวลาเริ่ม (ไม่บังคับ)</label>
+          <div class="dt24-wrap"><input type="number" id="pr-tfrom_h" min="0" max="23" placeholder="ชม."><span>:</span><input type="number" id="pr-tfrom_m" min="0" max="59" placeholder="นาที"></div></div>
+        <div><label style="${_prLs}">เวลาสิ้นสุด (ไม่บังคับ)</label>
+          <div class="dt24-wrap"><input type="number" id="pr-tto_h" min="0" max="23" placeholder="ชม."><span>:</span><input type="number" id="pr-tto_m" min="0" max="59" placeholder="นาที"></div></div>
+      </div>
     </div>`,
     confirmButtonText: 'ดูสถิติ', confirmButtonColor: '#1877f2',
     showCancelButton: true, cancelButtonText: 'ยกเลิก', focusConfirm: false,
-    preConfirm: () => ({ from: document.getElementById('pr-from').value, to: document.getElementById('pr-to').value }),
+    didOpen: () => {
+      const _bkk = () => new Date(new Date().toLocaleString('en-US', { timeZone:'Asia/Bangkok' }));
+      const _fillTime = (hId, mId) => { const n=_bkk(); document.getElementById(hId).value=n.getHours(); document.getElementById(mId).value=n.getMinutes(); };
+      document.getElementById('pr-from').addEventListener('change', e => { if(e.target.value===prToday) _fillTime('pr-tfrom_h','pr-tfrom_m'); });
+      document.getElementById('pr-to').addEventListener('change',   e => { if(e.target.value===prToday) _fillTime('pr-tto_h','pr-tto_m'); });
+    },
+    preConfirm: () => ({
+      from:  document.getElementById('pr-from').value,
+      to:    document.getElementById('pr-to').value,
+      tfrom: t24Get('pr-tfrom'),
+      tto:   t24Get('pr-tto'),
+    }),
   });
   if (!dates) return;
   Swal.fire({ title: 'กำลังโหลด...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
   try {
-    const data = await _fetchCombined(dates.from, dates.to);
+    const _prParams = new URLSearchParams();
+    if (dates.from)  _prParams.set('from', dates.from);
+    if (dates.to)    _prParams.set('to',   dates.to);
+    if (dates.tfrom) _prParams.set('timeFrom', dates.tfrom);
+    if (dates.tto)   _prParams.set('timeTo',   dates.tto);
+    const data = await (await fetch('/api/stats/combined?' + _prParams)).json();
     if (!data.ok) throw new Error('API error');
     const p = data.pageStats;
-    const label = dates.from || dates.to ? `ช่วง: ${dates.from ? _fmtDateTH(dates.from) : '—'} ถึง ${dates.to ? _fmtDateTH(dates.to) : '—'}` : 'ข้อมูลทั้งหมด';
+    const label = (dates.from || dates.to)
+      ? `ช่วง: ${dates.from ? _fmtDateTH(dates.from) : '—'} ถึง ${dates.to ? _fmtDateTH(dates.to) : '—'}${dates.tfrom ? ` เวลา ${dates.tfrom}${dates.tto ? '–'+dates.tto : ''}` : ''}`
+      : 'ข้อมูลทั้งหมด';
     Swal.fire({
       title: `<i class="fa-brands fa-facebook" style="color:#1877f2"></i> โพสเพจ`,
       html: `<div style="text-align:left">
