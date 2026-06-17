@@ -143,7 +143,7 @@ router.get('/download/agent', (req, res) => {
         ].join('\n') + '\n';
         const zipPath  = path.join(__dirname, '../public/downloads/agent.zip');
         const zip      = new AdmZip(zipPath);
-        zip.addFile('multipost-agent/.env', Buffer.from(envContent));
+        zip.addFile('desktop-agent/.env', Buffer.from(envContent));
         const buf = zip.toBuffer();
         res.setHeader('Content-Type', 'application/zip');
         res.setHeader('Content-Disposition', 'attachment; filename="multipost-agent.zip"');
