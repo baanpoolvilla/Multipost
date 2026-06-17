@@ -564,24 +564,39 @@ function toggleAgentTimelineView() {
 }
 
 function dt24Get(prefix) {
-    return document.getElementById(prefix+'_dt')?.value || '';
+    const d = document.getElementById(prefix+'_d')?.value;
+    if (!d) return '';
+    const h = String(document.getElementById(prefix+'_h').value||0).padStart(2,'0');
+    const m = String(document.getElementById(prefix+'_m').value||0).padStart(2,'0');
+    return `${d}T${h}:${m}`;
 }
 function dt24Set(prefix, localStr) {
-    const el = document.getElementById(prefix+'_dt');
-    if (el) el.value = localStr || '';
+    const [d,t] = (localStr||'').split('T');
+    document.getElementById(prefix+'_d').value = d||'';
+    const [h,m] = (t||'').split(':');
+    document.getElementById(prefix+'_h').value = h||'';
+    document.getElementById(prefix+'_m').value = m||'';
 }
-// Advance the datetime-local input by +minutes from now (or from current value)
-function dtQuick(id, minutes) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    const base = el.value ? new Date(el.value) : new Date();
-    // Round up to next minute to avoid "time in the past" edge
-    if (!el.value) base.setSeconds(0, 0);
+// Advance date+time inputs by +minutes from current value (or from now if empty)
+function dtQuick(prefix, minutes) {
+    const dEl = document.getElementById(prefix+'_d');
+    const hEl = document.getElementById(prefix+'_h');
+    const mEl = document.getElementById(prefix+'_m');
+    if (!dEl) return;
+    let base;
+    if (dEl.value) {
+        const h = parseInt(hEl.value)||0, m = parseInt(mEl.value)||0;
+        base = new Date(`${dEl.value}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00+07:00`);
+    } else {
+        base = new Date();
+        base.setSeconds(0, 0);
+    }
     base.setMinutes(base.getMinutes() + minutes);
-    // Format as local datetime-local value (YYYY-MM-DDTHH:MM) in Bangkok time
     const bkk = new Date(base.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
-    const pad = n => String(n).padStart(2, '0');
-    el.value = `${bkk.getFullYear()}-${pad(bkk.getMonth()+1)}-${pad(bkk.getDate())}T${pad(bkk.getHours())}:${pad(bkk.getMinutes())}`;
+    const pad  = n => String(n).padStart(2, '0');
+    dEl.value  = `${bkk.getFullYear()}-${pad(bkk.getMonth()+1)}-${pad(bkk.getDate())}`;
+    hEl.value  = bkk.getHours();
+    mEl.value  = bkk.getMinutes();
 }
 
 function toggleComposeTimeline() {
