@@ -95,6 +95,7 @@
         <button class="page-sel-chip all-chip active" onclick="toggleAllPages(this)">
           <i class="fa-solid fa-check"></i> ทั้งหมด
         </button>
+        <% const colors = ['blue','green','orange','purple','red']; %>
         <% pages.slice(0, 8).forEach((p, i) => { %>
         <button class="page-sel-chip active" data-page-id="<%= p.pageId %>" onclick="togglePage(this)">
           <div class="avatar avatar-<%= colors[i%5] %>" style="width:16px;height:16px;font-size:.55rem;flex-shrink:0"><%= p.pageName.slice(-1) %></div>
