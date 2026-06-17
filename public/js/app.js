@@ -649,6 +649,28 @@ function dt24Set(prefix, localStr) {
   document.getElementById(prefix+'_h').value = h||'';
   document.getElementById(prefix+'_m').value = m||'';
 }
+function dtQuick(prefix, minutes) {
+  const dEl = document.getElementById(prefix+'_d');
+  const hEl = document.getElementById(prefix+'_h');
+  const mEl = document.getElementById(prefix+'_m');
+  if (!dEl) return;
+  let base;
+  if (dEl.value) {
+    const h = parseInt(hEl.value)||0, m = parseInt(mEl.value)||0;
+    base = new Date(`${dEl.value}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00+07:00`);
+  } else {
+    base = new Date(); base.setSeconds(0,0);
+  }
+  base.setMinutes(base.getMinutes() + minutes);
+  const bkk = new Date(base.toLocaleString('en-US', { timeZone:'Asia/Bangkok' }));
+  const pad  = n => String(n).padStart(2,'0');
+  dEl.value = `${bkk.getFullYear()}-${pad(bkk.getMonth()+1)}-${pad(bkk.getDate())}`;
+  hEl.value = bkk.getHours();
+  mEl.value = bkk.getMinutes();
+  // Show the schedule row if hidden (dashboard)
+  const wrap = dEl.closest('#scheduledAtWrap, .dt24-wrap-row');
+  if (wrap && wrap.style.display === 'none') wrap.style.display = '';
+}
 
 function toggleComposeTimeline() {
   const view = document.getElementById('composeTimelineView');

@@ -190,14 +190,22 @@
             <i class="fa-solid fa-clock"></i> ตั้งเวลา
           </button>
           <div id="scheduledAtWrap" class="dt24-wrap" style="display:none">
-            <input type="date" id="scheduledAt_d">
-            <input type="number" id="scheduledAt_h" min="0" max="23" placeholder="ชม.">
+            <input type="date" id="scheduledAt_d" style="cursor:pointer;min-width:110px">
+            <input type="number" id="scheduledAt_h" min="0" max="23" placeholder="ชม." style="width:44px;text-align:center">
             <span>:</span>
-            <input type="number" id="scheduledAt_m" min="0" max="59" placeholder="นาที">
+            <input type="number" id="scheduledAt_m" min="0" max="59" placeholder="น." style="width:44px;text-align:center">
+            <button type="button" onclick="dtQuick('scheduledAt',60)" title="+1 ชั่วโมง"
+              style="background:#f0f2f5;border:none;border-radius:6px;padding:.2rem .4rem;font-size:.72rem;cursor:pointer;color:#444;font-family:inherit">+1ชม.</button>
+            <button type="button" onclick="dtQuick('scheduledAt',180)" title="+3 ชั่วโมง"
+              style="background:#f0f2f5;border:none;border-radius:6px;padding:.2rem .4rem;font-size:.72rem;cursor:pointer;color:#444;font-family:inherit">+3ชม.</button>
+            <button type="button" onclick="dtQuick('scheduledAt',1440)" title="+1 วัน"
+              style="background:#f0f2f5;border:none;border-radius:6px;padding:.2rem .4rem;font-size:.72rem;cursor:pointer;color:#444;font-family:inherit">+1วัน</button>
             <button type="button" id="composeTimelineBtn" onclick="toggleComposeTimeline()" title="ดูปฏิทินคิวที่ตั้งไว้"
               style="background:#e7f0fd;border:none;border-radius:7px;padding:.28rem .5rem;font-size:.78rem;cursor:pointer;color:#1877f2">
               <i class="fa-solid fa-calendar-days"></i>
             </button>
+            <button type="button" onclick="dt24Set('scheduledAt','');toggleSchedule()" title="ล้างเวลา"
+              style="background:none;border:none;font-size:.78rem;cursor:pointer;color:#999;padding:0 .2rem">✕</button>
           </div>
         </div>
       </div>

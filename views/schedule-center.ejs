@@ -196,12 +196,35 @@ function dt24Set(prefix, localStr) {
 function dt24Html(prefix, localStr) {
   const [d,t] = (localStr||'').split('T');
   const [h,m] = (t||'').split(':');
-  return `<div class="dt24-wrap" style="display:flex;gap:.3rem;align-items:center">
-    <input type="date" id="${prefix}_d" value="${d||''}" style="padding:.35rem;border:1px solid #ddd;border-radius:6px">
-    <input type="number" id="${prefix}_h" value="${h||''}" min="0" max="23" placeholder="HH" style="width:55px;padding:.35rem;border:1px solid #ddd;border-radius:6px">
-    :
-    <input type="number" id="${prefix}_m" value="${m||''}" min="0" max="59" placeholder="MM" style="width:55px;padding:.35rem;border:1px solid #ddd;border-radius:6px">
+  const qs = (min,lbl) => `<button type="button" onclick="dtQuick('${prefix}',${min})" style="background:#f0f2f5;border:none;border-radius:6px;padding:.28rem .4rem;font-size:.72rem;cursor:pointer;color:#444;font-family:inherit">${lbl}</button>`;
+  return `<div style="display:flex;gap:.3rem;align-items:center;flex-wrap:wrap">
+    <div class="dt24-wrap" style="display:flex;gap:.3rem;align-items:center">
+      <input type="date" id="${prefix}_d" value="${d||''}" style="padding:.35rem;border:1px solid #ddd;border-radius:6px;cursor:pointer;min-width:110px">
+      <input type="number" id="${prefix}_h" value="${h||''}" min="0" max="23" placeholder="ชม." style="width:50px;padding:.35rem;border:1px solid #ddd;border-radius:6px;text-align:center">
+      :
+      <input type="number" id="${prefix}_m" value="${m||''}" min="0" max="59" placeholder="น." style="width:50px;padding:.35rem;border:1px solid #ddd;border-radius:6px;text-align:center">
+    </div>
+    ${qs(60,'+1ชม.')}${qs(180,'+3ชม.')}${qs(1440,'+1วัน')}
   </div>`;
+}
+function dtQuick(prefix, minutes) {
+  const dEl = document.getElementById(prefix+'_d');
+  const hEl = document.getElementById(prefix+'_h');
+  const mEl = document.getElementById(prefix+'_m');
+  if (!dEl) return;
+  let base;
+  if (dEl.value) {
+    const h = parseInt(hEl.value)||0, m = parseInt(mEl.value)||0;
+    base = new Date(`${dEl.value}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00+07:00`);
+  } else {
+    base = new Date(); base.setSeconds(0,0);
+  }
+  base.setMinutes(base.getMinutes() + minutes);
+  const bkk = new Date(base.toLocaleString('en-US', { timeZone:'Asia/Bangkok' }));
+  const pad  = n => String(n).padStart(2,'0');
+  dEl.value = `${bkk.getFullYear()}-${pad(bkk.getMonth()+1)}-${pad(bkk.getDate())}`;
+  hEl.value = bkk.getHours();
+  mEl.value = bkk.getMinutes();
 }
 
 // ── Populate filter dropdowns from data ─────────────────────────

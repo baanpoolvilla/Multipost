@@ -454,11 +454,16 @@ async function bulkRescheduleJobs() {
     title: `<i class="fa-solid fa-clock" style="color:#856404"></i> เลื่อนเวลาโพส ${ids.length} รายการ`,
     html: `<div style="text-align:left">
       <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:.3rem">เวลาที่ต้องการโพส (ใช้กับทุกรายการที่เลือก)</label>
-      <div class="dt24-wrap">
-        <input type="date" id="swal-jqBulkAt_d">
-        <input type="number" id="swal-jqBulkAt_h" min="0" max="23" placeholder="ชม.">
+      <div class="dt24-wrap" style="margin-bottom:.4rem">
+        <input type="date" id="swal-jqBulkAt_d" style="cursor:pointer;min-width:110px">
+        <input type="number" id="swal-jqBulkAt_h" min="0" max="23" placeholder="ชม." style="width:50px;text-align:center">
         <span>:</span>
-        <input type="number" id="swal-jqBulkAt_m" min="0" max="59" placeholder="นาที">
+        <input type="number" id="swal-jqBulkAt_m" min="0" max="59" placeholder="น." style="width:50px;text-align:center">
+      </div>
+      <div style="display:flex;gap:.3rem;flex-wrap:wrap">
+        <button type="button" onclick="dtQuick('swal-jqBulkAt',60)" style="background:#f0f2f5;border:none;border-radius:6px;padding:.25rem .5rem;font-size:.72rem;cursor:pointer;color:#444;font-family:inherit">+1ชม.</button>
+        <button type="button" onclick="dtQuick('swal-jqBulkAt',180)" style="background:#f0f2f5;border:none;border-radius:6px;padding:.25rem .5rem;font-size:.72rem;cursor:pointer;color:#444;font-family:inherit">+3ชม.</button>
+        <button type="button" onclick="dtQuick('swal-jqBulkAt',1440)" style="background:#f0f2f5;border:none;border-radius:6px;padding:.25rem .5rem;font-size:.72rem;cursor:pointer;color:#444;font-family:inherit">+1วัน</button>
       </div>
     </div>`,
     confirmButtonText: 'บันทึกทั้งหมด', confirmButtonColor: '#856404',
@@ -595,13 +600,18 @@ async function rescheduleJob(id, currentScheduledAt) {
     title: '<i class="fa-solid fa-clock" style="color:#856404"></i> แก้ไขเวลาโพส',
     html: `<div style="text-align:left">
       <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:.3rem">เวลาที่ต้องการโพส</label>
-      <div class="dt24-wrap">
-        <input type="date" id="swal-schedAt_d">
-        <input type="number" id="swal-schedAt_h" min="0" max="23" placeholder="ชม.">
+      <div class="dt24-wrap" style="margin-bottom:.4rem">
+        <input type="date" id="swal-schedAt_d" style="cursor:pointer;min-width:110px">
+        <input type="number" id="swal-schedAt_h" min="0" max="23" placeholder="ชม." style="width:50px;text-align:center">
         <span>:</span>
-        <input type="number" id="swal-schedAt_m" min="0" max="59" placeholder="นาที">
+        <input type="number" id="swal-schedAt_m" min="0" max="59" placeholder="น." style="width:50px;text-align:center">
       </div>
-      <div style="font-size:.75rem;color:#8a8d91;margin-top:.4rem">เว้นว่างไว้เพื่อล้างเวลาที่ตั้งไว้ (จะโพสทันที)</div>
+      <div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.4rem">
+        <button type="button" onclick="dtQuick('swal-schedAt',60)" style="background:#f0f2f5;border:none;border-radius:6px;padding:.25rem .5rem;font-size:.72rem;cursor:pointer;color:#444;font-family:inherit">+1ชม.</button>
+        <button type="button" onclick="dtQuick('swal-schedAt',180)" style="background:#f0f2f5;border:none;border-radius:6px;padding:.25rem .5rem;font-size:.72rem;cursor:pointer;color:#444;font-family:inherit">+3ชม.</button>
+        <button type="button" onclick="dtQuick('swal-schedAt',1440)" style="background:#f0f2f5;border:none;border-radius:6px;padding:.25rem .5rem;font-size:.72rem;cursor:pointer;color:#444;font-family:inherit">+1วัน</button>
+      </div>
+      <div style="font-size:.75rem;color:#8a8d91">เว้นว่างไว้เพื่อล้างเวลาที่ตั้งไว้ (จะโพสทันที)</div>
     </div>`,
     confirmButtonText: 'บันทึก',
     confirmButtonColor: '#1877f2',
