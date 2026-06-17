@@ -2,6 +2,7 @@ const express    = require('express');
 const router     = express.Router();
 const multer     = require('multer');
 const path       = require('path');
+const fs         = require('fs');
 const AdmZip     = require('adm-zip');
 const ctrl       = require('../controllers/postController');
 const agentCtrl  = require('../controllers/agentController');
@@ -151,6 +152,50 @@ router.get('/download/agent', (req, res) => {
         res.send(buf);
     } catch (e) {
         res.status(500).send('ไม่สามารถสร้างไฟล์ดาวน์โหลดได้');
+    }
+});
+
+// ── Auto-update endpoints ───────────────────────────────────────────────────
+
+// Returns current version of the desktop-agent so clients can compare
+router.get('/api/agent-version', (req, res) => {
+    try {
+        const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '../desktop-agent/package.json'), 'utf8'));
+        res.json({ version: pkg.version });
+    } catch {
+        res.status(500).json({ version: '0.0.0' });
+    }
+});
+
+// Returns source-only zip (no node_modules, no electron binary) for auto-update
+// Files have NO prefix — extracted directly into the desktop-agent folder
+router.get('/api/agent/source', (req, res) => {
+    try {
+        const agentDir = path.join(__dirname, '../desktop-agent');
+        const sourceFiles = [
+            'main.js', 'preload.js', 'package.json',
+            'api/server.js',
+            'src/accountStore.js', 'src/agentImageStore.js',
+            'src/facebookBot.js',  'src/jobRunner.js',
+            'src/jobStore.js',     'src/jobTemplateStore.js',
+            'src/localGroupStore.js', 'src/supabaseStore.js',
+            'src/scheduler/schedulerService.js', 'src/scheduler/statuses.js',
+            'renderer/app.js', 'renderer/index.html', 'renderer/style.css',
+        ];
+        const zip = new AdmZip();
+        for (const rel of sourceFiles) {
+            const full = path.join(agentDir, rel);
+            if (!fs.existsSync(full)) continue;
+            const dir = path.dirname(rel);
+            zip.addLocalFile(full, dir === '.' ? '' : dir);
+        }
+        const buf = zip.toBuffer();
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader('Content-Disposition', 'attachment; filename="agent-source.zip"');
+        res.setHeader('Content-Length', buf.length);
+        res.send(buf);
+    } catch {
+        res.status(500).send('Cannot create source zip');
     }
 });
 
