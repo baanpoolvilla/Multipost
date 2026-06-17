@@ -19,6 +19,16 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+// Inject sidebar pages into every view via res.locals
+const pageStore = require('./services/pageStore');
+app.use(async (req, res, next) => {
+    try {
+        const all = await pageStore.load();
+        res.locals.sidebarPages = all.filter(p => p.enabled !== false);
+    } catch { res.locals.sidebarPages = []; }
+    next();
+});
+
 // Routes before static — /uploads/:filename is served from MongoDB (persistent on Vercel)
 app.use('/', require('./routes/postRoutes'));
 app.use(express.static(path.join(__dirname, 'public')));

@@ -1,0 +1,28 @@
+<% const _sp = locals.sidebarPages || []; %>
+<% if (_sp.length > 0) { %>
+<div class="sidebar-divider"></div>
+<div class="sidebar-label">เพจของคุณ</div>
+<% const _spC = ['purple','green','orange','blue','red']; %>
+<% _sp.slice(0, 6).forEach((p, i) => { %>
+<a href="/page-activity/<%= encodeURIComponent(p.pageId) %>" class="sidebar-item" style="text-decoration:none">
+  <div class="avatar avatar-<%= _spC[i%5] %> avatar-xs"><%= p.pageName.charAt(0).toUpperCase() %></div>
+  <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><%= p.pageName %></span>
+  <% if ((p.groups||[]).length > 0) { %><span style="background:#e7f3ff;color:#1877f2;border-radius:999px;font-size:.65rem;padding:.05rem .38rem;font-weight:700;flex-shrink:0"><%= p.groups.length %>กลุ่ม</span><% } %>
+</a>
+<% }); %>
+<% if (_sp.length > 6) { %>
+<div class="sidebar-item" id="_spMoreBtn" onclick="var d=document.getElementById('_spMoreList');var open=d.style.display!=='block';d.style.display=open?'block':'none';document.getElementById('_spMoreIco').className='fa-solid '+(open?'fa-chevron-up':'fa-chevron-down');" style="color:#65676b;cursor:pointer">
+  <i class="fa-solid fa-chevron-down" id="_spMoreIco"></i>
+  <span>เพิ่มเติม <%= _sp.length - 6 %> เพจ</span>
+</div>
+<div id="_spMoreList" style="display:none">
+<% _sp.slice(6).forEach((p, i) => { %>
+<a href="/page-activity/<%= encodeURIComponent(p.pageId) %>" class="sidebar-item" style="text-decoration:none">
+  <div class="avatar avatar-<%= _spC[(i+6)%5] %> avatar-xs"><%= p.pageName.charAt(0).toUpperCase() %></div>
+  <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><%= p.pageName %></span>
+  <% if ((p.groups||[]).length > 0) { %><span style="background:#e7f3ff;color:#1877f2;border-radius:999px;font-size:.65rem;padding:.05rem .38rem;font-weight:700;flex-shrink:0"><%= p.groups.length %>กลุ่ม</span><% } %>
+</a>
+<% }); %>
+</div>
+<% } %>
+<% } %>

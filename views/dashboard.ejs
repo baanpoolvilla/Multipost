@@ -44,39 +44,7 @@
     <a href="/group-overview" class="sidebar-item"><i class="fa-solid fa-chart-line" style="color:#2e7d32"></i><span>ภาพรวม</span></a>
     <a href="/group-history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพสกลุ่ม</span></a>
     <a href="/guide" class="sidebar-item"><i class="fa-solid fa-book-open"></i><span>คู่มือการใช้งาน</span></a>
-
-    <div class="sidebar-divider"></div>
-    <div class="sidebar-label">เพจของคุณ</div>
-    <div id="sidebarPagesList">
-    <% const colors = ['purple','green','orange','blue','red']; %>
-    <% pages.slice(0, 5).forEach((p, i) => { %>
-    <a href="/page-activity/<%= encodeURIComponent(p.pageId) %>" class="sidebar-item" style="text-decoration:none;cursor:pointer">
-      <div class="avatar avatar-<%= colors[i%5] %> avatar-xs"><%= p.pageName.slice(-1) %></div>
-      <span style="flex:1"><%= p.pageName %></span>
-      <% if ((p.groups||[]).length > 0) { %>
-      <span style="background:#e7f3ff;color:#1877f2;border-radius:999px;font-size:.65rem;padding:.05rem .38rem;font-weight:700;flex-shrink:0"><%= p.groups.length %>กลุ่ม</span>
-      <% } %>
-    </a>
-    <% }); %>
-
-    <% if (pages.length > 5) { %>
-    <div class="sidebar-item" id="showMoreBtn" onclick="toggleMorePages()" style="color:#65676b">
-      <i class="fa-solid fa-chevron-down" id="moreChevron"></i>
-      <span>เพิ่มเติม <%= pages.length - 5 %> เพจ</span>
-    </div>
-    <div id="morePagesList" style="display:none">
-      <% pages.slice(5).forEach((p, i) => { %>
-      <a href="/page-activity/<%= encodeURIComponent(p.pageId) %>" class="sidebar-item" style="text-decoration:none;cursor:pointer">
-        <div class="avatar avatar-<%= colors[(i+5)%5] %> avatar-xs"><%= p.pageName.slice(-1) %></div>
-        <span style="flex:1"><%= p.pageName %></span>
-        <% if ((p.groups||[]).length > 0) { %>
-        <span style="background:#e7f3ff;color:#1877f2;border-radius:999px;font-size:.65rem;padding:.05rem .38rem;font-weight:700;flex-shrink:0"><%= p.groups.length %>กลุ่ม</span>
-        <% } %>
-      </a>
-      <% }); %>
-    </div>
-    <% } %>
-    </div>
+    <%- include('partials/sidebar-pages') %>
   </aside>
 
   <!-- Feed -->

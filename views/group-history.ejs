@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="th">
 <head>
   <meta charset="UTF-8">
@@ -43,6 +43,7 @@
       <i class="fa-solid fa-chart-bar" style="font-size:.78rem"></i><span>รายงานโพสกลุ่ม</span>
     </div>
     <a href="/guide" class="sidebar-item"><i class="fa-solid fa-book-open"></i><span>คู่มือการใช้งาน</span></a>
+    <%- include('partials/sidebar-pages') %>
   </aside>
 
   <main class="feed">
@@ -458,12 +459,26 @@
 
   function clearFilters() {
     ['hSearch','hStatus','hGroup','hCat','hDateFrom','hDateTo'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.value = '';
+      const el = document.getElementById(id); if (el) el.value = '';
     });
+    document.getElementById('hDateFrom').style.borderColor = '';
+    document.getElementById('hDateTo').style.borderColor   = '';
+    document.getElementById('hDateRangeErr').style.display = 'none';
     t24Set('hTimeFrom', ''); t24Set('hTimeTo', '');
     applyFilters();
   }
+
+  // Auto-fill time when user picks Today in the inline date filter
+  (function() {
+    const _bkk = () => new Date(new Date().toLocaleString('en-US', { timeZone:'Asia/Bangkok' }));
+    const _todayStr = () => new Date().toISOString().slice(0,10);
+    document.getElementById('hDateFrom').addEventListener('change', function() {
+      if (this.value === _todayStr()) { const n=_bkk(); document.getElementById('hTimeFrom_h').value=n.getHours(); document.getElementById('hTimeFrom_m').value=n.getMinutes(); applyFilters(); }
+    });
+    document.getElementById('hDateTo').addEventListener('change', function() {
+      if (this.value === _todayStr()) { const n=_bkk(); document.getElementById('hTimeTo_h').value=n.getHours(); document.getElementById('hTimeTo_m').value=n.getMinutes(); applyFilters(); }
+    });
+  })();
 
   function viewImage(src) {
     Swal.fire({ imageUrl: src, imageAlt: 'รูปภาพ', showConfirmButton: false, showCloseButton: true, width: 'auto' });
@@ -572,34 +587,58 @@
   }
 
 async function showGroupSummaryModal() {
+  const _ghIs  = 'width:100%;padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none;box-sizing:border-box';
+  const _ghLs  = 'font-size:.8rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem';
+  const ghToday = new Date().toISOString().slice(0,10);
   const { value: dates } = await Swal.fire({
     title: '<i class="fa-solid fa-users" style="color:#2e7d32"></i> สรุปแชร์กลุ่มตามช่วงเวลา',
-    html: `<div style="display:flex;flex-wrap:wrap;gap:.6rem;justify-content:center;align-items:flex-end;margin-top:.5rem">
-      <div><label style="font-size:.78rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem">วันที่เริ่ม</label>
-        <input id="gh-from" type="date" style="padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none"></div>
-      <div><label style="font-size:.78rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem">วันที่สิ้นสุด</label>
-        <input id="gh-to" type="date" style="padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none"></div>
+    html: `<div style="text-align:left;display:flex;flex-direction:column;gap:.55rem">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
+        <div><label style="${_ghLs}">วันที่เริ่ม</label>
+          <input id="gh-from" type="date" style="${_ghIs}"></div>
+        <div><label style="${_ghLs}">วันที่สิ้นสุด</label>
+          <input id="gh-to" type="date" style="${_ghIs}"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
+        <div><label style="${_ghLs}">เวลาเริ่ม (ไม่บังคับ)</label>
+          <div class="dt24-wrap"><input type="number" id="gh-tfrom_h" min="0" max="23" placeholder="ชม."><span>:</span><input type="number" id="gh-tfrom_m" min="0" max="59" placeholder="นาที"></div></div>
+        <div><label style="${_ghLs}">เวลาสิ้นสุด (ไม่บังคับ)</label>
+          <div class="dt24-wrap"><input type="number" id="gh-tto_h" min="0" max="23" placeholder="ชม."><span>:</span><input type="number" id="gh-tto_m" min="0" max="59" placeholder="นาที"></div></div>
+      </div>
     </div>`,
     confirmButtonText: 'ดูสรุป', confirmButtonColor: '#2e7d32',
     showCancelButton: true, cancelButtonText: 'ยกเลิก', focusConfirm: false,
+    didOpen: () => {
+      const _bkk = () => new Date(new Date().toLocaleString('en-US', { timeZone:'Asia/Bangkok' }));
+      const _ft  = (hId,mId) => { const n=_bkk(); document.getElementById(hId).value=n.getHours(); document.getElementById(mId).value=n.getMinutes(); };
+      document.getElementById('gh-from').addEventListener('change', e => { if(e.target.value===ghToday) _ft('gh-tfrom_h','gh-tfrom_m'); });
+      document.getElementById('gh-to').addEventListener('change',   e => { if(e.target.value===ghToday) _ft('gh-tto_h','gh-tto_m'); });
+    },
     preConfirm: () => {
-      const from = document.getElementById('gh-from').value;
-      const to   = document.getElementById('gh-to').value;
+      const from  = document.getElementById('gh-from').value;
+      const to    = document.getElementById('gh-to').value;
+      const tfrom = t24Get('gh-tfrom');
+      const tto   = t24Get('gh-tto');
       if (from && to && from > to) { Swal.showValidationMessage('⚠️ วันที่เริ่มต้องไม่เกินวันที่สิ้นสุด'); return false; }
-      return { from, to };
+      if (from && to && from === to && tfrom && tto && tfrom > tto) { Swal.showValidationMessage('⚠️ เวลาเริ่มต้องไม่เกินเวลาสิ้นสุด'); return false; }
+      return { from, to, tfrom, tto };
     },
   });
   if (!dates) return;
   Swal.fire({ title: 'กำลังโหลด...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
   try {
     const p = new URLSearchParams();
-    if (dates.from) p.set('from', dates.from);
-    if (dates.to)   p.set('to',   dates.to);
+    if (dates.from)  p.set('from', dates.from);
+    if (dates.to)    p.set('to',   dates.to);
+    if (dates.tfrom) p.set('timeFrom', dates.tfrom);
+    if (dates.tto)   p.set('timeTo',   dates.tto);
     const data = await (await fetch('/api/stats/combined?' + p)).json();
     if (!data.ok) throw new Error();
     const g = data.groupStats;
     const fmt = d => new Date(d + 'T00:00:00').toLocaleDateString('th-TH', { dateStyle:'short' });
-    const label = dates.from||dates.to ? `ช่วง: ${dates.from?fmt(dates.from):'—'} ถึง ${dates.to?fmt(dates.to):'—'}` : 'ข้อมูลทั้งหมด';
+    const label = (dates.from||dates.to)
+      ? `ช่วง: ${dates.from?fmt(dates.from):'—'} ถึง ${dates.to?fmt(dates.to):'—'}${dates.tfrom ? ` เวลา ${dates.tfrom}${dates.tto?'–'+dates.tto:''}` : ''}`
+      : 'ข้อมูลทั้งหมด';
     const medals = ['🥇','🥈','🥉','4️⃣','5️⃣'];
     const topHtml = (data.topGroups||[]).map((item,i)=>{
       const tot=(item.success||0)+(item.fail||0);
