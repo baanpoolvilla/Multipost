@@ -45,6 +45,14 @@ Promise.all([
     require('./services/postStore').expireOverdueScheduled(),
 ]).catch(() => {});
 
+// Global error handler — logs full stack so we can see root cause
+app.use((err, req, res, next) => {
+    console.error(`[500] ${req.method} ${req.url}`);
+    console.error(err.stack || err.message || err);
+    if (res.headersSent) return;
+    res.status(500).send(`<pre>Internal Server Error\n${err.message}</pre>`);
+});
+
 module.exports = app;
 if (require.main === module) {
     const PORT = process.env.PORT || 3001;
