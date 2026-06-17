@@ -276,11 +276,15 @@
       <!-- Footer: group count + template save + post button -->
       <div class="fb-footer">
         <span class="fb-count" id="fbGroupCount">เลือกแล้ว 0 กลุ่ม</span>
-        <div class="fb-footer-actions">
-          <input id="templateName" placeholder="ตั้งชื่อรูปแบบ" class="fb-tpl-input">
-          <input id="templateFolder" placeholder="📁 folder (ไม่บังคับ)" class="fb-tpl-input" style="width:110px">
-          <button class="btn btn-secondary" style="padding:.35rem .65rem;font-size:12px;white-space:nowrap" onclick="saveTemplate()">💾 บันทึกเทมเพลต</button>
-          <button class="btn btn-primary fb-post-btn" onclick="createJob()">โพส</button>
+        <div class="fb-footer-actions" style="flex-direction:column;align-items:stretch;gap:.35rem">
+          <div id="agentFolderChips" style="display:flex;gap:.25rem;flex-wrap:wrap"></div>
+          <div style="display:flex;gap:.35rem;align-items:center">
+            <input id="templateName" placeholder="ตั้งชื่อรูปแบบ" class="fb-tpl-input">
+            <input id="templateFolder" placeholder="📁 folder" class="fb-tpl-input" style="width:100px"
+              oninput="_agentFolderTyped()">
+            <button class="btn btn-secondary" style="padding:.35rem .65rem;font-size:12px;white-space:nowrap" onclick="saveTemplate()">💾 บันทึก</button>
+            <button class="btn btn-primary fb-post-btn" onclick="createJob()">โพส</button>
+          </div>
         </div>
       </div>
 

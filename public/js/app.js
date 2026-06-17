@@ -1100,9 +1100,7 @@ async function tplBulkMove() {
     title: `เพิ่ม ${_tplMultiSelected.size} รายการเข้าโฟลเดอร์`,
     html: `<div style="text-align:left">
       <label style="font-size:.82rem;color:#65676b;display:block;margin-bottom:.3rem">เลือกโฟลเดอร์ที่มีอยู่ หรือพิมพ์ชื่อใหม่</label>
-      <input id="swal-tplFolder" list="swal-tplFolderList" placeholder="เช่น 001, ชุดโปรโมชั่น"
-        style="width:100%;padding:.5rem .65rem;border:1.5px solid #dbe0e6;border-radius:8px;font-family:inherit;font-size:.86rem;box-sizing:border-box">
-      <datalist id="swal-tplFolderList">${folders.map(f=>`<option value="${f}">`).join('')}</datalist>
+      ${_folderPickerHtml('swal-tplFolder', folders, '')}
     </div>`,
     showCancelButton: true, confirmButtonText: 'เพิ่มเข้าโฟลเดอร์', cancelButtonText: 'ยกเลิก', confirmButtonColor: '#1877f2',
     focusConfirm: false,
@@ -1200,9 +1198,44 @@ function useTpl() {
   }
 }
 
+/* ── Folder picker helpers (shared by create/edit/bulkMove/save) ── */
+function _folderPickerHtml(inputId, folders, currentValue) {
+  const chips = folders.map(f => {
+    const sel = f === currentValue;
+    const fEsc = f.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+    const fJs  = f.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return `<button type="button" data-fpf="${fEsc}"
+      onclick="_fpClick(this,'${inputId}','${fJs}')"
+      style="padding:.22rem .65rem;border-radius:999px;border:1.5px solid ${sel?'#1877f2':'#dbe0e6'};background:${sel?'#e7f3ff':'#f0f2f5'};color:${sel?'#1877f2':'#65676b'};font-size:.78rem;cursor:pointer;font-family:inherit;transition:all .12s">📁 ${fEsc}</button>`;
+  }).join('');
+  const curEsc = (currentValue||'').replace(/"/g,'&quot;');
+  const ph = folders.length ? 'เลือกด้านบน หรือพิมพ์ชื่อใหม่' : 'เช่น 001, ชุดโปรโมชั่น';
+  return `<div id="${inputId}_chips" style="display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.35rem">${chips}</div>
+<input id="${inputId}" type="text" value="${curEsc}" placeholder="${ph}"
+  oninput="_fpDeselChips('${inputId}')"
+  style="width:100%;padding:.42rem .65rem;border:1.5px solid #dbe0e6;border-radius:8px;font-family:inherit;font-size:.84rem;outline:none;box-sizing:border-box">`;
+}
+function _fpClick(btn, inputId, val) {
+  const chipsDiv = document.getElementById(inputId + '_chips');
+  const inp = document.getElementById(inputId);
+  const alreadySel = inp && inp.value === val;
+  if (chipsDiv) chipsDiv.querySelectorAll('[data-fpf]').forEach(b => {
+    b.style.borderColor='#dbe0e6'; b.style.background='#f0f2f5'; b.style.color='#65676b';
+  });
+  if (!alreadySel) {
+    btn.style.borderColor='#1877f2'; btn.style.background='#e7f3ff'; btn.style.color='#1877f2';
+    if (inp) inp.value = val;
+  } else if (inp) inp.value = '';
+}
+function _fpDeselChips(inputId) {
+  const c = document.getElementById(inputId + '_chips');
+  if (c) c.querySelectorAll('[data-fpf]').forEach(b => { b.style.borderColor='#dbe0e6'; b.style.background='#f0f2f5'; b.style.color='#65676b'; });
+}
+
 /* ── Create new template ── */
 async function openCreateTemplate() {
   _tplNewFiles = [];
+  const _stFolders = [...new Set(_templates.map(t => t.folder).filter(Boolean))].sort();
   const { value } = await Swal.fire({
     title: '<i class="fa-solid fa-plus" style="color:#1877f2"></i> สร้างโพสต์ใหม่',
     html: `
@@ -1214,8 +1247,7 @@ async function openCreateTemplate() {
         <input id="stName" type="text" placeholder="เช่น โปรโมชั่น A"
           style="width:100%;padding:.48rem .75rem;border:1.5px solid #dbe0e6;border-radius:8px;font-family:inherit;font-size:.84rem;outline:none;box-sizing:border-box">
         <label style="font-size:.82rem;color:#65676b;display:block;margin:.55rem 0 .3rem">📁 Folder (ไม่บังคับ):</label>
-        <input id="stFolder" type="text" placeholder="เช่น 001, ชุดโปรโมชั่น"
-          style="width:100%;padding:.48rem .75rem;border:1.5px solid #dbe0e6;border-radius:8px;font-family:inherit;font-size:.84rem;outline:none;box-sizing:border-box">
+        ${_folderPickerHtml('stFolder', _stFolders, '')}
         <label style="font-size:.82rem;color:#65676b;display:block;margin:.55rem 0 .3rem">รูปภาพ/วิดีโอ (สูงสุด 10 ไฟล์):</label>
         <div id="stImgPrev" style="display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.4rem"></div>
         <input type="file" id="stFileInp" multiple accept="image/*,video/mp4,video/quicktime,video/x-msvideo,video/webm" style="display:none">
@@ -1301,6 +1333,7 @@ async function openEditTpl(id) {
   if (!t) return;
   _etKeep = [...(t.images || [])];
   _etNew  = [];
+  const _etFolders = [...new Set(_templates.map(x => x.folder).filter(Boolean))].sort();
 
   const { value } = await Swal.fire({
     title: '<i class="fa-solid fa-pen" style="color:#1877f2"></i> แก้ไขโพสต์',
@@ -1313,8 +1346,7 @@ async function openEditTpl(id) {
         <input id="etName" type="text" value="${t.name||''}"
           style="width:100%;padding:.48rem .75rem;border:1.5px solid #dbe0e6;border-radius:8px;font-family:inherit;font-size:.84rem;outline:none;box-sizing:border-box">
         <label style="font-size:.82rem;color:#65676b;display:block;margin:.55rem 0 .3rem">📁 Folder (ไม่บังคับ):</label>
-        <input id="etFolder" type="text" value="${t.folder||''}" placeholder="เช่น 001, ชุดโปรโมชั่น"
-          style="width:100%;padding:.48rem .75rem;border:1.5px solid #dbe0e6;border-radius:8px;font-family:inherit;font-size:.84rem;outline:none;box-sizing:border-box">
+        ${_folderPickerHtml('etFolder', _etFolders, t.folder||'')}
         <label style="font-size:.82rem;color:#65676b;display:block;margin:.55rem 0 .3rem">
           รูปภาพ (สูงสุด 10 รูป):
           ${(t.images||[]).length ? `<span style="margin-left:.4rem;background:#e7f3ff;color:#1877f2;padding:.1rem .5rem;border-radius:4px;font-size:.75rem"><i class="fa-solid fa-image"></i> มีอยู่แล้ว ${t.images.length} รูป</span>` : ''}
@@ -1469,15 +1501,25 @@ async function saveCurrentAsTemplate() {
     Swal.fire({ icon: 'warning', title: 'กรุณากรอกข้อความก่อนบันทึก', confirmButtonColor: '#1877f2', confirmButtonText: 'ตกลง' });
     return;
   }
-  const { value: name, isConfirmed } = await Swal.fire({
+  const _sctFolders = [...new Set(_templates.map(t => t.folder).filter(Boolean))].sort();
+  const { value, isConfirmed } = await Swal.fire({
     title: '<i class="fa-solid fa-floppy-disk" style="color:#1877f2"></i> บันทึก Template',
-    input: 'text',
-    inputLabel: 'ชื่อ Template (ไม่บังคับ)',
-    inputPlaceholder: 'เช่น โปรโมชั่นสินค้า A',
+    html: `<div style="text-align:left">
+      <label style="font-size:.82rem;color:#65676b;display:block;margin-bottom:.3rem">ชื่อ Template (ไม่บังคับ)</label>
+      <input id="sctName" type="text" placeholder="เช่น โปรโมชั่นสินค้า A"
+        style="width:100%;padding:.42rem .65rem;border:1.5px solid #dbe0e6;border-radius:8px;font-family:inherit;font-size:.84rem;outline:none;box-sizing:border-box">
+      <label style="font-size:.82rem;color:#65676b;display:block;margin:.55rem 0 .3rem">📁 Folder (ไม่บังคับ)</label>
+      ${_folderPickerHtml('sctFolder', _sctFolders, '')}
+    </div>`,
     showCancelButton: true,
     confirmButtonColor: '#1877f2',
     confirmButtonText: 'บันทึก',
     cancelButtonText: 'ยกเลิก',
+    focusConfirm: false,
+    preConfirm: () => ({
+      name:   document.getElementById('sctName')?.value.trim() || '',
+      folder: document.getElementById('sctFolder')?.value.trim() || '',
+    }),
   });
   if (!isConfirmed) return;
 
@@ -1485,7 +1527,7 @@ async function saveCurrentAsTemplate() {
     Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, showConfirmButton: false, didOpen: () => Swal.showLoading() });
     // _supabaseUrls already uploaded — combine with template images
     const images = [..._tplLoadedImages, ..._supabaseUrls];
-    const data = await _saveTemplate('/api/templates', 'POST', { message: msg, name: name || '', images });
+    const data = await _saveTemplate('/api/templates', 'POST', { message: msg, name: value.name, folder: value.folder || null, images });
     if (!data.ok) throw new Error(data.error || 'บันทึกไม่สำเร็จ');
     Swal.fire({ icon: 'success', title: 'บันทึกแล้ว!', timer: 1400, showConfirmButton: false });
   } catch (err) {

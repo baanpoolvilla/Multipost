@@ -994,9 +994,43 @@ async function loadTemplates() {
 
 let _agentTplFolder = '';
 
+function _agentUpdateFolderChips() {
+    const el = document.getElementById('agentFolderChips');
+    if (!el) return;
+    const folders = [...new Set(_templates.map(t => t.folder).filter(Boolean))].sort();
+    const cur = document.getElementById('templateFolder')?.value || '';
+    if (!folders.length) { el.innerHTML = ''; return; }
+    el.innerHTML = folders.map(f => {
+        const sel = f === cur;
+        const fEsc = f.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+        const fJs  = f.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        return `<button type="button" onclick="_agentFolderChipClick('${fJs}',this)"
+            style="padding:.18rem .5rem;border-radius:999px;border:1px solid ${sel?'#f7b928':'var(--border)'};background:${sel?'rgba(247,185,40,.18)':'transparent'};color:${sel?'#1a1a1a':'var(--text2)'};font-size:10px;cursor:pointer;font-family:inherit;transition:all .12s">📁 ${fEsc}</button>`;
+    }).join('');
+}
+function _agentFolderChipClick(folderName, btn) {
+    const inp = document.getElementById('templateFolder');
+    if (!inp) return;
+    const alreadySel = inp.value === folderName;
+    const el = document.getElementById('agentFolderChips');
+    if (el) el.querySelectorAll('button').forEach(b => {
+        b.style.borderColor='var(--border)'; b.style.background='transparent'; b.style.color='var(--text2)';
+    });
+    if (!alreadySel) {
+        inp.value = folderName;
+        btn.style.borderColor='#f7b928'; btn.style.background='rgba(247,185,40,.18)'; btn.style.color='#1a1a1a';
+    } else { inp.value = ''; }
+}
+function _agentFolderTyped() {
+    const el = document.getElementById('agentFolderChips');
+    if (el) el.querySelectorAll('button').forEach(b => {
+        b.style.borderColor='var(--border)'; b.style.background='transparent'; b.style.color='var(--text2)';
+    });
+}
+
 function renderTemplates() {
     const el = document.getElementById('templatesList');
-    if (!_templates.length) { el.innerHTML='<div class="empty-state">ยังไม่มีเทมเพลตที่บันทึก</div>'; return; }
+    if (!_templates.length) { el.innerHTML='<div class="empty-state">ยังไม่มีเทมเพลตที่บันทึก</div>'; _agentUpdateFolderChips(); return; }
 
     // Render folder tabs
     const folders = [...new Set(_templates.map(t => t.folder).filter(Boolean))].sort();
@@ -1033,6 +1067,7 @@ function renderTemplates() {
       </div>`;
     }).join('');
     el.innerHTML = tabHtml + (rows || '<div class="empty-state" style="padding:.8rem">ไม่มีเทมเพลตใน folder นี้</div>');
+    _agentUpdateFolderChips();
 }
 
 function toggleTemplates() {
@@ -1053,7 +1088,7 @@ async function saveTemplate() {
     _templates = await agent.saveTemplate({ name, folder, message:msg, groups:grps, delaySeconds:del, postAsPage:postAs||undefined, images: imgs });
     renderTemplates();
     document.getElementById('templateName').value = '';
-    if (document.getElementById('templateFolder')) document.getElementById('templateFolder').value = '';
+    if (document.getElementById('templateFolder')) { document.getElementById('templateFolder').value = ''; _agentFolderTyped(); }
     appendLog(`[💾] บันทึกเทมเพลต: "${name}"${folder ? ` [${folder}]` : ''}${imgs.length ? ` · ${imgs.length} รูป` : ''}`);
 }
 
