@@ -50,12 +50,12 @@ function _isLoggedIn(url) {
 }
 
 async function _wait2FA(page, log) {
-    log('⚠️ ต้องยืนยัน 2FA — ทำในหน้าต่าง Chromium ที่เปิดอยู่...');
+    log('⚠️ ต้องยืนยัน 2FA — ทำในหน้าต่าง Chromium ที่เปิดอยู่ (รอสูงสุด 10 นาที)...');
     try {
         await page.waitForFunction(
             () => !location.href.includes('/checkpoint') && !location.href.includes('/two_step') &&
                   !location.href.includes('two_factor') && !location.href.includes('/login'),
-            { timeout: 300000, polling: 1500 }
+            { timeout: 600000, polling: 1500 }
         );
         return true;
     } catch { return false; }
@@ -95,9 +95,10 @@ async function loginAccount(account, onLog) {
 
         if (_is2FA(urlAfterGoto)) {
             const ok = await _wait2FA(page, log);
+            const loggedInNow = ok || _isLoggedIn(page.url());
             await page.close();
-            if (ok) log('Login สำเร็จ ✓');
-            return ok ? { ok: true, message: 'Login สำเร็จ ✓' } : { ok: false, error: 'หมดเวลายืนยัน 2FA' };
+            if (loggedInNow) log('Login สำเร็จ ✓');
+            return loggedInNow ? { ok: true, message: 'Login สำเร็จ ✓' } : { ok: false, error: 'หมดเวลายืนยัน 2FA' };
         }
 
         // Wait for form fields to be ready before filling
@@ -129,9 +130,10 @@ async function loginAccount(account, onLog) {
             }
             if (_is2FA(cur)) {
                 const ok = await _wait2FA(page, log);
+                const loggedInNow = ok || _isLoggedIn(page.url());
                 await page.close();
-                if (ok) log('Login สำเร็จ ✓');
-                return ok ? { ok: true, message: 'Login สำเร็จ ✓' } : { ok: false, error: 'หมดเวลายืนยัน 2FA' };
+                if (loggedInNow) log('Login สำเร็จ ✓');
+                return loggedInNow ? { ok: true, message: 'Login สำเร็จ ✓' } : { ok: false, error: 'หมดเวลายืนยัน 2FA' };
             }
             await page.close();
             return { ok: false, error: 'Email หรือ Password ไม่ถูกต้อง' };
@@ -139,9 +141,10 @@ async function loginAccount(account, onLog) {
 
         if (_is2FA(page.url())) {
             const ok = await _wait2FA(page, log);
+            const loggedInNow = ok || _isLoggedIn(page.url());
             await page.close();
-            if (ok) log('Login สำเร็จ ✓');
-            return ok ? { ok: true, message: 'Login สำเร็จ ✓' } : { ok: false, error: 'หมดเวลายืนยัน 2FA' };
+            if (loggedInNow) log('Login สำเร็จ ✓');
+            return loggedInNow ? { ok: true, message: 'Login สำเร็จ ✓' } : { ok: false, error: 'หมดเวลายืนยัน 2FA' };
         }
 
         const loggedIn = _isLoggedIn(page.url());

@@ -165,14 +165,41 @@ function createSchedulerService(Model, opts = {}) {
     // that's been overdue for longer than the grace window to 'expired'.
     // Must run BEFORE the queue is polled so an expired job is never picked
     // up and posted late (Part 8/9/11 of the scheduler spec).
+    //
+    // Also expires "immediate" jobs (scheduledAt: null) whose createdAt is
+    // older than STALE_IMMEDIATE_MS (default 1 h). These are jobs that were
+    // queued while the agent was offline and are now too stale to post.
+    // createdAt may be stored as either a Date or an ISO string depending on
+    // which side (Web/Agent) wrote the row, so we check both types.
+    const STALE_IMMEDIATE_MS = parseInt(process.env.STALE_IMMEDIATE_MS, 10) || 60 * 60 * 1000;
+
     async function expireOverdueJobs(graceMs = DEFAULT_GRACE_MS) {
-        const cutoff = new Date(Date.now() - graceMs).toISOString();
         const now    = new Date().toISOString();
-        const res = await Model.updateMany(
+        const cutoff = new Date(Date.now() - graceMs).toISOString();
+
+        // 1. Scheduled jobs overdue past the grace window
+        const res1 = await Model.updateMany(
             { status: STATUS.PENDING, scheduledAt: { $ne: null, $lte: cutoff } },
             { $set: { status: STATUS.EXPIRED, expiredAt: now, updatedAt: now } },
         );
-        return res.modifiedCount || res.nModified || 0;
+
+        // 2. Immediate jobs (scheduledAt: null) stale past STALE_IMMEDIATE_MS
+        const staleCutoffDate = new Date(Date.now() - STALE_IMMEDIATE_MS);
+        const staleCutoffStr  = staleCutoffDate.toISOString();
+        const res2 = await Model.updateMany(
+            {
+                status: STATUS.PENDING,
+                scheduledAt: null,
+                $or: [
+                    { createdAt: { $type: 'date',   $lte: staleCutoffDate } },
+                    { createdAt: { $type: 'string', $lte: staleCutoffStr  } },
+                ],
+            },
+            { $set: { status: STATUS.EXPIRED, expiredAt: now, updatedAt: now } },
+        );
+
+        return (res1.modifiedCount || res1.nModified || 0) +
+               (res2.modifiedCount || res2.nModified || 0);
     }
 
     // Jobs that are due now and safe to execute (never includes expired ones —
