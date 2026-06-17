@@ -1421,9 +1421,6 @@ async function checkScheduledNotifications() {
             agent.notify('⚠️ งานโพสเลยเวลาแล้ว', `"${msg}" ควรโพสเวลา ${schedTime} — เปิด Agent ค้างไว้`);
         });
 
-        // Notify once when upcoming jobs exist but agent might be closed
-        const upcoming = scheduled.filter(j => new Date(j.scheduledAt) >= now);
-
         const banner = document.getElementById('scheduledBanner');
         if (scheduled.length > 0) {
             const txt = `มีงานโพสที่ตั้งเวลาไว้ ${scheduled.length} งาน${overdue.length > 0 ? ` (เลยเวลาแล้ว ${overdue.length} งาน)` : ''} — Agent ต้องเปิดทิ้งไว้`;
