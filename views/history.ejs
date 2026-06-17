@@ -711,8 +711,13 @@ async function showSummaryModal() {
     preConfirm: () => {
       const dfrom = document.getElementById('sm-dfrom').value;
       const dto   = document.getElementById('sm-dto').value;
+      const tfrom = t24Get('sm-tfrom');
+      const tto   = t24Get('sm-tto');
       if (!dfrom) { Swal.showValidationMessage('กรุณากรอกวันที่เริ่ม'); return false; }
-      return { dfrom, dto: dto || dfrom, tfrom: t24Get('sm-tfrom'), tto: t24Get('sm-tto') };
+      const _dto = dto || dfrom;
+      if (dfrom > _dto) { Swal.showValidationMessage('⚠️ วันที่เริ่มต้องไม่เกินวันที่สิ้นสุด'); return false; }
+      if (dfrom === _dto && tfrom && tto && tfrom > tto) { Swal.showValidationMessage('⚠️ เวลาเริ่มต้องไม่เกินเวลาสิ้นสุด'); return false; }
+      return { dfrom, dto: _dto, tfrom, tto };
     },
   });
   if (!fv) return;

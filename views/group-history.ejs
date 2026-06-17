@@ -574,7 +574,12 @@ async function showGroupSummaryModal() {
     </div>`,
     confirmButtonText: 'ดูสรุป', confirmButtonColor: '#2e7d32',
     showCancelButton: true, cancelButtonText: 'ยกเลิก', focusConfirm: false,
-    preConfirm: () => ({ from: document.getElementById('gh-from').value, to: document.getElementById('gh-to').value }),
+    preConfirm: () => {
+      const from = document.getElementById('gh-from').value;
+      const to   = document.getElementById('gh-to').value;
+      if (from && to && from > to) { Swal.showValidationMessage('⚠️ วันที่เริ่มต้องไม่เกินวันที่สิ้นสุด'); return false; }
+      return { from, to };
+    },
   });
   if (!dates) return;
   Swal.fire({ title: 'กำลังโหลด...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });

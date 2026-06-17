@@ -375,7 +375,10 @@ async function showSummaryModal() {
       const tfrom = t24Get('sm-tfrom');
       const tto   = t24Get('sm-tto');
       if (!dfrom) { Swal.showValidationMessage('กรุณากรอกวันที่เริ่ม'); return false; }
-      return { dfrom, dto: dto || dfrom, tfrom, tto };
+      const _dto = dto || dfrom;
+      if (dfrom > _dto) { Swal.showValidationMessage('⚠️ วันที่เริ่มต้องไม่เกินวันที่สิ้นสุด'); return false; }
+      if (dfrom === _dto && tfrom && tto && tfrom > tto) { Swal.showValidationMessage('⚠️ เวลาเริ่มต้องไม่เกินเวลาสิ้นสุด'); return false; }
+      return { dfrom, dto: _dto, tfrom, tto };
     },
   });
   if (!formValues) return;
@@ -559,12 +562,15 @@ async function showPageRangeModal() {
       document.getElementById('pr-from').addEventListener('change', e => { if(e.target.value===prToday) _fillTime('pr-tfrom_h','pr-tfrom_m'); });
       document.getElementById('pr-to').addEventListener('change',   e => { if(e.target.value===prToday) _fillTime('pr-tto_h','pr-tto_m'); });
     },
-    preConfirm: () => ({
-      from:  document.getElementById('pr-from').value,
-      to:    document.getElementById('pr-to').value,
-      tfrom: t24Get('pr-tfrom'),
-      tto:   t24Get('pr-tto'),
-    }),
+    preConfirm: () => {
+      const from  = document.getElementById('pr-from').value;
+      const to    = document.getElementById('pr-to').value;
+      const tfrom = t24Get('pr-tfrom');
+      const tto   = t24Get('pr-tto');
+      if (from && to && from > to) { Swal.showValidationMessage('⚠️ วันที่เริ่มต้องไม่เกินวันที่สิ้นสุด'); return false; }
+      if (from && to && from === to && tfrom && tto && tfrom > tto) { Swal.showValidationMessage('⚠️ เวลาเริ่มต้องไม่เกินเวลาสิ้นสุด'); return false; }
+      return { from, to, tfrom, tto };
+    },
   });
   if (!dates) return;
   Swal.fire({ title: 'กำลังโหลด...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
@@ -618,7 +624,12 @@ async function showGroupRangeModal() {
     </div>`,
     confirmButtonText: 'ดูสถิติ', confirmButtonColor: '#2e7d32',
     showCancelButton: true, cancelButtonText: 'ยกเลิก', focusConfirm: false,
-    preConfirm: () => ({ from: document.getElementById('gr-from').value, to: document.getElementById('gr-to').value }),
+    preConfirm: () => {
+      const from = document.getElementById('gr-from').value;
+      const to   = document.getElementById('gr-to').value;
+      if (from && to && from > to) { Swal.showValidationMessage('⚠️ วันที่เริ่มต้องไม่เกินวันที่สิ้นสุด'); return false; }
+      return { from, to };
+    },
   });
   if (!dates) return;
   Swal.fire({ title: 'กำลังโหลด...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });

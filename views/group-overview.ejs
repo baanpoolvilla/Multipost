@@ -356,12 +356,15 @@ async function showGroupRangeModal() {
       document.getElementById('gr-from').addEventListener('change', e => { if(e.target.value===_today) _fillTime('gr-tfrom_h','gr-tfrom_m'); });
       document.getElementById('gr-to').addEventListener('change',   e => { if(e.target.value===_today) _fillTime('gr-tto_h','gr-tto_m'); });
     },
-    preConfirm: () => ({
-      from:  document.getElementById('gr-from').value,
-      to:    document.getElementById('gr-to').value,
-      tfrom: t24Get('gr-tfrom'),
-      tto:   t24Get('gr-tto'),
-    }),
+    preConfirm: () => {
+      const from  = document.getElementById('gr-from').value;
+      const to    = document.getElementById('gr-to').value;
+      const tfrom = t24Get('gr-tfrom');
+      const tto   = t24Get('gr-tto');
+      if (from && to && from > to) { Swal.showValidationMessage('⚠️ วันที่เริ่มต้องไม่เกินวันที่สิ้นสุด'); return false; }
+      if (from && to && from === to && tfrom && tto && tfrom > tto) { Swal.showValidationMessage('⚠️ เวลาเริ่มต้องไม่เกินเวลาสิ้นสุด'); return false; }
+      return { from, to, tfrom, tto };
+    },
   });
   if (!dates) return;
   Swal.fire({ title: 'กำลังโหลด...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
