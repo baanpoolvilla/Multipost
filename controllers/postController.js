@@ -433,7 +433,7 @@ exports.dailySummary = async (req, res) => {
     const grpStats = await groupJobStore.statsByDateRange(fromISO, toISO);
 
     res.json({
-        date, timeFrom, timeTo,
+        dateFrom, dateTo, timeFrom, timeTo,
         totalPosts: dayPosts.length,
         totalSuccess, totalFail, successRate,
         totalLikes, totalComments, totalShares, totalReach,

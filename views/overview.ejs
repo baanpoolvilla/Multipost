@@ -364,8 +364,6 @@ async function showSummaryModal() {
     didOpen: () => {
       const _bkk = () => new Date(new Date().toLocaleString('en-US', { timeZone:'Asia/Bangkok' }));
       const _fillTime = (hId, mId) => { const n=_bkk(); document.getElementById(hId).value=n.getHours(); document.getElementById(mId).value=n.getMinutes(); };
-      if (document.getElementById('sm-dfrom').value === today) _fillTime('sm-tfrom_h','sm-tfrom_m');
-      if (document.getElementById('sm-dto').value   === today) _fillTime('sm-tto_h','sm-tto_m');
       document.getElementById('sm-dfrom').addEventListener('change', e => { if(e.target.value===today) _fillTime('sm-tfrom_h','sm-tfrom_m'); });
       document.getElementById('sm-dto').addEventListener('change',   e => { if(e.target.value===today) _fillTime('sm-tto_h','sm-tto_m'); });
     },
@@ -614,30 +612,57 @@ async function showPageRangeModal() {
 
 /* ── สรุปช่วงเวลา แชร์กลุ่ม ── */
 async function showGroupRangeModal() {
+  const _grIs  = 'width:100%;padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none;box-sizing:border-box';
+  const _grLs  = 'font-size:.8rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem';
+  const grToday = new Date().toISOString().slice(0, 10);
   const { value: dates } = await Swal.fire({
     title: '<i class="fa-solid fa-users" style="color:#2e7d32"></i> สถิติแชร์กลุ่มตามช่วงเวลา',
-    html: `<div style="display:flex;flex-wrap:wrap;gap:.6rem;justify-content:center;align-items:flex-end;margin-top:.5rem">
-      <div><label style="font-size:.78rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem">วันที่เริ่ม</label>
-        <input id="gr-from" type="date" style="padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none"></div>
-      <div><label style="font-size:.78rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem">วันที่สิ้นสุด</label>
-        <input id="gr-to" type="date" style="padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none"></div>
+    html: `<div style="text-align:left;display:flex;flex-direction:column;gap:.55rem">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
+        <div><label style="${_grLs}">วันที่เริ่ม</label>
+          <input id="gr-from" type="date" style="${_grIs}"></div>
+        <div><label style="${_grLs}">วันที่สิ้นสุด</label>
+          <input id="gr-to" type="date" style="${_grIs}"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
+        <div><label style="${_grLs}">เวลาเริ่ม (ไม่บังคับ)</label>
+          <div class="dt24-wrap"><input type="number" id="gr-tfrom_h" min="0" max="23" placeholder="ชม."><span>:</span><input type="number" id="gr-tfrom_m" min="0" max="59" placeholder="นาที"></div></div>
+        <div><label style="${_grLs}">เวลาสิ้นสุด (ไม่บังคับ)</label>
+          <div class="dt24-wrap"><input type="number" id="gr-tto_h" min="0" max="23" placeholder="ชม."><span>:</span><input type="number" id="gr-tto_m" min="0" max="59" placeholder="นาที"></div></div>
+      </div>
     </div>`,
     confirmButtonText: 'ดูสถิติ', confirmButtonColor: '#2e7d32',
     showCancelButton: true, cancelButtonText: 'ยกเลิก', focusConfirm: false,
+    didOpen: () => {
+      const _bkk = () => new Date(new Date().toLocaleString('en-US', { timeZone:'Asia/Bangkok' }));
+      const _fillTime = (hId, mId) => { const n=_bkk(); document.getElementById(hId).value=n.getHours(); document.getElementById(mId).value=n.getMinutes(); };
+      document.getElementById('gr-from').addEventListener('change', e => { if(e.target.value===grToday) _fillTime('gr-tfrom_h','gr-tfrom_m'); });
+      document.getElementById('gr-to').addEventListener('change',   e => { if(e.target.value===grToday) _fillTime('gr-tto_h','gr-tto_m'); });
+    },
     preConfirm: () => {
-      const from = document.getElementById('gr-from').value;
-      const to   = document.getElementById('gr-to').value;
+      const from  = document.getElementById('gr-from').value;
+      const to    = document.getElementById('gr-to').value;
+      const tfrom = t24Get('gr-tfrom');
+      const tto   = t24Get('gr-tto');
       if (from && to && from > to) { Swal.showValidationMessage('⚠️ วันที่เริ่มต้องไม่เกินวันที่สิ้นสุด'); return false; }
-      return { from, to };
+      if (from && to && from === to && tfrom && tto && tfrom > tto) { Swal.showValidationMessage('⚠️ เวลาเริ่มต้องไม่เกินเวลาสิ้นสุด'); return false; }
+      return { from, to, tfrom, tto };
     },
   });
   if (!dates) return;
   Swal.fire({ title: 'กำลังโหลด...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
   try {
-    const data = await _fetchCombined(dates.from, dates.to);
+    const _grParams = new URLSearchParams();
+    if (dates.from)  _grParams.set('from', dates.from);
+    if (dates.to)    _grParams.set('to',   dates.to);
+    if (dates.tfrom) _grParams.set('timeFrom', dates.tfrom);
+    if (dates.tto)   _grParams.set('timeTo',   dates.tto);
+    const data = await (await fetch('/api/stats/combined?' + _grParams)).json();
     if (!data.ok) throw new Error('API error');
     const g = data.groupStats;
-    const label = dates.from || dates.to ? `ช่วง: ${dates.from ? _fmtDateTH(dates.from) : '—'} ถึง ${dates.to ? _fmtDateTH(dates.to) : '—'}` : 'ข้อมูลทั้งหมด';
+    const label = (dates.from || dates.to)
+      ? `ช่วง: ${dates.from ? _fmtDateTH(dates.from) : '—'} ถึง ${dates.to ? _fmtDateTH(dates.to) : '—'}${dates.tfrom ? ` เวลา ${dates.tfrom}${dates.tto ? '–'+dates.tto : ''}` : ''}`
+      : 'ข้อมูลทั้งหมด';
     Swal.fire({
       title: `<i class="fa-solid fa-users" style="color:#2e7d32"></i> แชร์ลงกลุ่ม`,
       html: `<div style="text-align:left">
