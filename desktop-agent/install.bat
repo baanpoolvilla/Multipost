@@ -95,7 +95,7 @@ if "%ELECTRON_OK%"=="1" (
         "New-Item -ItemType Directory -Force $dist | Out-Null;" ^
         "[System.IO.Compression.ZipFile]::ExtractToDirectory('_electron_tmp.zip', $dist);" ^
         "Remove-Item '_electron_tmp.zip';" ^
-        "Set-Content 'node_modules\electron\path.txt' 'electron.exe';" ^
+        "[IO.File]::WriteAllText('node_modules\electron\path.txt', 'electron.exe');" ^
         "Write-Host 'Electron downloaded and extracted OK'"
     if %errorlevel% neq 0 (
         echo.
