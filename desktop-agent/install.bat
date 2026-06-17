@@ -61,25 +61,39 @@ if exist "node_modules\" (
     echo.
 )
 
-:: ตรวจสอบ Electron binary
-if not exist "node_modules\electron\dist\electron.exe" (
-    echo [2/3] Electron binary missing. Downloading...
-    set ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/
+:: ตรวจสอบ Electron binary — ต้องมีทั้ง electron.exe และ path.txt
+set ELECTRON_OK=0
+if exist "node_modules\electron\dist\electron.exe" (
+    if exist "node_modules\electron\path.txt" set ELECTRON_OK=1
+)
+
+if "%ELECTRON_OK%"=="1" (
+    echo [2/3] Electron already exists. Skipping.
+    echo.
+) else (
+    echo [2/3] Electron binary missing or incomplete. Downloading...
+    echo       This may take 2-5 minutes. Please wait...
+    echo.
+    set force_no_cache=true
     node node_modules\electron\install.js
     if %errorlevel% neq 0 (
+        echo       Retrying with mirror...
+        set ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/
+        set npm_config_electron_mirror=https://npmmirror.com/mirrors/electron/
+        set force_no_cache=true
+        node node_modules\electron\install.js
+    )
+    if not exist "node_modules\electron\path.txt" (
         echo.
-        echo [!] Electron download failed. Run manually:
+        echo [!] Electron download failed. Check internet connection and try again.
+        echo     Or run manually:
         echo     cd /d "%~dp0"
-        echo     set ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/
         echo     node node_modules\electron\install.js
         echo.
         pause
         exit /b 1
     )
     echo [OK] Electron ready.
-    echo.
-) else (
-    echo [2/3] Electron already exists. Skipping.
     echo.
 )
 
