@@ -1423,13 +1423,23 @@ function togglePostingHelp() {
     btn?.classList.toggle('active', !open);
 }
 
-function togglePostingTips() {
+function togglePostingTips(e) {
+    e?.stopPropagation();
     const el  = document.getElementById('postingTipsPanel');
     const btn = document.getElementById('btnPostingTips');
-    const open = el.style.display === '';
+    const open = el.style.display !== 'none';
     el.style.display = open ? 'none' : '';
     btn?.classList.toggle('active', !open);
 }
+document.addEventListener('click', (e) => {
+    const wrap = document.getElementById('tipsWrap');
+    if (wrap && !wrap.contains(e.target)) {
+        const el  = document.getElementById('postingTipsPanel');
+        const btn = document.getElementById('btnPostingTips');
+        if (el) el.style.display = 'none';
+        if (btn) btn.classList.remove('active');
+    }
+});
 
 function toggleDelayTip() {
     const el  = document.getElementById('delayTipPanel');

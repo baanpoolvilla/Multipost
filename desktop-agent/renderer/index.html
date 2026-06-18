@@ -168,7 +168,42 @@
         <button class="fb-tool-btn" onclick="openImagePicker()">📷 เพิ่มรูป/วิดีโอ</button>
         <button class="fb-tool-btn" id="btnRecentPosts" onclick="toggleRecentPosts()">📝 โพสก่อนหน้า</button>
         <button class="fb-tool-btn" id="btnPostingHelp" onclick="togglePostingHelp()">❓ วิธีใช้งาน</button>
-        <button class="fb-tool-btn" id="btnPostingTips" onclick="togglePostingTips()">💡 เคล็ดลับ</button>
+        <div style="position:relative" id="tipsWrap">
+          <button class="fb-tool-btn" id="btnPostingTips" onclick="togglePostingTips(event)">💡 เคล็ดลับ</button>
+          <!-- Tips popup -->
+          <div id="postingTipsPanel" style="display:none;position:absolute;top:calc(100% + 6px);left:0;z-index:999;width:500px;filter:drop-shadow(0 4px 16px rgba(0,0,0,.5))">
+            <div style="background:#1a2332;border:1px solid var(--border);border-radius:10px;padding:.85rem 1rem;font-size:11.5px;line-height:1.75">
+              <div style="font-weight:700;color:var(--text);margin-bottom:.65rem;font-size:12px">💡 คำแนะนำการโพสให้ปลอดภัย</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">
+                <!-- เพจ -->
+                <div style="background:#0d1f3c;border:1px solid #2a4a8a;border-radius:8px;padding:.65rem .75rem">
+                  <div style="font-weight:700;color:#90b8ff;margin-bottom:.5rem;font-size:11px">📄 โพสลงเพจ</div>
+                  <div style="display:flex;flex-direction:column;gap:.32rem;color:var(--text2)">
+                    <div><span style="background:#14532d;color:#86efac;border-radius:3px;padding:0 .35rem;font-size:10px;font-weight:700;margin-right:.3rem">✅ ความถี่</span>ทุก 3–4 ชม. | 4–6 โพส/วัน</div>
+                    <div><span style="background:#1e3a5f;color:#93c5fd;border-radius:3px;padding:0 .35rem;font-size:10px;font-weight:700;margin-right:.3rem">🕐 เวลาดี</span>9 · 12 · 15 · 18 · 20 น.</div>
+                    <div><span style="background:#422006;color:#fbbf24;border-radius:3px;padding:0 .35rem;font-size:10px;font-weight:700;margin-right:.3rem">📸 สลับ</span>รูป / คลิป / ข้อความ</div>
+                    <div><span style="background:#450a0a;color:#fca5a5;border-radius:3px;padding:0 .35rem;font-size:10px;font-weight:700;margin-right:.3rem">❌ ห้าม</span>เกิน 10 โพส/วัน</div>
+                  </div>
+                </div>
+                <!-- กลุ่ม -->
+                <div style="background:#1f1400;border:1px solid #6b4400;border-radius:8px;padding:.65rem .75rem">
+                  <div style="font-weight:700;color:#fbbf24;margin-bottom:.5rem;font-size:11px">👥 โพส&amp;แชร์กลุ่ม</div>
+                  <div style="display:flex;flex-direction:column;gap:.32rem;color:var(--text2)">
+                    <div><span style="background:#14532d;color:#86efac;border-radius:3px;padding:0 .35rem;font-size:10px;font-weight:700;margin-right:.3rem">⏱ Delay</span>30–60 วิ · ใหม่: 60–90 วิ</div>
+                    <div><span style="background:#1e3a5f;color:#93c5fd;border-radius:3px;padding:0 .35rem;font-size:10px;font-weight:700;margin-right:.3rem">📊 ต่อรอบ</span>ไม่เกิน 30–50 กลุ่ม</div>
+                    <div><span style="background:#1e3a5f;color:#93c5fd;border-radius:3px;padding:0 .35rem;font-size:10px;font-weight:700;margin-right:.3rem">📅 ต่อวัน</span>ไม่เกิน 60 กลุ่ม</div>
+                    <div><span style="background:#3b0764;color:#d8b4fe;border-radius:3px;padding:0 .35rem;font-size:10px;font-weight:700;margin-right:.3rem">🔄 แบ่งรอบ</span>เช้า + บ่าย + เย็น</div>
+                    <div><span style="background:#422006;color:#fbbf24;border-radius:3px;padding:0 .35rem;font-size:10px;font-weight:700;margin-right:.3rem">🔁 ซ้ำ</span>กลุ่มเดิมห่างกัน 1–2 วัน</div>
+                    <div><span style="background:#450a0a;color:#fca5a5;border-radius:3px;padding:0 .35rem;font-size:10px;font-weight:700;margin-right:.3rem">❌ ห้าม</span>โพสทุกกลุ่มทีเดียว</div>
+                  </div>
+                </div>
+              </div>
+              <div style="margin-top:.55rem;padding-top:.45rem;border-top:1px solid var(--border);color:#f59e0b;font-size:10.5px">
+                ⚠️ โพสเร็ว/เยอะเกิน → FB อาจจำกัดการโพสหรือแบนบัญชีชั่วคราว
+              </div>
+            </div>
+          </div>
+        </div>
         <div class="fb-delay-wrap">
           <span>⏱</span>
           <input type="number" id="jobDelay" value="30" min="1" max="120" class="fb-delay-input">
@@ -231,44 +266,6 @@
           <div class="posting-help-row">
             <span class="phmode">↗ แชร์โพสต์</span>
             <span class="phdesc">พิมพ์ <code>|||ลิงก์</code> (ไม่มีข้อความหน้า) — จะแชร์โพสต์นั้นโดยตรง</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Posting tips panel (collapsible) -->
-      <div id="postingTipsPanel" style="display:none">
-        <div style="background:#1a2332;border:1px solid var(--border);border-radius:10px;padding:.8rem 1rem;margin:.3rem 0;font-size:11.5px;line-height:1.75">
-          <div style="font-weight:700;color:var(--text);margin-bottom:.65rem;font-size:12px">💡 คำแนะนำการโพสให้ปลอดภัย</div>
-
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">
-
-            <!-- เพจ -->
-            <div style="background:#0d1f3c;border:1px solid #2a4a8a;border-radius:8px;padding:.65rem .75rem">
-              <div style="font-weight:700;color:#90b8ff;margin-bottom:.5rem;font-size:11px">📄 โพสลงเพจ</div>
-              <div style="display:flex;flex-direction:column;gap:.32rem;color:var(--text2)">
-                <div><span style="background:#14532d;color:#86efac;border-radius:3px;padding:0 .35rem;font-size:10px;font-weight:700;margin-right:.3rem">✅ ความถี่</span>ทุก 3–4 ชม. | 4–6 โพส/วัน</div>
-                <div><span style="background:#1e3a5f;color:#93c5fd;border-radius:3px;padding:0 .35rem;font-size:10px;font-weight:700;margin-right:.3rem">🕐 เวลาดี</span>9 · 12 · 15 · 18 · 20 น.</div>
-                <div><span style="background:#422006;color:#fbbf24;border-radius:3px;padding:0 .35rem;font-size:10px;font-weight:700;margin-right:.3rem">📸 สลับ</span>รูป / คลิป / ข้อความ</div>
-                <div><span style="background:#450a0a;color:#fca5a5;border-radius:3px;padding:0 .35rem;font-size:10px;font-weight:700;margin-right:.3rem">❌ ห้าม</span>เกิน 10 โพส/วัน</div>
-              </div>
-            </div>
-
-            <!-- กลุ่ม -->
-            <div style="background:#1f1400;border:1px solid #6b4400;border-radius:8px;padding:.65rem .75rem">
-              <div style="font-weight:700;color:#fbbf24;margin-bottom:.5rem;font-size:11px">👥 โพส&amp;แชร์กลุ่ม</div>
-              <div style="display:flex;flex-direction:column;gap:.32rem;color:var(--text2)">
-                <div><span style="background:#14532d;color:#86efac;border-radius:3px;padding:0 .35rem;font-size:10px;font-weight:700;margin-right:.3rem">⏱ Delay</span>30–60 วิ · ใหม่: 60–90 วิ</div>
-                <div><span style="background:#1e3a5f;color:#93c5fd;border-radius:3px;padding:0 .35rem;font-size:10px;font-weight:700;margin-right:.3rem">📊 ต่อรอบ</span>ไม่เกิน 30–50 กลุ่ม</div>
-                <div><span style="background:#1e3a5f;color:#93c5fd;border-radius:3px;padding:0 .35rem;font-size:10px;font-weight:700;margin-right:.3rem">📅 ต่อวัน</span>ไม่เกิน 60 กลุ่ม</div>
-                <div><span style="background:#3b0764;color:#d8b4fe;border-radius:3px;padding:0 .35rem;font-size:10px;font-weight:700;margin-right:.3rem">🔄 แบ่งรอบ</span>เช้า + บ่าย + เย็น</div>
-                <div><span style="background:#422006;color:#fbbf24;border-radius:3px;padding:0 .35rem;font-size:10px;font-weight:700;margin-right:.3rem">🔁 ซ้ำ</span>กลุ่มเดิมห่างกัน 1–2 วัน</div>
-                <div><span style="background:#450a0a;color:#fca5a5;border-radius:3px;padding:0 .35rem;font-size:10px;font-weight:700;margin-right:.3rem">❌ ห้าม</span>โพสทุกกลุ่มทีเดียว</div>
-              </div>
-            </div>
-
-          </div>
-          <div style="margin-top:.55rem;padding-top:.45rem;border-top:1px solid var(--border);color:#f59e0b;font-size:10.5px">
-            ⚠️ โพสเร็ว/เยอะเกิน → FB อาจจำกัดการโพสหรือแบนบัญชีชั่วคราว
           </div>
         </div>
       </div>
