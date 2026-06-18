@@ -154,6 +154,45 @@
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:.35rem;flex-wrap:wrap">
+          <!-- Tips popup button -->
+          <div style="position:relative" id="webTipsWrap">
+            <button type="button" id="btnWebTips" onclick="toggleWebTips(event)"
+              style="display:inline-flex;align-items:center;gap:.3rem;background:#fff8e1;border:1.5px solid #f9a825;border-radius:7px;padding:.26rem .65rem;font-size:.78rem;cursor:pointer;font-family:inherit;color:#7b5800;font-weight:600;transition:background .15s">
+              💡 เคล็ดลับ
+            </button>
+            <div id="webTipsPanel" style="display:none;position:fixed;z-index:9999;width:480px;filter:drop-shadow(0 6px 20px rgba(0,0,0,.18))">
+              <div style="background:#fff;border:1.5px solid #e4e6eb;border-radius:12px;padding:.9rem 1.05rem;font-size:.8rem;line-height:1.7">
+                <div style="font-weight:700;color:#1c1e21;margin-bottom:.65rem;font-size:.85rem">💡 คำแนะนำการโพสให้ปลอดภัย</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">
+                  <!-- เพจ -->
+                  <div style="background:#f4f6ff;border:1.5px solid #b6c4f7;border-radius:9px;padding:.65rem .8rem">
+                    <div style="font-weight:700;color:#1a3a8f;margin-bottom:.5rem;font-size:.78rem">📄 โพสลงเพจ</div>
+                    <div style="display:flex;flex-direction:column;gap:.3rem;color:#374151">
+                      <div><span style="background:#d1fae5;color:#065f46;border-radius:3px;padding:0 .35rem;font-size:.68rem;font-weight:700;margin-right:.3rem">✅ ความถี่</span>ทุก 3–4 ชม. | 4–6 โพส/วัน</div>
+                      <div><span style="background:#dbeafe;color:#1e40af;border-radius:3px;padding:0 .35rem;font-size:.68rem;font-weight:700;margin-right:.3rem">🕐 เวลาดี</span>9 · 12 · 15 · 18 · 20 น.</div>
+                      <div><span style="background:#fef3c7;color:#92400e;border-radius:3px;padding:0 .35rem;font-size:.68rem;font-weight:700;margin-right:.3rem">📸 สลับ</span>รูป / คลิป / ข้อความ</div>
+                      <div><span style="background:#fee2e2;color:#991b1b;border-radius:3px;padding:0 .35rem;font-size:.68rem;font-weight:700;margin-right:.3rem">❌ ห้าม</span>เกิน 10 โพส/วัน</div>
+                    </div>
+                  </div>
+                  <!-- กลุ่ม -->
+                  <div style="background:#fffbf0;border:1.5px solid #f5c37d;border-radius:9px;padding:.65rem .8rem">
+                    <div style="font-weight:700;color:#7b3b00;margin-bottom:.5rem;font-size:.78rem">👥 โพส&amp;แชร์กลุ่ม</div>
+                    <div style="display:flex;flex-direction:column;gap:.3rem;color:#374151">
+                      <div><span style="background:#d1fae5;color:#065f46;border-radius:3px;padding:0 .35rem;font-size:.68rem;font-weight:700;margin-right:.3rem">⏱ Delay</span>30–60 วิ · ใหม่: 60–90 วิ</div>
+                      <div><span style="background:#dbeafe;color:#1e40af;border-radius:3px;padding:0 .35rem;font-size:.68rem;font-weight:700;margin-right:.3rem">📊 ต่อรอบ</span>ไม่เกิน 30–50 กลุ่ม</div>
+                      <div><span style="background:#dbeafe;color:#1e40af;border-radius:3px;padding:0 .35rem;font-size:.68rem;font-weight:700;margin-right:.3rem">📅 ต่อวัน</span>ไม่เกิน 60 กลุ่ม</div>
+                      <div><span style="background:#f3e8ff;color:#6b21a8;border-radius:3px;padding:0 .35rem;font-size:.68rem;font-weight:700;margin-right:.3rem">🔄 แบ่งรอบ</span>เช้า + บ่าย + เย็น</div>
+                      <div><span style="background:#fef3c7;color:#92400e;border-radius:3px;padding:0 .35rem;font-size:.68rem;font-weight:700;margin-right:.3rem">🔁 ซ้ำ</span>กลุ่มเดิมห่างกัน 1–2 วัน</div>
+                      <div><span style="background:#fee2e2;color:#991b1b;border-radius:3px;padding:0 .35rem;font-size:.68rem;font-weight:700;margin-right:.3rem">❌ ห้าม</span>โพสทุกกลุ่มทีเดียว</div>
+                    </div>
+                  </div>
+                </div>
+                <div style="background:#fff8e1;border:1px solid #f9a825;border-radius:7px;padding:.45rem .75rem;margin-top:.6rem;font-size:.76rem;color:#78350f;line-height:1.5">
+                  ⚠️ โพสเร็ว/เยอะเกิน → FB อาจจำกัดการโพสหรือแบนบัญชีชั่วคราว
+                </div>
+              </div>
+            </div>
+          </div>
           <button type="button" id="scheduleToggleBtn" onclick="toggleSchedule()"
             style="display:inline-flex;align-items:center;gap:.3rem;background:#f0f2f5;border:none;border-radius:7px;padding:.28rem .65rem;font-size:.78rem;cursor:pointer;font-family:inherit;color:#65676b;transition:background .15s">
             <i class="fa-solid fa-clock"></i> ตั้งเวลา
@@ -353,6 +392,34 @@
     const p = document.getElementById('delayTipWebPanel');
     p.style.display = p.style.display === 'none' ? '' : 'none';
   }
+  function toggleWebTips(e) {
+    e?.stopPropagation();
+    const el  = document.getElementById('webTipsPanel');
+    const btn = document.getElementById('btnWebTips');
+    if (el.style.display !== 'none') {
+      el.style.display = 'none'; btn?.classList.remove('active'); return;
+    }
+    el.style.display = '';
+    btn?.classList.add('active');
+    const bRect = btn.getBoundingClientRect();
+    const eW = el.offsetWidth, eH = el.offsetHeight;
+    const vW = window.innerWidth, vH = window.innerHeight;
+    let top = bRect.top - eH - 6;
+    if (top < 8) top = bRect.bottom + 6;
+    let left = bRect.left;
+    if (left + eW > vW - 8) left = vW - eW - 8;
+    if (left < 8) left = 8;
+    el.style.top = top + 'px'; el.style.left = left + 'px';
+  }
+  document.addEventListener('click', (e) => {
+    const wrap = document.getElementById('webTipsWrap');
+    if (wrap && !wrap.contains(e.target)) {
+      const el = document.getElementById('webTipsPanel');
+      const btn = document.getElementById('btnWebTips');
+      if (el) el.style.display = 'none';
+      if (btn) btn.classList.remove('active');
+    }
+  });
   function toggleVideoInfo() {
     const p = document.getElementById('videoInfoPanel');
     p.style.display = p.style.display === 'none' ? 'flex' : 'none';

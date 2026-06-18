@@ -170,8 +170,8 @@
         <button class="fb-tool-btn" id="btnPostingHelp" onclick="togglePostingHelp()">❓ วิธีใช้งาน</button>
         <div style="position:relative" id="tipsWrap">
           <button class="fb-tool-btn" id="btnPostingTips" onclick="togglePostingTips(event)">💡 เคล็ดลับ</button>
-          <!-- Tips popup -->
-          <div id="postingTipsPanel" style="display:none;position:absolute;top:calc(100% + 6px);left:0;z-index:999;width:500px;filter:drop-shadow(0 4px 16px rgba(0,0,0,.5))">
+          <!-- Tips popup — position set by JS -->
+          <div id="postingTipsPanel" style="display:none;position:fixed;z-index:9999;width:500px;filter:drop-shadow(0 6px 20px rgba(0,0,0,.6))">
             <div style="background:#1a2332;border:1px solid var(--border);border-radius:10px;padding:.85rem 1rem;font-size:11.5px;line-height:1.75">
               <div style="font-weight:700;color:var(--text);margin-bottom:.65rem;font-size:12px">💡 คำแนะนำการโพสให้ปลอดภัย</div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">

@@ -1427,9 +1427,25 @@ function togglePostingTips(e) {
     e?.stopPropagation();
     const el  = document.getElementById('postingTipsPanel');
     const btn = document.getElementById('btnPostingTips');
-    const open = el.style.display !== 'none';
-    el.style.display = open ? 'none' : '';
-    btn?.classList.toggle('active', !open);
+    if (el.style.display !== 'none') {
+        el.style.display = 'none'; btn?.classList.remove('active'); return;
+    }
+    // Show first to get real dimensions, then reposition
+    el.style.display = '';
+    btn?.classList.add('active');
+    const bRect = btn.getBoundingClientRect();
+    const eW = el.offsetWidth, eH = el.offsetHeight;
+    const vW = window.innerWidth, vH = window.innerHeight;
+    const gap = 6;
+    // Try above first, fall back to below
+    let top = bRect.top - eH - gap;
+    if (top < 8) top = bRect.bottom + gap;
+    // Clamp left so popup stays inside viewport
+    let left = bRect.left;
+    if (left + eW > vW - 8) left = vW - eW - 8;
+    if (left < 8) left = 8;
+    el.style.top  = top  + 'px';
+    el.style.left = left + 'px';
 }
 document.addEventListener('click', (e) => {
     const wrap = document.getElementById('tipsWrap');
