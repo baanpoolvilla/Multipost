@@ -869,8 +869,9 @@ function renderPageChips(pages) {
         btn.addEventListener('click', () => selectPageChip(btn, name));
         el.appendChild(btn);
     };
-    addChip('', 'บัญชีส่วนตัว');
-    pages.forEach(p => addChip(p.name, p.name));
+    const personal = pages.find(p => p.isPersonal);
+    addChip('', personal ? personal.name : 'บัญชีส่วนตัว');
+    pages.filter(p => !p.isPersonal).forEach(p => addChip(p.name, p.name));
 }
 
 function selectPageChip(btn, name) {
@@ -1417,6 +1418,14 @@ function _parseJobMsg(msg) {
 function togglePostingHelp() {
     const el  = document.getElementById('postingHelpPanel');
     const btn = document.getElementById('btnPostingHelp');
+    const open = el.style.display === '';
+    el.style.display = open ? 'none' : '';
+    btn?.classList.toggle('active', !open);
+}
+
+function togglePostingTips() {
+    const el  = document.getElementById('postingTipsPanel');
+    const btn = document.getElementById('btnPostingTips');
     const open = el.style.display === '';
     el.style.display = open ? 'none' : '';
     btn?.classList.toggle('active', !open);

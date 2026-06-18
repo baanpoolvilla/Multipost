@@ -183,26 +183,72 @@ async function getAccountPages(accountId) {
             await fb.waitForTimeout(2000);
             const menuWords = ['การตั้งค่า','ความเป็นส่วนตัว','ความช่วยเหลือ','รายงาน','การแสดงผล',
                                'ออกจากระบบ','เพิ่มเติม','Settings','Privacy','Help','Support',
-                               'Report','Display','Log out','Logout','More','Accessibility',
-                               'ดูโปรไฟล์ทั้งหมด','View all profiles','View all'];
+                               'Report','Display','Log out','Logout','More','Accessibility'];
+            const viewAllLabels = ['ดูโปรไฟล์ทั้งหมด','View all profiles','View all','ดูทั้งหมด','See all profiles'];
+
+            // Try clicking "View all profiles" to get the full list
+            const clickedViewAll = await fb.evaluate((labels) => {
+                for (const lbl of labels) {
+                    for (const el of document.querySelectorAll('span,a,button,[role="menuitem"],[role="listitem"]')) {
+                        if (el.textContent?.trim() === lbl) {
+                            el.click();
+                            return lbl;
+                        }
+                    }
+                }
+                return null;
+            }, viewAllLabels);
+
+            if (clickedViewAll) {
+                await fb.waitForTimeout(2500);
+                // Scan the full profile selector modal/dialog
+                const fromViewAll = await fb.evaluate((mw) => {
+                    const res = []; const seen = new Set();
+                    // Target the specific "เลือกโปรไฟล์" / "Select profile" modal first
+                    let targetContainer = [...document.querySelectorAll('[role="dialog"],[role="listbox"]')]
+                        .find(el => el.textContent?.includes('เลือกโปรไฟล์') || el.textContent?.includes('Select profile') || el.textContent?.includes('Choose a profile'));
+                    const containers = targetContainer
+                        ? [targetContainer]
+                        : [...document.querySelectorAll('[role="dialog"],[role="list"],[role="listbox"],[role="menu"]')];
+                    for (const c of containers) {
+                        for (const item of c.querySelectorAll('[role="menuitem"],[role="option"],[role="listitem"],li')) {
+                            const hasAvatar = !!item.querySelector('img,image,[role="img"]');
+                            if (!hasAvatar) continue;
+                            const name = [...item.querySelectorAll('span')]
+                                .map(s => s.textContent?.trim())
+                                .find(t => t && t.length >= 2 && t.length <= 100 && !/^\d+$/.test(t));
+                            if (!name || seen.has(name)) continue;
+                            if (mw.some(w => name.toLowerCase().includes(w.toLowerCase()))) continue;
+                            // Detect active/personal account by blue checkmark SVG fill color
+                            const isPersonal = [...item.querySelectorAll('svg circle,svg path')]
+                                .some(el => { const f = el.getAttribute('fill') || ''; return /^#(0866[Ff][Ff]|1877[Ff]2)$/i.test(f); });
+                            seen.add(name); res.push({ name, isPersonal });
+                        }
+                    }
+                    return res;
+                }, menuWords);
+                // Fallback: if blue-checkmark detection missed, treat first item as personal
+                if (fromViewAll.length && !fromViewAll.some(p => p.isPersonal)) fromViewAll[0].isPersonal = true;
+                await fb.keyboard.press('Escape');
+                if (fromViewAll.length) { await fb.close(); return fromViewAll; }
+            }
+
+            // Fallback: scan the partial dropdown (no "View all" button found)
             const fromSwitcher = await fb.evaluate((mw) => {
                 const res = []; const seen = new Set();
-                // Only look in the TOP-RIGHT area where the account menu popup appears
                 const W = window.innerWidth;
                 const containers = [...document.querySelectorAll('[role="menu"],[role="dialog"],[role="list"],[role="listbox"]')]
                     .filter(c => {
                         const br = c.getBoundingClientRect();
-                        // Must be in top-right portion of screen (account menu location)
                         return br.x > W * 0.35 && br.y < 400 && br.height < 700 && br.width > 50;
                     });
                 for (const c of containers) {
                     for (const item of c.querySelectorAll('[role="menuitem"],[role="option"],[role="listitem"],li')) {
-                        // Must have an avatar image — Pages/profiles have icons, notifications don't
                         const hasAvatar = !!item.querySelector('img,image,svg[role="img"],svg[aria-label],[role="img"]');
                         if (!hasAvatar) continue;
                         const name = [...item.querySelectorAll('span')]
                             .map(s => s.textContent?.trim())
-                            .find(t => t && t.length >= 2 && t.length <= 60);
+                            .find(t => t && t.length >= 2 && t.length <= 100);
                         if (!name || seen.has(name)) continue;
                         if (mw.some(w => name.toLowerCase().includes(w.toLowerCase()))) continue;
                         seen.add(name); res.push({ name });
@@ -211,7 +257,10 @@ async function getAccountPages(accountId) {
                 return res;
             }, menuWords);
             await fb.keyboard.press('Escape');
-            if (fromSwitcher.length) { await fb.close(); return fromSwitcher; }
+            if (fromSwitcher.length) {
+                fromSwitcher[0].isPersonal = true; // first item in switcher dropdown is the personal account
+                await fb.close(); return fromSwitcher;
+            }
         }
 
         // ── Strategy 2: facebook.com/pages/ with long wait ───────
