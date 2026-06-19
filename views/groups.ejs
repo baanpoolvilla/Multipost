@@ -487,11 +487,9 @@ async function openGroupPicker(targetCat) {
       </div>
       ${gs.map((g, i) => {
         const gcats = (g.categories && g.categories.length) ? g.categories : [g.category || 'ทั่วไป'];
-        const show  = gcats.slice(0, 2);
-        const more  = gcats.length > 2 ? gcats.length - 2 : 0;
-        const tagsHtml = show.map(cat =>
+        const tagsHtml = gcats.map(cat =>
           `<span style="display:inline-block;background:#e7f0fd;color:#1877f2;border-radius:4px;padding:.08rem .42rem;font-size:.67rem;font-weight:600;white-space:nowrap">${escH(cat)}</span>`
-        ).join('') + (more ? `<span style="display:inline-block;background:#f0f2f5;color:#888;border-radius:4px;padding:.08rem .38rem;font-size:.67rem;white-space:nowrap">+${more}</span>` : '');
+        ).join('');
         return `
         <label style="display:flex;align-items:center;gap:.55rem;padding:.38rem .55rem;cursor:pointer;border-radius:7px;font-size:.87rem;transition:background .1s" onmouseover="this.style.background='#f0f7ff'" onmouseout="this.style.background=''">
           <input type="checkbox" data-gid="${escH(String(g._id))}" style="accent-color:#1877f2;width:15px;height:15px;flex-shrink:0">
