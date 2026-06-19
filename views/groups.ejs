@@ -485,14 +485,26 @@ async function openGroupPicker(targetCat) {
       <div style="font-size:.75rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.05em;padding:.3rem .5rem .1rem">
         <i class="fa-solid fa-location-dot" style="color:#1877f2;font-size:.7rem"></i> ${escH(c)}
       </div>
-      ${gs.map((g, i) => `
+      ${gs.map((g, i) => {
+        const gcats = (g.categories && g.categories.length) ? g.categories : [g.category || 'ทั่วไป'];
+        const show  = gcats.slice(0, 2);
+        const more  = gcats.length > 2 ? gcats.length - 2 : 0;
+        const tagsHtml = show.map(cat =>
+          `<span style="display:inline-block;background:#e7f0fd;color:#1877f2;border-radius:4px;padding:.08rem .42rem;font-size:.67rem;font-weight:600;white-space:nowrap">${escH(cat)}</span>`
+        ).join('') + (more ? `<span style="display:inline-block;background:#f0f2f5;color:#888;border-radius:4px;padding:.08rem .38rem;font-size:.67rem;white-space:nowrap">+${more}</span>` : '');
+        return `
         <label style="display:flex;align-items:center;gap:.55rem;padding:.38rem .55rem;cursor:pointer;border-radius:7px;font-size:.87rem;transition:background .1s" onmouseover="this.style.background='#f0f7ff'" onmouseout="this.style.background=''">
           <input type="checkbox" data-gid="${escH(String(g._id))}" style="accent-color:#1877f2;width:15px;height:15px;flex-shrink:0">
-          <div style="min-width:0">
+          <div style="min-width:0;flex:1">
             <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(g.groupName)}</div>
-            <div style="font-size:.71rem;color:#aaa;font-family:monospace">${escH(g.groupId)}</div>
+            <div style="display:flex;align-items:center;gap:.28rem;flex-wrap:wrap;margin-top:.18rem">
+              <span style="font-size:.68rem;color:#bbb;font-family:monospace;flex-shrink:0">${escH(g.groupId)}</span>
+              <span style="color:#ddd">·</span>
+              ${tagsHtml}
+            </div>
           </div>
-        </label>`).join('')}
+        </label>`;
+      }).join('')}
     </div>`).join('<hr style="border:none;border-top:1px solid #f0f2f5;margin:.3rem 0">');
 
   const { isConfirmed, value: selectedIds } = await Swal.fire({
@@ -504,12 +516,12 @@ async function openGroupPicker(targetCat) {
         <button onclick="document.querySelectorAll('#swGroupList input[type=checkbox]').forEach(c=>c.checked=false)"
                 style="background:#f0f2f5;border:none;border-radius:6px;padding:.28rem .7rem;font-size:.8rem;cursor:pointer;font-family:inherit">ยกเลิก</button>
       </div>
-      <div id="swGroupList" style="text-align:left;max-height:320px;overflow-y:auto;border:1px solid #e4e6ea;border-radius:10px;padding:.3rem">${html}</div>`,
+      <div id="swGroupList" style="text-align:left;max-height:460px;overflow-y:auto;border:1px solid #e4e6ea;border-radius:10px;padding:.3rem">${html}</div>`,
     showCancelButton: true,
     confirmButtonText: '<i class="fa-solid fa-plus"></i> เพิ่มเข้าหมวดนี้',
     cancelButtonText: 'ยกเลิก',
     confirmButtonColor: '#1877f2',
-    width: 480,
+    width: 620,
     preConfirm: () => {
       const checked = [...document.querySelectorAll('#swGroupList input[type=checkbox]:checked')];
       if (!checked.length) { Swal.showValidationMessage('กรุณาเลือกอย่างน้อย 1 กลุ่ม'); return false; }
