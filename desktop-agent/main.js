@@ -2,6 +2,16 @@ require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 
 const { app, BrowserWindow, ipcMain, shell, Notification } = require('electron');
 const path = require('path');
+const fs   = require('fs');
+const { randomUUID } = require('crypto');
+
+function getOrCreateAgentId(userDataDir) {
+    const idFile = path.join(userDataDir, 'agent-id.txt');
+    try { return fs.readFileSync(idFile, 'utf-8').trim(); } catch {}
+    const id = randomUUID();
+    fs.writeFileSync(idFile, id);
+    return id;
+}
 
 const apiServer        = require('./api/server');
 const accountStore     = require('./src/accountStore');
@@ -36,6 +46,8 @@ app.whenReady().then(async () => {
     accountStore.init(userDataDir);
     facebookBot.init(userDataDir);
     // jobTemplateStore now uses MongoDB — no local init needed
+    const agentId = getOrCreateAgentId(userDataDir);
+    jobStore.setAgentId(agentId);
     await jobStore.connect().catch(() => {});
 
     // Part 9: catch up on expiry as soon as the Agent has a DB connection —

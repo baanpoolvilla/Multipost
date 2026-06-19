@@ -67,8 +67,8 @@ async function poll() {
             const expired = await _store.expireOverdueJobs();
             if (expired) log(`⏱ พบงานหมดเวลา ${expired} รายการ — ย้ายไปสถานะ "หมดเวลา" (ไม่โพสอัตโนมัติ)`);
         }
-        const jobs = await _store.getPendingJobs();
-        if (jobs.length) await processJob(jobs[0]);
+        const job = await _store.claimNextJob();
+        if (job) await processJob(job);
     } catch(e) { log(`❌ Runner error: ${e.message}`); }
     scheduleNext();
 }
@@ -78,7 +78,7 @@ async function processJob(job) {
     log(`📋 เริ่ม Job: "${job.message.slice(0,50)}..."`);
     log(`   ${job.groups.length} กลุ่ม · delay ${job.delaySeconds}s`);
 
-    await _store.updateJob(id, { status: STATUS.RUNNING });
+    // Job was already atomically claimed as RUNNING via claimNextJob()
     _emit?.('jobs:updated', { ...job, _id:id, status: STATUS.RUNNING });
 
     // Determine which account to use

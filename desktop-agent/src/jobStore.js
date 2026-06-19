@@ -9,6 +9,12 @@ let _dbOk = false;
 let _dataPath = null;
 let Job, Page, WebPost, FbGroup;
 let _scheduler = null;
+let _agentId   = null;
+
+function setAgentId(id) {
+    _agentId   = id;
+    _scheduler = null; // recreate with correct agentId on next use
+}
 
 // ── Schemas ───────────────────────────────────────────────────
 const resultSchema = new mongoose.Schema({
@@ -79,7 +85,7 @@ async function connect() {
 }
 
 function scheduler() {
-    if (!_scheduler) _scheduler = createSchedulerService(Job, { sourceType: 'agent' });
+    if (!_scheduler) _scheduler = createSchedulerService(Job, { sourceType: 'agent', agentId: _agentId });
     return _scheduler;
 }
 
@@ -168,6 +174,15 @@ async function getPendingJobs() {
     }
 }
 
+// Atomic claim: marks one due job as running in a single DB operation so two
+// agents running simultaneously can never pick up the same job.
+async function claimNextJob() {
+    try {
+        await connect();
+        return await scheduler().claimNextDueJob();
+    } catch { return null; }
+}
+
 // Effective "due time" of a job: its scheduledAt if set, otherwise it was due as soon as created.
 function _dueTime(j) { return new Date(j.scheduledAt || j.createdAt).getTime(); }
 function _byDueTime(a, b) { return _dueTime(a) - _dueTime(b); }
@@ -221,8 +236,8 @@ async function listExpiredJobs() {
 function _s(j) { return j ? { ...j, _id: j._id?.toString?.()??j._id } : j; }
 
 module.exports = {
-    connect, isDbConnected, setDataPath, getAllGroups, getRecentPosts,
-    createJob, getJobs, getPendingJobs, updateJob, deleteJob, deleteAllJobs,
+    connect, isDbConnected, setDataPath, setAgentId, getAllGroups, getRecentPosts,
+    createJob, getJobs, getPendingJobs, claimNextJob, updateJob, deleteJob, deleteAllJobs,
     getCompletedJobs, rescheduleJob, expireOverdueJobs, migrateLegacyStatuses,
     retryJob, cancelJob, listExpiredJobs,
 };

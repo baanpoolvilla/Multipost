@@ -215,6 +215,35 @@ function createSchedulerService(Model, opts = {}) {
             new Date(a.scheduledAt || a.createdAt) - new Date(b.scheduledAt || b.createdAt));
     }
 
+    // Atomically claims the oldest due job by flipping it from pending → running
+    // in a single findOneAndUpdate. If two agents poll simultaneously only one
+    // will receive the document — the other gets null and skips the tick.
+    //
+    // agentId routing: if this agent has an id it only claims
+    //   (a) jobs created by itself  (agentId === this id), or
+    //   (b) jobs with no agentId    (web-created / legacy — any agent may run).
+    // Jobs created by a different agent are never claimed.
+    async function claimNextDueJob() {
+        const now = new Date().toISOString();
+        const filter = {
+            status: STATUS.PENDING,
+            $and: [
+                { $or: [{ scheduledAt: null }, { scheduledAt: { $lte: now } }] },
+            ],
+        };
+        if (agentId) {
+            filter.$and.push({
+                $or: [{ agentId }, { agentId: null }, { agentId: { $exists: false } }],
+            });
+        }
+        const claimed = await Model.findOneAndUpdate(
+            filter,
+            { $set: { status: STATUS.RUNNING, lastAttemptAt: now, updatedAt: now } },
+            { new: true, sort: { scheduledAt: 1, createdAt: 1 } },
+        ).lean();
+        return claimed ? serialize(claimed) : null;
+    }
+
     async function listExpired() {
         const jobs = await Model.find({ status: STATUS.EXPIRED }).sort({ expiredAt: -1 }).lean();
         return jobs.map(serialize);
@@ -229,7 +258,7 @@ function createSchedulerService(Model, opts = {}) {
 
     return {
         ValidateJob, CreateJob, UpdateJob, DeleteJob, ExecuteJob, ExpireJob, RetryJob, CancelJob,
-        expireOverdueJobs, getDueJobs, listExpired, migrateLegacyStatuses,
+        expireOverdueJobs, getDueJobs, claimNextDueJob, listExpired, migrateLegacyStatuses,
     };
 }
 
