@@ -3,6 +3,7 @@ const { connect } = require('./db');
 
 const catSchema = new mongoose.Schema({
     name:      { type: String, required: true, unique: true },
+    color:     { type: String, default: '#1877f2' },
     createdAt: { type: Date, default: Date.now },
 }, { versionKey: false });
 
@@ -36,4 +37,11 @@ async function renameByName(oldName, newName) {
     } catch { return null; }
 }
 
-module.exports = { list, add, remove, renameByName };
+async function updateColor(id, color) {
+    try {
+        await connect();
+        return Category.findByIdAndUpdate(id, { color }, { new: true }).lean();
+    } catch { return null; }
+}
+
+module.exports = { list, add, remove, renameByName, updateColor };

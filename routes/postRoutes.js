@@ -234,8 +234,9 @@ router.get('/schedule-center',          ctrl.showScheduleCenter);
 router.get('/api/schedule-center/items', ctrl.scheduleCenterItems);
 
 // Category API
-router.post('/api/agent/categories',         agentCtrl.addCategory);
-router.delete('/api/agent/categories/:id',   agentCtrl.deleteCategory);
+router.post('/api/agent/categories',              agentCtrl.addCategory);
+router.delete('/api/agent/categories/:id',        agentCtrl.deleteCategory);
+router.patch('/api/agent/categories/:id/color',   agentCtrl.updateCategoryColor);
 
 // Groups API (shared across all users)
 router.post('/api/agent/groups',                        agentCtrl.addGroup);

@@ -81,28 +81,29 @@ exports.showAgent = async (req, res) => {
 exports.showGroups = async (req, res) => {
     const [groups, dbCategories] = await Promise.all([groupStore.list(), categoryStore.list()]);
 
-    // dbCatMap: name → _id (string) — only for categories stored in DB
     const dbCatMap = {};
+    let latestCats = dbCategories;
     dbCategories.forEach(c => { dbCatMap[c.name] = String(c._id); });
 
-    // Build allCats from groups' categories arrays + DB categories; ทั่วไป always first
     const allCatsSet = new Set(Object.keys(dbCatMap));
     groups.forEach(g => (g.categories || ['ทั่วไป']).forEach(c => allCatsSet.add(c)));
 
-    // Auto-register categories that exist in group data but have no DB record (so trash button shows)
     const orphanCats = [...allCatsSet].filter(c => c !== 'ทั่วไป' && !dbCatMap[c]);
     if (orphanCats.length) {
         await Promise.all(orphanCats.map(name => categoryStore.add(name)));
-        const fresh = await categoryStore.list();
-        fresh.forEach(c => { dbCatMap[c.name] = String(c._id); });
+        latestCats = await categoryStore.list();
+        latestCats.forEach(c => { dbCatMap[c.name] = String(c._id); });
     }
+
+    const catColorMap = { 'ทั่วไป': '#868e96' };
+    latestCats.forEach(c => { catColorMap[c.name] = c.color || '#1877f2'; });
 
     const allCats = [
         ...(allCatsSet.has('ทั่วไป') ? ['ทั่วไป'] : []),
         ...[...allCatsSet].filter(c => c !== 'ทั่วไป').sort(),
     ];
 
-    res.render('groups', { groups, cats: allCats, dbCatMap });
+    res.render('groups', { groups, cats: allCats, dbCatMap, catColorMap });
 };
 
 // ── Category API ───────────────────────────────────────────────
@@ -118,6 +119,14 @@ exports.deleteCategory = async (req, res) => {
     const deleted = await categoryStore.remove(req.params.id);
     if (deleted?.name) await groupStore.bulkRemoveCategory(deleted.name);
     res.json({ ok: true });
+};
+
+exports.updateCategoryColor = async (req, res) => {
+    const { color } = req.body;
+    if (!color?.trim()) return res.status(400).json({ error: 'กรุณาระบุสี' });
+    const updated = await categoryStore.updateColor(req.params.id, color.trim());
+    if (!updated) return res.status(404).json({ error: 'ไม่พบหมวด' });
+    res.json({ ok: true, category: updated });
 };
 
 // ── Groups API ─────────────────────────────────────────────────
@@ -173,8 +182,10 @@ exports.bulkRenameCategory = async (req, res) => {
 // ── Job Queue page ─────────────────────────────────────────────
 exports.showJobQueue = async (req, res) => {
     await groupJobStore.expireOverdueJobs().catch(() => {});
-    const [groups, jobs] = await Promise.all([groupStore.list(), groupJobStore.list()]);
-    res.render('job-queue', { jobs, groups });
+    const [groups, jobs, dbCategories] = await Promise.all([groupStore.list(), groupJobStore.list(), categoryStore.list()]);
+    const catColorMap = { 'ทั่วไป': '#868e96' };
+    dbCategories.forEach(c => { catColorMap[c.name] = c.color || '#1877f2'; });
+    res.render('job-queue', { jobs, groups, catColorMap });
 };
 
 // ── Job API ────────────────────────────────────────────────────

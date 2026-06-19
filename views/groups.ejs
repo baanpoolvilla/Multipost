@@ -145,12 +145,12 @@ groups.forEach(g => {
       <span style="font-size:.78rem;color:var(--text-secondary);font-weight:600;margin-right:.2rem;flex-shrink:0">
         <i class="fa-solid fa-filter" style="font-size:.72rem"></i> ดูหมวด:
       </span>
-      <button class="filter-tab active" data-cat="__all__" onclick="filterCat('__all__')">
+      <button class="filter-tab active" data-cat="__all__" data-color="#1877f2" onclick="filterCat('__all__')">
         ทั้งหมด <span class="tab-count"><%= groups.length %></span>
       </button>
-      <% cats.slice(0, 4).forEach(cat => { %>
-      <button class="filter-tab" data-cat="<%= cat %>" onclick="filterCat(this.dataset.cat)">
-        <i class="fa-solid fa-location-dot" style="font-size:.68rem;color:#1877f2"></i>
+      <% cats.slice(0, 4).forEach(cat => { const tc = catColorMap[cat] || '#1877f2'; %>
+      <button class="filter-tab" data-cat="<%= cat %>" data-color="<%- tc %>" onclick="filterCat(this.dataset.cat)">
+        <i class="fa-solid fa-location-dot" style="font-size:.68rem;color:<%- tc %>"></i>
         <%= cat %> <span class="tab-count"><%= catMap[cat].length %></span>
       </button>
       <% }); %>
@@ -162,10 +162,10 @@ groups.forEach(g => {
           <i class="fa-solid fa-chevron-down" style="font-size:.65rem"></i>
         </button>
         <div id="moreTabsMenu" style="display:none;position:absolute;top:calc(100% + 4px);left:0;background:#fff;border:1px solid var(--border-color);border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:50;min-width:150px;padding:.3rem;overflow:hidden">
-          <% cats.slice(4).forEach(cat => { %>
-          <button class="more-tab-item" data-cat="<%= cat %>"
+          <% cats.slice(4).forEach(cat => { const tc = catColorMap[cat] || '#1877f2'; %>
+          <button class="more-tab-item" data-cat="<%= cat %>" data-color="<%- tc %>"
                   onclick="filterCat(this.dataset.cat);closeMoreTabs()">
-            <i class="fa-solid fa-location-dot" style="color:#1877f2;font-size:.72rem"></i>
+            <i class="fa-solid fa-location-dot" style="color:<%- tc %>;font-size:.72rem"></i>
             <%= cat %> <span style="margin-left:auto;font-size:.73rem;color:#aaa"><%= catMap[cat].length %></span>
           </button>
           <% }); %>
@@ -191,12 +191,12 @@ groups.forEach(g => {
     <% } else { %>
 
     <!-- ── Category sections ── -->
-    <% cats.forEach((cat, ci) => { %>
+    <% cats.forEach((cat, ci) => { const cc = catColorMap[cat] || '#1877f2'; %>
     <div class="card cat-section" data-cat="<%= cat %>" style="padding:0;overflow:hidden">
 
       <!-- Category header -->
       <div class="cat-header">
-        <i class="fa-solid fa-location-dot" style="color:#1877f2;font-size:.9rem;flex-shrink:0"></i>
+        <i class="fa-solid fa-location-dot" style="color:<%- cc %>;font-size:.9rem;flex-shrink:0"></i>
         <span style="font-weight:700;font-size:.97rem;flex:1"><%= cat %></span>
         <% if (catMap[cat].length > 0) { %>
         <span class="cat-badge"><%= catMap[cat].length %> กลุ่ม</span>
@@ -217,6 +217,11 @@ groups.forEach(g => {
                 onclick="deleteCategory(this.dataset.id, this.dataset.name, +this.dataset.count)" title="ลบหมวด">
           <i class="fa-solid fa-trash"></i>
         </button>
+        <% } %>
+        <% if (cat !== 'ทั่วไป' && dbCatMap[cat]) { %>
+        <button onclick="pickCategoryColor('<%- dbCatMap[cat] %>','<%- cat %>','<%- cc %>')"
+                title="เปลี่ยนสีหมวด"
+                style="width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,.8);background:<%- cc %>;cursor:pointer;flex-shrink:0;padding:0;box-shadow:0 1px 3px rgba(0,0,0,.2)"></button>
         <% } %>
         <button class="cat-toggle-btn" onclick="toggleCatSection(<%= ci %>)" title="ยุบ/ขยาย">
           <i class="fa-solid fa-chevron-down" id="chevron_<%= ci %>" style="transition:transform .2s<% if (cat !== 'ทั่วไป') { %>;transform:rotate(-90deg)<% } %>"></i>
@@ -258,9 +263,9 @@ groups.forEach(g => {
             <div class="grp-id" style="font-size:.71rem;color:var(--text-secondary);font-family:monospace;margin-top:.05rem"><%= g.groupId %></div>
           </div>
           <% if (cat === 'ทั่วไป' && otherCats.length > 0) { %>
-          <div style="display:flex;gap:.2rem;align-items:center;justify-content:flex-end;flex-shrink:0;max-width:160px;flex-wrap:wrap">
-            <% otherCats.slice(0, 2).forEach(c => { %>
-            <span style="font-size:.64rem;background:#e8f4ff;color:#1877f2;border-radius:4px;padding:.04rem .27rem;white-space:nowrap">📍<%= c %></span>
+          <div style="display:flex;gap:.2rem;align-items:center;justify-content:flex-end;flex-shrink:0;max-width:200px;flex-wrap:wrap">
+            <% otherCats.slice(0, 2).forEach(c => { const bc = catColorMap[c] || '#1877f2'; %>
+            <span style="font-size:.64rem;background:<%- bc %>18;color:<%- bc %>;border:1px solid <%- bc %>30;border-radius:4px;padding:.04rem .27rem;white-space:nowrap">📍<%= c %></span>
             <% }); %>
             <% if (otherCats.length > 2) { %>
             <span class="cats-more-btn" onclick="expandCats(this)"
@@ -393,8 +398,9 @@ groups.forEach(g => {
 </style>
 
 <script>
-const _cats    = <%- JSON.stringify(cats) %>;
-const _dbCatMap = <%- JSON.stringify(dbCatMap) %>;
+const _cats      = <%- JSON.stringify(cats) %>;
+const _dbCatMap  = <%- JSON.stringify(dbCatMap) %>;
+const _catColorMap = <%- JSON.stringify(catColorMap) %>;
 const _allGroups = <%- JSON.stringify(groups) %>;
 
 /* ── Toggle forms ── */
@@ -428,8 +434,9 @@ function toggleAddGroupForm(preselect) {
 function expandCats(btn) {
   const cats = JSON.parse(btn.dataset.extra || '[]');
   cats.forEach(c => {
+    const color = _catColorMap[c] || '#1877f2';
     const span = document.createElement('span');
-    span.style.cssText = 'font-size:.64rem;background:#e8f4ff;color:#1877f2;border-radius:4px;padding:.04rem .27rem;white-space:nowrap';
+    span.style.cssText = `font-size:.64rem;background:${color}18;color:${color};border:1px solid ${color}30;border-radius:4px;padding:.04rem .27rem;white-space:nowrap`;
     span.textContent = '📍' + c;
     btn.parentElement.insertBefore(span, btn);
   });
@@ -487,9 +494,10 @@ async function openGroupPicker(targetCat) {
       </div>
       ${gs.map((g, i) => {
         const gcats = (g.categories && g.categories.length) ? g.categories : [g.category || 'ทั่วไป'];
-        const tagsHtml = gcats.map(cat =>
-          `<span style="display:inline-block;background:#e7f0fd;color:#1877f2;border-radius:4px;padding:.08rem .42rem;font-size:.67rem;font-weight:600;white-space:nowrap">${escH(cat)}</span>`
-        ).join('');
+        const tagsHtml = gcats.map(cat => {
+          const color = _catColorMap[cat] || '#1877f2';
+          return `<span style="display:inline-block;background:${color}18;color:${color};border:1px solid ${color}30;border-radius:4px;padding:.08rem .42rem;font-size:.67rem;font-weight:600;white-space:nowrap">${escH(cat)}</span>`;
+        }).join('');
         return `
         <label style="display:flex;align-items:center;gap:.55rem;padding:.38rem .55rem;cursor:pointer;border-radius:7px;font-size:.87rem;transition:background .1s" onmouseover="this.style.background='#f0f7ff'" onmouseout="this.style.background=''">
           <input type="checkbox" data-gid="${escH(String(g._id))}" style="accent-color:#1877f2;width:15px;height:15px;flex-shrink:0">
@@ -724,8 +732,47 @@ function filterCat(cat) {
     el.style.display = (cat === '__all__' || el.dataset.cat === cat) ? '' : 'none';
   });
   document.querySelectorAll('.filter-tab').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.cat === cat);
+    const active = btn.dataset.cat === cat;
+    btn.classList.toggle('active', active);
+    const color = btn.dataset.color || '#1877f2';
+    if (active) {
+      btn.style.borderColor = color;
+      btn.style.color       = color;
+      btn.style.background  = color + '12';
+    } else {
+      btn.style.borderColor = '';
+      btn.style.color       = '';
+      btn.style.background  = '';
+    }
   });
+}
+
+/* ── Category color picker ── */
+const CAT_PALETTE = ['#1877f2','#e03131','#f76707','#f59f00','#2f9e44','#0c8599','#7048e8','#c2255c','#364fc7','#868e96'];
+async function pickCategoryColor(id, name, currentColor) {
+  const swatches = CAT_PALETTE.map(c => `
+    <button type="button"
+      onclick="document.getElementById('_pickedColor').value='${c}';document.querySelectorAll('.cpSwatch').forEach(b=>{b.style.outline='none';b.style.outlineOffset='0'});this.style.outline='3px solid ${c}';this.style.outlineOffset='2px'"
+      class="cpSwatch"
+      style="width:34px;height:34px;border-radius:50%;background:${c};border:none;cursor:pointer;outline:${c===currentColor?'3px solid '+c:'none'};outline-offset:${c===currentColor?'2px':'0'};transition:transform .1s"
+      onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform=''">
+    </button>`).join('');
+  const { isConfirmed, value: color } = await Swal.fire({
+    title: `สีหมวด "${name}"`,
+    html: `<input type="hidden" id="_pickedColor" value="${currentColor}">
+           <div style="display:flex;flex-wrap:wrap;gap:.6rem;justify-content:center;padding:.6rem 0">${swatches}</div>`,
+    showCancelButton: true,
+    confirmButtonText: 'บันทึก', cancelButtonText: 'ยกเลิก',
+    confirmButtonColor: currentColor,
+    width: 340,
+    preConfirm: () => document.getElementById('_pickedColor').value,
+  });
+  if (!isConfirmed || !color) return;
+  await fetch(`/api/agent/categories/${id}/color`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ color }),
+  });
+  location.reload();
 }
 </script>
 
