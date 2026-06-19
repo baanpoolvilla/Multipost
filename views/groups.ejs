@@ -253,8 +253,10 @@ groups.forEach(g => {
         <% } %>
         <% catMap[cat].forEach((g, gi) => {
              const otherCats = (g.categories || []).filter(c => c !== cat);
+             const hiddenByLimit = cat === 'ทั่วไป' && gi >= 20;
         %>
-        <div class="group-row" style="background:<%= gi % 2 === 0 ? '#fff' : '#fafbfc' %>">
+        <div class="group-row<%= hiddenByLimit ? ' tw-more' : '' %>"
+             style="background:<%= gi % 2 === 0 ? '#fff' : '#fafbfc' %><%= hiddenByLimit ? ';display:none' : '' %>">
           <span style="width:1.5rem;text-align:right;font-size:.73rem;color:#c0c4cc;flex-shrink:0;margin-left:.85rem;font-weight:500;font-family:monospace"><%= gi + 1 %></span>
           <div style="width:2px;height:1.8rem;background:#e8eaed;margin:0 .5rem;flex-shrink:0;border-radius:1px"></div>
           <i class="fa-solid fa-users" style="color:#1877f2;width:14px;text-align:center;flex-shrink:0;font-size:.85rem"></i>
@@ -304,6 +306,17 @@ groups.forEach(g => {
           </div>
         </div>
         <% }); %>
+        <% if (cat === 'ทั่วไป' && catMap[cat].length > 20) { %>
+        <div id="tw-show-more-wrap" style="padding:.6rem 1rem;border-top:1px solid #f0f2f5;text-align:center">
+          <button onclick="showMoreTallwai()"
+                  style="background:none;border:1.5px solid #e4e6eb;border-radius:8px;padding:.35rem 1.1rem;font-size:.82rem;font-family:inherit;cursor:pointer;color:#555;display:inline-flex;align-items:center;gap:.4rem;transition:border-color .12s,color .12s"
+                  onmouseover="this.style.borderColor='#1877f2';this.style.color='#1877f2'"
+                  onmouseout="this.style.borderColor='#e4e6eb';this.style.color='#555'">
+            <i class="fa-solid fa-chevron-down" style="font-size:.72rem"></i>
+            ดูเพิ่มเติม (<%= catMap[cat].length - 20 %> กลุ่ม)
+          </button>
+        </div>
+        <% } %>
       </div>
 
     </div>
@@ -705,15 +718,37 @@ async function moveGroup(id, groupName, currentCat) {
   }
 }
 
+/* ── ทั่วไป show more ── */
+let _twExpanded = false;
+function showMoreTallwai() {
+  document.querySelectorAll('.cat-section[data-cat="ทั่วไป"] .tw-more').forEach(r => r.style.display = '');
+  const wrap = document.getElementById('tw-show-more-wrap');
+  if (wrap) wrap.style.display = 'none';
+  _twExpanded = true;
+}
+
 /* ── Filter ทั่วไป section ── */
 function filterTallwai(q) {
   const rows = document.querySelectorAll('.cat-section[data-cat="ทั่วไป"] .group-row');
   const lq = q.trim().toLowerCase();
-  rows.forEach(row => {
-    const name = row.querySelector('.grp-name')?.textContent?.toLowerCase() || '';
-    const gid  = row.querySelector('.grp-id')?.textContent?.toLowerCase() || '';
-    row.style.display = (!lq || name.includes(lq) || gid.includes(lq)) ? '' : 'none';
-  });
+  if (!lq) {
+    // restore: hide rows beyond 20 unless already expanded
+    rows.forEach(row => {
+      const isMore = row.classList.contains('tw-more');
+      row.style.display = (!isMore || _twExpanded) ? '' : 'none';
+    });
+    const wrap = document.getElementById('tw-show-more-wrap');
+    if (wrap) wrap.style.display = _twExpanded ? 'none' : '';
+  } else {
+    // searching: show all matching, hide show-more button
+    rows.forEach(row => {
+      const name = row.querySelector('.grp-name')?.textContent?.toLowerCase() || '';
+      const gid  = row.querySelector('.grp-id')?.textContent?.toLowerCase() || '';
+      row.style.display = (name.includes(lq) || gid.includes(lq)) ? '' : 'none';
+    });
+    const wrap = document.getElementById('tw-show-more-wrap');
+    if (wrap) wrap.style.display = 'none';
+  }
 }
 
 /* ── Collapse / expand category ── */
