@@ -268,9 +268,6 @@ exports.showHistory = async (req, res) => {
 };
 
 exports.showSchedulePost = async (req, res) => {
-    const referer = req.headers.referer || '';
-    const isAllowed = referer.includes('/post-queue') || referer.includes('/schedule-post');
-    if (!isAllowed) return res.redirect('/post-queue');
     await postStore.expireOverdueScheduled().catch(() => {});
     const [allPages, posts] = await Promise.all([pageStore.load(), postStore.load()]);
     const pages         = allPages.filter(p => p.enabled !== false);
