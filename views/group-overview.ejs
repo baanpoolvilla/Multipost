@@ -117,9 +117,6 @@
               <th><i class="fa-solid fa-paper-plane"></i> แชร์</th>
               <th><i class="fa-solid fa-circle-check" style="color:#2e7d32"></i> สำเร็จ</th>
               <th><i class="fa-solid fa-circle-xmark" style="color:#c62828"></i> ล้มเหลว</th>
-              <th><i class="fa-solid fa-thumbs-up" style="color:#8b5cf6"></i> ไลค์</th>
-              <th><i class="fa-solid fa-comment" style="color:#f59e0b"></i> คอม</th>
-              <th><i class="fa-solid fa-share-nodes" style="color:#0891b2"></i> แชร์</th>
               <th>อัตราสำเร็จ</th>
             </tr>
           </thead>
@@ -129,9 +126,6 @@
               const totalAllFail    = allGroupStats.reduce((s,g)=>s+g.fail,0);
               const totalAllTotal   = totalAllSuccess + totalAllFail;
               const totalAllRate    = totalAllTotal > 0 ? Math.round(totalAllSuccess/totalAllTotal*100) : 0;
-              const totalAllLikes   = allGroupStats.reduce((s,g)=>s+(g.likes||0),0);
-              const totalAllCom     = allGroupStats.reduce((s,g)=>s+(g.comments||0),0);
-              const totalAllShares  = allGroupStats.reduce((s,g)=>s+(g.shares||0),0);
             %>
             <!-- Summary row -->
             <tr style="background:#f0fdf4;font-weight:700">
@@ -139,9 +133,6 @@
               <td class="num"><%= totalAllTotal %></td>
               <td class="num" style="color:#2e7d32"><%= totalAllSuccess %></td>
               <td class="num" style="color:#c62828"><%= totalAllFail %></td>
-              <td class="num" style="color:#8b5cf6"><%= totalAllLikes > 0 ? totalAllLikes.toLocaleString() : '—' %></td>
-              <td class="num" style="color:#f59e0b"><%= totalAllCom > 0 ? totalAllCom.toLocaleString() : '—' %></td>
-              <td class="num" style="color:#0891b2"><%= totalAllShares > 0 ? totalAllShares.toLocaleString() : '—' %></td>
               <td>
                 <div class="rate-bar-wrap">
                   <div class="rate-bar" style="width:<%= totalAllRate %>%;background:#2e7d32"></div>
@@ -161,9 +152,6 @@
               <td class="num"><%= total %></td>
               <td class="num" style="color:#2e7d32"><%= g.success %></td>
               <td class="num" style="color:#c62828"><%= g.fail %></td>
-              <td class="num" style="color:#8b5cf6"><%= (g.likes||0) > 0 ? (g.likes||0).toLocaleString() : '—' %></td>
-              <td class="num" style="color:#f59e0b"><%= (g.comments||0) > 0 ? (g.comments||0).toLocaleString() : '—' %></td>
-              <td class="num" style="color:#0891b2"><%= (g.shares||0) > 0 ? (g.shares||0).toLocaleString() : '—' %></td>
               <td>
                 <div class="rate-bar-wrap">
                   <div class="rate-bar" style="width:<%= rate %>%;background:#2e7d32"></div>
