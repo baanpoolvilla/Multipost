@@ -180,7 +180,7 @@
            const total = st.success + st.fail;
            const rate  = total > 0 ? Math.round(st.success/total*100) : 0;
       %>
-      <div style="background:<%= pv.bg %>;border:1.5px solid <%= pv.border %>;border-radius:14px;padding:.85rem 1rem">
+      <div id="gs-pv-<%= pv.key %>" onclick="filterByPrivacy('<%= pv.key %>')" style="background:<%= pv.bg %>;border:1.5px solid <%= pv.border %>;border-radius:14px;padding:.85rem 1rem;cursor:pointer;transition:box-shadow .15s,transform .15s">
         <div style="font-size:.8rem;font-weight:700;color:<%= pv.color %>;margin-bottom:.45rem">
           <%= pv.icon %> <%= pv.label %>
         </div>
@@ -213,6 +213,7 @@
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;margin-bottom:1rem">
         <div class="card-title" style="margin-bottom:0">
           <i class="fa-solid fa-layer-group"></i> สถิติแต่ละกลุ่ม
+          <span id="gs-pv-badge" style="margin-left:.4rem"></span>
           <span style="font-size:.8rem;font-weight:400;color:#8a8d91;margin-left:.4rem">(<%= result.allGroupStats.length %> กลุ่ม)</span>
         </div>
         <div style="position:relative">
@@ -240,14 +241,14 @@
               const gsTotalR = gsTotalT > 0 ? Math.round(gsTotalS/gsTotalT*100) : 0;
             %>
             <tr style="background:#f0fdf4;font-weight:700">
-              <td><i class="fa-solid fa-sigma" style="color:#2e7d32;margin-right:.35rem"></i>สรุปรวม (<%= result.allGroupStats.length %> กลุ่ม)</td>
-              <td class="num"><%= gsTotalT %></td>
-              <td class="num" style="color:#2e7d32"><%= gsTotalS %></td>
-              <td class="num" style="color:#c62828"><%= gsTotalF %></td>
+              <td id="gs-sum-label"><i class="fa-solid fa-sigma" style="color:#2e7d32;margin-right:.35rem"></i>สรุปรวม (<%= result.allGroupStats.length %> กลุ่ม)</td>
+              <td class="num" id="gs-sum-total"><%= gsTotalT %></td>
+              <td class="num" style="color:#2e7d32" id="gs-sum-success"><%= gsTotalS %></td>
+              <td class="num" style="color:#c62828" id="gs-sum-fail"><%= gsTotalF %></td>
               <td>
                 <div class="rate-bar-wrap">
-                  <div class="rate-bar" style="width:<%= gsTotalR %>%;background:#2e7d32"></div>
-                  <span class="rate-text"><%= gsTotalR %>%</span>
+                  <div class="rate-bar" id="gs-sum-bar" style="width:<%= gsTotalR %>%;background:#2e7d32"></div>
+                  <span class="rate-text" id="gs-sum-pct"><%= gsTotalR %>%</span>
                 </div>
               </td>
             </tr>
@@ -255,7 +256,7 @@
                  const tot = g.success + g.fail;
                  const rate = tot > 0 ? Math.round(g.success/tot*100) : 0;
             %>
-            <tr class="gs-row" data-name="<%= g.name.toLowerCase() %>" style="<%= i >= 2 ? 'display:none' : '' %>">
+            <tr class="gs-row" data-name="<%= g.name.toLowerCase() %>" data-privacy="<%= g.privacy || '' %>" data-success="<%= g.success %>" data-fail="<%= g.fail %>" style="<%= i >= 2 ? 'display:none' : '' %>">
               <td>
                 <div style="display:flex;align-items:center;gap:.5rem">
                   <div class="avatar avatar-green avatar-sm" style="background:#2e7d32"><%= g.name.slice(0,1).toUpperCase() %></div>
@@ -363,24 +364,69 @@ function submitGS() {
 }
 
 let _gsExpanded = false;
+let _gsPrivacyFilter = null;
+let _gsSearchQuery = '';
+
+function applyGsFilter() {
+  const filtering = _gsPrivacyFilter || _gsSearchQuery;
+  const rows = document.querySelectorAll('.gs-row');
+  rows.forEach((r, i) => {
+    const nameOk = !_gsSearchQuery || r.dataset.name.includes(_gsSearchQuery);
+    const pvOk   = !_gsPrivacyFilter || r.dataset.privacy === _gsPrivacyFilter;
+    const show   = nameOk && pvOk && (filtering || _gsExpanded || i < 2);
+    r.style.display = show ? '' : 'none';
+  });
+  const btn = document.getElementById('gs-more-btn');
+  if (btn) btn.style.display = (filtering || _gsExpanded) ? 'none' : '';
+  updateSummary();
+}
+
+function updateSummary() {
+  const rows = [...document.querySelectorAll('.gs-row')].filter(r => r.style.display !== 'none');
+  let s = 0, f = 0;
+  rows.forEach(r => { s += parseInt(r.dataset.success||0); f += parseInt(r.dataset.fail||0); });
+  const t = s + f;
+  const rt = t > 0 ? Math.round(s/t*100) : 0;
+  document.getElementById('gs-sum-total').textContent = t;
+  document.getElementById('gs-sum-success').textContent = s;
+  document.getElementById('gs-sum-fail').textContent = f;
+  document.getElementById('gs-sum-pct').textContent = rt + '%';
+  document.getElementById('gs-sum-bar').style.width = rt + '%';
+  document.getElementById('gs-sum-label').innerHTML =
+    `<i class="fa-solid fa-sigma" style="color:#2e7d32;margin-right:.35rem"></i>สรุปรวม (${rows.length} กลุ่ม)`;
+}
+
+function filterByPrivacy(key) {
+  _gsPrivacyFilter = (_gsPrivacyFilter === key) ? null : key;
+  const pvColors = { public:'#1877f2', private:'#7048e8', paid:'#c0392b' };
+  ['public','private','paid'].forEach(k => {
+    const card = document.getElementById('gs-pv-'+k);
+    if (!card) return;
+    card.style.boxShadow = (_gsPrivacyFilter === k) ? `0 0 0 3px ${pvColors[k]}` : '';
+    card.style.transform  = (_gsPrivacyFilter === k) ? 'scale(1.02)' : '';
+  });
+  const badge = document.getElementById('gs-pv-badge');
+  if (badge) {
+    if (!_gsPrivacyFilter) { badge.innerHTML = ''; }
+    else {
+      const labels = { public:'🌐 สาธารณะ', private:'🔒 ส่วนตัว', paid:'💰 เสียตัง' };
+      badge.innerHTML = `<span style="background:#fff;border:1px solid #ccc;border-radius:6px;padding:.1rem .5rem;font-size:.75rem;display:inline-flex;align-items:center;gap:.3rem;vertical-align:middle">
+        ${labels[_gsPrivacyFilter]}
+        <span onclick="filterByPrivacy('${_gsPrivacyFilter}')" style="cursor:pointer;color:#c62828;font-weight:700;line-height:1">×</span>
+      </span>`;
+    }
+  }
+  applyGsFilter();
+}
 
 function gsExpand() {
   _gsExpanded = true;
-  document.querySelectorAll('.gs-row').forEach(r => r.style.display = '');
-  const btn = document.getElementById('gs-more-btn');
-  if (btn) btn.style.display = 'none';
+  applyGsFilter();
 }
 
 function filterGsTable(q) {
-  const val = q.toLowerCase();
-  const rows = document.querySelectorAll('.gs-row');
-  rows.forEach((r, i) => {
-    const matches = !val || r.dataset.name.includes(val);
-    if (!matches) { r.style.display = 'none'; return; }
-    r.style.display = (val || _gsExpanded || i < 2) ? '' : 'none';
-  });
-  const btn = document.getElementById('gs-more-btn');
-  if (btn) btn.style.display = (val || _gsExpanded) ? 'none' : '';
+  _gsSearchQuery = q.toLowerCase();
+  applyGsFilter();
 }
 
 (function(){
