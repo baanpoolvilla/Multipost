@@ -255,7 +255,7 @@
                  const tot = g.success + g.fail;
                  const rate = tot > 0 ? Math.round(g.success/tot*100) : 0;
             %>
-            <tr class="gs-row" data-name="<%= g.name.toLowerCase() %>">
+            <tr class="gs-row" data-name="<%= g.name.toLowerCase() %>" style="<%= i >= 2 ? 'display:none' : '' %>">
               <td>
                 <div style="display:flex;align-items:center;gap:.5rem">
                   <div class="avatar avatar-green avatar-sm" style="background:#2e7d32"><%= g.name.slice(0,1).toUpperCase() %></div>
@@ -279,6 +279,13 @@
           </tbody>
         </table>
       </div>
+      <% if (result.allGroupStats.length > 2) { %>
+      <div id="gs-more-btn" style="text-align:center;margin-top:.75rem">
+        <button onclick="gsExpand()" style="background:#f0fdf4;color:#2e7d32;border:1.5px solid #2e7d32;border-radius:8px;padding:.4rem 1.2rem;font-size:.82rem;cursor:pointer;font-family:inherit">
+          <i class="fa-solid fa-chevron-down"></i> ดูเพิ่มเติม (<%= result.allGroupStats.length - 2 %> กลุ่ม)
+        </button>
+      </div>
+      <% } %>
     </div>
     <% } else { %>
     <div class="card" style="text-align:center;padding:2rem;color:#8a8d91">
@@ -355,11 +362,25 @@ function submitGS() {
   window.location.href = '/group-summary?' + params;
 }
 
+let _gsExpanded = false;
+
+function gsExpand() {
+  _gsExpanded = true;
+  document.querySelectorAll('.gs-row').forEach(r => r.style.display = '');
+  const btn = document.getElementById('gs-more-btn');
+  if (btn) btn.style.display = 'none';
+}
+
 function filterGsTable(q) {
   const val = q.toLowerCase();
-  document.querySelectorAll('.gs-row').forEach(r => {
-    r.style.display = !val || r.dataset.name.includes(val) ? '' : 'none';
+  const rows = document.querySelectorAll('.gs-row');
+  rows.forEach((r, i) => {
+    const matches = !val || r.dataset.name.includes(val);
+    if (!matches) { r.style.display = 'none'; return; }
+    r.style.display = (val || _gsExpanded || i < 2) ? '' : 'none';
   });
+  const btn = document.getElementById('gs-more-btn');
+  if (btn) btn.style.display = (val || _gsExpanded) ? 'none' : '';
 }
 
 (function(){
