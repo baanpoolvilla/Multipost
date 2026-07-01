@@ -154,6 +154,12 @@
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:.35rem;flex-wrap:wrap">
+          <!-- Schedule link -->
+          <a href="/schedule-post"
+            style="display:inline-flex;align-items:center;gap:.3rem;background:#f0f7ff;border:1.5px solid #1877f2;border-radius:7px;padding:.26rem .65rem;font-size:.78rem;cursor:pointer;font-family:inherit;color:#1877f2;font-weight:600;text-decoration:none;transition:background .15s"
+            onmouseover="this.style.background='#dbeafe'" onmouseout="this.style.background='#f0f7ff'">
+            <i class="fa-solid fa-clock"></i> ตั้งเวลา
+          </a>
           <!-- Tips popup button -->
           <div style="position:relative" id="webTipsWrap">
             <button type="button" id="btnWebTips" onclick="toggleWebTips(event)"
@@ -193,33 +199,8 @@
               </div>
             </div>
           </div>
-          <button type="button" id="scheduleToggleBtn" onclick="toggleSchedule()"
-            style="display:inline-flex;align-items:center;gap:.3rem;background:#f0f2f5;border:none;border-radius:7px;padding:.28rem .65rem;font-size:.78rem;cursor:pointer;font-family:inherit;color:#65676b;transition:background .15s">
-            <i class="fa-solid fa-clock"></i> ตั้งเวลา
-          </button>
-          <div id="scheduledAtWrap" class="dt24-wrap" style="display:none">
-            <input type="date" lang="en-GB" id="scheduledAt_d" style="cursor:pointer;min-width:110px">
-            <input type="number" id="scheduledAt_h" min="0" max="23" placeholder="ชม." style="width:44px;text-align:center">
-            <span>:</span>
-            <input type="number" id="scheduledAt_m" min="0" max="59" placeholder="น." style="width:44px;text-align:center">
-            <button type="button" onclick="dtToday('scheduledAt')" title="วันนี้ตอนนี้"
-              style="background:#e7f0fd;border:none;border-radius:6px;padding:.2rem .4rem;font-size:.72rem;cursor:pointer;color:#1877f2;font-family:inherit;font-weight:600">วันนี้</button>
-            <button type="button" onclick="dtQuick('scheduledAt',60)" title="+1 ชั่วโมง"
-              style="background:#f0f2f5;border:none;border-radius:6px;padding:.2rem .4rem;font-size:.72rem;cursor:pointer;color:#444;font-family:inherit">+1ชม.</button>
-            <button type="button" onclick="dtQuick('scheduledAt',180)" title="+3 ชั่วโมง"
-              style="background:#f0f2f5;border:none;border-radius:6px;padding:.2rem .4rem;font-size:.72rem;cursor:pointer;color:#444;font-family:inherit">+3ชม.</button>
-            <button type="button" onclick="dtQuick('scheduledAt',1440)" title="+1 วัน"
-              style="background:#f0f2f5;border:none;border-radius:6px;padding:.2rem .4rem;font-size:.72rem;cursor:pointer;color:#444;font-family:inherit">+1วัน</button>
-            <button type="button" id="composeTimelineBtn" onclick="toggleComposeTimeline()" title="ดูปฏิทินคิวที่ตั้งไว้"
-              style="background:#e7f0fd;border:none;border-radius:7px;padding:.28rem .5rem;font-size:.78rem;cursor:pointer;color:#1877f2">
-              <i class="fa-solid fa-calendar-days"></i>
-            </button>
-            <button type="button" onclick="dt24Set('scheduledAt','');toggleSchedule()" title="ล้างเวลา"
-              style="background:none;border:none;font-size:.78rem;cursor:pointer;color:#999;padding:0 .2rem">✕</button>
-          </div>
         </div>
       </div>
-      <div id="composeTimelineView" class="card" style="display:none;padding:1rem 1.25rem;overflow-x:auto;margin-top:.6rem"></div>
 
       <div class="composer-submit-row">
         <div class="pages-badge">
