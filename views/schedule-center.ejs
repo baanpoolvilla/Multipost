@@ -207,7 +207,7 @@
     <div class="kpi-grid">
 
       <!-- โพสลงเพจ -->
-      <div class="kpi-card" style="--kpi-c:var(--c-blue)">
+      <div id="kc-page-total" class="kpi-card" style="--kpi-c:var(--c-blue)">
         <div class="kpi-top">
           <div class="kpi-icon" style="background:#e7f3ff">
             <i class="fa-solid fa-pen-to-square" style="color:var(--c-blue)"></i>
@@ -223,7 +223,7 @@
       </div>
 
       <!-- ผลสำเร็จ -->
-      <div class="kpi-card" style="--kpi-c:var(--c-green)">
+      <div id="kc-page-results" class="kpi-card" style="--kpi-c:var(--c-green)">
         <div class="kpi-top">
           <div class="kpi-icon" style="background:#e8fde8">
             <i class="fa-solid fa-circle-check" style="color:var(--c-green)"></i>
@@ -235,7 +235,7 @@
       </div>
 
       <!-- งานแชร์กลุ่ม -->
-      <div class="kpi-card" style="--kpi-c:var(--c-purple)">
+      <div id="kc-group-jobs" class="kpi-card" style="--kpi-c:var(--c-purple)">
         <div class="kpi-top">
           <div class="kpi-icon" style="background:#f5f0ff">
             <i class="fa-solid fa-users-rectangle" style="color:var(--c-purple)"></i>
@@ -247,7 +247,7 @@
       </div>
 
       <!-- อัตราสำเร็จกลุ่ม -->
-      <div class="kpi-card" style="--kpi-c:var(--c-amber)">
+      <div id="kc-group-rate" class="kpi-card" style="--kpi-c:var(--c-amber)">
         <div class="kpi-top">
           <div class="kpi-icon" style="background:#fffde7">
             <i class="fa-solid fa-chart-pie" style="color:var(--c-amber)"></i>
@@ -294,7 +294,7 @@
       </div>
 
       <!-- Agent breakdown -->
-      <div class="db-card" style="display:flex;flex-direction:column">
+      <div id="card-agent" class="db-card" style="display:flex;flex-direction:column">
         <div class="s-hd">
           <div class="s-hd-l">
             <i class="fa-solid fa-robot" style="color:var(--c-purple)"></i>
@@ -309,7 +309,7 @@
     </div>
 
     <!-- ══ Donut (1/3) + Engagement (2/3) ══ -->
-    <div class="row-2" style="grid-template-columns:1fr 2fr">
+    <div id="row-donut-eng" class="row-2" style="grid-template-columns:1fr 2fr">
 
       <!-- Status donut -->
       <div class="db-card" style="display:flex;flex-direction:column">
@@ -369,7 +369,7 @@
     </div>
 
     <!-- ══ Per-page table ══ -->
-    <div class="db-card">
+    <div id="card-page-table" class="db-card">
       <div class="s-hd">
         <div class="s-hd-l">
           <i class="fa-solid fa-table-cells" style="color:var(--c-blue)"></i>
@@ -697,13 +697,27 @@ function setRange(r) {
   document.querySelectorAll('[data-range]').forEach(b=>b.classList.toggle('active',b.dataset.range===r));
   render();
 }
+function updateSections(type) {
+  const showPage  = type !== 'group';
+  const showGroup = type !== 'page';
+  const _s = (id, show) => { const el=document.getElementById(id); if(el) el.style.display = show ? '' : 'none'; };
+  _s('kc-page-total',   showPage);
+  _s('kc-page-results', showPage);
+  _s('kc-group-jobs',   showGroup);
+  _s('kc-group-rate',   showGroup);
+  _s('card-agent',      showGroup);
+  _s('row-donut-eng',   showPage);
+  _s('card-page-table', showPage);
+}
 function setType(t) {
   _type=t;
   document.querySelectorAll('[data-type]').forEach(b=>b.classList.toggle('type-active',b.dataset.type===t));
+  updateSections(t);
   render();
 }
 function clearFilters() {
   _range='all'; _type='';
+  updateSections('');
   document.querySelectorAll('[data-range]').forEach(b=>b.classList.toggle('active',b.dataset.range==='all'));
   document.querySelectorAll('[data-type]').forEach(b=>b.classList.toggle('type-active',b.dataset.type===''));
   document.getElementById('sc-search').value='';
