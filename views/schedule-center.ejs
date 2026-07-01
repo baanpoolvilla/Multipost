@@ -100,6 +100,14 @@
     /* ── No data ── */
     .no-data { text-align:center; color:#ccc; font-size:.78rem; padding:1.6rem 0 }
 
+    /* ── Clickable rows ── */
+    .db-tbl tbody tr.clickable { cursor:pointer }
+    .db-tbl tbody tr.clickable:hover td { background:#f0f7ff }
+    .kpi-card.clickable:hover { box-shadow:0 4px 20px rgba(24,119,242,.13); transform:translateY(-1px); transition:box-shadow .15s,transform .15s }
+    .kpi-card.clickable { cursor:pointer; transition:box-shadow .15s,transform .15s }
+    .agent-row.clickable { cursor:pointer }
+    .agent-row.clickable:hover { background:#f8faff; border-radius:8px; margin:0 -.5rem; padding-left:.5rem; padding-right:.5rem }
+
     /* ── Active filter indicator ── */
     .filter-active-dot { display:none; width:6px; height:6px; background:var(--c-red); border-radius:50%; margin-left:.3rem }
     .has-filter .filter-active-dot { display:inline-block }
@@ -213,7 +221,7 @@
     <div class="kpi-grid">
 
       <!-- โพสลงเพจ -->
-      <div id="kc-page-total" class="kpi-card" style="--kpi-c:var(--c-blue)">
+      <div id="kc-page-total" class="kpi-card clickable" style="--kpi-c:var(--c-blue)" onclick="window.location='/history'" title="ดูประวัติโพสเพจ">
         <div class="kpi-top">
           <div class="kpi-icon" style="background:#e7f3ff">
             <i class="fa-solid fa-pen-to-square" style="color:var(--c-blue)"></i>
@@ -229,7 +237,7 @@
       </div>
 
       <!-- ผลสำเร็จ -->
-      <div id="kc-page-results" class="kpi-card" style="--kpi-c:var(--c-green)">
+      <div id="kc-page-results" class="kpi-card clickable" style="--kpi-c:var(--c-green)" onclick="window.location='/overview'" title="ดูภาพรวมโพสเพจ">
         <div class="kpi-top">
           <div class="kpi-icon" style="background:#e8fde8">
             <i class="fa-solid fa-circle-check" style="color:var(--c-green)"></i>
@@ -241,7 +249,7 @@
       </div>
 
       <!-- งานแชร์กลุ่ม -->
-      <div id="kc-group-jobs" class="kpi-card" style="--kpi-c:var(--c-purple)">
+      <div id="kc-group-jobs" class="kpi-card clickable" style="--kpi-c:var(--c-purple)" onclick="window.location='/job-queue'" title="ดูคิวโพสกลุ่ม">
         <div class="kpi-top">
           <div class="kpi-icon" style="background:#f5f0ff">
             <i class="fa-solid fa-users-rectangle" style="color:var(--c-purple)"></i>
@@ -253,7 +261,7 @@
       </div>
 
       <!-- อัตราสำเร็จกลุ่ม -->
-      <div id="kc-group-rate" class="kpi-card" style="--kpi-c:var(--c-amber)">
+      <div id="kc-group-rate" class="kpi-card clickable" style="--kpi-c:var(--c-amber)" onclick="window.location='/group-overview'" title="ดูภาพรวมกลุ่ม">
         <div class="kpi-top">
           <div class="kpi-icon" style="background:#fffde7">
             <i class="fa-solid fa-chart-pie" style="color:var(--c-amber)"></i>
@@ -604,7 +612,7 @@ function renderAgentList(all) {
       const t=d.success+d.fail;
       const r=t>0?Math.round(d.success/t*100):0;
       const col=rateColor(r);
-      return `<div class="agent-row">
+      return `<div class="agent-row clickable" onclick="window.location='/group-overview'">
         <div class="ag-name">
           <span style="display:inline-block;width:17px;height:17px;background:#f0f2f5;border-radius:5px;text-align:center;font-size:.65rem;line-height:17px;font-style:normal;margin-right:.35rem;font-family:sans-serif">${idx+1}</span>
           <i class="fa-solid fa-robot" style="color:var(--c-purple);font-size:.7rem;margin-right:.3rem"></i>${esc(ag)}
@@ -648,7 +656,7 @@ function renderPageTable(all) {
                  :d.pending>0?'<span class="bdg bdg-pnd">รออยู่</span>'
                  :d.success>0?'<span class="bdg bdg-ok">ปกติ</span>'
                  :'<span class="bdg bdg-oth">—</span>';
-      return `<tr>
+      return `<tr class="clickable" onclick="window.location='/overview'">
         <td style="font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(pg)}">${esc(pg)}</td>
         <td>${badge}</td>
         <td class="tc" style="font-weight:800">${d.posts}</td>
@@ -744,7 +752,7 @@ function renderGroupTable(all) {
                      :d.success>0?'<span class="bdg bdg-ok">ปกติ</span>'
                      :'<span class="bdg bdg-oth">—</span>';
       const pv=_groupPrivacyMap[g]||null;
-      return `<tr>
+      return `<tr class="clickable" onclick="window.location='/group-overview'">
         <td style="font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(g)}">${esc(g)}</td>
         <td>${pvBadge(pv)}</td>
         <td>${statBadge}</td>
