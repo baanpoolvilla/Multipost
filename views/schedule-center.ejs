@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Schedule Center - Multi Post System</title>
+  <title>Dashboard - Multi Post System</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -24,7 +24,7 @@
 <div class="page-wrap">
 
   <aside class="sidebar">
-    <a href="/schedule-center" class="sidebar-item active"><i class="fa-solid fa-calendar-days"></i><span>Schedule Center</span></a>
+    <a href="/schedule-center" class="sidebar-item active"><i class="fa-solid fa-house"></i><span>Dashboard</span></a>
     <div class="sidebar-divider"></div>
     <div class="sidebar-label">โพสลงเพจ</div>
     <a href="/" class="sidebar-item"><i class="fa-solid fa-pen-to-square"></i><span>โพสใหม่</span></a>
@@ -49,14 +49,9 @@
     <!-- Header -->
     <div class="card" style="padding:.85rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">
       <div class="card-title" style="font-size:1.05rem">
-        <i class="fa-solid fa-calendar-days"></i> Schedule Center
-        <span style="background:#e4e6ea;padding:.15rem .55rem;border-radius:999px;font-size:.8rem;margin-left:.4rem" id="scCount">0</span>
+        <i class="fa-solid fa-house"></i> Dashboard
       </div>
-      <div style="display:flex;gap:.4rem">
-        <button class="btn-link-sm" id="scViewList" onclick="scSetView('list')"><i class="fa-solid fa-list"></i> รายการ</button>
-        <button class="btn-link-sm" id="scViewCal"  onclick="scSetView('calendar')"><i class="fa-solid fa-calendar"></i> ปฏิทิน</button>
-        <button class="btn-link-sm" onclick="scRefresh()"><i class="fa-solid fa-rotate-right"></i> รีเฟรช</button>
-      </div>
+      <button class="btn-link-sm" onclick="scRefresh()"><i class="fa-solid fa-rotate-right"></i> รีเฟรช</button>
     </div>
 
     <!-- Metrics cards (Part 13) -->
@@ -73,66 +68,8 @@
       <canvas id="scChart" height="70"></canvas>
     </div>
 
-    <!-- Filters -->
-    <div class="card" style="padding:.7rem 1rem">
-      <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
-        <input id="scSearch" type="text" placeholder="ค้นหาข้อความ..." style="flex:1;min-width:160px;padding:.4rem .6rem;border:1px solid var(--border-color);border-radius:7px;font-size:.85rem;font-family:inherit">
-
-        <select id="scStatus" style="padding:.4rem .5rem;border:1px solid var(--border-color);border-radius:7px;font-size:.82rem">
-          <option value="">สถานะ: ทั้งหมด</option>
-          <option value="pending">รอ (Pending)</option>
-          <option value="running">กำลังโพส (Running)</option>
-          <option value="success">สำเร็จ (Success)</option>
-          <option value="failed">ล้มเหลว (Failed)</option>
-          <option value="expired">หมดเวลา (Expired)</option>
-          <option value="cancelled">ยกเลิก (Cancelled)</option>
-        </select>
-
-        <select id="scSource" style="padding:.4rem .5rem;border:1px solid var(--border-color);border-radius:7px;font-size:.82rem">
-          <option value="">แหล่งที่มา: ทั้งหมด</option>
-          <option value="web">Web</option>
-          <option value="agent">Agent</option>
-        </select>
-
-        <select id="scPage" style="padding:.4rem .5rem;border:1px solid var(--border-color);border-radius:7px;font-size:.82rem">
-          <option value="">เพจ: ทั้งหมด</option>
-        </select>
-
-        <select id="scGroup" style="padding:.4rem .5rem;border:1px solid var(--border-color);border-radius:7px;font-size:.82rem">
-          <option value="">กลุ่ม: ทั้งหมด</option>
-        </select>
-
-        <input id="scDateFrom" type="date" lang="en-GB" title="ตั้งแต่วันที่" style="padding:.38rem .5rem;border:1px solid var(--border-color);border-radius:7px;font-size:.82rem">
-        <span style="font-size:.8rem;color:var(--text-secondary)">ถึง</span>
-        <input id="scDateTo" type="date" lang="en-GB" title="ถึงวันที่" style="padding:.38rem .5rem;border:1px solid var(--border-color);border-radius:7px;font-size:.82rem">
-        <span id="scDateRangeErr" style="display:none;font-size:.75rem;color:#c62828;font-weight:600">⚠️ วันที่เริ่มต้องไม่เกินวันที่สิ้นสุด</span>
-
-        <select id="scGroupBy" style="padding:.4rem .5rem;border:1px solid var(--border-color);border-radius:7px;font-size:.82rem">
-          <option value="none">จัดกลุ่ม: ไม่จัดกลุ่ม</option>
-          <option value="status">จัดกลุ่มตามสถานะ</option>
-          <option value="page">จัดกลุ่มตามเพจ</option>
-          <option value="agent">จัดกลุ่มตาม Agent</option>
-          <option value="day">จัดกลุ่มตามวัน</option>
-          <option value="month">จัดกลุ่มตามเดือน</option>
-        </select>
-
-        <button class="btn-link-sm" onclick="scClearFilters()">ล้างตัวกรอง</button>
-      </div>
-    </div>
-
-    <!-- Expired banner -->
-    <div id="scExpiredBanner" class="card" style="display:none;padding:.65rem 1rem;background:#fde8e8;border:1px solid #f5b5b5;display:none;align-items:center;gap:.6rem;flex-wrap:wrap">
-      <i class="fa-solid fa-triangle-exclamation" style="color:#c62828"></i>
-      <span style="font-weight:600;color:#842029" id="scExpiredMsg"></span>
-      <button class="btn-link-sm" onclick="scFilterExpiredOnly()">ดูทั้งหมด</button>
-      <button class="btn-link-sm" style="color:#842029" onclick="scDeleteAllExpired()">ลบทั้งหมด</button>
-    </div>
-
-    <!-- List view -->
-    <div id="scListView" class="card" style="padding:.5rem .75rem"></div>
-
-    <!-- Calendar view -->
-    <div id="scCalView" class="card" style="display:none;padding:.75rem 1rem">
+    <!-- Calendar view (hidden, kept for future use) -->
+    <div id="scCalView" style="display:none">
       <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem;flex-wrap:wrap">
         <div class="status-filter">
           <button class="filter-btn active" data-unit="month" onclick="scSetCalUnit('month')">เดือน</button>
