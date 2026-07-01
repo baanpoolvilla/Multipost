@@ -167,6 +167,13 @@ exports.removeGroupFromCategory = async (req, res) => {
     res.json({ ok: true });
 };
 
+exports.setGroupPrivacy = async (req, res) => {
+    const { privacy } = req.body;   // 'public' | 'private' | null
+    const result = await groupStore.setPrivacy(req.params.id, privacy || null);
+    if (result.error) return res.status(400).json(result);
+    res.json({ ok: true });
+};
+
 exports.bulkRenameCategory = async (req, res) => {
     const { oldName, newName } = req.body;
     if (!oldName?.trim() || !newName?.trim())

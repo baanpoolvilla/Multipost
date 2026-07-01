@@ -244,5 +244,6 @@ router.delete('/api/agent/groups/:id',                  agentCtrl.deleteGroup);
 router.patch('/api/agent/groups/:id/category',          agentCtrl.updateGroupCategory);     // add to category
 router.delete('/api/agent/groups/:id/category',         agentCtrl.removeGroupFromCategory); // remove from category
 router.post('/api/agent/groups/rename-category',        agentCtrl.bulkRenameCategory);
+router.patch('/api/agent/groups/:id/privacy',           agentCtrl.setGroupPrivacy);
 
 module.exports = router;

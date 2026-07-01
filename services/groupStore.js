@@ -5,6 +5,7 @@ const groupSchema = new mongoose.Schema({
     groupId:    { type: String, required: true, unique: true },
     groupName:  { type: String, required: true },
     categories: { type: [String], default: ['ทั่วไป'] },
+    privacy:    { type: String, default: null },   // 'public' | 'private' | null
     addedAt:    { type: Date, default: Date.now },
 }, { versionKey: false });
 
@@ -108,4 +109,12 @@ async function bulkRemoveCategory(catName) {
     } catch(e) { return { error: e.message }; }
 }
 
-module.exports = { list, add, addToCategory, removeFromCategory, moveCategory, remove, bulkRenameCategory, bulkRemoveCategory };
+async function setPrivacy(id, privacy) {
+    try {
+        await connect();
+        const g = await Group.findByIdAndUpdate(id, { privacy: privacy || null }, { new: true }).lean();
+        return g ? { ok: true } : { error: 'ไม่พบกลุ่ม' };
+    } catch(e) { return { error: e.message }; }
+}
+
+module.exports = { list, add, addToCategory, removeFromCategory, moveCategory, remove, bulkRenameCategory, bulkRemoveCategory, setPrivacy };

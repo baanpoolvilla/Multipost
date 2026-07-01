@@ -278,6 +278,19 @@ groups.forEach(g => {
             <% } %>
           </div>
           <% } %>
+          <button class="privacy-btn"
+                  data-id="<%= g._id %>"
+                  data-privacy="<%= g.privacy || '' %>"
+                  onclick="togglePrivacy(this.dataset.id, this.dataset.privacy)"
+                  title="คลิกเปลี่ยน: Public / Private">
+            <% if (g.privacy === 'public') { %>
+              <span class="priv-badge priv-public">🌐 Public</span>
+            <% } else if (g.privacy === 'private') { %>
+              <span class="priv-badge priv-private">🔒 Private</span>
+            <% } else { %>
+              <span class="priv-badge priv-unknown">– –</span>
+            <% } %>
+          </button>
           <div class="group-actions">
             <% if (cat !== 'ทั่วไป' && cats.filter(c=>c!=='ทั่วไป').length > 1) { %>
             <button class="row-btn"
@@ -399,6 +412,20 @@ groups.forEach(g => {
 }
 .row-btn:hover { color:#1877f2;background:#e7f3ff }
 .row-btn-danger:hover { color:#fa5252 !important;background:#fff0f0 !important }
+
+/* Privacy badge */
+.privacy-btn {
+  background:none;border:none;cursor:pointer;padding:.1rem .2rem;border-radius:5px;
+  flex-shrink:0;display:flex;align-items:center;transition:background .1s
+}
+.privacy-btn:hover { background:#f0f2f5 }
+.priv-badge {
+  font-size:.67rem;border-radius:4px;padding:.06rem .32rem;
+  white-space:nowrap;border:1px solid;pointer-events:none;font-weight:600
+}
+.priv-public  { background:#d3f9d8;color:#2f9e44;border-color:#b2f2bb }
+.priv-private { background:#fff4e6;color:#e67700;border-color:#ffd8a8 }
+.priv-unknown { background:#f1f3f5;color:#adb5bd;border-color:#dee2e6;font-weight:400 }
 
 /* More tabs dropdown */
 .more-tab-item {
@@ -780,6 +807,30 @@ function filterCat(cat) {
       btn.style.background  = '';
     }
   });
+}
+
+/* ── Privacy toggle ── */
+function _privHTML(p) {
+  if (p === 'public')  return '<span class="priv-badge priv-public">🌐 Public</span>';
+  if (p === 'private') return '<span class="priv-badge priv-private">🔒 Private</span>';
+  return '<span class="priv-badge priv-unknown">– –</span>';
+}
+async function togglePrivacy(id, current) {
+  const next = current === 'public' ? 'private' : current === 'private' ? null : 'public';
+  try {
+    const r = await fetch(`/api/agent/groups/${id}/privacy`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ privacy: next }),
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error);
+    document.querySelectorAll(`.privacy-btn[data-id="${id}"]`).forEach(btn => {
+      btn.dataset.privacy = next || '';
+      btn.innerHTML = _privHTML(next);
+    });
+  } catch(e) {
+    Swal.fire({ icon:'error', title:'เกิดข้อผิดพลาด', text:e.message, confirmButtonColor:'#1877f2' });
+  }
 }
 
 /* ── Category color picker ── */
