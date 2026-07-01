@@ -158,7 +158,7 @@
         <div>
           <label class="form-label">ตั้งเวลาโพส (ไม่บังคับ)</label>
           <div class="dt24-wrap">
-            <input type="date" lang="th" id="fScheduledAt_d">
+            <input type="date" lang="en-GB" id="fScheduledAt_d">
             <input type="number" id="fScheduledAt_h" min="0" max="23" placeholder="ชม.">
             <span>:</span>
             <input type="number" id="fScheduledAt_m" min="0" max="59" placeholder="นาที">
@@ -487,7 +487,7 @@ async function bulkRescheduleJobs() {
     html: `<div style="text-align:left">
       <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:.3rem">เวลาที่ต้องการโพส (ใช้กับทุกรายการที่เลือก)</label>
       <div class="dt24-wrap" style="margin-bottom:.4rem">
-        <input type="date" lang="th" id="swal-jqBulkAt_d" style="cursor:pointer;min-width:110px">
+        <input type="date" lang="en-GB" id="swal-jqBulkAt_d" style="cursor:pointer;min-width:110px">
         <input type="number" id="swal-jqBulkAt_h" min="0" max="23" placeholder="ชม." style="width:50px;text-align:center">
         <span>:</span>
         <input type="number" id="swal-jqBulkAt_m" min="0" max="59" placeholder="น." style="width:50px;text-align:center">
@@ -634,7 +634,7 @@ async function rescheduleJob(id, currentScheduledAt) {
     html: `<div style="text-align:left">
       <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:.3rem">เวลาที่ต้องการโพส</label>
       <div class="dt24-wrap" style="margin-bottom:.4rem">
-        <input type="date" lang="th" id="swal-schedAt_d" style="cursor:pointer;min-width:110px">
+        <input type="date" lang="en-GB" id="swal-schedAt_d" style="cursor:pointer;min-width:110px">
         <input type="number" id="swal-schedAt_h" min="0" max="23" placeholder="ชม." style="width:50px;text-align:center">
         <span>:</span>
         <input type="number" id="swal-schedAt_m" min="0" max="59" placeholder="น." style="width:50px;text-align:center">
@@ -720,9 +720,6 @@ async function checkAgent() {
 }
 checkAgent();
 </script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-<script>(function(){var O={dateFormat:'Y-m-d',altInput:true,altFormat:'d/m/Y',allowInput:true};function I(e){if(!e._flatpickr)flatpickr(e,O)}document.querySelectorAll('input[type="date"]').forEach(I);new MutationObserver(function(m){m.forEach(function(r){r.addedNodes.forEach(function(n){if(n.nodeType!==1)return;if(n.matches&&n.matches('input[type="date"]'))I(n);n.querySelectorAll&&n.querySelectorAll('input[type="date"]').forEach(I)})})}).observe(document.body,{childList:true,subtree:true})})()</script>
 
 </body>
 </html>

@@ -124,7 +124,7 @@
           <div style="font-size:.73rem;color:#8a8d91;font-weight:600;margin-bottom:.28rem">
             <i class="fa-solid fa-calendar-days" style="width:12px"></i> ตั้งแต่วันที่
           </div>
-          <input type="date" lang="th" id="hDateFrom" onchange="applyFilters()"
+          <input type="date" lang="en-GB" id="hDateFrom" onchange="applyFilters()"
             style="padding:.4rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;color:#444;outline:none;cursor:pointer">
         </div>
         <div>
@@ -140,7 +140,7 @@
         <div style="padding-bottom:.5rem;color:#bbb;font-size:.9rem">—</div>
         <div>
           <div style="font-size:.73rem;color:#8a8d91;font-weight:600;margin-bottom:.28rem">ถึงวันที่</div>
-          <input type="date" lang="th" id="hDateTo" onchange="applyFilters()"
+          <input type="date" lang="en-GB" id="hDateTo" onchange="applyFilters()"
             style="padding:.4rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;color:#444;outline:none;cursor:pointer">
         </div>
         <div>
@@ -595,9 +595,9 @@ async function showGroupSummaryModal() {
     html: `<div style="text-align:left;display:flex;flex-direction:column;gap:.55rem">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
         <div><label style="${_ghLs}">วันที่เริ่ม</label>
-          <input id="gh-from" type="date" lang="th" style="${_ghIs}"></div>
+          <input id="gh-from" type="date" lang="en-GB" style="${_ghIs}"></div>
         <div><label style="${_ghLs}">วันที่สิ้นสุด</label>
-          <input id="gh-to" type="date" lang="th" style="${_ghIs}"></div>
+          <input id="gh-to" type="date" lang="en-GB" style="${_ghIs}"></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
         <div><label style="${_ghLs}">เวลาเริ่ม (ไม่บังคับ)</label>
@@ -663,8 +663,5 @@ async function showGroupSummaryModal() {
   } catch { Swal.fire({ icon:'error', title:'เกิดข้อผิดพลาด', text:'ไม่สามารถโหลดข้อมูลได้' }); }
 }
 </script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-<script>(function(){var O={dateFormat:'Y-m-d',altInput:true,altFormat:'d/m/Y',allowInput:true};function I(e){if(!e._flatpickr)flatpickr(e,O)}document.querySelectorAll('input[type="date"]').forEach(I);new MutationObserver(function(m){m.forEach(function(r){r.addedNodes.forEach(function(n){if(n.nodeType!==1)return;if(n.matches&&n.matches('input[type="date"]'))I(n);n.querySelectorAll&&n.querySelectorAll('input[type="date"]').forEach(I)})})}).observe(document.body,{childList:true,subtree:true})})()</script>
 </body>
 </html>

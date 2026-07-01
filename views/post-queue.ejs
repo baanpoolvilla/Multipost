@@ -303,7 +303,7 @@ async function bulkReschedulePosts() {
     html: `<div style="text-align:left">
       <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:.3rem">เวลาที่ต้องการโพส (ใช้กับทุกรายการที่เลือก)</label>
       <div class="dt24-wrap">
-        <input type="date" lang="th" id="swal-pqBulkAt_d">
+        <input type="date" lang="en-GB" id="swal-pqBulkAt_d">
         <input type="number" id="swal-pqBulkAt_h" min="0" max="23" placeholder="ชม.">
         <span>:</span>
         <input type="number" id="swal-pqBulkAt_m" min="0" max="59" placeholder="นาที">
@@ -340,7 +340,7 @@ async function reschedulePostQ(id, currentScheduledAt) {
     html: `<div style="text-align:left">
       <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:.3rem">เวลาที่ต้องการโพส</label>
       <div class="dt24-wrap">
-        <input type="date" lang="th" id="swal-pqAt_d">
+        <input type="date" lang="en-GB" id="swal-pqAt_d">
         <input type="number" id="swal-pqAt_h" min="0" max="23" placeholder="ชม.">
         <span>:</span>
         <input type="number" id="swal-pqAt_m" min="0" max="59" placeholder="นาที">
@@ -384,9 +384,5 @@ async function deletePostQ(id) {
   }
 }
 </script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-<script>(function(){var O={dateFormat:'Y-m-d',altInput:true,altFormat:'d/m/Y',allowInput:true};function I(e){if(!e._flatpickr)flatpickr(e,O)}document.querySelectorAll('input[type="date"]').forEach(I);new MutationObserver(function(m){m.forEach(function(r){r.addedNodes.forEach(function(n){if(n.nodeType!==1)return;if(n.matches&&n.matches('input[type="date"]'))I(n);n.querySelectorAll&&n.querySelectorAll('input[type="date"]').forEach(I)})})}).observe(document.body,{childList:true,subtree:true})})()</script>
-
 </body>
 </html>
