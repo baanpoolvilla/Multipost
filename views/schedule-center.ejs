@@ -5,123 +5,104 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard - Multi Post System</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="/css/style.css">
   <style>
-    /* ── Global token ── */
     :root {
-      --db-blue:   #1877f2;
-      --db-green:  #2e7d32;
-      --db-purple: #7048e8;
-      --db-amber:  #f59f00;
-      --db-red:    #e03131;
-      --db-card-shadow: 0 2px 14px rgba(0,0,0,.07);
+      --c-blue:   #1877f2;
+      --c-green:  #2e7d32;
+      --c-purple: #7048e8;
+      --c-amber:  #f59f00;
+      --c-red:    #e03131;
+      --shadow:   0 2px 16px rgba(0,0,0,.07);
     }
 
-    /* ── Dashboard card ── */
-    .db-card {
-      background:#fff; border-radius:16px; padding:1rem 1.15rem;
-      box-shadow:var(--db-card-shadow); border:1px solid #f0f2f5
-    }
+    /* ── Cards ── */
+    .db-card { background:#fff; border-radius:16px; padding:1rem 1.15rem; box-shadow:var(--shadow); border:1px solid #f0f2f5 }
 
-    /* ── KPI cards ── */
+    /* ── KPI ── */
     .kpi-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:.7rem }
     .kpi-card {
-      background:#fff; border-radius:16px; padding:.9rem 1rem;
-      box-shadow:var(--db-card-shadow); border:1px solid #f0f2f5;
-      display:flex; align-items:center; gap:.85rem; position:relative; overflow:hidden
+      background:#fff; border-radius:16px; padding:1.1rem 1.1rem 1rem;
+      box-shadow:var(--shadow); border:1px solid #f0f2f5;
+      position:relative; overflow:hidden; cursor:default
     }
     .kpi-card::before {
-      content:''; position:absolute; left:0; top:0; bottom:0; width:4px;
-      background:var(--kpi-c,#1877f2); border-radius:4px 0 0 4px
+      content:''; position:absolute; top:0; left:0; right:0; height:3px;
+      background:var(--kpi-c,#1877f2); border-radius:16px 16px 0 0
     }
-    .kpi-icon {
-      width:44px; height:44px; border-radius:13px; flex-shrink:0;
-      display:flex; align-items:center; justify-content:center; font-size:1.1rem
-    }
-    .kpi-lbl { font-size:.7rem; color:#8a8d91; font-weight:600; margin-bottom:.08rem }
-    .kpi-val { font-size:1.55rem; font-weight:900; line-height:1.1; color:#1c1e21 }
-    .kpi-sub { font-size:.67rem; color:#aaa; margin-top:.15rem }
+    .kpi-top  { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:.5rem }
+    .kpi-icon { width:40px; height:40px; border-radius:11px; display:flex; align-items:center; justify-content:center; font-size:1rem; flex-shrink:0 }
+    .kpi-lbl  { font-size:.7rem; color:#8a8d91; font-weight:600; line-height:1.3; text-align:right; max-width:80px }
+    .kpi-val  { font-size:2rem; font-weight:900; line-height:1; color:#1c1e21; margin-bottom:.25rem }
+    .kpi-sub  { font-size:.68rem; color:#aaa }
 
-    /* ── Two-col row ── */
-    .db-row-2  { display:grid; gap:.7rem }
-    .db-row-21 { grid-template-columns:2fr 1fr }
-    .db-row-11 { grid-template-columns:1fr 1fr }
+    /* ── Layout rows ── */
+    .row-2  { display:grid; gap:.7rem }
+    .col-21 { grid-template-columns:2fr 1fr }
+    .col-11 { grid-template-columns:1fr 1fr }
 
-    /* ── Section title ── */
-    .s-hd {
-      display:flex; align-items:center; justify-content:space-between; margin-bottom:.8rem
-    }
+    /* ── Section heading ── */
+    .s-hd   { display:flex; align-items:center; justify-content:space-between; margin-bottom:.75rem }
     .s-hd-l { display:flex; align-items:center; gap:.45rem; font-size:.82rem; font-weight:700; color:#444 }
-    .s-link  { font-size:.73rem; font-weight:600; text-decoration:none; opacity:.75 }
+    .s-link { font-size:.73rem; font-weight:600; text-decoration:none; opacity:.75 }
 
     /* ── Engagement boxes ── */
     .eng-grid { display:grid; grid-template-columns:1fr 1fr; gap:.55rem }
-    .eng-box  { border-radius:12px; padding:.75rem .8rem; border:1.5px solid #f0f2f5; background:#fafbfc }
-    .eng-num  { font-size:1.2rem; font-weight:900; line-height:1 }
+    .eng-box  { border-radius:12px; padding:.75rem .85rem; border:1.5px solid #f0f2f5; background:#fafbfc }
+    .eng-num  { font-size:1.25rem; font-weight:900; line-height:1 }
     .eng-lbl  { font-size:.68rem; color:#8a8d91; margin-top:.2rem }
 
     /* ── Agent list ── */
     .agent-row { padding:.6rem 0; border-bottom:1px solid #f2f4f5 }
-    .agent-row:last-child { border-bottom:none }
-    .ag-name  { font-size:.78rem; font-weight:700; font-family:monospace; color:#1c1e21; margin-bottom:.3rem }
-    .ag-sub   { font-size:.7rem; color:#8a8d91; margin-bottom:.32rem }
+    .agent-row:last-child { border-bottom:none; padding-bottom:0 }
+    .ag-name { font-size:.78rem; font-weight:700; font-family:monospace; color:#1c1e21; margin-bottom:.28rem }
+    .ag-sub  { font-size:.7rem; color:#8a8d91; margin-bottom:.32rem; line-height:1.6 }
     .rate-trk { background:#e9ecef; border-radius:999px; height:7px; overflow:hidden }
-    .rate-fil { height:7px; border-radius:999px; transition:width .5s }
+    .rate-fil { height:7px; border-radius:999px; transition:width .55s }
 
-    /* ── Donut legend ── */
-    .d-legend { display:flex; flex-direction:column; gap:.4rem; margin-top:.65rem }
-    .d-leg-row { display:flex; align-items:center; gap:.5rem; font-size:.74rem }
-    .d-dot { width:10px; height:10px; border-radius:3px; flex-shrink:0 }
+    /* ── Donut ── */
+    .d-legend    { display:flex; flex-direction:column; gap:.38rem; margin-top:.6rem }
+    .d-leg-row   { display:flex; align-items:center; gap:.5rem; font-size:.74rem }
+    .d-dot       { width:10px; height:10px; border-radius:3px; flex-shrink:0 }
 
     /* ── Table ── */
-    .db-tbl { width:100%; border-collapse:collapse; font-size:.77rem }
-    .db-tbl th {
-      background:#f5f7fb; color:#65676b; font-weight:700; font-size:.71rem;
-      padding:.48rem .65rem; text-align:left; border-bottom:2px solid #e8eaf0; white-space:nowrap
-    }
+    .tbl-wrap { overflow-x:auto }
+    .db-tbl   { width:100%; border-collapse:collapse; font-size:.77rem }
+    .db-tbl th { background:#f5f7fb; color:#65676b; font-weight:700; font-size:.71rem; padding:.48rem .65rem; text-align:left; border-bottom:2px solid #e8eaf0; white-space:nowrap }
     .db-tbl td { padding:.44rem .65rem; border-bottom:1px solid #f2f4f5; vertical-align:middle }
     .db-tbl tbody tr:last-child td { border-bottom:none }
     .db-tbl tbody tr:hover td { background:#f8faff }
     .db-tbl .tc { text-align:center }
-    .tbl-wrap { overflow-x:auto }
-    .mini-rt { display:inline-flex; align-items:center; gap:.3rem }
-    .mini-bg { width:42px; height:5px; background:#e9ecef; border-radius:999px; overflow:hidden }
-    .mini-fg { height:5px; border-radius:999px }
-
-    /* ── Badges ── */
-    .bdg { display:inline-block; padding:.1rem .42rem; border-radius:5px; font-size:.67rem; font-weight:700 }
-    .bdg-ok  { background:#e8f5e9; color:#2e7d32 }
-    .bdg-err { background:#ffebee; color:#c62828 }
-    .bdg-pnd { background:#fffde7; color:#856404 }
-    .bdg-oth { background:#f3f4f6; color:#888 }
+    .mini-rt  { display:inline-flex; align-items:center; gap:.3rem }
+    .mini-bg  { width:42px; height:5px; background:#e9ecef; border-radius:999px; overflow:hidden }
+    .mini-fg  { height:5px; border-radius:999px }
+    .bdg      { display:inline-block; padding:.1rem .42rem; border-radius:5px; font-size:.67rem; font-weight:700 }
+    .bdg-ok   { background:#e8f5e9; color:#2e7d32 }
+    .bdg-err  { background:#ffebee; color:#c62828 }
+    .bdg-pnd  { background:#fffde7; color:#856404 }
+    .bdg-oth  { background:#f3f4f6; color:#888 }
 
     /* ── Filter bar ── */
-    .fb-row { display:flex; align-items:center; gap:.45rem; flex-wrap:wrap }
-    .fb-sep { width:1px; height:18px; background:#e8eaed; flex-shrink:0 }
-    .fpill {
-      padding:.24rem .65rem; border-radius:20px; border:1.5px solid #dde1e7;
-      font-size:.73rem; font-family:inherit; cursor:pointer; background:#fff; color:#555; font-weight:600;
-      transition:all .12s
-    }
-    .fpill.active { background:var(--db-blue); color:#fff; border-color:var(--db-blue) }
-    .db-sel {
-      border:1.5px solid #dde1e7; border-radius:8px; padding:.27rem .55rem;
-      font-size:.74rem; font-family:inherit; background:#fff; cursor:pointer; outline:none; min-width:105px
-    }
-    .db-sel:focus { border-color:var(--db-blue) }
-    .srch-w { position:relative }
+    .fb-row   { display:flex; align-items:center; gap:.4rem; flex-wrap:nowrap }
+    .fb-sep   { width:1px; height:18px; background:#e8eaed; flex-shrink:0 }
+    .fpill    { padding:.24rem .65rem; border-radius:20px; border:1.5px solid #dde1e7; font-size:.73rem; font-family:inherit; cursor:pointer; background:#fff; color:#555; font-weight:600; transition:background .12s,color .12s,border-color .12s; white-space:nowrap }
+    .fpill.active { background:var(--c-blue); color:#fff; border-color:var(--c-blue) }
+    .fpill.type-active { background:#1c1e21; color:#fff; border-color:#1c1e21 }
+    .db-sel   { border:1.5px solid #dde1e7; border-radius:8px; padding:.27rem .55rem; font-size:.73rem; font-family:inherit; background:#fff; cursor:pointer; outline:none }
+    .db-sel:focus { border-color:var(--c-blue) }
+    .srch-w   { position:relative; flex:1; min-width:0 }
     .srch-w i { position:absolute; left:.55rem; top:50%; transform:translateY(-50%); color:#ccc; font-size:.7rem; pointer-events:none }
-    .srch-i {
-      border:1.5px solid #dde1e7; border-radius:8px;
-      padding:.27rem .6rem .27rem 1.55rem;
-      font-size:.74rem; font-family:inherit; outline:none; width:155px
-    }
-    .srch-i:focus { border-color:var(--db-blue) }
+    .srch-i   { width:100%; box-sizing:border-box; border:1.5px solid #dde1e7; border-radius:8px; padding:.27rem .6rem .27rem 1.55rem; font-size:.73rem; font-family:inherit; outline:none }
+    .srch-i:focus { border-color:var(--c-blue) }
 
     /* ── No data ── */
-    .no-data { text-align:center; color:#ccc; font-size:.78rem; padding:1.5rem 0 }
+    .no-data { text-align:center; color:#ccc; font-size:.78rem; padding:1.6rem 0 }
+
+    /* ── Active filter indicator ── */
+    .filter-active-dot { display:none; width:6px; height:6px; background:var(--c-red); border-radius:50%; margin-left:.3rem }
+    .has-filter .filter-active-dot { display:inline-block }
   </style>
 </head>
 <body>
@@ -158,134 +139,198 @@
 
   <main class="feed" style="display:flex;flex-direction:column;gap:.7rem">
 
-    <!-- ── Header + Filter ── -->
-    <div class="db-card" style="padding:.8rem 1.15rem">
+    <!-- ══ Header + Filter ══ -->
+    <div class="db-card" style="padding:.85rem 1.15rem">
+
+      <!-- Title row -->
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.65rem">
-        <span style="font-weight:800;font-size:1rem;color:#1c1e21;display:flex;align-items:center;gap:.4rem">
-          <i class="fa-solid fa-house" style="color:var(--db-blue)"></i> Dashboard
-        </span>
-        <div style="display:flex;align-items:center;gap:.6rem">
+        <div style="display:flex;align-items:center;gap:.45rem">
+          <i class="fa-solid fa-house" style="color:var(--c-blue)"></i>
+          <span style="font-weight:800;font-size:1rem;color:#1c1e21">Dashboard</span>
+          <div class="filter-active-dot" id="filter-dot"></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:.55rem">
           <span id="last-update" style="font-size:.68rem;color:#ccc"></span>
           <button class="btn-link-sm" onclick="scRefresh()" id="refresh-btn">
             <i class="fa-solid fa-rotate-right"></i> รีเฟรช
           </button>
         </div>
       </div>
-      <div class="fb-row">
-        <div style="display:flex;gap:.25rem">
+
+      <!-- Filter row 1: Date · Type · Status -->
+      <div class="fb-row" style="margin-bottom:.4rem">
+        <i class="fa-solid fa-calendar-days" style="color:#bbb;font-size:.72rem;flex-shrink:0"></i>
+        <div style="display:flex;gap:.22rem;flex-shrink:0">
           <button class="fpill active" data-range="all"   onclick="setRange('all')">ทั้งหมด</button>
           <button class="fpill"        data-range="today" onclick="setRange('today')">วันนี้</button>
           <button class="fpill"        data-range="7d"    onclick="setRange('7d')">7 วัน</button>
           <button class="fpill"        data-range="30d"   onclick="setRange('30d')">30 วัน</button>
         </div>
         <div class="fb-sep"></div>
-        <div class="srch-w">
-          <i class="fa-solid fa-magnifying-glass"></i>
-          <input id="sc-search" class="srch-i" type="text" placeholder="ค้นหาข้อความ...">
+        <i class="fa-solid fa-layer-group" style="color:#bbb;font-size:.72rem;flex-shrink:0"></i>
+        <div style="display:flex;gap:.22rem;flex-shrink:0">
+          <button class="fpill type-active" data-type=""      onclick="setType('')">ทั้งหมด</button>
+          <button class="fpill"             data-type="page"  onclick="setType('page')">📄 เพจ</button>
+          <button class="fpill"             data-type="group" onclick="setType('group')">👥 กลุ่ม</button>
         </div>
-        <select id="sc-page"  class="db-sel"><option value="">📄 ทุกเพจ</option></select>
-        <select id="sc-agent" class="db-sel"><option value="">🤖 ทุก Agent</option></select>
-        <button class="btn-link-sm" onclick="clearFilters()" style="color:#aaa;white-space:nowrap">
-          <i class="fa-solid fa-xmark"></i> ล้าง
+        <div class="fb-sep"></div>
+        <select id="sc-status" class="db-sel">
+          <option value="">🏷 ทุกสถานะ</option>
+          <option value="success">✅ สำเร็จ</option>
+          <option value="failed">❌ ล้มเหลว</option>
+          <option value="pending">⏳ รอดำเนินการ</option>
+          <option value="running">🔄 กำลังทำงาน</option>
+          <option value="expired">⏰ หมดเวลา</option>
+          <option value="cancelled">🚫 ยกเลิก</option>
+        </select>
+      </div>
+
+      <!-- Filter row 2: Search · Page · Agent · Clear -->
+      <div class="fb-row">
+        <div class="srch-w" style="max-width:200px">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input id="sc-search" class="srch-i" type="text" placeholder="ค้นหาข้อความโพส...">
+        </div>
+        <select id="sc-page"  class="db-sel" style="min-width:100px">
+          <option value="">📄 ทุกเพจ</option>
+        </select>
+        <select id="sc-agent" class="db-sel" style="min-width:105px">
+          <option value="">🤖 ทุก Agent</option>
+        </select>
+        <button class="btn-link-sm" onclick="clearFilters()" style="color:#bbb;white-space:nowrap;flex-shrink:0">
+          <i class="fa-solid fa-rotate-left"></i> ล้างทั้งหมด
         </button>
       </div>
     </div>
 
-    <!-- ── KPI Row ── -->
+    <!-- ══ KPI Row ══ -->
     <div class="kpi-grid">
-      <div class="kpi-card" style="--kpi-c:var(--db-blue)">
-        <div class="kpi-icon" style="background:#e7f3ff">
-          <i class="fa-solid fa-pen-to-square" style="color:var(--db-blue)"></i>
-        </div>
-        <div>
+
+      <!-- โพสลงเพจ -->
+      <div class="kpi-card" style="--kpi-c:var(--c-blue)">
+        <div class="kpi-top">
+          <div class="kpi-icon" style="background:#e7f3ff">
+            <i class="fa-solid fa-pen-to-square" style="color:var(--c-blue)"></i>
+          </div>
           <div class="kpi-lbl">โพสลงเพจ</div>
-          <div class="kpi-val" id="k-p-total">—</div>
-          <div class="kpi-sub">สำเร็จ <span id="k-p-succ" style="color:var(--db-green);font-weight:700">—</span> · ล้มเหลว <span id="k-p-fail" style="color:var(--db-red);font-weight:700">—</span></div>
+        </div>
+        <div class="kpi-val" id="k-p-total">—</div>
+        <div class="kpi-sub">
+          ✅ <span id="k-p-succ" style="color:var(--c-green);font-weight:700">—</span>
+          &nbsp;❌ <span id="k-p-fail" style="color:var(--c-red);font-weight:700">—</span>
+          &nbsp;⏳ <span id="k-p-pend" style="font-weight:600">—</span>
         </div>
       </div>
-      <div class="kpi-card" style="--kpi-c:var(--db-green)">
-        <div class="kpi-icon" style="background:#e8fde8">
-          <i class="fa-solid fa-circle-check" style="color:var(--db-green)"></i>
-        </div>
-        <div>
+
+      <!-- ผลสำเร็จ -->
+      <div class="kpi-card" style="--kpi-c:var(--c-green)">
+        <div class="kpi-top">
+          <div class="kpi-icon" style="background:#e8fde8">
+            <i class="fa-solid fa-circle-check" style="color:var(--c-green)"></i>
+          </div>
           <div class="kpi-lbl">ผลโพสสำเร็จ (ครั้ง)</div>
-          <div class="kpi-val" id="k-p-results">—</div>
-          <div class="kpi-sub">ใน <span id="k-p-pages" style="font-weight:700;color:var(--db-blue)">—</span> เพจ</div>
         </div>
+        <div class="kpi-val" id="k-p-results">—</div>
+        <div class="kpi-sub">ใน <span id="k-p-pages" style="color:var(--c-blue);font-weight:700">—</span> เพจ · อัตรา <span id="k-p-rate" style="font-weight:700">—</span></div>
       </div>
-      <div class="kpi-card" style="--kpi-c:var(--db-purple)">
-        <div class="kpi-icon" style="background:#f5f0ff">
-          <i class="fa-solid fa-users-rectangle" style="color:var(--db-purple)"></i>
-        </div>
-        <div>
+
+      <!-- งานแชร์กลุ่ม -->
+      <div class="kpi-card" style="--kpi-c:var(--c-purple)">
+        <div class="kpi-top">
+          <div class="kpi-icon" style="background:#f5f0ff">
+            <i class="fa-solid fa-users-rectangle" style="color:var(--c-purple)"></i>
+          </div>
           <div class="kpi-lbl">งานแชร์กลุ่ม</div>
-          <div class="kpi-val" id="k-g-jobs">—</div>
-          <div class="kpi-sub">กลุ่มในระบบ <strong style="color:var(--db-purple)"><%= gTotal %></strong> กลุ่ม</div>
         </div>
+        <div class="kpi-val" id="k-g-jobs">—</div>
+        <div class="kpi-sub">ระบบมี <strong style="color:var(--c-purple)"><%= gTotal %></strong> กลุ่ม · โพสแล้ว <span id="k-g-posted" style="font-weight:700">—</span> ครั้ง</div>
       </div>
-      <div class="kpi-card" style="--kpi-c:var(--db-amber)">
-        <div class="kpi-icon" style="background:#fffde7">
-          <i class="fa-solid fa-chart-pie" style="color:var(--db-amber)"></i>
-        </div>
-        <div>
+
+      <!-- อัตราสำเร็จกลุ่ม -->
+      <div class="kpi-card" style="--kpi-c:var(--c-amber)">
+        <div class="kpi-top">
+          <div class="kpi-icon" style="background:#fffde7">
+            <i class="fa-solid fa-chart-pie" style="color:var(--c-amber)"></i>
+          </div>
           <div class="kpi-lbl">อัตราสำเร็จกลุ่ม</div>
-          <div class="kpi-val" id="k-g-rate">—</div>
-          <div class="kpi-sub">โพสแล้ว <span id="k-g-posted" style="font-weight:700">—</span> ครั้ง</div>
         </div>
+        <div class="kpi-val" id="k-g-rate" style="font-size:2rem">—</div>
+        <div class="kpi-sub">✅ <span id="k-g-succ" style="color:var(--c-green);font-weight:700">—</span> &nbsp;❌ <span id="k-g-fail" style="color:var(--c-red);font-weight:700">—</span></div>
       </div>
     </div>
 
-    <!-- ── Activity chart + Status donut ── -->
-    <div class="db-row-2 db-row-21">
+    <!-- ══ Chart (2/3) + Agent (1/3) ══ -->
+    <div class="row-2 col-21">
+
+      <!-- Activity chart -->
       <div class="db-card">
         <div class="s-hd">
           <div class="s-hd-l">
-            <i class="fa-solid fa-chart-column" style="color:var(--db-blue)"></i>
+            <i class="fa-solid fa-chart-column" style="color:var(--c-blue)"></i>
             กิจกรรมรวม
-            <span style="font-weight:400;font-size:.7rem;color:#bbb">
-              <span style="display:inline-block;width:8px;height:8px;background:var(--db-blue);border-radius:2px;margin:0 3px 0 5px"></span>โพสเพจ
-              <span style="display:inline-block;width:8px;height:8px;background:var(--db-green);border-radius:2px;margin:0 3px 0 5px"></span>แชร์กลุ่ม
+            <span style="font-weight:400;font-size:.7rem;color:#ccc">
+              <span style="display:inline-block;width:8px;height:8px;background:var(--c-blue);border-radius:2px;margin:0 3px 0 4px"></span>โพสเพจ
+              <span style="display:inline-block;width:8px;height:8px;background:var(--c-green);border-radius:2px;margin:0 3px 0 5px"></span>แชร์กลุ่ม
             </span>
           </div>
-          <div class="status-filter" style="gap:.25rem">
+          <div class="status-filter" style="gap:.22rem">
             <button class="filter-btn active" data-cu="day"   onclick="setChartUnit('day')">วัน</button>
             <button class="filter-btn"        data-cu="month" onclick="setChartUnit('month')">เดือน</button>
             <button class="filter-btn"        data-cu="year"  onclick="setChartUnit('year')">ปี</button>
           </div>
         </div>
-        <canvas id="actChart" height="90"></canvas>
+        <canvas id="actChart" height="95"></canvas>
       </div>
 
+      <!-- Agent breakdown -->
       <div class="db-card" style="display:flex;flex-direction:column">
         <div class="s-hd">
           <div class="s-hd-l">
-            <i class="fa-solid fa-circle-half-stroke" style="color:var(--db-purple)"></i>
-            สถานะโพสเพจ
+            <i class="fa-solid fa-robot" style="color:var(--c-purple)"></i>
+            แยกตาม Agent
+          </div>
+          <a href="/group-overview" class="s-link" style="color:var(--c-purple)">ดูเพิ่ม →</a>
+        </div>
+        <div id="agent-list" style="overflow-y:auto;flex:1">
+          <div class="no-data">กำลังโหลด...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ Donut (1/3) + Engagement (2/3) ══ -->
+    <div class="row-2" style="grid-template-columns:1fr 2fr">
+
+      <!-- Status donut -->
+      <div class="db-card" style="display:flex;flex-direction:column">
+        <div class="s-hd">
+          <div class="s-hd-l">
+            <i class="fa-solid fa-circle-half-stroke" style="color:var(--c-purple)"></i>
+            สัดส่วนโพสเพจ
           </div>
         </div>
         <div style="flex:1;display:flex;align-items:center;justify-content:center;min-height:130px;position:relative">
-          <canvas id="donutChart" style="max-height:130px;max-width:130px"></canvas>
-          <div id="donut-center" style="position:absolute;text-align:center;pointer-events:none">
-            <div id="donut-total" style="font-size:1.4rem;font-weight:900;color:#333;line-height:1">—</div>
-            <div style="font-size:.65rem;color:#aaa">โพสทั้งหมด</div>
+          <canvas id="donutChart" style="max-height:120px;max-width:120px"></canvas>
+          <div style="position:absolute;text-align:center;pointer-events:none">
+            <div id="donut-total" style="font-size:1.5rem;font-weight:900;color:#333;line-height:1">—</div>
+            <div style="font-size:.62rem;color:#aaa">โพสทั้งหมด</div>
           </div>
         </div>
         <div class="d-legend" id="donut-legend"></div>
       </div>
-    </div>
 
-    <!-- ── Engagement + Agent breakdown ── -->
-    <div class="db-row-2 db-row-11">
+      <!-- Engagement -->
       <div class="db-card">
         <div class="s-hd">
           <div class="s-hd-l">
-            <i class="fa-solid fa-fire" style="color:var(--db-amber)"></i>
-            Engagement (โพสเพจ)
+            <i class="fa-solid fa-fire" style="color:var(--c-amber)"></i>
+            Engagement
+            <span style="font-size:.68rem;font-weight:400;color:#aaa">(จากโพสเพจ)</span>
           </div>
+          <a href="/overview" class="s-link" style="color:var(--c-blue)">ดูรายละเอียด →</a>
         </div>
         <div class="eng-grid">
           <div class="eng-box" style="border-color:#c8d8f5">
-            <div class="eng-num" id="e-likes" style="color:var(--db-blue)">—</div>
+            <div class="eng-num" id="e-likes" style="color:var(--c-blue)">—</div>
             <div class="eng-lbl">👍 ไลค์</div>
           </div>
           <div class="eng-box" style="border-color:#ffd9a0">
@@ -293,47 +338,33 @@
             <div class="eng-lbl">💬 คอมเมนต์</div>
           </div>
           <div class="eng-box" style="border-color:#c8e6c9">
-            <div class="eng-num" id="e-shares" style="color:var(--db-green)">—</div>
+            <div class="eng-num" id="e-shares" style="color:var(--c-green)">—</div>
             <div class="eng-lbl">🔁 แชร์</div>
           </div>
           <div class="eng-box" style="border-color:#d4c5f9">
-            <div class="eng-num" id="e-reach" style="color:var(--db-purple)">—</div>
+            <div class="eng-num" id="e-reach" style="color:var(--c-purple)">—</div>
             <div class="eng-lbl">👀 Reach</div>
           </div>
         </div>
-        <!-- Page success rate bar -->
-        <div style="margin-top:.9rem;border-top:1px solid #f2f4f5;padding-top:.8rem">
-          <div style="display:flex;justify-content:space-between;font-size:.72rem;margin-bottom:.35rem">
-            <span style="color:#aaa;font-weight:600">อัตราสำเร็จโพสเพจ</span>
-            <span id="e-prate" style="font-weight:800">—</span>
+        <!-- Page success rate -->
+        <div style="margin-top:.9rem;padding-top:.8rem;border-top:1px solid #f2f4f5">
+          <div style="display:flex;justify-content:space-between;margin-bottom:.35rem">
+            <span style="font-size:.72rem;color:#aaa;font-weight:600">อัตราสำเร็จโพสเพจ</span>
+            <span id="e-prate" style="font-size:.85rem;font-weight:800;color:var(--c-green)">—</span>
           </div>
-          <div class="rate-trk">
-            <div class="rate-fil" id="e-prate-bar" style="background:var(--db-blue);width:0%"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="db-card" style="display:flex;flex-direction:column">
-        <div class="s-hd">
-          <div class="s-hd-l">
-            <i class="fa-solid fa-robot" style="color:var(--db-purple)"></i>
-            แยกตาม Agent
-          </div>
-        </div>
-        <div id="agent-list" style="overflow-y:auto;flex:1;max-height:200px">
-          <div class="no-data">กำลังโหลด...</div>
+          <div class="rate-trk"><div class="rate-fil" id="e-prate-bar" style="background:var(--c-green);width:0%"></div></div>
         </div>
       </div>
     </div>
 
-    <!-- ── Per-page detail table ── -->
+    <!-- ══ Per-page table ══ -->
     <div class="db-card">
       <div class="s-hd">
         <div class="s-hd-l">
-          <i class="fa-solid fa-table-cells" style="color:var(--db-blue)"></i>
+          <i class="fa-solid fa-table-cells" style="color:var(--c-blue)"></i>
           ภาพรวมแต่ละเพจ
         </div>
-        <a href="/overview" class="s-link" style="color:var(--db-blue)">ดูรายละเอียด →</a>
+        <a href="/overview" class="s-link" style="color:var(--c-blue)">ดูรายละเอียด →</a>
       </div>
       <div class="tbl-wrap" id="page-table-wrap">
         <div class="no-data">กำลังโหลด...</div>
@@ -344,16 +375,17 @@
 </div>
 
 <script>
-let _items    = <%- JSON.stringify(items) %>;
-let _range    = 'all';
+let _items     = <%- JSON.stringify(items) %>;
+let _range     = 'all';
+let _type      = '';
 let _chartUnit = 'day';
-let _actChart = null;
-let _donut    = null;
+let _actChart  = null;
+let _donut     = null;
 
-const fmt = n  => Number(n).toLocaleString();
+const fmt = n   => Number(n).toLocaleString();
 const set = (id,v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
-const esc = s  => String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
-const rc  = r  => r>=80?'var(--db-green)':r>=50?'var(--db-amber)':'var(--db-red)';
+const esc = s   => String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+const rateColor = r => r>=80?'var(--c-green)':r>=50?'var(--c-amber)':'var(--c-red)';
 
 /* ── Populate dropdowns ── */
 function populateFilters() {
@@ -378,16 +410,29 @@ function filterByRange(items) {
     :_range==='7d'?now-7*86400000:now-30*86400000;
   return items.filter(i=>new Date(i.createdAt).getTime()>=cut);
 }
+
 function getFiltered() {
-  const q=document.getElementById('sc-search').value.toLowerCase().trim();
-  const pg=document.getElementById('sc-page').value;
-  const ag=document.getElementById('sc-agent').value;
+  const q      = document.getElementById('sc-search').value.toLowerCase().trim();
+  const pg     = document.getElementById('sc-page').value;
+  const ag     = document.getElementById('sc-agent').value;
+  const status = document.getElementById('sc-status').value;
   return filterByRange(_items).filter(i=>{
-    if(q&&!i.message.toLowerCase().includes(q)) return false;
+    if(_type && i.type!==_type) return false;
+    if(q && !i.message.toLowerCase().includes(q)) return false;
     if(i.type==='page'  && pg && !(i.targetPages||[]).includes(pg)) return false;
     if(i.type==='group' && ag && i.agentId!==ag) return false;
+    if(status && i.status!==status) return false;
     return true;
   });
+}
+
+function updateFilterDot() {
+  const q  =document.getElementById('sc-search').value.trim();
+  const pg =document.getElementById('sc-page').value;
+  const ag =document.getElementById('sc-agent').value;
+  const st =document.getElementById('sc-status').value;
+  const active=q||pg||ag||st||_range!=='all'||_type!=='';
+  document.getElementById('filter-dot').style.display=active?'inline-block':'none';
 }
 
 /* ── KPI ── */
@@ -396,23 +441,33 @@ function renderKPI(all) {
   const gi=all.filter(i=>i.type==='group');
   const pSucc   =pi.filter(i=>i.status==='success').length;
   const pFail   =pi.filter(i=>i.status==='failed').length;
+  const pPend   =pi.filter(i=>['pending','running'].includes(i.status)).length;
   const pResults=pi.reduce((s,i)=>s+(i.successCount||0),0);
   const pPages  =new Set(pi.flatMap(i=>i.targetPages||[])).size;
+  const pRate   =pi.length>0?Math.round(pSucc/pi.length*100):0;
   const gJobs   =gi.length;
   const gSuccess=gi.reduce((s,i)=>s+(i.successCount||0),0);
   const gFailed =gi.reduce((s,i)=>s+(i.failCount||0),0);
   const gPosted =gSuccess+gFailed;
   const gRate   =gPosted>0?Math.round(gSuccess/gPosted*100):0;
+
   set('k-p-total',   fmt(pi.length));
   set('k-p-succ',    fmt(pSucc));
   set('k-p-fail',    fmt(pFail));
+  set('k-p-pend',    fmt(pPend));
   set('k-p-results', fmt(pResults));
   set('k-p-pages',   fmt(pPages));
+  set('k-p-rate',    pRate+'%');
   set('k-g-jobs',    fmt(gJobs));
-  set('k-g-rate',    gRate+'%');
   set('k-g-posted',  fmt(gPosted));
-  const re=document.getElementById('k-g-rate');
-  if(re) re.style.color=rc(gRate);
+  set('k-g-succ',    fmt(gSuccess));
+  set('k-g-fail',    fmt(gFailed));
+  set('k-g-rate',    gRate+'%');
+
+  const rEl=document.getElementById('k-g-rate');
+  if(rEl) rEl.style.color=rateColor(gRate);
+  const rpEl=document.getElementById('k-p-rate');
+  if(rpEl) rpEl.style.color=rateColor(pRate);
 }
 
 /* ── Engagement ── */
@@ -421,14 +476,14 @@ function renderEngagement(all) {
   let lk=0,co=0,sh=0,re=0;
   pi.forEach(i=>{const a=i.analytics||{};lk+=a.likes||0;co+=a.comments||0;sh+=a.shares||0;re+=a.reach||0;});
   set('e-likes',fmt(lk)); set('e-comments',fmt(co)); set('e-shares',fmt(sh)); set('e-reach',fmt(re));
-  const succ=pi.filter(i=>i.status==='success').length;
-  const prate=pi.length>0?Math.round(succ/pi.length*100):0;
-  const col=rc(prate);
-  set('e-prate',prate+'%');
+  const pSucc=pi.filter(i=>i.status==='success').length;
+  const pRate=pi.length>0?Math.round(pSucc/pi.length*100):0;
+  const col=rateColor(pRate);
+  set('e-prate', pRate+'%');
   const rEl=document.getElementById('e-prate');
   const bar=document.getElementById('e-prate-bar');
   if(rEl)rEl.style.color=col;
-  if(bar){bar.style.width=prate+'%';bar.style.background=col;}
+  if(bar){bar.style.width=pRate+'%';bar.style.background=col;}
 }
 
 /* ── Donut ── */
@@ -441,26 +496,27 @@ function renderDonut(all) {
     pi.filter(i=>['expired','cancelled'].includes(i.status)).length,
   ];
   const labels=['สำเร็จ','ล้มเหลว','รอ/กำลัง','อื่นๆ'];
-  const colors=['#2e7d32','#e03131','#f59f00','#aaa'];
+  const colors=['#2e7d32','#e03131','#f59f00','#ccc'];
   const total=pi.length;
-  set('donut-total',fmt(total));
+  set('donut-total', fmt(total));
   const ctx=document.getElementById('donutChart');
   if(_donut)_donut.destroy();
   _donut=new Chart(ctx,{
     type:'doughnut',
     data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:2,borderColor:'#fff',hoverBorderColor:'#fff'}]},
     options:{
-      cutout:'65%',responsive:true,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw}  (${total>0?Math.round(c.raw/total*100):0}%)`}}}
+      cutout:'64%',responsive:true,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw} (${total>0?Math.round(c.raw/total*100):0}%)`}}}
     }
   });
   document.getElementById('donut-legend').innerHTML=labels.map((l,i)=>
     `<div class="d-leg-row">
       <div class="d-dot" style="background:${colors[i]}"></div>
       <span style="color:#555;flex:1">${l}</span>
-      <span style="font-weight:700;color:#333">${data[i]}</span>
-      <span style="color:#bbb;font-size:.68rem;min-width:32px;text-align:right">${total>0?Math.round(data[i]/total*100):0}%</span>
-    </div>`).join('');
+      <span style="font-weight:700;color:#333;min-width:24px;text-align:right">${data[i]}</span>
+      <span style="color:#bbb;font-size:.68rem;min-width:30px;text-align:right">${total>0?Math.round(data[i]/total*100):0}%</span>
+    </div>`
+  ).join('');
 }
 
 /* ── Agent list ── */
@@ -480,18 +536,21 @@ function renderAgentList(all) {
   });
   wrap.innerHTML=Object.entries(map)
     .sort((a,b)=>b[1].jobs-a[1].jobs)
-    .map(([ag,d])=>{
+    .map(([ag,d],idx)=>{
       const t=d.success+d.fail;
       const r=t>0?Math.round(d.success/t*100):0;
-      const col=rc(r);
+      const col=rateColor(r);
       return `<div class="agent-row">
-        <div class="ag-name"><i class="fa-solid fa-robot" style="color:var(--db-purple);font-size:.68rem;margin-right:.3rem"></i>${esc(ag)}</div>
+        <div class="ag-name">
+          <span style="display:inline-block;width:17px;height:17px;background:#f0f2f5;border-radius:5px;text-align:center;font-size:.65rem;line-height:17px;font-style:normal;margin-right:.35rem;font-family:sans-serif">${idx+1}</span>
+          <i class="fa-solid fa-robot" style="color:var(--c-purple);font-size:.7rem;margin-right:.3rem"></i>${esc(ag)}
+        </div>
         <div class="ag-sub">
-          ${d.jobs} งาน · ${d.groups.size} กลุ่ม ·
-          <span style="color:var(--db-green)">✅ ${d.success}</span> ·
-          <span style="color:var(--db-red)">❌ ${d.fail}</span>
-          ${d.pending?`· <span style="color:var(--db-amber)">⏳ ${d.pending}</span>`:''}
-          · <span style="color:${col};font-weight:700">${r}%</span>
+          ${d.jobs} งาน · ${d.groups.size} กลุ่ม
+          ${d.pending?`· <span style="color:var(--c-amber)">⏳ ${d.pending} รอ</span>`:''}
+          · <span style="color:var(--c-green)">✅ ${d.success}</span>
+          · <span style="color:var(--c-red)">❌ ${d.fail}</span>
+          · <strong style="color:${col}">${r}%</strong>
         </div>
         <div class="rate-trk"><div class="rate-fil" style="width:${r}%;background:${col}"></div></div>
       </div>`;
@@ -509,38 +568,37 @@ function renderPageTable(all) {
     pgs.forEach(pg=>{
       if(!map[pg])map[pg]={posts:0,success:0,failed:0,pending:0,lk:0,co:0,sh:0,re:0};
       map[pg].posts++;
-      if(item.status==='success')                       map[pg].success++;
-      else if(item.status==='failed')                   map[pg].failed++;
+      if(item.status==='success')                          map[pg].success++;
+      else if(item.status==='failed')                      map[pg].failed++;
       else if(['pending','running'].includes(item.status)) map[pg].pending++;
       const a=item.analytics||{};
-      map[pg].lk+=a.likes||0;map[pg].co+=a.comments||0;
-      map[pg].sh+=a.shares||0;map[pg].re+=a.reach||0;
+      map[pg].lk+=a.likes||0;map[pg].co+=a.comments||0;map[pg].sh+=a.shares||0;map[pg].re+=a.reach||0;
     });
   });
   const rows=Object.entries(map)
     .sort((a,b)=>b[1].posts-a[1].posts)
     .map(([pg,d])=>{
       const r=d.posts>0?Math.round(d.success/d.posts*100):0;
-      const col=rc(r);
+      const col=rateColor(r);
       const badge=d.failed>0?'<span class="bdg bdg-err">มีล้มเหลว</span>'
                  :d.pending>0?'<span class="bdg bdg-pnd">รออยู่</span>'
                  :d.success>0?'<span class="bdg bdg-ok">ปกติ</span>'
                  :'<span class="bdg bdg-oth">—</span>';
       return `<tr>
-        <td style="font-weight:600;max-width:155px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(pg)}">${esc(pg)}</td>
+        <td style="font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(pg)}">${esc(pg)}</td>
         <td>${badge}</td>
         <td class="tc" style="font-weight:800">${d.posts}</td>
-        <td class="tc" style="color:var(--db-green);font-weight:700">${d.success}</td>
-        <td class="tc" style="color:var(--db-red)">${d.failed}</td>
-        <td class="tc" style="color:var(--db-amber)">${d.pending}</td>
-        <td class="tc" style="color:var(--db-blue)">${fmt(d.lk)}</td>
+        <td class="tc" style="color:var(--c-green);font-weight:700">${d.success}</td>
+        <td class="tc" style="color:var(--c-red)">${d.failed}</td>
+        <td class="tc" style="color:var(--c-amber)">${d.pending}</td>
+        <td class="tc" style="color:var(--c-blue)">${fmt(d.lk)}</td>
         <td class="tc" style="color:#e67700">${fmt(d.co)}</td>
-        <td class="tc" style="color:var(--db-green)">${fmt(d.sh)}</td>
-        <td class="tc" style="color:var(--db-purple)">${fmt(d.re)}</td>
+        <td class="tc" style="color:var(--c-green)">${fmt(d.sh)}</td>
+        <td class="tc" style="color:var(--c-purple)">${fmt(d.re)}</td>
         <td class="tc">
           <div class="mini-rt">
             <div class="mini-bg"><div class="mini-fg" style="width:${r}%;background:${col}"></div></div>
-            <span style="color:${col};font-weight:700;min-width:32px">${r}%</span>
+            <span style="color:${col};font-weight:700;min-width:30px">${r}%</span>
           </div>
         </td>
       </tr>`;
@@ -585,7 +643,7 @@ function renderActChart(all) {
       responsive:true,
       plugins:{legend:{display:false}},
       scales:{
-        x:{grid:{display:false},ticks:{font:{size:10}}},
+        x:{grid:{display:false},ticks:{font:{size:10},maxRotation:30}},
         y:{beginAtZero:true,ticks:{precision:0,font:{size:10}},grid:{color:'#f2f4f5'}}
       }
     }
@@ -601,20 +659,29 @@ function render() {
   renderAgentList(f);
   renderPageTable(f);
   renderActChart(f);
+  updateFilterDot();
   set('last-update','อัปเดต '+new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}));
 }
 
+/* ── Controls ── */
 function setRange(r) {
   _range=r;
   document.querySelectorAll('[data-range]').forEach(b=>b.classList.toggle('active',b.dataset.range===r));
   render();
 }
+function setType(t) {
+  _type=t;
+  document.querySelectorAll('[data-type]').forEach(b=>b.classList.toggle('type-active',b.dataset.type===t));
+  render();
+}
 function clearFilters() {
-  _range='all';
+  _range='all'; _type='';
   document.querySelectorAll('[data-range]').forEach(b=>b.classList.toggle('active',b.dataset.range==='all'));
+  document.querySelectorAll('[data-type]').forEach(b=>b.classList.toggle('type-active',b.dataset.type===''));
   document.getElementById('sc-search').value='';
   document.getElementById('sc-page').value='';
   document.getElementById('sc-agent').value='';
+  document.getElementById('sc-status').value='';
   render();
 }
 async function scRefresh() {
@@ -629,9 +696,10 @@ async function scRefresh() {
   if(btn)btn.innerHTML='<i class="fa-solid fa-rotate-right"></i> รีเฟรช';
 }
 
-document.getElementById('sc-search').addEventListener('input', render);
-document.getElementById('sc-page').addEventListener('change', render);
-document.getElementById('sc-agent').addEventListener('change', render);
+['sc-search','sc-page','sc-agent','sc-status'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(el) el.addEventListener(id==='sc-search'?'input':'change', render);
+});
 
 populateFilters();
 render();
@@ -640,6 +708,6 @@ setInterval(scRefresh, 60000);
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-<script>(function(){var O={dateFormat:'Y-m-d',altInput:true,altFormat:'d/m/Y',allowInput:true,disableMobile:true};function I(e){if(e._flatpickr)return;flatpickr(e,O);var ai=e._flatpickr&&e._flatpickr.altInput;if(ai){var s=e.getAttribute('style');if(s)ai.style.cssText=s;ai.style.cursor='pointer';ai.placeholder=e.getAttribute('title')||e.getAttribute('placeholder')||'วว/ดด/ปปปป';}}document.querySelectorAll('input[type="date"]').forEach(I);new MutationObserver(function(m){m.forEach(function(r){r.addedNodes.forEach(function(n){if(n.nodeType!==1)return;if(n.matches&&n.matches('input[type="date"]'))I(n);n.querySelectorAll&&n.querySelectorAll('input[type="date"]').forEach(I)})})}).observe(document.body,{childList:true,subtree:true});})()</script>
+<script>(function(){var O={dateFormat:'Y-m-d',altInput:true,altFormat:'d/m/Y',allowInput:true,disableMobile:true};function I(e){if(e._flatpickr)return;flatpickr(e,O);}document.querySelectorAll('input[type="date"]').forEach(I);new MutationObserver(function(m){m.forEach(function(r){r.addedNodes.forEach(function(n){if(n.nodeType!==1)return;if(n.matches&&n.matches('input[type="date"]'))I(n);n.querySelectorAll&&n.querySelectorAll('input[type="date"]').forEach(I)})})}).observe(document.body,{childList:true,subtree:true});})()</script>
 </body>
 </html>
