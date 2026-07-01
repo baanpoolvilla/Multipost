@@ -68,10 +68,16 @@
         <span style="font-weight:700;font-size:.88rem;color:#444">
           <i class="fa-solid fa-filter" style="color:#1877f2;font-size:.8rem;margin-right:.3rem"></i>ค้นหาและกรอง
         </span>
-        <button onclick="clearFilters()" id="btnClearFilter"
-          style="background:#fff0f0;border:1px solid #fcc;border-radius:7px;padding:.22rem .6rem;font-size:.77rem;font-family:inherit;color:#c62828;cursor:pointer;font-weight:600;transition:opacity .15s;opacity:.35;pointer-events:none">
-          <i class="fa-solid fa-rotate-left"></i> ล้างตัวกรอง
-        </button>
+        <div style="display:flex;gap:.4rem">
+          <button onclick="toggleGroupTimeline()" id="btnGroupTimeline"
+            style="background:#fff3cd;border:1px solid #ffe08a;border-radius:7px;padding:.22rem .6rem;font-size:.77rem;font-family:inherit;color:#856404;cursor:pointer;font-weight:600">
+            <i class="fa-solid fa-calendar-days"></i> ปฏิทิน
+          </button>
+          <button onclick="clearFilters()" id="btnClearFilter"
+            style="background:#fff0f0;border:1px solid #fcc;border-radius:7px;padding:.22rem .6rem;font-size:.77rem;font-family:inherit;color:#c62828;cursor:pointer;font-weight:600;transition:opacity .15s;opacity:.35;pointer-events:none">
+            <i class="fa-solid fa-rotate-left"></i> ล้างตัวกรอง
+          </button>
+        </div>
       </div>
 
       <!-- Row 1: search + status + group + category + privacy -->
@@ -186,6 +192,8 @@
       </a>
     </div>
     <% } %>
+
+    <div id="hGTimelineView" class="card" style="display:none;padding:1rem 1.25rem;overflow-x:auto"></div>
 
     <% const colors = ['purple','green','orange','blue','red']; %>
     <% jobs.forEach(job => { %>
@@ -360,12 +368,14 @@
   const _groupPrivacyMap = <%- JSON.stringify(groupPrivacyMap) %>;
 
   const _hJobs = <%- JSON.stringify(jobs.map(j => ({
-    id:      String(j._id),
-    msg:     j.message || '',
-    at:      j.createdAt,
-    success: j.successCount || 0,
-    fail:    j.failCount || 0,
-    groups:  (j.groups || []).map(g => ({ id: g.groupId, name: g.groupName })),
+    id:          String(j._id),
+    msg:         j.message || '',
+    at:          j.createdAt,
+    status:      j.status || 'pending',
+    scheduledAt: j.scheduledAt || null,
+    success:     j.successCount || 0,
+    fail:        j.failCount || 0,
+    groups:      (j.groups || []).map(g => ({ id: g.groupId, name: g.groupName })),
   }))) %>;
 
   // Populate group select
@@ -684,6 +694,61 @@ async function showGroupSummaryModal() {
       confirmButtonText: 'ปิด', confirmButtonColor: '#2e7d32', width: '440px',
     });
   } catch { Swal.fire({ icon:'error', title:'เกิดข้อผิดพลาด', text:'ไม่สามารถโหลดข้อมูลได้' }); }
+}
+
+let _ghTimelineOn = false;
+function toggleGroupTimeline() {
+  _ghTimelineOn = !_ghTimelineOn;
+  const view = document.getElementById('hGTimelineView');
+  const btn  = document.getElementById('btnGroupTimeline');
+  document.querySelectorAll('.history-card').forEach(c => { c.style.display = _ghTimelineOn ? 'none' : ''; });
+  if (_ghTimelineOn) {
+    renderGroupTimeline();
+    view.style.display = '';
+    btn.style.background = '#856404'; btn.style.color = '#fff';
+  } else {
+    view.style.display = 'none';
+    btn.style.background = '#fff3cd'; btn.style.color = '#856404';
+    applyFilters();
+  }
+}
+
+function renderGroupTimeline() {
+  const view = document.getElementById('hGTimelineView');
+  const items = _hJobs.filter(j => j.status === 'pending' && j.scheduledAt);
+  if (!items.length) {
+    view.innerHTML = '<div style="text-align:center;padding:2rem;color:#8a8d91">ไม่มีงานแชร์ที่ตั้งเวลาไว้</div>';
+    return;
+  }
+  const byDate = {};
+  items.forEach(j => {
+    const d   = new Date(j.scheduledAt);
+    const key = d.toLocaleDateString('en-CA');
+    (byDate[key] = byDate[key] || []).push(j);
+  });
+  const now       = new Date();
+  const hourLines = [0, 4, 8, 12, 16, 20];
+  const cols = Object.keys(byDate).sort().map(key => {
+    const d     = new Date(key + 'T00:00:00');
+    const label = d.toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' });
+    const chips = byDate[key].map(j => {
+      const t       = new Date(j.scheduledAt);
+      const top     = ((t.getHours() + t.getMinutes() / 60) / 24 * 100).toFixed(2);
+      const overdue = t < now;
+      const time    = t.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false });
+      const grpTxt  = (j.groups || []).map(g => g.name).join(', ').slice(0, 30);
+      const msg     = (j.msg || '').slice(0, 25).replace(/'/g, '&#39;');
+      return `<div title="${time} — ${msg}\n${grpTxt}"
+        style="position:absolute;left:4px;right:4px;top:${top}%;background:${overdue ? '#fde8e8' : '#f0fdf4'};color:${overdue ? '#c62828' : '#2e7d32'};border:1px solid ${overdue ? '#f5b5b5' : '#86efac'};border-radius:5px;padding:.15rem .35rem;font-size:.68rem;font-weight:600;cursor:default;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;z-index:1">
+        ${overdue ? '⚠️' : '⏰'} ${time} ${msg}</div>`;
+    }).join('');
+    const lines = hourLines.map(h => `<div style="position:absolute;left:0;right:0;top:${(h/24*100).toFixed(2)}%;border-top:1px dashed #eee;font-size:.62rem;color:#bbb;padding-left:2px">${String(h).padStart(2,'0')}:00</div>`).join('');
+    return `<div style="flex:0 0 150px;min-width:150px">
+      <div style="font-size:.78rem;font-weight:700;color:#444;text-align:center;margin-bottom:.4rem">${label}</div>
+      <div style="position:relative;height:360px;background:#fafbfc;border:1px solid #eee;border-radius:8px">${lines}${chips}</div>
+    </div>`;
+  }).join('');
+  view.innerHTML = `<div style="font-size:.8rem;font-weight:700;color:#555;margin-bottom:.65rem"><i class="fa-solid fa-calendar-days" style="color:#856404;margin-right:.35rem"></i>งานแชร์ที่ตั้งเวลาไว้ (${items.length} งาน)</div><div style="display:flex;gap:.6rem">${cols}</div>`;
 }
 </script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
