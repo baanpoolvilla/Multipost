@@ -428,7 +428,7 @@ async function openAddPage() {
       </div>
       <input id="sw-name"   class="swal2-input" placeholder="ชื่อเพจ (กรอกเองหรือดึงอัตโนมัติ)">
       <input id="sw-id"     class="swal2-input" placeholder="Page ID (ดึงอัตโนมัติจาก Token)">
-      <input id="sw-expiry" class="swal2-input" type="date" placeholder="วันหมดอายุ">`,
+      <input id="sw-expiry" class="swal2-input" type="date" lang="th" placeholder="วันหมดอายุ">`,
     showCancelButton: true,
     confirmButtonColor: '#1877f2',
     confirmButtonText: 'เพิ่มเพจ',
@@ -482,7 +482,7 @@ async function openEditPage(pageId, pageName, token, expiry) {
       <input id="sw-name"   class="swal2-input" value="${pageName}" placeholder="ชื่อเพจ">
       <input id="sw-token"  class="swal2-input" value="${token}" placeholder="Access Token">
       <label style="font-size:.82rem;color:#65676b;display:block;margin:.4rem 0 .1rem;text-align:left;padding:0 .6rem">วันหมดอายุ Token</label>
-      <input id="sw-expiry" class="swal2-input" type="date" value="${defDate}">`,
+      <input id="sw-expiry" class="swal2-input" type="date" lang="th" value="${defDate}">`,
     showCancelButton: true,
     confirmButtonColor: '#1877f2',
     confirmButtonText: 'บันทึก',

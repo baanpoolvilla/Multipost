@@ -102,9 +102,9 @@
           <option value="">กลุ่ม: ทั้งหมด</option>
         </select>
 
-        <input id="scDateFrom" type="date" style="padding:.38rem .5rem;border:1px solid var(--border-color);border-radius:7px;font-size:.82rem">
+        <input id="scDateFrom" type="date" lang="th" style="padding:.38rem .5rem;border:1px solid var(--border-color);border-radius:7px;font-size:.82rem">
         <span style="font-size:.8rem;color:var(--text-secondary)">ถึง</span>
-        <input id="scDateTo" type="date" style="padding:.38rem .5rem;border:1px solid var(--border-color);border-radius:7px;font-size:.82rem">
+        <input id="scDateTo" type="date" lang="th" style="padding:.38rem .5rem;border:1px solid var(--border-color);border-radius:7px;font-size:.82rem">
         <span id="scDateRangeErr" style="display:none;font-size:.75rem;color:#c62828;font-weight:600">⚠️ วันที่เริ่มต้องไม่เกินวันที่สิ้นสุด</span>
 
         <select id="scGroupBy" style="padding:.4rem .5rem;border:1px solid var(--border-color);border-radius:7px;font-size:.82rem">
@@ -201,7 +201,7 @@ function dt24Html(prefix, localStr) {
   const qs = (min,lbl) => `<button type="button" onclick="dtQuick('${prefix}',${min})" style="background:#f0f2f5;border:none;border-radius:6px;padding:.28rem .4rem;font-size:.72rem;cursor:pointer;color:#444;font-family:inherit">${lbl}</button>`;
   return `<div style="display:flex;gap:.3rem;align-items:center;flex-wrap:wrap">
     <div class="dt24-wrap" style="display:flex;gap:.3rem;align-items:center">
-      <input type="date" id="${prefix}_d" value="${d||''}" style="padding:.35rem;border:1px solid #ddd;border-radius:6px;cursor:pointer;min-width:110px">
+      <input type="date" lang="th" id="${prefix}_d" value="${d||''}" style="padding:.35rem;border:1px solid #ddd;border-radius:6px;cursor:pointer;min-width:110px">
       <input type="number" id="${prefix}_h" value="${h||''}" min="0" max="23" placeholder="ชม." style="width:50px;padding:.35rem;border:1px solid #ddd;border-radius:6px;text-align:center">
       :
       <input type="number" id="${prefix}_m" value="${m||''}" min="0" max="59" placeholder="น." style="width:50px;padding:.35rem;border:1px solid #ddd;border-radius:6px;text-align:center">

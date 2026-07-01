@@ -339,11 +339,11 @@ async function showSummaryModal() {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
           <div>
             <label style="${_ls}">วันที่เริ่ม <span style="color:#c62828">*</span></label>
-            <input id="sm-dfrom" type="date" value="${today}" style="${_is}">
+            <input id="sm-dfrom" type="date" lang="th" value="${today}" style="${_is}">
           </div>
           <div>
             <label style="${_ls}">วันที่สิ้นสุด</label>
-            <input id="sm-dto" type="date" value="${today}" style="${_is}">
+            <input id="sm-dto" type="date" lang="th" value="${today}" style="${_is}">
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
@@ -542,9 +542,9 @@ async function showPageRangeModal() {
     html: `<div style="text-align:left;display:flex;flex-direction:column;gap:.55rem">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
         <div><label style="${_prLs}">วันที่เริ่ม</label>
-          <input id="pr-from" type="date" style="${_prIs}"></div>
+          <input id="pr-from" type="date" lang="th" style="${_prIs}"></div>
         <div><label style="${_prLs}">วันที่สิ้นสุด</label>
-          <input id="pr-to" type="date" style="${_prIs}"></div>
+          <input id="pr-to" type="date" lang="th" style="${_prIs}"></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
         <div><label style="${_prLs}">เวลาเริ่ม (ไม่บังคับ)</label>
@@ -621,9 +621,9 @@ async function showGroupRangeModal() {
     html: `<div style="text-align:left;display:flex;flex-direction:column;gap:.55rem">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
         <div><label style="${_grLs}">วันที่เริ่ม</label>
-          <input id="gr-from" type="date" style="${_grIs}"></div>
+          <input id="gr-from" type="date" lang="th" style="${_grIs}"></div>
         <div><label style="${_grLs}">วันที่สิ้นสุด</label>
-          <input id="gr-to" type="date" style="${_grIs}"></div>
+          <input id="gr-to" type="date" lang="th" style="${_grIs}"></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
         <div><label style="${_grLs}">เวลาเริ่ม (ไม่บังคับ)</label>

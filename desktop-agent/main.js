@@ -1,6 +1,8 @@
 require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 
 const { app, BrowserWindow, ipcMain, shell, Notification } = require('electron');
+
+app.commandLine.appendSwitch('lang', 'th-TH');
 const path = require('path');
 const fs   = require('fs');
 const { randomUUID } = require('crypto');

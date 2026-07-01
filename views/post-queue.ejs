@@ -298,7 +298,7 @@ async function bulkReschedulePosts() {
     html: `<div style="text-align:left">
       <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:.3rem">เวลาที่ต้องการโพส (ใช้กับทุกรายการที่เลือก)</label>
       <div class="dt24-wrap">
-        <input type="date" id="swal-pqBulkAt_d">
+        <input type="date" lang="th" id="swal-pqBulkAt_d">
         <input type="number" id="swal-pqBulkAt_h" min="0" max="23" placeholder="ชม.">
         <span>:</span>
         <input type="number" id="swal-pqBulkAt_m" min="0" max="59" placeholder="นาที">
@@ -335,7 +335,7 @@ async function reschedulePostQ(id, currentScheduledAt) {
     html: `<div style="text-align:left">
       <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:.3rem">เวลาที่ต้องการโพส</label>
       <div class="dt24-wrap">
-        <input type="date" id="swal-pqAt_d">
+        <input type="date" lang="th" id="swal-pqAt_d">
         <input type="number" id="swal-pqAt_h" min="0" max="23" placeholder="ชม.">
         <span>:</span>
         <input type="number" id="swal-pqAt_m" min="0" max="59" placeholder="นาที">
