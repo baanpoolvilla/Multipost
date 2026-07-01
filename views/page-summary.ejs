@@ -69,10 +69,12 @@
       <!-- Quick period buttons -->
       <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.9rem">
         <button onclick="qPeriod('today')" data-period="today" class="q-btn">วันนี้</button>
-        <button onclick="qPeriod('7d')" data-period="7d" class="q-btn">7 วันที่ผ่านมา</button>
-        <button onclick="qPeriod('30d')" data-period="30d" class="q-btn">30 วันที่ผ่านมา</button>
-        <button onclick="qPeriod('month')" data-period="month" class="q-btn">เดือนนี้</button>
-        <button onclick="qPeriod('all')" data-period="all" class="q-btn">ทั้งหมด</button>
+        <button onclick="qPeriod('7d')"    data-period="7d"    class="q-btn">7 วัน</button>
+        <button onclick="qPeriod('15d')"   data-period="15d"   class="q-btn">15 วัน</button>
+        <button onclick="qPeriod('1m')"    data-period="1m"    class="q-btn">1 เดือน</button>
+        <button onclick="qPeriod('2m')"    data-period="2m"    class="q-btn">2 เดือน</button>
+        <button onclick="qPeriod('3m')"    data-period="3m"    class="q-btn">3 เดือน</button>
+        <button onclick="qPeriod('all')"   data-period="all"   class="q-btn">ทั้งหมด</button>
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem">
@@ -277,11 +279,15 @@ function qPeriod(type) {
   const today = _bkkDate(now);
   let fromD = today;
   if (type === '7d') {
-    const d = _bkk(); d.setDate(d.getDate() - 6); fromD = _bkkDate(d);
-  } else if (type === '30d') {
+    const d = _bkk(); d.setDate(d.getDate() - 6);  fromD = _bkkDate(d);
+  } else if (type === '15d') {
+    const d = _bkk(); d.setDate(d.getDate() - 14); fromD = _bkkDate(d);
+  } else if (type === '1m') {
     const d = _bkk(); d.setDate(d.getDate() - 29); fromD = _bkkDate(d);
-  } else if (type === 'month') {
-    fromD = `${now.getFullYear()}-${_pad(now.getMonth()+1)}-01`;
+  } else if (type === '2m') {
+    const d = _bkk(); d.setDate(d.getDate() - 59); fromD = _bkkDate(d);
+  } else if (type === '3m') {
+    const d = _bkk(); d.setDate(d.getDate() - 89); fromD = _bkkDate(d);
   }
   document.getElementById('ps-from').value = fromD;
   document.getElementById('ps-to').value = today;
@@ -314,13 +320,17 @@ function submitPS() {
   const today = _bkkDate(now);
   let active = (!curFrom && !curTo) ? 'all' : null;
   if (curFrom || curTo) {
-    const d7  = (() => { const d = _bkk(); d.setDate(d.getDate()-6); return _bkkDate(d); })();
-    const d30 = (() => { const d = _bkk(); d.setDate(d.getDate()-29); return _bkkDate(d); })();
-    const dMon = `${now.getFullYear()}-${_pad(now.getMonth()+1)}-01`;
+    const d7  = (() => { const d = _bkk(); d.setDate(d.getDate()-6);  return _bkkDate(d); })();
+    const d15 = (() => { const d = _bkk(); d.setDate(d.getDate()-14); return _bkkDate(d); })();
+    const d1m = (() => { const d = _bkk(); d.setDate(d.getDate()-29); return _bkkDate(d); })();
+    const d2m = (() => { const d = _bkk(); d.setDate(d.getDate()-59); return _bkkDate(d); })();
+    const d3m = (() => { const d = _bkk(); d.setDate(d.getDate()-89); return _bkkDate(d); })();
     if (curFrom===today && curTo===today) active='today';
-    else if (curFrom===d7 && curTo===today) active='7d';
-    else if (curFrom===d30 && curTo===today) active='30d';
-    else if (curFrom===dMon && curTo===today) active='month';
+    else if (curFrom===d7  && curTo===today) active='7d';
+    else if (curFrom===d15 && curTo===today) active='15d';
+    else if (curFrom===d1m && curTo===today) active='1m';
+    else if (curFrom===d2m && curTo===today) active='2m';
+    else if (curFrom===d3m && curTo===today) active='3m';
   }
   if (active) {
     const btn = document.querySelector('.q-btn[data-period="'+active+'"]');
