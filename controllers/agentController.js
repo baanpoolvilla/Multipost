@@ -185,6 +185,17 @@ exports.bulkRenameCategory = async (req, res) => {
     res.json({ ok: true });
 };
 
+// ── Schedule Group Post page (accessible only from /job-queue) ──
+exports.showScheduleGroupPost = async (req, res) => {
+    const referer = req.headers.referer || '';
+    const isAllowed = referer.includes('/job-queue') || referer.includes('/schedule-group-post');
+    if (!isAllowed) return res.redirect('/job-queue');
+    const [groups, dbCategories] = await Promise.all([groupStore.list(), categoryStore.list()]);
+    const catColorMap = { 'ทั่วไป': '#868e96' };
+    dbCategories.forEach(c => { catColorMap[c.name] = c.color || '#2e7d32'; });
+    res.render('schedule-group-post', { groups, catColorMap });
+};
+
 // ── Job Queue page ─────────────────────────────────────────────
 exports.showJobQueue = async (req, res) => {
     await groupJobStore.expireOverdueJobs().catch(() => {});
