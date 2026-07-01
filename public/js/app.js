@@ -635,6 +635,11 @@ function _toBkkLocal(date) {
 /* ═══════════════════════════════════════════
    24-hour date/time widget helpers
 ═══════════════════════════════════════════ */
+function _fpSetDate(el, dateStr) {
+  if (!el) return;
+  if (el._flatpickr) el._flatpickr.setDate(dateStr || null, false);
+  else el.value = dateStr || '';
+}
 function dt24Get(prefix) {
   const d = document.getElementById(prefix+'_d')?.value;
   if (!d) return '';
@@ -644,7 +649,7 @@ function dt24Get(prefix) {
 }
 function dt24Set(prefix, localStr) {
   const [d,t] = (localStr||'').split('T');
-  document.getElementById(prefix+'_d').value = d||'';
+  _fpSetDate(document.getElementById(prefix+'_d'), d);
   const [h,m] = (t||'').split(':');
   document.getElementById(prefix+'_h').value = h||'';
   document.getElementById(prefix+'_m').value = m||'';
@@ -652,7 +657,7 @@ function dt24Set(prefix, localStr) {
 function dtToday(prefix) {
   const bkk = new Date(new Date().toLocaleString('en-US', { timeZone:'Asia/Bangkok' }));
   const pad  = n => String(n).padStart(2,'0');
-  document.getElementById(prefix+'_d').value = `${bkk.getFullYear()}-${pad(bkk.getMonth()+1)}-${pad(bkk.getDate())}`;
+  _fpSetDate(document.getElementById(prefix+'_d'), `${bkk.getFullYear()}-${pad(bkk.getMonth()+1)}-${pad(bkk.getDate())}`);
   document.getElementById(prefix+'_h').value = bkk.getHours();
   document.getElementById(prefix+'_m').value = bkk.getMinutes();
   const wrap = document.getElementById('scheduledAtWrap');
@@ -673,7 +678,7 @@ function dtQuick(prefix, minutes) {
   base.setMinutes(base.getMinutes() + minutes);
   const bkk = new Date(base.toLocaleString('en-US', { timeZone:'Asia/Bangkok' }));
   const pad  = n => String(n).padStart(2,'0');
-  dEl.value = `${bkk.getFullYear()}-${pad(bkk.getMonth()+1)}-${pad(bkk.getDate())}`;
+  _fpSetDate(dEl, `${bkk.getFullYear()}-${pad(bkk.getMonth()+1)}-${pad(bkk.getDate())}`);
   hEl.value = bkk.getHours();
   mEl.value = bkk.getMinutes();
   // Show the schedule row if hidden (dashboard)

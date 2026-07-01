@@ -188,9 +188,14 @@ function dt24Get(prefix) {
   const m = String(document.getElementById(prefix+'_m').value||0).padStart(2,'0');
   return `${d}T${h}:${m}`;
 }
+function _fpSetDate(el, dateStr) {
+  if (!el) return;
+  if (el._flatpickr) el._flatpickr.setDate(dateStr || null, false);
+  else el.value = dateStr || '';
+}
 function dt24Set(prefix, localStr) {
   const [d,t] = (localStr||'').split('T');
-  document.getElementById(prefix+'_d').value = d||'';
+  _fpSetDate(document.getElementById(prefix+'_d'), d);
   const [h,m] = (t||'').split(':');
   document.getElementById(prefix+'_h').value = h||'';
   document.getElementById(prefix+'_m').value = m||'';
@@ -224,7 +229,7 @@ function dtQuick(prefix, minutes) {
   base.setMinutes(base.getMinutes() + minutes);
   const bkk = new Date(base.toLocaleString('en-US', { timeZone:'Asia/Bangkok' }));
   const pad  = n => String(n).padStart(2,'0');
-  dEl.value = `${bkk.getFullYear()}-${pad(bkk.getMonth()+1)}-${pad(bkk.getDate())}`;
+  _fpSetDate(dEl, `${bkk.getFullYear()}-${pad(bkk.getMonth()+1)}-${pad(bkk.getDate())}`);
   hEl.value = bkk.getHours();
   mEl.value = bkk.getMinutes();
 }
@@ -639,6 +644,9 @@ async function scRefresh() {
 scRender();
 setInterval(scRefresh, 30000);
 </script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>(function(){var O={dateFormat:'Y-m-d',altInput:true,altFormat:'d/m/Y',allowInput:true};function I(e){if(!e._flatpickr)flatpickr(e,O)}document.querySelectorAll('input[type="date"]').forEach(I);new MutationObserver(function(m){m.forEach(function(r){r.addedNodes.forEach(function(n){if(n.nodeType!==1)return;if(n.matches&&n.matches('input[type="date"]'))I(n);n.querySelectorAll&&n.querySelectorAll('input[type="date"]').forEach(I)})})}).observe(document.body,{childList:true,subtree:true})})()</script>
 
 </body>
 </html>

@@ -5,6 +5,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: file:">
   <title>MultiPost – Desktop Agent</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="flatpickr.min.css">
 </head>
 <body>
 
@@ -401,5 +402,7 @@
     <div id="groupsModalList" class="pick-list" style="max-height:380px;border-radius:0 0 var(--radius) var(--radius)"></div>
   </div>
 </div>
+<script src="flatpickr.min.js"></script>
+<script>(function(){var O={dateFormat:'Y-m-d',altInput:true,altFormat:'d/m/Y',allowInput:true};function I(e){if(!e._flatpickr)flatpickr(e,O)}document.querySelectorAll('input[type="date"]').forEach(I);new MutationObserver(function(m){m.forEach(function(r){r.addedNodes.forEach(function(n){if(n.nodeType!==1)return;if(n.matches&&n.matches('input[type="date"]'))I(n);n.querySelectorAll&&n.querySelectorAll('input[type="date"]').forEach(I)})})}).observe(document.body,{childList:true,subtree:true})})()</script>
 </body>
 </html>
