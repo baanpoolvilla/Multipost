@@ -327,6 +327,7 @@
     <div class="card stats-card" onclick="showGroupSummaryModal()" style="cursor:pointer;transition:box-shadow .15s" onmouseover="this.style.boxShadow='0 0 0 2px #2e7d32'" onmouseout="this.style.boxShadow=''">
       <div class="stats-title" style="display:flex;align-items:center;justify-content:space-between">
         <span><i class="fa-solid fa-chart-simple"></i> สถิติรวม</span>
+        <a href="/job-queue" onclick="event.stopPropagation()" style="font-size:.72rem;color:#2e7d32;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:.25rem"><i class="fa-solid fa-calendar-days"></i> ปฏิทินแชร์</a>
       </div>
       <%
         const totalJobs    = jobs.length;
