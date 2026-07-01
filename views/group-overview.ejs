@@ -57,9 +57,9 @@
           ภาพรวมแชร์กลุ่ม
         </div>
         <div style="display:flex;gap:.4rem;flex-wrap:wrap">
-          <button onclick="showGroupRangeModal()" style="background:#e8fde8;color:#2e7d32;border:1.5px solid #2e7d32;border-radius:8px;padding:.35rem .85rem;font-size:.82rem;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:.4rem">
+            <a href="/group-summary" style="background:#e8fde8;color:#2e7d32;border:1.5px solid #2e7d32;border-radius:8px;padding:.35rem .85rem;font-size:.82rem;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:.4rem;text-decoration:none">
             <i class="fa-solid fa-chart-bar"></i> สรุปช่วงเวลา
-          </button>
+          </a>
         </div>
       </div>
     </div>
@@ -329,20 +329,6 @@
 </div>
 
 <script>
-function t24Get(prefix) {
-  const h = document.getElementById(prefix+'_h')?.value;
-  if (h === '' || h == null) return '';
-  const m = document.getElementById(prefix+'_m')?.value;
-  return `${String(h).padStart(2,'0')}:${String(m||0).padStart(2,'0')}`;
-}
-function t24Set(prefix, hhmm) {
-  const [h,m] = (hhmm||'').split(':');
-  document.getElementById(prefix+'_h').value = h||'';
-  document.getElementById(prefix+'_m').value = m||'';
-}
-
-const RANK_MEDALS = ['🥇','🥈','🥉','4️⃣','5️⃣'];
-
 /* ── Group table filter + show-more ── */
 const GRP_LIMIT = 8;
 let grpShowAll = false;
@@ -397,105 +383,6 @@ function clearPrivacyFilter() {
 function filterGrpTable(q) { grpShowAll = !!q || !!_pvFilter; applyGrpVisibility(q.toLowerCase()); }
 function showAllGrps() { grpShowAll = true; applyGrpVisibility((document.getElementById('grp-search')?.value||'').toLowerCase()); }
 applyGrpVisibility('');
-
-function _fmtDateTH(d) {
-  return new Date(d + 'T00:00:00').toLocaleDateString('th-TH', { dateStyle:'short' });
-}
-
-function _rankRowsHtml(items) {
-  if (!items || !items.length) return '<div style="font-size:.8rem;color:#bbb;text-align:center;padding:.4rem 0">ไม่มีข้อมูล</div>';
-  return items.map((item, i) => {
-    const total = (item.success||0) + (item.fail||0);
-    const rate  = total > 0 ? Math.round(item.success/total*100) : 0;
-    return `<div style="display:flex;align-items:center;justify-content:space-between;font-size:.82rem;padding:.2rem 0;border-bottom:1px solid #f0f2f5">
-      <span>${RANK_MEDALS[i]} ${item.name||'—'}</span>
-      <span><b style="color:#2e7d32">${item.success}</b><span style="color:#bbb">/</span><span style="color:#555">${total}</span> <span style="font-size:.7rem;background:#e8fde8;color:#2e7d32;border-radius:4px;padding:.05rem .3rem">${rate}%</span></span>
-    </div>`;
-  }).join('');
-}
-
-async function showGroupRangeModal() {
-  const _is = 'width:100%;padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none;box-sizing:border-box';
-  const _ls = 'font-size:.8rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem';
-  const { value: dates } = await Swal.fire({
-    title: '<i class="fa-solid fa-users" style="color:#2e7d32"></i> สถิติแชร์กลุ่มตามช่วงเวลา',
-    html: `<div style="text-align:left;display:flex;flex-direction:column;gap:.55rem">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
-        <div><label style="${_ls}">วันที่เริ่ม</label>
-          <input id="gr-from" type="date" lang="en-GB" style="${_is}"></div>
-        <div><label style="${_ls}">วันที่สิ้นสุด</label>
-          <input id="gr-to" type="date" lang="en-GB" style="${_is}"></div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
-        <div><label style="${_ls}">เวลาเริ่ม (ไม่บังคับ)</label>
-          <div class="dt24-wrap"><input type="number" id="gr-tfrom_h" min="0" max="23" placeholder="ชม."><span>:</span><input type="number" id="gr-tfrom_m" min="0" max="59" placeholder="นาที"></div></div>
-        <div><label style="${_ls}">เวลาสิ้นสุด (ไม่บังคับ)</label>
-          <div class="dt24-wrap"><input type="number" id="gr-tto_h" min="0" max="23" placeholder="ชม."><span>:</span><input type="number" id="gr-tto_m" min="0" max="59" placeholder="นาที"></div></div>
-      </div>
-    </div>`,
-    confirmButtonText: 'ดูสถิติ', confirmButtonColor: '#2e7d32',
-    showCancelButton: true, cancelButtonText: 'ยกเลิก', focusConfirm: false,
-    didOpen: () => {
-      const _bkk = () => new Date(new Date().toLocaleString('en-US', { timeZone:'Asia/Bangkok' }));
-      const _pad = n => String(n).padStart(2,'0');
-      const _now = _bkk();
-      const _today = `${_now.getFullYear()}-${_pad(_now.getMonth()+1)}-${_pad(_now.getDate())}`;
-      const _fillTime = (hId, mId) => { const n=_bkk(); document.getElementById(hId).value=n.getHours(); document.getElementById(mId).value=n.getMinutes(); };
-      document.getElementById('gr-from').addEventListener('change', e => { if(e.target.value===_today) _fillTime('gr-tfrom_h','gr-tfrom_m'); });
-      document.getElementById('gr-to').addEventListener('change',   e => { if(e.target.value===_today) _fillTime('gr-tto_h','gr-tto_m'); });
-    },
-    preConfirm: () => {
-      const from  = document.getElementById('gr-from').value;
-      const to    = document.getElementById('gr-to').value;
-      const tfrom = t24Get('gr-tfrom');
-      const tto   = t24Get('gr-tto');
-      if (from && to && from > to) { Swal.showValidationMessage('⚠️ วันที่เริ่มต้องไม่เกินวันที่สิ้นสุด'); return false; }
-      if (from && to && from === to && tfrom && tto && tfrom > tto) { Swal.showValidationMessage('⚠️ เวลาเริ่มต้องไม่เกินเวลาสิ้นสุด'); return false; }
-      return { from, to, tfrom, tto };
-    },
-  });
-  if (!dates) return;
-  Swal.fire({ title: 'กำลังโหลด...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-  try {
-    const params = new URLSearchParams();
-    if (dates.from)  params.set('from', dates.from);
-    if (dates.to)    params.set('to',   dates.to);
-    if (dates.tfrom) params.set('timeFrom', dates.tfrom);
-    if (dates.tto)   params.set('timeTo',   dates.tto);
-    const res  = await fetch('/api/stats/combined?' + params);
-    const data = await res.json();
-    if (!data.ok) throw new Error('API error');
-    const g = data.groupStats;
-    const dateLabel = dates.from || dates.to
-      ? `${dates.from ? _fmtDateTH(dates.from) : '—'} ถึง ${dates.to ? _fmtDateTH(dates.to) : '—'}`
-      : 'ข้อมูลทั้งหมด';
-    const timeLabel = dates.tfrom ? ` เวลา ${dates.tfrom}${dates.tto ? '–'+dates.tto : ''}` : '';
-    const label = (dates.from || dates.to) ? `ช่วง: ${dateLabel}${timeLabel}` : 'ข้อมูลทั้งหมด';
-    Swal.fire({
-      title: `<i class="fa-solid fa-users" style="color:#2e7d32"></i> แชร์ลงกลุ่ม`,
-      html: `<div style="text-align:left">
-        <div style="font-size:.78rem;color:#8a8d91;margin-bottom:.6rem">${label}</div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-bottom:.8rem">
-          <div style="background:#f0fdf4;border-radius:8px;padding:.5rem .6rem;text-align:center">
-            <div style="font-size:1.3rem;font-weight:700;color:#2e7d32">${g.total}</div>
-            <div style="font-size:.72rem;color:#555">งาน (Job)</div>
-          </div>
-          <div style="background:#e8fde8;border-radius:8px;padding:.5rem .6rem;text-align:center">
-            <div style="font-size:1.3rem;font-weight:700;color:#059669">${g.success}</div>
-            <div style="font-size:.72rem;color:#555">สำเร็จ</div>
-          </div>
-          <div style="background:#fff5f5;border-radius:8px;padding:.5rem .6rem;text-align:center">
-            <div style="font-size:1.3rem;font-weight:700;color:#c62828">${g.fail}</div>
-            <div style="font-size:.72rem;color:#555">ล้มเหลว</div>
-          </div>
-        </div>
-        <div style="font-size:.75rem;font-weight:700;color:#555;margin-bottom:.4rem"><i class="fa-solid fa-ranking-star" style="color:#1877f2"></i> 5 อันดับกลุ่ม</div>
-        ${_rankRowsHtml(data.topGroups)}
-      </div>`,
-      confirmButtonText: 'ปิด', confirmButtonColor: '#2e7d32', width: '440px',
-    });
-  } catch { Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'ไม่สามารถโหลดข้อมูลได้' }); }
-}
 
 /* ── Chart ── */
 const ctx = document.getElementById('grpChart');

@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>สรุปช่วงเวลา - แชร์กลุ่ม | Multi Post System</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-inner">
+    <div class="navbar-brand">
+      <div class="fb-logo"><i class="fa-brands fa-facebook"></i></div>
+      <span>Multi Post System</span>
+    </div>
+    <div class="navbar-right">
+      <a href="/group-overview" class="btn-back"><i class="fa-solid fa-arrow-left"></i> ภาพรวม</a>
+    </div>
+  </div>
+</nav>
+
+<div class="page-wrap">
+
+  <aside class="sidebar">
+    <a href="/schedule-center" class="sidebar-item"><i class="fa-solid fa-house"></i><span>Dashboard</span></a>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-label">โพสลงเพจ</div>
+    <a href="/" class="sidebar-item"><i class="fa-solid fa-pen-to-square"></i><span>โพสใหม่</span></a>
+    <a href="/pages" class="sidebar-item"><i class="fa-brands fa-facebook"></i><span>จัดการเพจ</span></a>
+    <a href="/post-queue" class="sidebar-item"><i class="fa-solid fa-list-check"></i><span>คิวโพส</span></a>
+    <a href="/overview" class="sidebar-item"><i class="fa-solid fa-chart-line"></i><span>ภาพรวม</span></a>
+    <a href="/history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพส</span></a>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-label">โพส&amp;แชร์ ลงกลุ่ม</div>
+    <a href="/agent" class="sidebar-item"><i class="fa-solid fa-robot"></i><span>ติดตั้ง Desktop Agent</span></a>
+    <a href="/groups" class="sidebar-item"><i class="fa-solid fa-users-rectangle"></i><span>จัดการกลุ่ม</span></a>
+    <a href="/job-queue" class="sidebar-item"><i class="fa-solid fa-list-check"></i><span>คิวโพส</span></a>
+    <a href="/group-overview" class="sidebar-item active"><i class="fa-solid fa-chart-line" style="color:#2e7d32"></i><span>ภาพรวม</span></a>
+    <a href="/group-history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพสกลุ่ม</span></a>
+    <a href="/guide" class="sidebar-item"><i class="fa-solid fa-book-open"></i><span>คู่มือการใช้งาน</span></a>
+    <%- include('partials/sidebar-pages') %>
+  </aside>
+
+  <main class="feed">
+
+    <!-- Notice -->
+    <div style="background:#e8fde8;border:1.5px solid #2e7d32;border-radius:12px;padding:.7rem 1.1rem;margin-bottom:.6rem;display:flex;align-items:center;gap:.6rem;font-size:.83rem;font-weight:600;color:#1b5e20">
+      <i class="fa-solid fa-chart-bar" style="color:#2e7d32"></i>
+      หน้านี้สำหรับดูสถิติแชร์กลุ่มตามช่วงเวลาเท่านั้น
+      &nbsp;·&nbsp;
+      <a href="/group-overview" style="color:#2e7d32;text-decoration:underline">ดูภาพรวมทั้งหมด</a>
+    </div>
+
+    <!-- Form card -->
+    <div class="card">
+      <div class="card-title" style="margin-bottom:1rem">
+        <i class="fa-solid fa-calendar-days" style="color:#2e7d32"></i> เลือกช่วงเวลา
+      </div>
+
+      <!-- Quick period buttons -->
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.9rem">
+        <button onclick="qPeriod('today')" class="q-btn" style="background:#f0fdf4;color:#2e7d32;border:1.5px solid #2e7d32;border-radius:8px;padding:.3rem .75rem;font-size:.8rem;cursor:pointer;font-family:inherit">วันนี้</button>
+        <button onclick="qPeriod('7d')" class="q-btn" style="background:#f0fdf4;color:#2e7d32;border:1.5px solid #2e7d32;border-radius:8px;padding:.3rem .75rem;font-size:.8rem;cursor:pointer;font-family:inherit">7 วันที่ผ่านมา</button>
+        <button onclick="qPeriod('30d')" class="q-btn" style="background:#f0fdf4;color:#2e7d32;border:1.5px solid #2e7d32;border-radius:8px;padding:.3rem .75rem;font-size:.8rem;cursor:pointer;font-family:inherit">30 วันที่ผ่านมา</button>
+        <button onclick="qPeriod('month')" class="q-btn" style="background:#f0fdf4;color:#2e7d32;border:1.5px solid #2e7d32;border-radius:8px;padding:.3rem .75rem;font-size:.8rem;cursor:pointer;font-family:inherit">เดือนนี้</button>
+        <button onclick="qPeriod('all')" class="q-btn" style="background:#fff;color:#555;border:1.5px solid #ccc;border-radius:8px;padding:.3rem .75rem;font-size:.8rem;cursor:pointer;font-family:inherit">ทั้งหมด</button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem">
+        <div>
+          <label style="font-size:.8rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem">วันที่เริ่ม</label>
+          <input id="gs-from" type="date" lang="en-GB" value="<%= from %>"
+            style="width:100%;padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none;box-sizing:border-box;cursor:pointer">
+        </div>
+        <div>
+          <label style="font-size:.8rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem">วันที่สิ้นสุด</label>
+          <input id="gs-to" type="date" lang="en-GB" value="<%= to %>"
+            style="width:100%;padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none;box-sizing:border-box;cursor:pointer">
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1rem">
+        <div>
+          <label style="font-size:.8rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem">เวลาเริ่ม <span style="font-weight:400;color:#bbb">(ไม่บังคับ)</span></label>
+          <div class="dt24-wrap">
+            <input type="number" id="gs-tfrom_h" min="0" max="23" placeholder="ชม." value="<%= timeFrom ? timeFrom.split(':')[0] : '' %>">
+            <span>:</span>
+            <input type="number" id="gs-tfrom_m" min="0" max="59" placeholder="น." value="<%= timeFrom ? timeFrom.split(':')[1] : '' %>">
+          </div>
+        </div>
+        <div>
+          <label style="font-size:.8rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem">เวลาสิ้นสุด <span style="font-weight:400;color:#bbb">(ไม่บังคับ)</span></label>
+          <div class="dt24-wrap">
+            <input type="number" id="gs-tto_h" min="0" max="23" placeholder="ชม." value="<%= timeTo ? timeTo.split(':')[0] : '' %>">
+            <span>:</span>
+            <input type="number" id="gs-tto_m" min="0" max="59" placeholder="น." value="<%= timeTo ? timeTo.split(':')[1] : '' %>">
+          </div>
+        </div>
+      </div>
+
+      <button onclick="submitGS()" style="background:#2e7d32;color:#fff;border:none;border-radius:10px;padding:.55rem 1.6rem;font-size:.9rem;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:.5rem">
+        <i class="fa-solid fa-chart-bar"></i> ดูสถิติ
+      </button>
+    </div>
+
+    <% if (result && result.error) { %>
+    <div class="card" style="color:#c62828"><i class="fa-solid fa-circle-xmark"></i> เกิดข้อผิดพลาด: <%= result.error %></div>
+    <% } %>
+
+    <% if (result && !result.error) { %>
+
+    <!-- Period label -->
+    <%
+      const pvBadge = { public:'🌐', private:'🔒', paid:'💰' };
+      const pvCards2 = [
+        { key:'public',  icon:'🌐', label:'สาธารณะ (Public)',  color:'#1877f2', bg:'#e8f0fe', border:'#93c5fd' },
+        { key:'private', icon:'🔒', label:'ส่วนตัว (Private)', color:'#7048e8', bg:'#f3f0ff', border:'#c4b5fd' },
+        { key:'paid',    icon:'💰', label:'เสียตัง (Paid)',    color:'#c0392b', bg:'#fff5f5', border:'#fca5a5' },
+      ];
+      function fmtDateTH(d) {
+        return new Date(d + 'T00:00:00').toLocaleDateString('th-TH', { dateStyle:'short' });
+      }
+      const rangeLabel = (() => {
+        if (all === '1' && !from && !to) return 'ข้อมูลทั้งหมด';
+        const parts = [];
+        if (from) parts.push(fmtDateTH(from));
+        if (to && to !== from) parts.push(fmtDateTH(to));
+        if (timeFrom) return parts.join(' – ') + ` เวลา ${timeFrom}${timeTo ? '–'+timeTo : ''}`;
+        return parts.length ? parts.join(' – ') : 'ข้อมูลทั้งหมด';
+      })();
+    %>
+    <div style="font-size:.82rem;color:#2e7d32;font-weight:700;margin-bottom:.45rem;display:flex;align-items:center;gap:.4rem">
+      <i class="fa-solid fa-calendar-check"></i>
+      ผลลัพธ์: <%= rangeLabel %>
+    </div>
+
+    <!-- KPI cards -->
+    <div class="overview-grid">
+      <div class="metric-card green">
+        <div class="metric-icon"><i class="fa-solid fa-list-check"></i></div>
+        <div class="metric-body">
+          <div class="metric-val"><%= result.totalJobs %></div>
+          <div class="metric-label">งาน (Job)</div>
+        </div>
+      </div>
+      <div class="metric-card green" style="border:2px solid #059669;background:#f0fdf4">
+        <div class="metric-icon" style="background:#059669"><i class="fa-solid fa-circle-check"></i></div>
+        <div class="metric-body">
+          <div class="metric-val" style="color:#059669"><%= result.totalSuccess %></div>
+          <div class="metric-label">สำเร็จ</div>
+        </div>
+      </div>
+      <div class="metric-card red">
+        <div class="metric-icon"><i class="fa-solid fa-circle-xmark"></i></div>
+        <div class="metric-body">
+          <div class="metric-val"><%= result.totalFail %></div>
+          <div class="metric-label">ล้มเหลว</div>
+        </div>
+      </div>
+      <div class="metric-card green" style="border:2px solid #2e7d32;background:#f0fff4">
+        <div class="metric-icon" style="background:#2e7d32"><i class="fa-solid fa-chart-pie"></i></div>
+        <div class="metric-body">
+          <div class="metric-val" style="color:#2e7d32"><%= result.successRate %>%</div>
+          <div class="metric-label">อัตราสำเร็จ</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Privacy cards -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.65rem;margin-bottom:.75rem">
+      <% pvCards2.forEach(pv => {
+           const st = result.privacyStats[pv.key] || {success:0,fail:0};
+           const total = st.success + st.fail;
+           const rate  = total > 0 ? Math.round(st.success/total*100) : 0;
+      %>
+      <div style="background:<%= pv.bg %>;border:1.5px solid <%= pv.border %>;border-radius:14px;padding:.85rem 1rem">
+        <div style="font-size:.8rem;font-weight:700;color:<%= pv.color %>;margin-bottom:.45rem">
+          <%= pv.icon %> <%= pv.label %>
+        </div>
+        <div style="display:flex;gap:.5rem;align-items:flex-end;margin-bottom:.5rem">
+          <div>
+            <div style="font-size:1.4rem;font-weight:800;color:#2e7d32;line-height:1"><%= st.success %></div>
+            <div style="font-size:.7rem;color:#2e7d32;font-weight:600">สำเร็จ</div>
+          </div>
+          <div style="font-size:1rem;color:#ccc;margin-bottom:.2rem">/</div>
+          <div>
+            <div style="font-size:1.4rem;font-weight:800;color:#c62828;line-height:1"><%= st.fail %></div>
+            <div style="font-size:.7rem;color:#c62828;font-weight:600">ล้มเหลว</div>
+          </div>
+          <div style="margin-left:auto;text-align:right">
+            <div style="font-size:1.1rem;font-weight:800;color:<%= pv.color %>"><%= rate %>%</div>
+            <div style="font-size:.7rem;color:#8a8d91">อัตราสำเร็จ</div>
+          </div>
+        </div>
+        <div style="background:rgba(0,0,0,.08);border-radius:999px;height:5px;overflow:hidden">
+          <div style="height:100%;width:<%= rate %>%;background:<%= pv.color %>;border-radius:999px"></div>
+        </div>
+        <div style="font-size:.7rem;color:#8a8d91;margin-top:.3rem">รวม <%= total %> ครั้ง</div>
+      </div>
+      <% }); %>
+    </div>
+
+    <!-- Group stats table -->
+    <% if (result.allGroupStats.length > 0) { %>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;margin-bottom:1rem">
+        <div class="card-title" style="margin-bottom:0">
+          <i class="fa-solid fa-layer-group"></i> สถิติแต่ละกลุ่ม
+          <span style="font-size:.8rem;font-weight:400;color:#8a8d91;margin-left:.4rem">(<%= result.allGroupStats.length %> กลุ่ม)</span>
+        </div>
+        <div style="position:relative">
+          <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:.6rem;top:50%;transform:translateY(-50%);color:#8a8d91;font-size:.8rem;pointer-events:none"></i>
+          <input id="gs-search" type="text" placeholder="ค้นหาชื่อกลุ่ม..." oninput="filterGsTable(this.value)"
+            style="padding:.35rem .7rem .35rem 1.9rem;border:1px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;width:180px;outline:none;color:#333">
+        </div>
+      </div>
+      <div class="overview-table-wrap">
+        <table class="overview-table">
+          <thead>
+            <tr>
+              <th>กลุ่ม</th>
+              <th><i class="fa-solid fa-paper-plane"></i> แชร์</th>
+              <th><i class="fa-solid fa-circle-check" style="color:#2e7d32"></i> สำเร็จ</th>
+              <th><i class="fa-solid fa-circle-xmark" style="color:#c62828"></i> ล้มเหลว</th>
+              <th>อัตราสำเร็จ</th>
+            </tr>
+          </thead>
+          <tbody id="gs-tbody">
+            <%
+              const gsTotalS = result.allGroupStats.reduce((s,g)=>s+g.success,0);
+              const gsTotalF = result.allGroupStats.reduce((s,g)=>s+g.fail,0);
+              const gsTotalT = gsTotalS + gsTotalF;
+              const gsTotalR = gsTotalT > 0 ? Math.round(gsTotalS/gsTotalT*100) : 0;
+            %>
+            <tr style="background:#f0fdf4;font-weight:700">
+              <td><i class="fa-solid fa-sigma" style="color:#2e7d32;margin-right:.35rem"></i>สรุปรวม (<%= result.allGroupStats.length %> กลุ่ม)</td>
+              <td class="num"><%= gsTotalT %></td>
+              <td class="num" style="color:#2e7d32"><%= gsTotalS %></td>
+              <td class="num" style="color:#c62828"><%= gsTotalF %></td>
+              <td>
+                <div class="rate-bar-wrap">
+                  <div class="rate-bar" style="width:<%= gsTotalR %>%;background:#2e7d32"></div>
+                  <span class="rate-text"><%= gsTotalR %>%</span>
+                </div>
+              </td>
+            </tr>
+            <% result.allGroupStats.forEach((g, i) => {
+                 const tot = g.success + g.fail;
+                 const rate = tot > 0 ? Math.round(g.success/tot*100) : 0;
+            %>
+            <tr class="gs-row" data-name="<%= g.name.toLowerCase() %>">
+              <td>
+                <div style="display:flex;align-items:center;gap:.5rem">
+                  <div class="avatar avatar-green avatar-sm" style="background:#2e7d32"><%= g.name.slice(0,1).toUpperCase() %></div>
+                  <span style="font-weight:600"><%= g.name %></span>
+                  <% if (g.privacy && pvBadge[g.privacy]) { %>
+                  <span style="font-size:.7rem;opacity:.7" title="<%= g.privacy %>"><%= pvBadge[g.privacy] %></span>
+                  <% } %>
+                </div>
+              </td>
+              <td class="num"><%= tot %></td>
+              <td class="num" style="color:#2e7d32"><%= g.success %></td>
+              <td class="num" style="color:#c62828"><%= g.fail %></td>
+              <td>
+                <div class="rate-bar-wrap">
+                  <div class="rate-bar" style="width:<%= rate %>%;background:#2e7d32"></div>
+                  <span class="rate-text"><%= rate %>%</span>
+                </div>
+              </td>
+            </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <% } else { %>
+    <div class="card" style="text-align:center;padding:2rem;color:#8a8d91">
+      <i class="fa-solid fa-users-rectangle" style="font-size:2rem;margin-bottom:.5rem;display:block;opacity:.4"></i>
+      ไม่มีข้อมูลในช่วงเวลาที่เลือก
+    </div>
+    <% } %>
+
+    <% } %> <!-- end result block -->
+
+  </main>
+
+</div>
+
+<script>
+function t24Get(prefix) {
+  const h = document.getElementById(prefix+'_h')?.value;
+  if (h === '' || h == null) return '';
+  const m = document.getElementById(prefix+'_m')?.value;
+  return `${String(h).padStart(2,'0')}:${String(m||0).padStart(2,'0')}`;
+}
+
+function _bkk() { return new Date(new Date().toLocaleString('en-US', { timeZone:'Asia/Bangkok' })); }
+function _pad(n) { return String(n).padStart(2,'0'); }
+function _bkkDate(d) {
+  return `${d.getFullYear()}-${_pad(d.getMonth()+1)}-${_pad(d.getDate())}`;
+}
+
+function qPeriod(type) {
+  const now = _bkk();
+  if (type === 'all') {
+    document.getElementById('gs-from').value = '';
+    document.getElementById('gs-to').value = '';
+    document.getElementById('gs-tfrom_h').value = '';
+    document.getElementById('gs-tfrom_m').value = '';
+    document.getElementById('gs-tto_h').value = '';
+    document.getElementById('gs-tto_m').value = '';
+    const params = new URLSearchParams({ all: '1' });
+    window.location.href = '/group-summary?' + params;
+    return;
+  }
+  const today = _bkkDate(now);
+  let fromD = today;
+  if (type === '7d') {
+    const d = _bkk(); d.setDate(d.getDate() - 6);
+    fromD = _bkkDate(d);
+  } else if (type === '30d') {
+    const d = _bkk(); d.setDate(d.getDate() - 29);
+    fromD = _bkkDate(d);
+  } else if (type === 'month') {
+    fromD = `${now.getFullYear()}-${_pad(now.getMonth()+1)}-01`;
+  }
+  document.getElementById('gs-from').value = fromD;
+  document.getElementById('gs-to').value = today;
+  document.getElementById('gs-tfrom_h').value = '';
+  document.getElementById('gs-tfrom_m').value = '';
+  document.getElementById('gs-tto_h').value = '';
+  document.getElementById('gs-tto_m').value = '';
+}
+
+function submitGS() {
+  const from  = document.getElementById('gs-from').value;
+  const to    = document.getElementById('gs-to').value;
+  if (from && to && from > to) { alert('วันที่เริ่มต้องไม่เกินวันที่สิ้นสุด'); return; }
+  const tfrom = t24Get('gs-tfrom');
+  const tto   = t24Get('gs-tto');
+  const params = new URLSearchParams();
+  if (from)  params.set('from', from);
+  if (to)    params.set('to',   to);
+  if (tfrom) params.set('timeFrom', tfrom);
+  if (tto)   params.set('timeTo',   tto);
+  if (!from && !to) params.set('all', '1');
+  window.location.href = '/group-summary?' + params;
+}
+
+function filterGsTable(q) {
+  const val = q.toLowerCase();
+  document.querySelectorAll('.gs-row').forEach(r => {
+    r.style.display = !val || r.dataset.name.includes(val) ? '' : 'none';
+  });
+}
+</script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>(function(){var O={dateFormat:'Y-m-d',altInput:true,altFormat:'d/m/Y',allowInput:true,disableMobile:true};function I(e){if(e._flatpickr)return;flatpickr(e,O);var ai=e._flatpickr&&e._flatpickr.altInput;if(ai){var s=e.getAttribute('style');if(s)ai.style.cssText=s;ai.style.cursor='pointer';ai.placeholder=e.getAttribute('title')||e.getAttribute('placeholder')||'วว/ดด/ปปปป';}}document.querySelectorAll('input[type="date"]').forEach(I);new MutationObserver(function(m){m.forEach(function(r){r.addedNodes.forEach(function(n){if(n.nodeType!==1)return;if(n.matches&&n.matches('input[type="date"]'))I(n);n.querySelectorAll&&n.querySelectorAll('input[type="date"]').forEach(I)})})}).observe(document.body,{childList:true,subtree:true});})()</script>
+</body>
+</html>

@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>สรุปช่วงเวลา - โพสเพจ | Multi Post System</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-inner">
+    <div class="navbar-brand">
+      <div class="fb-logo"><i class="fa-brands fa-facebook"></i></div>
+      <span>Multi Post System</span>
+    </div>
+    <div class="navbar-right">
+      <a href="/overview" class="btn-back"><i class="fa-solid fa-arrow-left"></i> ภาพรวม</a>
+    </div>
+  </div>
+</nav>
+
+<div class="page-wrap">
+
+  <aside class="sidebar">
+    <a href="/schedule-center" class="sidebar-item"><i class="fa-solid fa-house"></i><span>Dashboard</span></a>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-label">โพสลงเพจ</div>
+    <a href="/" class="sidebar-item"><i class="fa-solid fa-pen-to-square"></i><span>โพสใหม่</span></a>
+    <a href="/pages" class="sidebar-item"><i class="fa-brands fa-facebook"></i><span>จัดการเพจ</span></a>
+    <a href="/post-queue" class="sidebar-item"><i class="fa-solid fa-list-check"></i><span>คิวโพส</span></a>
+    <a href="/overview" class="sidebar-item active"><i class="fa-solid fa-chart-line"></i><span>ภาพรวม</span></a>
+    <a href="/history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพส</span></a>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-label">โพส&amp;แชร์ ลงกลุ่ม</div>
+    <a href="/agent" class="sidebar-item"><i class="fa-solid fa-robot"></i><span>ติดตั้ง Desktop Agent</span></a>
+    <a href="/groups" class="sidebar-item"><i class="fa-solid fa-users-rectangle"></i><span>จัดการกลุ่ม</span></a>
+    <a href="/job-queue" class="sidebar-item"><i class="fa-solid fa-list-check"></i><span>คิวโพส</span></a>
+    <a href="/group-overview" class="sidebar-item"><i class="fa-solid fa-chart-line" style="color:#2e7d32"></i><span>ภาพรวม</span></a>
+    <a href="/group-history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพสกลุ่ม</span></a>
+    <a href="/guide" class="sidebar-item"><i class="fa-solid fa-book-open"></i><span>คู่มือการใช้งาน</span></a>
+    <%- include('partials/sidebar-pages') %>
+  </aside>
+
+  <main class="feed">
+
+    <!-- Notice -->
+    <div style="background:#e8f0fe;border:1.5px solid #1877f2;border-radius:12px;padding:.7rem 1.1rem;margin-bottom:.6rem;display:flex;align-items:center;gap:.6rem;font-size:.83rem;font-weight:600;color:#0d47a1">
+      <i class="fa-solid fa-chart-bar" style="color:#1877f2"></i>
+      หน้านี้สำหรับดูสถิติโพสเพจ และแชร์กลุ่มตามช่วงเวลาเท่านั้น
+      &nbsp;·&nbsp;
+      <a href="/overview" style="color:#1877f2;text-decoration:underline">ดูภาพรวมทั้งหมด</a>
+    </div>
+
+    <!-- Form card -->
+    <div class="card">
+      <div class="card-title" style="margin-bottom:1rem">
+        <i class="fa-solid fa-calendar-days" style="color:#1877f2"></i> เลือกช่วงเวลา
+      </div>
+
+      <!-- Quick period buttons -->
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.9rem">
+        <button onclick="qPeriod('today')" style="background:#e8f0fe;color:#1877f2;border:1.5px solid #1877f2;border-radius:8px;padding:.3rem .75rem;font-size:.8rem;cursor:pointer;font-family:inherit">วันนี้</button>
+        <button onclick="qPeriod('7d')" style="background:#e8f0fe;color:#1877f2;border:1.5px solid #1877f2;border-radius:8px;padding:.3rem .75rem;font-size:.8rem;cursor:pointer;font-family:inherit">7 วันที่ผ่านมา</button>
+        <button onclick="qPeriod('30d')" style="background:#e8f0fe;color:#1877f2;border:1.5px solid #1877f2;border-radius:8px;padding:.3rem .75rem;font-size:.8rem;cursor:pointer;font-family:inherit">30 วันที่ผ่านมา</button>
+        <button onclick="qPeriod('month')" style="background:#e8f0fe;color:#1877f2;border:1.5px solid #1877f2;border-radius:8px;padding:.3rem .75rem;font-size:.8rem;cursor:pointer;font-family:inherit">เดือนนี้</button>
+        <button onclick="qPeriod('all')" style="background:#fff;color:#555;border:1.5px solid #ccc;border-radius:8px;padding:.3rem .75rem;font-size:.8rem;cursor:pointer;font-family:inherit">ทั้งหมด</button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem">
+        <div>
+          <label style="font-size:.8rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem">วันที่เริ่ม</label>
+          <input id="ps-from" type="date" lang="en-GB" value="<%= from %>"
+            style="width:100%;padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none;box-sizing:border-box;cursor:pointer">
+        </div>
+        <div>
+          <label style="font-size:.8rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem">วันที่สิ้นสุด</label>
+          <input id="ps-to" type="date" lang="en-GB" value="<%= to %>"
+            style="width:100%;padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none;box-sizing:border-box;cursor:pointer">
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1rem">
+        <div>
+          <label style="font-size:.8rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem">เวลาเริ่ม <span style="font-weight:400;color:#bbb">(ไม่บังคับ)</span></label>
+          <div class="dt24-wrap">
+            <input type="number" id="ps-tfrom_h" min="0" max="23" placeholder="ชม." value="<%= timeFrom ? timeFrom.split(':')[0] : '' %>">
+            <span>:</span>
+            <input type="number" id="ps-tfrom_m" min="0" max="59" placeholder="น." value="<%= timeFrom ? timeFrom.split(':')[1] : '' %>">
+          </div>
+        </div>
+        <div>
+          <label style="font-size:.8rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem">เวลาสิ้นสุด <span style="font-weight:400;color:#bbb">(ไม่บังคับ)</span></label>
+          <div class="dt24-wrap">
+            <input type="number" id="ps-tto_h" min="0" max="23" placeholder="ชม." value="<%= timeTo ? timeTo.split(':')[0] : '' %>">
+            <span>:</span>
+            <input type="number" id="ps-tto_m" min="0" max="59" placeholder="น." value="<%= timeTo ? timeTo.split(':')[1] : '' %>">
+          </div>
+        </div>
+      </div>
+
+      <button onclick="submitPS()" style="background:#1877f2;color:#fff;border:none;border-radius:10px;padding:.55rem 1.6rem;font-size:.9rem;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:.5rem">
+        <i class="fa-solid fa-chart-bar"></i> ดูสถิติ
+      </button>
+    </div>
+
+    <% if (result && result.error) { %>
+    <div class="card" style="color:#c62828"><i class="fa-solid fa-circle-xmark"></i> เกิดข้อผิดพลาด: <%= result.error %></div>
+    <% } %>
+
+    <% if (result && !result.error) { %>
+
+    <%
+      function fmtDateTH(d) {
+        return new Date(d + 'T00:00:00').toLocaleDateString('th-TH', { dateStyle:'short' });
+      }
+      const rangeLabel = (() => {
+        if (all === '1' && !from && !to) return 'ข้อมูลทั้งหมด';
+        const parts = [];
+        if (from) parts.push(fmtDateTH(from));
+        if (to && to !== from) parts.push(fmtDateTH(to));
+        if (timeFrom) return parts.join(' – ') + ` เวลา ${timeFrom}${timeTo ? '–'+timeTo : ''}`;
+        return parts.length ? parts.join(' – ') : 'ข้อมูลทั้งหมด';
+      })();
+    %>
+    <div style="font-size:.82rem;color:#1877f2;font-weight:700;margin-bottom:.45rem;display:flex;align-items:center;gap:.4rem">
+      <i class="fa-solid fa-calendar-check"></i>
+      ผลลัพธ์: <%= rangeLabel %>
+    </div>
+
+    <!-- Page posts section -->
+    <div style="font-size:.8rem;font-weight:700;color:#1877f2;margin-bottom:.45rem;display:flex;align-items:center;gap:.35rem">
+      <i class="fa-brands fa-facebook"></i> โพสลงเพจ
+    </div>
+    <div class="overview-grid" style="margin-bottom:.75rem">
+      <div class="metric-card blue">
+        <div class="metric-icon"><i class="fa-solid fa-paper-plane"></i></div>
+        <div class="metric-body">
+          <div class="metric-val"><%= result.page.total %></div>
+          <div class="metric-label">โพสต์</div>
+        </div>
+      </div>
+      <div class="metric-card green">
+        <div class="metric-icon"><i class="fa-solid fa-circle-check"></i></div>
+        <div class="metric-body">
+          <div class="metric-val"><%= result.page.success %></div>
+          <div class="metric-label">สำเร็จ</div>
+        </div>
+      </div>
+      <div class="metric-card red">
+        <div class="metric-icon"><i class="fa-solid fa-circle-xmark"></i></div>
+        <div class="metric-body">
+          <div class="metric-val"><%= result.page.fail %></div>
+          <div class="metric-label">ล้มเหลว</div>
+        </div>
+      </div>
+      <div class="metric-card green" style="border:2px solid #2e7d32;background:#f0fff4">
+        <div class="metric-icon" style="background:#2e7d32"><i class="fa-solid fa-chart-pie"></i></div>
+        <div class="metric-body">
+          <div class="metric-val" style="color:#2e7d32"><%= result.page.rate %>%</div>
+          <div class="metric-label">อัตราสำเร็จ</div>
+        </div>
+      </div>
+      <div class="metric-card purple">
+        <div class="metric-icon"><i class="fa-solid fa-thumbs-up"></i></div>
+        <div class="metric-body">
+          <div class="metric-val"><%= result.page.likes.toLocaleString() %></div>
+          <div class="metric-label">ไลค์</div>
+        </div>
+      </div>
+      <div class="metric-card orange">
+        <div class="metric-icon"><i class="fa-solid fa-comment"></i></div>
+        <div class="metric-body">
+          <div class="metric-val"><%= result.page.comments.toLocaleString() %></div>
+          <div class="metric-label">ความคิดเห็น</div>
+        </div>
+      </div>
+      <div class="metric-card teal">
+        <div class="metric-icon"><i class="fa-solid fa-share-nodes"></i></div>
+        <div class="metric-body">
+          <div class="metric-val"><%= result.page.shares.toLocaleString() %></div>
+          <div class="metric-label">แชร์</div>
+        </div>
+      </div>
+      <div class="metric-card red">
+        <div class="metric-icon"><i class="fa-solid fa-eye"></i></div>
+        <div class="metric-body">
+          <div class="metric-val"><%= result.page.reach.toLocaleString() %></div>
+          <div class="metric-label">การเข้าถึง</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Group shares section -->
+    <div style="font-size:.8rem;font-weight:700;color:#2e7d32;margin-bottom:.45rem;display:flex;align-items:center;gap:.35rem">
+      <i class="fa-solid fa-users"></i> แชร์ลงกลุ่ม
+    </div>
+    <div class="overview-grid" style="margin-bottom:.75rem">
+      <div class="metric-card green">
+        <div class="metric-icon"><i class="fa-solid fa-list-check"></i></div>
+        <div class="metric-body">
+          <div class="metric-val"><%= result.grp.total %></div>
+          <div class="metric-label">งาน (Job)</div>
+        </div>
+      </div>
+      <div class="metric-card green" style="border:2px solid #059669;background:#f0fdf4">
+        <div class="metric-icon" style="background:#059669"><i class="fa-solid fa-circle-check"></i></div>
+        <div class="metric-body">
+          <div class="metric-val" style="color:#059669"><%= result.grp.success %></div>
+          <div class="metric-label">สำเร็จ</div>
+        </div>
+      </div>
+      <div class="metric-card red">
+        <div class="metric-icon"><i class="fa-solid fa-circle-xmark"></i></div>
+        <div class="metric-body">
+          <div class="metric-val"><%= result.grp.fail %></div>
+          <div class="metric-label">ล้มเหลว</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top pages table -->
+    <% if (result.topPages.length > 0) { %>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:.85rem">
+        <i class="fa-solid fa-trophy" style="color:#f7b928"></i> อันดับเพจ
+      </div>
+      <div class="overview-table-wrap">
+        <table class="overview-table">
+          <thead>
+            <tr>
+              <th>เพจ</th>
+              <th><i class="fa-solid fa-paper-plane"></i> โพสต์</th>
+              <th><i class="fa-solid fa-circle-check" style="color:#2e7d32"></i> สำเร็จ</th>
+              <th><i class="fa-solid fa-circle-xmark" style="color:#c62828"></i> ล้มเหลว</th>
+              <th>อัตราสำเร็จ</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% const medals = ['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟']; %>
+            <% result.topPages.forEach((p, i) => {
+                 const tot = p.success + p.fail;
+                 const rate = tot > 0 ? Math.round(p.success/tot*100) : 0;
+            %>
+            <tr>
+              <td>
+                <div style="display:flex;align-items:center;gap:.5rem">
+                  <span><%= medals[i] || (i+1) %></span>
+                  <span style="font-weight:600"><%= p.name %></span>
+                </div>
+              </td>
+              <td class="num"><%= tot %></td>
+              <td class="num" style="color:#2e7d32"><%= p.success %></td>
+              <td class="num" style="color:#c62828"><%= p.fail %></td>
+              <td>
+                <div class="rate-bar-wrap">
+                  <div class="rate-bar" style="width:<%= rate %>%"></div>
+                  <span class="rate-text"><%= rate %>%</span>
+                </div>
+              </td>
+            </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <% } %>
+
+    <% } %> <!-- end result block -->
+
+  </main>
+
+</div>
+
+<script>
+function t24Get(prefix) {
+  const h = document.getElementById(prefix+'_h')?.value;
+  if (h === '' || h == null) return '';
+  const m = document.getElementById(prefix+'_m')?.value;
+  return `${String(h).padStart(2,'0')}:${String(m||0).padStart(2,'0')}`;
+}
+
+function _bkk() { return new Date(new Date().toLocaleString('en-US', { timeZone:'Asia/Bangkok' })); }
+function _pad(n) { return String(n).padStart(2,'0'); }
+function _bkkDate(d) { return `${d.getFullYear()}-${_pad(d.getMonth()+1)}-${_pad(d.getDate())}`; }
+
+function qPeriod(type) {
+  const now = _bkk();
+  if (type === 'all') {
+    document.getElementById('ps-from').value = '';
+    document.getElementById('ps-to').value = '';
+    document.getElementById('ps-tfrom_h').value = '';
+    document.getElementById('ps-tfrom_m').value = '';
+    document.getElementById('ps-tto_h').value = '';
+    document.getElementById('ps-tto_m').value = '';
+    window.location.href = '/page-summary?all=1';
+    return;
+  }
+  const today = _bkkDate(now);
+  let fromD = today;
+  if (type === '7d') {
+    const d = _bkk(); d.setDate(d.getDate() - 6); fromD = _bkkDate(d);
+  } else if (type === '30d') {
+    const d = _bkk(); d.setDate(d.getDate() - 29); fromD = _bkkDate(d);
+  } else if (type === 'month') {
+    fromD = `${now.getFullYear()}-${_pad(now.getMonth()+1)}-01`;
+  }
+  document.getElementById('ps-from').value = fromD;
+  document.getElementById('ps-to').value = today;
+  document.getElementById('ps-tfrom_h').value = '';
+  document.getElementById('ps-tfrom_m').value = '';
+  document.getElementById('ps-tto_h').value = '';
+  document.getElementById('ps-tto_m').value = '';
+}
+
+function submitPS() {
+  const from  = document.getElementById('ps-from').value;
+  const to    = document.getElementById('ps-to').value;
+  if (from && to && from > to) { alert('วันที่เริ่มต้องไม่เกินวันที่สิ้นสุด'); return; }
+  const tfrom = t24Get('ps-tfrom');
+  const tto   = t24Get('ps-tto');
+  const params = new URLSearchParams();
+  if (from)  params.set('from', from);
+  if (to)    params.set('to',   to);
+  if (tfrom) params.set('timeFrom', tfrom);
+  if (tto)   params.set('timeTo',   tto);
+  if (!from && !to) params.set('all', '1');
+  window.location.href = '/page-summary?' + params;
+}
+</script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>(function(){var O={dateFormat:'Y-m-d',altInput:true,altFormat:'d/m/Y',allowInput:true,disableMobile:true};function I(e){if(e._flatpickr)return;flatpickr(e,O);var ai=e._flatpickr&&e._flatpickr.altInput;if(ai){var s=e.getAttribute('style');if(s)ai.style.cssText=s;ai.style.cursor='pointer';ai.placeholder=e.getAttribute('title')||e.getAttribute('placeholder')||'วว/ดด/ปปปป';}}document.querySelectorAll('input[type="date"]').forEach(I);new MutationObserver(function(m){m.forEach(function(r){r.addedNodes.forEach(function(n){if(n.nodeType!==1)return;if(n.matches&&n.matches('input[type="date"]'))I(n);n.querySelectorAll&&n.querySelectorAll('input[type="date"]').forEach(I)})})}).observe(document.body,{childList:true,subtree:true});})()</script>
+</body>
+</html>

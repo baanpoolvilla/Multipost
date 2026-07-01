@@ -60,12 +60,9 @@
           </span>
         </div>
         <div style="display:flex;gap:.4rem;flex-wrap:wrap">
-          <button onclick="showSummaryModal()" style="background:#1877f2;color:#fff;border:none;border-radius:8px;padding:.35rem .85rem;font-size:.82rem;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:.4rem">
-            <i class="fa-solid fa-calendar-day"></i> สรุป
-          </button>
-          <button onclick="showPageRangeModal()" style="background:#e7f0fd;color:#1877f2;border:1.5px solid #1877f2;border-radius:8px;padding:.35rem .85rem;font-size:.82rem;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:.4rem">
-            <i class="fa-solid fa-chart-bar"></i> ช่วงเวลา (เพจ)
-          </button>
+          <a href="/page-summary" style="background:#1877f2;color:#fff;border:none;border-radius:8px;padding:.35rem .85rem;font-size:.82rem;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:.4rem;text-decoration:none">
+            <i class="fa-solid fa-chart-bar"></i> สรุปช่วงเวลา
+          </a>
         </div>
       </div>
     </div>
@@ -276,18 +273,6 @@
 </div>
 
 <script>
-function t24Get(prefix) {
-  const h = document.getElementById(prefix+'_h')?.value;
-  if (h === '' || h == null) return '';
-  const m = document.getElementById(prefix+'_m')?.value;
-  return `${String(h).padStart(2,'0')}:${String(m||0).padStart(2,'0')}`;
-}
-function t24Set(prefix, hhmm) {
-  const [h,m] = (hhmm||'').split(':');
-  document.getElementById(prefix+'_h').value = h||'';
-  document.getElementById(prefix+'_m').value = m||'';
-}
-
 /* ── Auto-refresh (no button needed) ── */
 const POLL_MS = 60 * 1000; // poll ทุก 1 นาที
 
@@ -325,134 +310,6 @@ async function updateNumbers() {
 setInterval(async () => {
   try { await updateNumbers(); setLastUpdated(); } catch {}
 }, POLL_MS);
-
-/* ── สรุป Popup ── */
-async function showSummaryModal() {
-  const today = new Date().toISOString().slice(0, 10);
-  const _is = 'width:100%;padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none;box-sizing:border-box';
-  const _ls = 'font-size:.8rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem';
-
-  const { value: formValues } = await Swal.fire({
-    title: '<i class="fa-solid fa-chart-pie" style="color:#1877f2"></i> สรุป',
-    html: `
-      <div style="text-align:left;display:flex;flex-direction:column;gap:.55rem">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
-          <div>
-            <label style="${_ls}">วันที่เริ่ม <span style="color:#c62828">*</span></label>
-            <input id="sm-dfrom" type="date" lang="en-GB" value="${today}" style="${_is}">
-          </div>
-          <div>
-            <label style="${_ls}">วันที่สิ้นสุด</label>
-            <input id="sm-dto" type="date" lang="en-GB" value="${today}" style="${_is}">
-          </div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
-          <div>
-            <label style="${_ls}">เวลาเริ่ม (ไม่บังคับ)</label>
-            <div class="dt24-wrap"><input type="number" id="sm-tfrom_h" min="0" max="23" placeholder="ชม."><span>:</span><input type="number" id="sm-tfrom_m" min="0" max="59" placeholder="นาที"></div>
-          </div>
-          <div>
-            <label style="${_ls}">เวลาสิ้นสุด (ไม่บังคับ)</label>
-            <div class="dt24-wrap"><input type="number" id="sm-tto_h" min="0" max="23" placeholder="ชม."><span>:</span><input type="number" id="sm-tto_m" min="0" max="59" placeholder="นาที"></div>
-          </div>
-        </div>
-      </div>`,
-    confirmButtonText: 'ดูสรุป',
-    confirmButtonColor: '#1877f2',
-    showCancelButton: true,
-    cancelButtonText: 'ยกเลิก',
-    focusConfirm: false,
-    didOpen: () => {
-      const _bkk = () => new Date(new Date().toLocaleString('en-US', { timeZone:'Asia/Bangkok' }));
-      const _fillTime = (hId, mId) => { const n=_bkk(); document.getElementById(hId).value=n.getHours(); document.getElementById(mId).value=n.getMinutes(); };
-      document.getElementById('sm-dfrom').addEventListener('change', e => { if(e.target.value===today) _fillTime('sm-tfrom_h','sm-tfrom_m'); });
-      document.getElementById('sm-dto').addEventListener('change',   e => { if(e.target.value===today) _fillTime('sm-tto_h','sm-tto_m'); });
-    },
-    preConfirm: () => {
-      const dfrom = document.getElementById('sm-dfrom').value;
-      const dto   = document.getElementById('sm-dto').value;
-      const tfrom = t24Get('sm-tfrom');
-      const tto   = t24Get('sm-tto');
-      if (!dfrom) { Swal.showValidationMessage('กรุณากรอกวันที่เริ่ม'); return false; }
-      const _dto = dto || dfrom;
-      if (dfrom > _dto) { Swal.showValidationMessage('⚠️ วันที่เริ่มต้องไม่เกินวันที่สิ้นสุด'); return false; }
-      if (dfrom === _dto && tfrom && tto && tfrom > tto) { Swal.showValidationMessage('⚠️ เวลาเริ่มต้องไม่เกินเวลาสิ้นสุด'); return false; }
-      return { dfrom, dto: _dto, tfrom, tto };
-    },
-  });
-  if (!formValues) return;
-
-  const { dfrom, dto, tfrom, tto } = formValues;
-  Swal.fire({ title: 'กำลังโหลด...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
-  try {
-    const params = new URLSearchParams({ dateFrom: dfrom, dateTo: dto });
-    if (tfrom) params.set('timeFrom', tfrom);
-    if (tto)   params.set('timeTo',   tto);
-    const res = await fetch(`/api/daily-summary?${params}`);
-    const d   = await res.json();
-
-    const fmtD = dt => new Date(dt + 'T00:00:00').toLocaleDateString('th-TH', { year:'numeric', month:'long', day:'numeric' });
-    const dateLabel = dfrom === dto ? fmtD(dfrom) : `${fmtD(dfrom)} – ${fmtD(dto)}`;
-    const timeLabel = tfrom ? ` เวลา ${tfrom}${tto ? '–'+tto : ''}` : '';
-
-    const grp = d.groupStats || { total: 0, success: 0, fail: 0 };
-
-    Swal.fire({
-      title: `สรุป ${dateLabel}${timeLabel}`,
-      html: `
-        <div style="text-align:left">
-          <div style="font-size:.75rem;font-weight:700;color:#1877f2;margin-bottom:.4rem"><i class="fa-brands fa-facebook"></i> โพสลงเพจ</div>
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-bottom:.8rem">
-            <div style="background:#e8f4fd;border-radius:8px;padding:.5rem .6rem;text-align:center">
-              <div style="font-size:1.3rem;font-weight:700;color:#1877f2">${d.totalPosts}</div>
-              <div style="font-size:.72rem;color:#555">โพสต์</div>
-            </div>
-            <div style="background:#e8fde8;border-radius:8px;padding:.5rem .6rem;text-align:center">
-              <div style="font-size:1.3rem;font-weight:700;color:#2e7d32">${d.successRate}%</div>
-              <div style="font-size:.72rem;color:#555">สำเร็จ</div>
-            </div>
-            <div style="background:#fff8e6;border-radius:8px;padding:.5rem .6rem;text-align:center">
-              <div style="font-size:1.3rem;font-weight:700;color:#f7b928">${d.totalLikes}</div>
-              <div style="font-size:.72rem;color:#555">ไลค์</div>
-            </div>
-            <div style="background:#fff0ed;border-radius:8px;padding:.5rem .6rem;text-align:center">
-              <div style="font-size:1.3rem;font-weight:700;color:#f5533d">${d.totalComments}</div>
-              <div style="font-size:.72rem;color:#555">คอมเมนต์</div>
-            </div>
-            <div style="background:#e8faf4;border-radius:8px;padding:.5rem .6rem;text-align:center">
-              <div style="font-size:1.3rem;font-weight:700;color:#09af74">${d.totalShares}</div>
-              <div style="font-size:.72rem;color:#555">แชร์</div>
-            </div>
-            <div style="background:#f0edff;border-radius:8px;padding:.5rem .6rem;text-align:center">
-              <div style="font-size:1.3rem;font-weight:700;color:#7c3aed">${d.totalReach.toLocaleString()}</div>
-              <div style="font-size:.72rem;color:#555">Reach</div>
-            </div>
-          </div>
-          <div style="font-size:.75rem;font-weight:700;color:#2e7d32;margin-bottom:.4rem"><i class="fa-solid fa-users"></i> แชร์ลงกลุ่ม</div>
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem">
-            <div style="background:#f0fdf4;border-radius:8px;padding:.5rem .6rem;text-align:center">
-              <div style="font-size:1.3rem;font-weight:700;color:#2e7d32">${grp.total}</div>
-              <div style="font-size:.72rem;color:#555">งาน (Job)</div>
-            </div>
-            <div style="background:#e8fde8;border-radius:8px;padding:.5rem .6rem;text-align:center">
-              <div style="font-size:1.3rem;font-weight:700;color:#059669">${grp.success}</div>
-              <div style="font-size:.72rem;color:#555">สำเร็จ</div>
-            </div>
-            <div style="background:#fff5f5;border-radius:8px;padding:.5rem .6rem;text-align:center">
-              <div style="font-size:1.3rem;font-weight:700;color:#c62828">${grp.fail}</div>
-              <div style="font-size:.72rem;color:#555">ล้มเหลว</div>
-            </div>
-          </div>
-        </div>`,
-      confirmButtonText: 'ปิด',
-      confirmButtonColor: '#1877f2',
-      width: '480px',
-    });
-  } catch {
-    Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'ไม่สามารถโหลดข้อมูลได้' });
-  }
-}
 
 /* ── Page table: search + show-more ── */
 const PAGE_LIMIT = 8;
@@ -505,34 +362,7 @@ function showPageEngInfo() {
   });
 }
 
-/* ── Helper ── */
-const RANK_MEDALS = ['🥇','🥈','🥉','4️⃣','5️⃣'];
-
-function _fmtDateTH(d) {
-  return new Date(d + 'T00:00:00').toLocaleDateString('th-TH', { dateStyle:'short' });
-}
-
-function _rankRowsHtml(items) {
-  if (!items || !items.length) return '<div style="font-size:.8rem;color:#bbb;text-align:center;padding:.4rem 0">ไม่มีข้อมูล</div>';
-  return items.map((item, i) => {
-    const total = (item.success||0) + (item.fail||0);
-    const rate  = total > 0 ? Math.round(item.success/total*100) : 0;
-    return `<div style="display:flex;align-items:center;justify-content:space-between;font-size:.82rem;padding:.2rem 0;border-bottom:1px solid #f0f2f5">
-      <span>${RANK_MEDALS[i]} ${item.name||'—'}</span>
-      <span><b style="color:#2e7d32">${item.success}</b><span style="color:#bbb">/</span><span style="color:#555">${total}</span> <span style="font-size:.7rem;background:#e8fde8;color:#2e7d32;border-radius:4px;padding:.05rem .3rem">${rate}%</span></span>
-    </div>`;
-  }).join('');
-}
-
-async function _fetchCombined(from, to) {
-  const params = new URLSearchParams();
-  if (from) params.set('from', from);
-  if (to)   params.set('to',   to);
-  const res = await fetch('/api/stats/combined?' + params);
-  return res.json();
-}
-
-/* ── สรุปช่วงเวลา โพสเพจ ── */
+/* ── สรุปช่วงเวลา โพสเพจ (moved to /page-summary page) ── */
 async function showPageRangeModal() {
   const _prIs = 'width:100%;padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none;box-sizing:border-box';
   const _prLs = 'font-size:.8rem;font-weight:600;color:#555;display:block;margin-bottom:.2rem';
