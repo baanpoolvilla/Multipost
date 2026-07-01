@@ -46,22 +46,6 @@
 
   <main class="feed">
 
-<%
-  const _pi = items.filter(i => i.type === 'page');
-  const _gi = items.filter(i => i.type === 'group');
-  const pTotal   = _pi.length;
-  const pPending = _pi.filter(i => i.status === 'pending').length;
-  const pRunning = _pi.filter(i => i.status === 'running').length;
-  const pSuccess = _pi.filter(i => i.status === 'success').length;
-  const pFailed  = _pi.filter(i => ['failed','expired','cancelled'].includes(i.status)).length;
-  const gJobs    = _gi.length;
-  const gSuccess = _gi.reduce((s, i) => s + (i.successCount || 0), 0);
-  const gFailed  = _gi.reduce((s, i) => s + (i.failCount || 0), 0);
-  const gPosted  = gSuccess + gFailed;
-  const gRate    = gPosted > 0 ? Math.round(gSuccess / gPosted * 100) : 0;
-  const rateColor = gRate >= 80 ? '#2e7d32' : gRate >= 50 ? '#f59f00' : '#c62828';
-%>
-
     <!-- Header -->
     <div class="card" style="padding:.85rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">
       <div class="card-title" style="font-size:1.05rem">
@@ -70,114 +54,139 @@
       <button class="btn-link-sm" onclick="scRefresh()"><i class="fa-solid fa-rotate-right"></i> รีเฟรช</button>
     </div>
 
-    <!-- KPI row -->
-    <div class="overview-grid" style="grid-template-columns:repeat(4,1fr)">
-      <div class="metric-card blue">
-        <div class="metric-icon"><i class="fa-solid fa-pen-to-square"></i></div>
-        <div class="metric-body">
-          <div class="metric-val" id="db-p-total"><%= pTotal %></div>
-          <div class="metric-label">โพสเพจทั้งหมด</div>
-        </div>
-      </div>
-      <div class="metric-card green">
-        <div class="metric-icon"><i class="fa-solid fa-users-rectangle"></i></div>
-        <div class="metric-body">
-          <div class="metric-val" id="db-g-jobs"><%= gJobs %></div>
-          <div class="metric-label">งานแชร์กลุ่ม</div>
-        </div>
-      </div>
-      <div class="metric-card green" style="border:2px solid #059669;background:#f0fff4">
-        <div class="metric-icon" style="background:#059669"><i class="fa-solid fa-circle-check"></i></div>
-        <div class="metric-body">
-          <div class="metric-val" style="color:#059669" id="db-g-success-kpi"><%= gSuccess %></div>
-          <div class="metric-label">แชร์กลุ่มสำเร็จ</div>
-        </div>
-      </div>
-      <div class="metric-card green" style="border:2px solid <%- rateColor %>;background:#f9fefb">
-        <div class="metric-icon" style="background:<%- rateColor %>"><i class="fa-solid fa-chart-pie"></i></div>
-        <div class="metric-body">
-          <div class="metric-val" style="color:<%- rateColor %>" id="db-g-rate-kpi"><%= gRate %>%</div>
-          <div class="metric-label">อัตราสำเร็จกลุ่ม</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Two panels -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
-
-      <!-- Page posts panel -->
-      <div class="card" style="padding:1rem 1.25rem">
-        <div class="card-title" style="margin-bottom:.75rem;font-size:.92rem">
+    <!-- ── โพสลงเพจ ─────────────────────────────────────────────── -->
+    <div class="card" style="padding:1rem 1.25rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-bottom:.85rem">
+        <div class="card-title" style="font-size:.95rem;margin-bottom:0">
           <i class="fa-solid fa-pen-to-square" style="color:#1877f2"></i> โพสลงเพจ
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.45rem;margin-bottom:.8rem">
-          <div style="background:#fff3cd;border-radius:8px;padding:.45rem .5rem;text-align:center">
-            <div style="font-size:1.25rem;font-weight:800;color:#856404" id="db-p-pending"><%= pPending %></div>
-            <div style="font-size:.7rem;color:#856404;font-weight:600">รอ</div>
-          </div>
-          <div style="background:#cfe2ff;border-radius:8px;padding:.45rem .5rem;text-align:center">
-            <div style="font-size:1.25rem;font-weight:800;color:#084298" id="db-p-running"><%= pRunning %></div>
-            <div style="font-size:.7rem;color:#084298;font-weight:600">กำลังโพส</div>
-          </div>
-          <div style="background:#d1e7dd;border-radius:8px;padding:.45rem .5rem;text-align:center">
-            <div style="font-size:1.25rem;font-weight:800;color:#0a3622" id="db-p-success"><%= pSuccess %></div>
-            <div style="font-size:.7rem;color:#0a3622;font-weight:600">สำเร็จ</div>
-          </div>
-          <div style="background:#f8d7da;border-radius:8px;padding:.45rem .5rem;text-align:center">
-            <div style="font-size:1.25rem;font-weight:800;color:#842029" id="db-p-failed"><%= pFailed %></div>
-            <div style="font-size:.7rem;color:#842029;font-weight:600">ล้มเหลว</div>
-          </div>
+          <span style="background:#e7f3ff;color:#1877f2;border-radius:999px;padding:.1rem .5rem;font-size:.78rem;font-weight:700;margin-left:.3rem" id="db-p-total"><%= pTotal %></span>
+          <span style="font-size:.75rem;font-weight:400;color:#8a8d91;margin-left:.5rem">
+            โพสถึง <span id="db-p-pages"><%= pPageCount %></span> เพจ
+          </span>
         </div>
         <div style="display:flex;gap:.4rem;flex-wrap:wrap">
           <a href="/post-queue" class="btn-link-sm"><i class="fa-solid fa-list-check"></i> คิวโพส</a>
           <a href="/history" class="btn-link-sm"><i class="fa-solid fa-clock-rotate-left"></i> ประวัติ</a>
+          <a href="/overview" class="btn-link-sm"><i class="fa-solid fa-chart-line"></i> ภาพรวม</a>
           <a href="/" class="btn-link-sm" style="color:#1877f2;font-weight:700"><i class="fa-solid fa-plus"></i> โพสใหม่</a>
         </div>
       </div>
 
-      <!-- Group shares panel -->
-      <div class="card" style="padding:1rem 1.25rem">
-        <div class="card-title" style="margin-bottom:.75rem;font-size:.92rem">
+      <!-- Status row -->
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:.4rem;margin-bottom:.85rem">
+        <div class="db-stat-box" style="background:#fff3cd">
+          <div class="db-stat-num" style="color:#856404" id="db-p-pending"><%= pPending %></div>
+          <div class="db-stat-lbl" style="color:#856404">รอ</div>
+        </div>
+        <div class="db-stat-box" style="background:#cfe2ff">
+          <div class="db-stat-num" style="color:#084298" id="db-p-running"><%= pRunning %></div>
+          <div class="db-stat-lbl" style="color:#084298">กำลังโพส</div>
+        </div>
+        <div class="db-stat-box" style="background:#d1e7dd">
+          <div class="db-stat-num" style="color:#0a3622" id="db-p-success"><%= pSuccess %></div>
+          <div class="db-stat-lbl" style="color:#0a3622">สำเร็จ</div>
+        </div>
+        <div class="db-stat-box" style="background:#f8d7da">
+          <div class="db-stat-num" style="color:#842029" id="db-p-failed"><%= pFailed %></div>
+          <div class="db-stat-lbl" style="color:#842029">ล้มเหลว</div>
+        </div>
+        <div class="db-stat-box" style="background:#fde8cd">
+          <div class="db-stat-num" style="color:#854d0e" id="db-p-expired"><%= pExpired %></div>
+          <div class="db-stat-lbl" style="color:#854d0e">หมดเวลา</div>
+        </div>
+        <div class="db-stat-box" style="background:#f1f3f5">
+          <div class="db-stat-num" style="color:#666" id="db-p-cancelled"><%= pCancelled %></div>
+          <div class="db-stat-lbl" style="color:#666">ยกเลิก</div>
+        </div>
+      </div>
+
+      <!-- Engagement row -->
+      <div style="border-top:1px solid var(--border-color);padding-top:.75rem">
+        <div style="font-size:.73rem;font-weight:700;color:#8a8d91;margin-bottom:.45rem;text-transform:uppercase;letter-spacing:.04em">
+          Engagement (จากผลโพสสำเร็จ · <%= pTotalSuccess %> ครั้ง)
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem">
+          <div class="db-stat-box" style="background:#f0f7ff">
+            <div class="db-stat-num" style="color:#1877f2;font-size:1.1rem"><%= pLikes.toLocaleString() %></div>
+            <div class="db-stat-lbl" style="color:#1877f2">👍 ไลค์</div>
+          </div>
+          <div class="db-stat-box" style="background:#fff8f0">
+            <div class="db-stat-num" style="color:#e67700;font-size:1.1rem"><%= pComments.toLocaleString() %></div>
+            <div class="db-stat-lbl" style="color:#e67700">💬 คอมเมนต์</div>
+          </div>
+          <div class="db-stat-box" style="background:#f0fdf4">
+            <div class="db-stat-num" style="color:#2e7d32;font-size:1.1rem"><%= pShares.toLocaleString() %></div>
+            <div class="db-stat-lbl" style="color:#2e7d32">🔁 แชร์</div>
+          </div>
+          <div class="db-stat-box" style="background:#f9f0ff">
+            <div class="db-stat-num" style="color:#7048e8;font-size:1.1rem"><%= pReach.toLocaleString() %></div>
+            <div class="db-stat-lbl" style="color:#7048e8">👀 Reach</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── แชร์กลุ่ม ──────────────────────────────────────────────── -->
+    <div class="card" style="padding:1rem 1.25rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-bottom:.85rem">
+        <div class="card-title" style="font-size:.95rem;margin-bottom:0">
           <i class="fa-solid fa-users-rectangle" style="color:#2e7d32"></i> แชร์กลุ่ม
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.45rem;margin-bottom:.6rem">
-          <div style="background:#f0fdf4;border-radius:8px;padding:.45rem .5rem;text-align:center">
-            <div style="font-size:1.25rem;font-weight:800;color:#2e7d32" id="db-g-jobs2"><%= gJobs %></div>
-            <div style="font-size:.7rem;color:#2e7d32;font-weight:600">งานทั้งหมด</div>
-          </div>
-          <div style="background:#d1e7dd;border-radius:8px;padding:.45rem .5rem;text-align:center">
-            <div style="font-size:1.25rem;font-weight:800;color:#0a3622" id="db-g-success"><%= gSuccess %></div>
-            <div style="font-size:.7rem;color:#0a3622;font-weight:600">สำเร็จ</div>
-          </div>
-          <div style="background:#f8d7da;border-radius:8px;padding:.45rem .5rem;text-align:center">
-            <div style="font-size:1.25rem;font-weight:800;color:#842029" id="db-g-failed"><%= gFailed %></div>
-            <div style="font-size:.7rem;color:#842029;font-weight:600">ล้มเหลว</div>
-          </div>
-        </div>
-        <div style="margin-bottom:.65rem">
-          <div style="display:flex;justify-content:space-between;font-size:.77rem;font-weight:600;color:#555;margin-bottom:.2rem">
-            <span>อัตราสำเร็จ</span>
-            <span id="db-g-rate" style="color:<%- rateColor %>"><%= gRate %>%</span>
-          </div>
-          <div style="background:#e9ecef;border-radius:999px;height:8px">
-            <div id="db-g-rate-bar" style="background:<%- rateColor %>;border-radius:999px;height:8px;width:<%= gRate %>%;transition:width .5s"></div>
-          </div>
+          <span style="background:#e8fde8;color:#2e7d32;border-radius:999px;padding:.1rem .5rem;font-size:.78rem;font-weight:700;margin-left:.3rem" id="db-g-jobs"><%= gJobs %></span>
+          <span style="font-size:.75rem;font-weight:400;color:#8a8d91;margin-left:.5rem">
+            กลุ่มในระบบ <span id="db-g-total"><%= gTotal %></span> กลุ่ม
+          </span>
         </div>
         <div style="display:flex;gap:.4rem;flex-wrap:wrap">
           <a href="/job-queue" class="btn-link-sm"><i class="fa-solid fa-list-check"></i> คิวกลุ่ม</a>
           <a href="/group-history" class="btn-link-sm"><i class="fa-solid fa-clock-rotate-left"></i> ประวัติ</a>
           <a href="/group-overview" class="btn-link-sm" style="color:#2e7d32;font-weight:700"><i class="fa-solid fa-chart-bar"></i> ภาพรวม</a>
+          <a href="/groups" class="btn-link-sm"><i class="fa-solid fa-users-rectangle"></i> จัดการกลุ่ม</a>
+        </div>
+      </div>
+
+      <!-- Stats row -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem;margin-bottom:.75rem">
+        <div class="db-stat-box" style="background:#f0fdf4">
+          <div class="db-stat-num" style="color:#2e7d32" id="db-g-jobs2"><%= gJobs %></div>
+          <div class="db-stat-lbl" style="color:#2e7d32">งานทั้งหมด</div>
+        </div>
+        <div class="db-stat-box" style="background:#fff3cd">
+          <div class="db-stat-num" style="color:#856404" id="db-g-pending"><%= gPending %></div>
+          <div class="db-stat-lbl" style="color:#856404">รอโพส</div>
+        </div>
+        <div class="db-stat-box" style="background:#d1e7dd">
+          <div class="db-stat-num" style="color:#0a3622" id="db-g-success"><%= gSuccess %></div>
+          <div class="db-stat-lbl" style="color:#0a3622">แชร์สำเร็จ</div>
+        </div>
+        <div class="db-stat-box" style="background:#f8d7da">
+          <div class="db-stat-num" style="color:#842029" id="db-g-failed"><%= gFailed %></div>
+          <div class="db-stat-lbl" style="color:#842029">แชร์ล้มเหลว</div>
+        </div>
+      </div>
+
+      <!-- Rate bar -->
+      <div style="border-top:1px solid var(--border-color);padding-top:.7rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:.8rem;font-weight:700;color:#555;margin-bottom:.3rem">
+          <span>อัตราสำเร็จ &nbsp;·&nbsp; โพสถึงกลุ่มแล้ว <span id="db-g-posted" style="color:#1877f2"><%= gPosted %></span> ครั้ง</span>
+          <span id="db-g-rate" style="color:<%= gRate>=80?'#2e7d32':gRate>=50?'#f59f00':'#c62828' %>;font-size:.95rem"><%= gRate %>%</span>
+        </div>
+        <div style="background:#e9ecef;border-radius:999px;height:10px">
+          <div id="db-g-rate-bar" style="background:<%= gRate>=80?'#2e7d32':gRate>=50?'#f59f00':'#c62828' %>;border-radius:999px;height:10px;width:<%= gRate %>%;transition:width .5s"></div>
         </div>
       </div>
     </div>
 
-    <!-- Combined chart -->
+    <!-- ── Combined chart ──────────────────────────────────────────── -->
     <div class="card" style="padding:.85rem 1rem">
       <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem;flex-wrap:wrap">
         <strong style="font-size:.85rem;color:#555">
           <i class="fa-solid fa-chart-column" style="color:#1877f2;font-size:.78rem"></i>
-          กิจกรรมรวม — โพสเพจ + แชร์กลุ่ม
+          กิจกรรมรวม
         </strong>
+        <span style="font-size:.75rem;color:#aaa">
+          <span style="display:inline-block;width:10px;height:10px;background:#1877f2;border-radius:2px;margin-right:3px"></span>โพสเพจ
+          <span style="display:inline-block;width:10px;height:10px;background:#2e7d32;border-radius:2px;margin:0 3px 0 10px"></span>แชร์กลุ่ม
+        </span>
         <div class="status-filter" style="margin-left:auto">
           <button class="filter-btn active" data-chartunit="day"   onclick="scSetChartUnit('day')">รายวัน</button>
           <button class="filter-btn"        data-chartunit="month" onclick="scSetChartUnit('month')">รายเดือน</button>
@@ -187,126 +196,60 @@
       <canvas id="scChart" height="70"></canvas>
     </div>
 
-    <!-- Recent activity -->
-    <div class="card" style="padding:.5rem .75rem">
-      <div style="font-size:.88rem;font-weight:700;color:#444;padding:.35rem .3rem .55rem;display:flex;align-items:center;justify-content:space-between">
-        <span><i class="fa-solid fa-clock-rotate-left" style="color:#1877f2;font-size:.82rem"></i> กิจกรรมล่าสุด</span>
-        <span id="db-recent-count" style="background:#e4e6ea;padding:.1rem .5rem;border-radius:999px;font-size:.78rem;font-weight:600;color:#666"></span>
-      </div>
-      <div id="scRecentList"></div>
-    </div>
-
   </main>
 </div>
 
 <style>
-.sc-row { display:flex; align-items:flex-start; gap:.7rem; padding:.55rem .4rem; border-bottom:1px solid var(--border-color) }
-.sc-row:last-child { border-bottom:none }
-.badge-purple { background:#e7e0fb; color:#5b3fa3 }
+.db-stat-box { border-radius:8px; padding:.45rem .6rem; text-align:center }
+.db-stat-num { font-size:1.3rem; font-weight:800; line-height:1.2 }
+.db-stat-lbl { font-size:.7rem; font-weight:600; margin-top:.1rem }
 </style>
 
 <script>
 let _scItems = <%- JSON.stringify(items) %>;
 let _scChartUnit = 'day';
 let _scChart = null;
-const _scStatusTH  = { pending:'รอ', running:'กำลังโพส', success:'สำเร็จ', failed:'ล้มเหลว', expired:'หมดเวลา', cancelled:'ยกเลิก' };
-const _scStatusCls = { pending:'badge-yellow', running:'badge-blue', success:'badge-green', failed:'badge-red', expired:'badge-red', cancelled:'badge-red' };
-const _scIcons     = { pending:'⏳', running:'🔄', success:'✅', failed:'❌', expired:'⏰', cancelled:'🚫' };
 
-function esc(s) { return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function fmtDT(s) { return s ? new Date(s).toLocaleString('th-TH', { timeZone:'Asia/Bangkok', hour12:false, dateStyle:'short', timeStyle:'short' }) : ''; }
-function dayKey(s) { return new Date(s).toLocaleDateString('en-CA'); }
 function displayAt(it) { return it.scheduledAt || it.createdAt; }
+function dayKey(s) { return new Date(s).toLocaleDateString('en-CA'); }
 
-function dt24Get(prefix) {
-  const d = document.getElementById(prefix+'_d')?.value;
-  if (!d) return '';
-  const h = String(document.getElementById(prefix+'_h').value||0).padStart(2,'0');
-  const m = String(document.getElementById(prefix+'_m').value||0).padStart(2,'0');
-  return `${d}T${h}:${m}`;
-}
-function _fpSetDate(el, dateStr) {
-  if (!el) return;
-  if (el._flatpickr) el._flatpickr.setDate(dateStr || null, false);
-  else el.value = dateStr || '';
-}
-function dt24Set(prefix, localStr) {
-  const [d,t] = (localStr||'').split('T');
-  _fpSetDate(document.getElementById(prefix+'_d'), d);
-  const [h,m] = (t||'').split(':');
-  document.getElementById(prefix+'_h').value = h||'';
-  document.getElementById(prefix+'_m').value = m||'';
-}
-function dt24Html(prefix, localStr) {
-  const [d,t] = (localStr||'').split('T');
-  const [h,m] = (t||'').split(':');
-  const qs = (min,lbl) => `<button type="button" onclick="dtQuick('${prefix}',${min})" style="background:#f0f2f5;border:none;border-radius:6px;padding:.28rem .4rem;font-size:.72rem;cursor:pointer;color:#444;font-family:inherit">${lbl}</button>`;
-  return `<div style="display:flex;gap:.3rem;align-items:center;flex-wrap:wrap">
-    <div class="dt24-wrap" style="display:flex;gap:.3rem;align-items:center">
-      <input type="date" lang="en-GB" id="${prefix}_d" value="${d||''}" style="padding:.35rem;border:1px solid #ddd;border-radius:6px;cursor:pointer;min-width:110px">
-      <input type="number" id="${prefix}_h" value="${h||''}" min="0" max="23" placeholder="ชม." style="width:50px;padding:.35rem;border:1px solid #ddd;border-radius:6px;text-align:center">
-      :
-      <input type="number" id="${prefix}_m" value="${m||''}" min="0" max="59" placeholder="น." style="width:50px;padding:.35rem;border:1px solid #ddd;border-radius:6px;text-align:center">
-    </div>
-    ${qs(60,'+1ชม.')}${qs(180,'+3ชม.')}${qs(1440,'+1วัน')}
-  </div>`;
-}
-function dtQuick(prefix, minutes) {
-  const dEl = document.getElementById(prefix+'_d');
-  const hEl = document.getElementById(prefix+'_h');
-  const mEl = document.getElementById(prefix+'_m');
-  if (!dEl) return;
-  let base;
-  if (dEl.value) {
-    const h = parseInt(hEl.value)||0, m = parseInt(mEl.value)||0;
-    base = new Date(`${dEl.value}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00+07:00`);
-  } else {
-    base = new Date(); base.setSeconds(0,0);
-  }
-  base.setMinutes(base.getMinutes() + minutes);
-  const bkk = new Date(base.toLocaleString('en-US', { timeZone:'Asia/Bangkok' }));
-  const pad  = n => String(n).padStart(2,'0');
-  _fpSetDate(dEl, `${bkk.getFullYear()}-${pad(bkk.getMonth()+1)}-${pad(bkk.getDate())}`);
-  hEl.value = bkk.getHours();
-  mEl.value = bkk.getMinutes();
-}
-
-/* ── Stats ── */
+/* ── Stats (dynamic refresh) ── */
 function scRenderStats() {
   const pi = _scItems.filter(i => i.type === 'page');
   const gi = _scItems.filter(i => i.type === 'group');
-  const pPending = pi.filter(i => i.status === 'pending').length;
-  const pRunning = pi.filter(i => i.status === 'running').length;
-  const pSuccess = pi.filter(i => i.status === 'success').length;
-  const pFailed  = pi.filter(i => ['failed','expired','cancelled'].includes(i.status)).length;
+
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('db-p-total',     pi.length);
+  set('db-p-pending',   pi.filter(i => i.status === 'pending').length);
+  set('db-p-running',   pi.filter(i => i.status === 'running').length);
+  set('db-p-success',   pi.filter(i => i.status === 'success').length);
+  set('db-p-failed',    pi.filter(i => i.status === 'failed').length);
+  set('db-p-expired',   pi.filter(i => i.status === 'expired').length);
+  set('db-p-cancelled', pi.filter(i => i.status === 'cancelled').length);
+
+  const gJobs    = gi.length;
+  const gPending = gi.filter(i => ['pending','running'].includes(i.status)).length;
   const gSuccess = gi.reduce((s, i) => s + (i.successCount || 0), 0);
-  const gFailed  = gi.reduce((s, i) => s + (i.failCount || 0), 0);
+  const gFailed  = gi.reduce((s, i) => s + (i.failCount    || 0), 0);
   const gPosted  = gSuccess + gFailed;
   const gRate    = gPosted > 0 ? Math.round(gSuccess / gPosted * 100) : 0;
   const rc       = gRate >= 80 ? '#2e7d32' : gRate >= 50 ? '#f59f00' : '#c62828';
 
-  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-  set('db-p-total',   pi.length);
-  set('db-p-pending', pPending);
-  set('db-p-running', pRunning);
-  set('db-p-success', pSuccess);
-  set('db-p-failed',  pFailed);
-  set('db-g-jobs',    gi.length);
-  set('db-g-jobs2',   gi.length);
-  set('db-g-success-kpi', gSuccess);
-  set('db-g-success', gSuccess);
-  set('db-g-failed',  gFailed);
-  set('db-g-rate-kpi', gRate + '%');
+  set('db-g-jobs',     gJobs);
+  set('db-g-jobs2',    gJobs);
+  set('db-g-pending',  gPending);
+  set('db-g-success',  gSuccess);
+  set('db-g-failed',   gFailed);
+  set('db-g-posted',   gPosted);
   set('db-g-rate',     gRate + '%');
+
   const bar = document.getElementById('db-g-rate-bar');
+  const rEl = document.getElementById('db-g-rate');
   if (bar) { bar.style.width = gRate + '%'; bar.style.background = rc; }
-  const rateEl = document.getElementById('db-g-rate');
-  if (rateEl) rateEl.style.color = rc;
-  const kpiRateEl = document.getElementById('db-g-rate-kpi');
-  if (kpiRateEl) kpiRateEl.style.color = rc;
+  if (rEl)   rEl.style.color = rc;
 }
 
-/* ── Chart (2 datasets) ── */
+/* ── Chart ── */
 function scChartBucketKey(at, unit) {
   const d = new Date(at);
   if (unit === 'day')   return d.toLocaleDateString('en-CA');
@@ -322,160 +265,31 @@ function scRenderChart() {
   if (typeof Chart === 'undefined') return;
   const pi = _scItems.filter(i => i.type === 'page'  && displayAt(i));
   const gi = _scItems.filter(i => i.type === 'group' && displayAt(i));
-  const pBuckets = {}, gBuckets = {};
-  pi.forEach(it => { const k = scChartBucketKey(displayAt(it), _scChartUnit); pBuckets[k] = (pBuckets[k]||0)+1; });
-  gi.forEach(it => { const k = scChartBucketKey(displayAt(it), _scChartUnit); gBuckets[k] = (gBuckets[k]||0)+1; });
-  const allKeys = [...new Set([...Object.keys(pBuckets), ...Object.keys(gBuckets)])].sort().slice(-30);
-  const ctx = document.getElementById('scChart');
+  const pB = {}, gB = {};
+  pi.forEach(it => { const k = scChartBucketKey(displayAt(it), _scChartUnit); pB[k] = (pB[k]||0)+1; });
+  gi.forEach(it => { const k = scChartBucketKey(displayAt(it), _scChartUnit); gB[k] = (gB[k]||0)+1; });
+  const keys = [...new Set([...Object.keys(pB), ...Object.keys(gB)])].sort().slice(-30);
+  const ctx  = document.getElementById('scChart');
   if (_scChart) _scChart.destroy();
   _scChart = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: allKeys,
+      labels: keys,
       datasets: [
-        { label: 'โพสเพจ',    data: allKeys.map(k => pBuckets[k]||0), backgroundColor: '#1877f2', borderRadius: 3 },
-        { label: 'แชร์กลุ่ม', data: allKeys.map(k => gBuckets[k]||0), backgroundColor: '#2e7d32', borderRadius: 3 },
+        { label: 'โพสเพจ',    data: keys.map(k => pB[k]||0), backgroundColor: '#1877f2', borderRadius: 3 },
+        { label: 'แชร์กลุ่ม', data: keys.map(k => gB[k]||0), backgroundColor: '#2e7d32', borderRadius: 3 },
       ],
     },
     options: {
       responsive: true,
-      plugins: { legend: { position: 'top', labels: { font: { size: 11 }, usePointStyle: true } } },
+      plugins: { legend: { display: false } },
       scales: { x: { stacked: false }, y: { beginAtZero: true, ticks: { precision: 0 } } },
     },
   });
 }
 
-/* ── Recent activity ── */
-function scApiBase(type, id) { return type === 'page' ? `/api/posts/${id}` : `/api/agent/jobs/${id}`; }
-function scActionButtons(it) {
-  const btn = (label, fn, color) => `<button class="btn-link-sm" style="${color?`color:${color}`:''}" onclick="${fn}">${label}</button>`;
-  const ref = `'${it.type}','${it.id}'`;
-  const out = [];
-  if (it.status === 'pending') {
-    out.push(btn('แก้ไข', `scEdit(${ref})`));
-    out.push(btn('โพสเลย', `scPostNow(${ref})`, '#1877f2'));
-    out.push(btn('ยกเลิก', `scCancel(${ref})`, '#856404'));
-  } else if (it.status === 'expired') {
-    out.push(btn('เลื่อนเวลา', `scEdit(${ref})`, '#856404'));
-    out.push(btn('โพสเลย', `scPostNow(${ref})`, '#1877f2'));
-  } else if (it.status === 'failed') {
-    out.push(btn(it.type==='group' ? 'ลองใหม่' : 'โพสอีกครั้ง', `scRetry(${ref})`, '#1877f2'));
-  }
-  if (['pending','expired','failed','cancelled'].includes(it.status)) {
-    out.push(btn('ลบ', `scDelete(${ref})`, '#c5c8d0'));
-  }
-  return out.join('');
-}
-function scRowHtml(it) {
-  const icon    = _scIcons[it.status] || '❓';
-  const typeBadge = it.type === 'page'
-    ? `<span class="badge" style="background:#e7f3ff;color:#1877f2;font-size:.68rem">📄 เพจ</span>`
-    : `<span class="badge" style="background:#e8fde8;color:#2e7d32;font-size:.68rem">👥 กลุ่ม</span>`;
-  const srcBadge = it.sourceType === 'agent'
-    ? `<span class="badge badge-purple" style="font-size:.68rem">🤖 Agent</span>`
-    : `<span class="badge" style="background:#e7f3ff;color:#1877f2;font-size:.68rem">🌐 Web</span>`;
-  const targets = it.type === 'page'
-    ? (it.targetPages||[]).slice(0,2).map(p=>'🏢 '+p).join(', ')
-    : (it.targetGroups||[]).slice(0,2).map(g=>'👥 '+g).join(', ') + (it.targetGroups&&it.targetGroups.length>2 ? ` +${it.targetGroups.length-2}` : '');
-  const msg = (it.message||'').slice(0, 70);
-  return `<div class="sc-row">
-    <span style="font-size:1rem;flex-shrink:0;margin-top:.1rem">${icon}</span>
-    <div style="flex:1;min-width:0">
-      <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.87rem">${esc(msg)||'(ไม่มีข้อความ)'}</div>
-      <div style="font-size:.74rem;color:var(--text-secondary);margin-top:.12rem">
-        ${esc(targets)||'—'} &middot; ${fmtDT(displayAt(it))}
-        ${(it.status==='success'||it.status==='failed') ? ` &middot; <strong>${it.successCount}/${it.successCount+it.failCount}</strong> สำเร็จ` : ''}
-      </div>
-    </div>
-    <div style="display:flex;align-items:center;gap:.3rem;flex-shrink:0;flex-wrap:wrap">
-      ${typeBadge}
-      ${srcBadge}
-      <span class="badge ${_scStatusCls[it.status]||''}" style="font-size:.68rem">${_scStatusTH[it.status]||it.status}</span>
-      ${scActionButtons(it)}
-    </div>
-  </div>`;
-}
-function scRenderRecent() {
-  const el = document.getElementById('scRecentList');
-  if (!el) return;
-  const cnt = document.getElementById('db-recent-count');
-  if (cnt) cnt.textContent = _scItems.length + ' รายการ';
-  if (!_scItems.length) {
-    el.innerHTML = '<div style="color:var(--text-secondary);text-align:center;padding:1.5rem;font-size:.9rem">ยังไม่มีกิจกรรม</div>';
-    return;
-  }
-  el.innerHTML = _scItems.slice(0, 15).map(scRowHtml).join('');
-}
-
-/* ── Actions ── */
-async function scEdit(type, id) {
-  const it = _scItems.find(x => x.type===type && x.id===id);
-  if (!it) return;
-  const localAt = it.scheduledAt ? new Date(it.scheduledAt).toLocaleString('en-CA', { timeZone:'Asia/Bangkok', hour12:false }).replace(', ',' T').replace(' ','T').slice(0,16) : '';
-  const { isConfirmed, value } = await Swal.fire({
-    title: type==='page' ? 'แก้ไขโพส' : 'แก้ไขงานกลุ่ม',
-    html: `<textarea id="swal-scMsg" style="width:100%;min-height:80px;border:1px solid #ddd;border-radius:8px;padding:.5rem;font-size:.85rem;font-family:inherit;resize:vertical">${esc(it.message)}</textarea>
-      <div style="margin-top:.5rem;font-size:.8rem;font-weight:600;color:#555;text-align:left">เวลาโพส (ไม่ระบุ = โพสเลย)</div>
-      <div style="margin-top:.3rem">${dt24Html('swal-scAt', localAt)}</div>
-      ${type==='group' ? `<div style="font-size:.75rem;color:#888;margin-top:.5rem;text-align:left">เป้าหมาย: ${esc((it.targetGroups||[]).join(', ')||'—')} (หากต้องการเปลี่ยนกลุ่ม/รูป กรุณาลบแล้วสร้างใหม่)</div>` : ''}`,
-    showCancelButton: true,
-    confirmButtonText: 'บันทึก', cancelButtonText: 'ยกเลิก', confirmButtonColor: '#1877f2',
-    focusConfirm: false,
-    preConfirm: () => ({ message: document.getElementById('swal-scMsg').value, scheduledAt: dt24Get('swal-scAt') }),
-  });
-  if (!isConfirmed) return;
-  const body = { message: value.message, scheduledAt: value.scheduledAt ? new Date(value.scheduledAt+':00+07:00').toISOString() : null };
-  try {
-    const r = await fetch(`${scApiBase(type,id)}/edit`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
-    if (!r.ok) throw new Error((await r.json()).error || `HTTP ${r.status}`);
-    await scRefresh();
-  } catch(e) { Swal.fire({ icon:'error', title:'บันทึกไม่สำเร็จ', text:e.message }); }
-}
-async function scPostNow(type, id) {
-  const { isConfirmed } = await Swal.fire({ icon:'question', title:'โพสทันทีเลยหรือไม่?', showCancelButton:true, confirmButtonText:'โพสเลย', cancelButtonText:'ยกเลิก', confirmButtonColor:'#1877f2' });
-  if (!isConfirmed) return;
-  try {
-    const r = await fetch(`${scApiBase(type,id)}/post-now`, { method:'POST' });
-    if (!r.ok) throw new Error((await r.json()).error || `HTTP ${r.status}`);
-    await scRefresh();
-    if (type==='page') Swal.fire({ icon:'success', title:'โพสแล้ว', timer:1500, showConfirmButton:false });
-    else Swal.fire({ icon:'success', title:'นำเข้าคิวแล้ว', text:'Agent จะหยิบไปโพสในรอบถัดไป', timer:2000, showConfirmButton:false });
-  } catch(e) { Swal.fire({ icon:'error', title:'ทำไม่สำเร็จ', text:e.message }); }
-}
-async function scRetry(type, id) {
-  try {
-    const url = type==='group' ? `/api/agent/jobs/${id}/retry` : `/api/posts/${id}/post-now`;
-    const r = await fetch(url, { method:'POST' });
-    if (!r.ok) throw new Error((await r.json()).error || `HTTP ${r.status}`);
-    await scRefresh();
-  } catch(e) { Swal.fire({ icon:'error', title:'ทำไม่สำเร็จ', text:e.message }); }
-}
-async function scCancel(type, id) {
-  const { isConfirmed } = await Swal.fire({ icon:'warning', title:'ยกเลิกรายการนี้?', showCancelButton:true, confirmButtonText:'ยกเลิกรายการ', cancelButtonText:'ปิด', confirmButtonColor:'#856404' });
-  if (!isConfirmed) return;
-  try {
-    const r = await fetch(`${scApiBase(type,id)}/cancel`, { method:'POST' });
-    if (!r.ok) throw new Error((await r.json()).error || `HTTP ${r.status}`);
-    await scRefresh();
-  } catch(e) { Swal.fire({ icon:'error', title:'ทำไม่สำเร็จ', text:e.message }); }
-}
-async function scDelete(type, id) {
-  const { isConfirmed } = await Swal.fire({ icon:'warning', title:'ลบรายการนี้?', text:'ลบแล้วกู้คืนไม่ได้', showCancelButton:true, confirmButtonText:'ลบ', confirmButtonColor:'#c62828', cancelButtonText:'ยกเลิก' });
-  if (!isConfirmed) return;
-  try {
-    const url = type==='page' ? `/history/${id}` : `/api/agent/jobs/${id}`;
-    const r = await fetch(url, { method:'DELETE' });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    await scRefresh();
-  } catch(e) { Swal.fire({ icon:'error', title:'ลบไม่สำเร็จ', text:e.message }); }
-}
-
 /* ── Render & Refresh ── */
-function scRender() {
-  scRenderStats();
-  scRenderChart();
-  scRenderRecent();
-}
+function scRender() { scRenderStats(); scRenderChart(); }
 async function scRefresh() {
   try {
     const r = await fetch('/api/schedule-center/items');
