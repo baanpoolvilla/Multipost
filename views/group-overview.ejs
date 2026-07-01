@@ -110,9 +110,17 @@
            const total = st.success + st.fail;
            const rate  = total > 0 ? Math.round(st.success/total*100) : 0;
       %>
-      <div style="background:<%= pv.bg %>;border:1.5px solid <%= pv.border %>;border-radius:14px;padding:.85rem 1rem">
-        <div style="font-size:.8rem;font-weight:700;color:<%= pv.color %>;margin-bottom:.55rem;display:flex;align-items:center;gap:.35rem">
-          <%= pv.icon %> <%= pv.label %>
+      <div class="pv-card" data-pv="<%= pv.key %>" onclick="filterByPrivacy('<%= pv.key %>')"
+        style="background:<%= pv.bg %>;border:1.5px solid <%= pv.border %>;border-radius:14px;padding:.85rem 1rem;cursor:pointer;transition:box-shadow .18s,transform .14s;user-select:none"
+        onmouseover="this.style.boxShadow='0 4px 18px rgba(0,0,0,.13)';this.style.transform='translateY(-2px)'"
+        onmouseout="if(!this.classList.contains('pv-active')){this.style.boxShadow='';this.style.transform=''}">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.45rem">
+          <div style="font-size:.8rem;font-weight:700;color:<%= pv.color %>;display:flex;align-items:center;gap:.35rem">
+            <%= pv.icon %> <%= pv.label %>
+          </div>
+          <div style="font-size:.7rem;color:<%= pv.color %>;background:rgba(0,0,0,.06);border-radius:6px;padding:.1rem .45rem;font-weight:600">
+            <i class="fa-solid fa-filter" style="font-size:.6rem"></i> ดูรายการ
+          </div>
         </div>
         <div style="display:flex;gap:.5rem;align-items:flex-end;margin-bottom:.5rem">
           <div>
@@ -141,8 +149,14 @@
     <% if (allGroupStats.length > 0) { %>
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;margin-bottom:1rem">
-        <div class="card-title" style="margin-bottom:0">
-          <i class="fa-solid fa-layer-group"></i> สถิติแต่ละกลุ่ม
+        <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;flex:1">
+          <div class="card-title" style="margin-bottom:0">
+            <i class="fa-solid fa-layer-group"></i> สถิติแต่ละกลุ่ม
+          </div>
+          <span id="pvFilterBadge" style="display:none;align-items:center;gap:.3rem;background:#e7f0fd;color:#1877f2;border-radius:999px;font-size:.74rem;font-weight:700;padding:.15rem .6rem">
+            <span id="pvFilterLabel"></span>
+            <button onclick="clearPrivacyFilter()" style="background:none;border:none;cursor:pointer;color:#1877f2;font-size:.8rem;padding:0;line-height:1;margin-left:.15rem" title="ล้าง filter">×</button>
+          </span>
         </div>
         <div style="position:relative">
           <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:.6rem;top:50%;transform:translateY(-50%);color:#8a8d91;font-size:.8rem;pointer-events:none"></i>
@@ -181,13 +195,19 @@
                 </div>
               </td>
             </tr>
+            <%
+              const pvBadge = { public:'🌐', private:'🔒', paid:'💰' };
+            %>
             <% allGroupStats.forEach((g, i) => { %>
             <% const total = g.success + g.fail; const rate = total > 0 ? Math.round(g.success/total*100) : 0; %>
-            <tr class="grp-row" data-name="<%= g.name.toLowerCase() %>" data-index="<%= i %>">
+            <tr class="grp-row" data-name="<%= g.name.toLowerCase() %>" data-privacy="<%= g.privacy || '' %>" data-index="<%= i %>">
               <td>
                 <div style="display:flex;align-items:center;gap:.5rem">
                   <div class="avatar avatar-green avatar-sm" style="background:#2e7d32"><%= g.name.slice(0,1).toUpperCase() %></div>
                   <span style="font-weight:600"><%= g.name %></span>
+                  <% if (g.privacy && pvBadge[g.privacy]) { %>
+                  <span style="font-size:.7rem;opacity:.7" title="<%= g.privacy %>"><%= pvBadge[g.privacy] %></span>
+                  <% } %>
                 </div>
               </td>
               <td class="num"><%= total %></td>
@@ -328,15 +348,53 @@ const GRP_LIMIT = 8;
 let grpShowAll = false;
 function applyGrpVisibility(q) {
   const rows = document.querySelectorAll('.grp-row');
+  let visible = 0;
   rows.forEach(r => {
-    const match = !q || r.dataset.name.includes(q);
+    const matchQ  = !q  || r.dataset.name.includes(q);
+    const matchPv = !_pvFilter || r.dataset.privacy === _pvFilter;
     const withinLimit = grpShowAll || parseInt(r.dataset.index) < GRP_LIMIT;
-    r.style.display = match && withinLimit ? '' : 'none';
+    const show = matchQ && matchPv && withinLimit;
+    r.style.display = show ? '' : 'none';
+    if (matchQ && matchPv) visible++;
   });
   const wrap = document.getElementById('grp-show-more');
-  if (wrap) wrap.style.display = (!grpShowAll && !q && rows.length > GRP_LIMIT) ? '' : 'none';
+  if (wrap) wrap.style.display = (!grpShowAll && !q && !_pvFilter && rows.length > GRP_LIMIT) ? '' : 'none';
 }
-function filterGrpTable(q) { grpShowAll = !!q; applyGrpVisibility(q.toLowerCase()); }
+let _pvFilter = '';
+function filterByPrivacy(pv) {
+  const pvLabel = { public:'🌐 สาธารณะ', private:'🔒 ส่วนตัว', paid:'💰 เสียตัง' };
+  if (_pvFilter === pv) { clearPrivacyFilter(); return; }
+  _pvFilter = pv;
+  grpShowAll = true;
+  // Update card active state
+  document.querySelectorAll('.pv-card').forEach(c => {
+    const active = c.dataset.pv === pv;
+    c.classList.toggle('pv-active', active);
+    c.style.boxShadow = active ? '0 0 0 3px currentColor' : '';
+    c.style.transform = active ? 'translateY(-2px)' : '';
+    c.style.outline   = active ? `2.5px solid` : 'none';
+  });
+  const badge = document.getElementById('pvFilterBadge');
+  const label = document.getElementById('pvFilterLabel');
+  if (badge) badge.style.display = 'inline-flex';
+  if (label) label.textContent = pvLabel[pv] || pv;
+  applyGrpVisibility((document.getElementById('grp-search')?.value||'').toLowerCase());
+  document.getElementById('grp-tbody')?.closest('.card')?.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+function clearPrivacyFilter() {
+  _pvFilter = '';
+  grpShowAll = false;
+  document.querySelectorAll('.pv-card').forEach(c => {
+    c.classList.remove('pv-active');
+    c.style.boxShadow = '';
+    c.style.transform = '';
+    c.style.outline   = 'none';
+  });
+  const badge = document.getElementById('pvFilterBadge');
+  if (badge) badge.style.display = 'none';
+  applyGrpVisibility((document.getElementById('grp-search')?.value||'').toLowerCase());
+}
+function filterGrpTable(q) { grpShowAll = !!q || !!_pvFilter; applyGrpVisibility(q.toLowerCase()); }
 function showAllGrps() { grpShowAll = true; applyGrpVisibility((document.getElementById('grp-search')?.value||'').toLowerCase()); }
 applyGrpVisibility('');
 

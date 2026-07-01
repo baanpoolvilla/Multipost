@@ -31,12 +31,17 @@ exports.showGroupOverview = async (req, res) => {
             });
         });
 
-        // All groups sorted by activity — include analytics totals
+        // All groups sorted by activity — include analytics totals + privacy
         const grpCounts = {};
         jobs.forEach(j => {
             (j.results||[]).forEach(r => {
                 const key = r.groupId || r.groupName || 'ไม่ทราบ';
-                if (!grpCounts[key]) grpCounts[key] = { name: r.groupName || r.groupId || 'ไม่ทราบ', success: 0, fail: 0, likes: 0, comments: 0, shares: 0, reach: 0 };
+                if (!grpCounts[key]) grpCounts[key] = {
+                    groupId: r.groupId || null,
+                    name: r.groupName || r.groupId || 'ไม่ทราบ',
+                    privacy: privacyMap[r.groupId] || null,
+                    success: 0, fail: 0, likes: 0, comments: 0, shares: 0, reach: 0,
+                };
                 if (r.status === 'success') grpCounts[key].success++;
                 else grpCounts[key].fail++;
                 if (r.analytics) {
