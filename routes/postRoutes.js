@@ -94,6 +94,7 @@ router.get('/result/:id',     ctrl.showResult);
 router.get('/api/post/:id/status', ctrl.getPostStatus);
 router.get('/history',        ctrl.showHistory);
 router.get('/post-queue',     ctrl.showPostQueue);
+router.get('/schedule-post',  ctrl.showSchedulePost);
 router.delete('/history/:id', ctrl.deletePost);
 router.get('/overview',               ctrl.showOverview);
 router.get('/group-overview',         agentCtrl.showGroupOverview);

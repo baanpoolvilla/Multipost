@@ -267,6 +267,18 @@ exports.showHistory = async (req, res) => {
     res.render('history', { posts });
 };
 
+exports.showSchedulePost = async (req, res) => {
+    const referer = req.headers.referer || '';
+    const isAllowed = referer.includes('/post-queue') || referer.includes('/schedule-post');
+    if (!isAllowed) return res.redirect('/post-queue');
+    await postStore.expireOverdueScheduled().catch(() => {});
+    const [allPages, posts] = await Promise.all([pageStore.load(), postStore.load()]);
+    const pages         = allPages.filter(p => p.enabled !== false);
+    const disabledPages = allPages.filter(p => p.enabled === false);
+    const scheduledPosts = posts.filter(p => p.status === STATUS.PENDING).map(p => ({ id: p.id, msg: p.message, at: p.scheduledAt }));
+    res.render('schedule-post', { pages, disabledPages, recentPosts: posts.slice(0, 5), scheduledPosts });
+};
+
 exports.showPostQueue = async (req, res) => {
     await postStore.expireOverdueScheduled().catch(() => {});
     const [posts, pages] = await Promise.all([postStore.load(), pageStore.load()]);
