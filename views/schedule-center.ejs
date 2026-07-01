@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="th">
 <head>
   <meta charset="UTF-8">
@@ -46,6 +46,22 @@
 
   <main class="feed">
 
+<%
+  const _pi = items.filter(i => i.type === 'page');
+  const _gi = items.filter(i => i.type === 'group');
+  const pTotal   = _pi.length;
+  const pPending = _pi.filter(i => i.status === 'pending').length;
+  const pRunning = _pi.filter(i => i.status === 'running').length;
+  const pSuccess = _pi.filter(i => i.status === 'success').length;
+  const pFailed  = _pi.filter(i => ['failed','expired','cancelled'].includes(i.status)).length;
+  const gJobs    = _gi.length;
+  const gSuccess = _gi.reduce((s, i) => s + (i.successCount || 0), 0);
+  const gFailed  = _gi.reduce((s, i) => s + (i.failCount || 0), 0);
+  const gPosted  = gSuccess + gFailed;
+  const gRate    = gPosted > 0 ? Math.round(gSuccess / gPosted * 100) : 0;
+  const rateColor = gRate >= 80 ? '#2e7d32' : gRate >= 50 ? '#f59f00' : '#c62828';
+%>
+
     <!-- Header -->
     <div class="card" style="padding:.85rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">
       <div class="card-title" style="font-size:1.05rem">
@@ -54,11 +70,114 @@
       <button class="btn-link-sm" onclick="scRefresh()"><i class="fa-solid fa-rotate-right"></i> รีเฟรช</button>
     </div>
 
-    <!-- Metrics cards (Part 13) -->
+    <!-- KPI row -->
+    <div class="overview-grid" style="grid-template-columns:repeat(4,1fr)">
+      <div class="metric-card blue">
+        <div class="metric-icon"><i class="fa-solid fa-pen-to-square"></i></div>
+        <div class="metric-body">
+          <div class="metric-val" id="db-p-total"><%= pTotal %></div>
+          <div class="metric-label">โพสเพจทั้งหมด</div>
+        </div>
+      </div>
+      <div class="metric-card green">
+        <div class="metric-icon"><i class="fa-solid fa-users-rectangle"></i></div>
+        <div class="metric-body">
+          <div class="metric-val" id="db-g-jobs"><%= gJobs %></div>
+          <div class="metric-label">งานแชร์กลุ่ม</div>
+        </div>
+      </div>
+      <div class="metric-card green" style="border:2px solid #059669;background:#f0fff4">
+        <div class="metric-icon" style="background:#059669"><i class="fa-solid fa-circle-check"></i></div>
+        <div class="metric-body">
+          <div class="metric-val" style="color:#059669" id="db-g-success-kpi"><%= gSuccess %></div>
+          <div class="metric-label">แชร์กลุ่มสำเร็จ</div>
+        </div>
+      </div>
+      <div class="metric-card green" style="border:2px solid <%- rateColor %>;background:#f9fefb">
+        <div class="metric-icon" style="background:<%- rateColor %>"><i class="fa-solid fa-chart-pie"></i></div>
+        <div class="metric-body">
+          <div class="metric-val" style="color:<%- rateColor %>" id="db-g-rate-kpi"><%= gRate %>%</div>
+          <div class="metric-label">อัตราสำเร็จกลุ่ม</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Two panels -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+
+      <!-- Page posts panel -->
+      <div class="card" style="padding:1rem 1.25rem">
+        <div class="card-title" style="margin-bottom:.75rem;font-size:.92rem">
+          <i class="fa-solid fa-pen-to-square" style="color:#1877f2"></i> โพสลงเพจ
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.45rem;margin-bottom:.8rem">
+          <div style="background:#fff3cd;border-radius:8px;padding:.45rem .5rem;text-align:center">
+            <div style="font-size:1.25rem;font-weight:800;color:#856404" id="db-p-pending"><%= pPending %></div>
+            <div style="font-size:.7rem;color:#856404;font-weight:600">รอ</div>
+          </div>
+          <div style="background:#cfe2ff;border-radius:8px;padding:.45rem .5rem;text-align:center">
+            <div style="font-size:1.25rem;font-weight:800;color:#084298" id="db-p-running"><%= pRunning %></div>
+            <div style="font-size:.7rem;color:#084298;font-weight:600">กำลังโพส</div>
+          </div>
+          <div style="background:#d1e7dd;border-radius:8px;padding:.45rem .5rem;text-align:center">
+            <div style="font-size:1.25rem;font-weight:800;color:#0a3622" id="db-p-success"><%= pSuccess %></div>
+            <div style="font-size:.7rem;color:#0a3622;font-weight:600">สำเร็จ</div>
+          </div>
+          <div style="background:#f8d7da;border-radius:8px;padding:.45rem .5rem;text-align:center">
+            <div style="font-size:1.25rem;font-weight:800;color:#842029" id="db-p-failed"><%= pFailed %></div>
+            <div style="font-size:.7rem;color:#842029;font-weight:600">ล้มเหลว</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+          <a href="/post-queue" class="btn-link-sm"><i class="fa-solid fa-list-check"></i> คิวโพส</a>
+          <a href="/history" class="btn-link-sm"><i class="fa-solid fa-clock-rotate-left"></i> ประวัติ</a>
+          <a href="/" class="btn-link-sm" style="color:#1877f2;font-weight:700"><i class="fa-solid fa-plus"></i> โพสใหม่</a>
+        </div>
+      </div>
+
+      <!-- Group shares panel -->
+      <div class="card" style="padding:1rem 1.25rem">
+        <div class="card-title" style="margin-bottom:.75rem;font-size:.92rem">
+          <i class="fa-solid fa-users-rectangle" style="color:#2e7d32"></i> แชร์กลุ่ม
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.45rem;margin-bottom:.6rem">
+          <div style="background:#f0fdf4;border-radius:8px;padding:.45rem .5rem;text-align:center">
+            <div style="font-size:1.25rem;font-weight:800;color:#2e7d32" id="db-g-jobs2"><%= gJobs %></div>
+            <div style="font-size:.7rem;color:#2e7d32;font-weight:600">งานทั้งหมด</div>
+          </div>
+          <div style="background:#d1e7dd;border-radius:8px;padding:.45rem .5rem;text-align:center">
+            <div style="font-size:1.25rem;font-weight:800;color:#0a3622" id="db-g-success"><%= gSuccess %></div>
+            <div style="font-size:.7rem;color:#0a3622;font-weight:600">สำเร็จ</div>
+          </div>
+          <div style="background:#f8d7da;border-radius:8px;padding:.45rem .5rem;text-align:center">
+            <div style="font-size:1.25rem;font-weight:800;color:#842029" id="db-g-failed"><%= gFailed %></div>
+            <div style="font-size:.7rem;color:#842029;font-weight:600">ล้มเหลว</div>
+          </div>
+        </div>
+        <div style="margin-bottom:.65rem">
+          <div style="display:flex;justify-content:space-between;font-size:.77rem;font-weight:600;color:#555;margin-bottom:.2rem">
+            <span>อัตราสำเร็จ</span>
+            <span id="db-g-rate" style="color:<%- rateColor %>"><%= gRate %>%</span>
+          </div>
+          <div style="background:#e9ecef;border-radius:999px;height:8px">
+            <div id="db-g-rate-bar" style="background:<%- rateColor %>;border-radius:999px;height:8px;width:<%= gRate %>%;transition:width .5s"></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+          <a href="/job-queue" class="btn-link-sm"><i class="fa-solid fa-list-check"></i> คิวกลุ่ม</a>
+          <a href="/group-history" class="btn-link-sm"><i class="fa-solid fa-clock-rotate-left"></i> ประวัติ</a>
+          <a href="/group-overview" class="btn-link-sm" style="color:#2e7d32;font-weight:700"><i class="fa-solid fa-chart-bar"></i> ภาพรวม</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Combined chart -->
     <div class="card" style="padding:.85rem 1rem">
-      <div id="scMetricCards" style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.7rem"></div>
-      <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem">
-        <strong style="font-size:.85rem;color:#555">กราฟจำนวนรายการ</strong>
+      <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem;flex-wrap:wrap">
+        <strong style="font-size:.85rem;color:#555">
+          <i class="fa-solid fa-chart-column" style="color:#1877f2;font-size:.78rem"></i>
+          กิจกรรมรวม — โพสเพจ + แชร์กลุ่ม
+        </strong>
         <div class="status-filter" style="margin-left:auto">
           <button class="filter-btn active" data-chartunit="day"   onclick="scSetChartUnit('day')">รายวัน</button>
           <button class="filter-btn"        data-chartunit="month" onclick="scSetChartUnit('month')">รายเดือน</button>
@@ -68,23 +187,13 @@
       <canvas id="scChart" height="70"></canvas>
     </div>
 
-    <!-- Calendar view (hidden, kept for future use) -->
-    <div id="scCalView" style="display:none">
-      <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem;flex-wrap:wrap">
-        <div class="status-filter">
-          <button class="filter-btn active" data-unit="month" onclick="scSetCalUnit('month')">เดือน</button>
-          <button class="filter-btn" data-unit="week"  onclick="scSetCalUnit('week')">สัปดาห์</button>
-          <button class="filter-btn" data-unit="day"   onclick="scSetCalUnit('day')">วัน</button>
-          <button class="filter-btn" data-unit="year"  onclick="scSetCalUnit('year')">ปี</button>
-        </div>
-        <div style="display:flex;gap:.3rem;margin-left:auto">
-          <button class="btn-link-sm" onclick="scCalNav(-1)"><i class="fa-solid fa-chevron-left"></i></button>
-          <button class="btn-link-sm" onclick="scCalToday()">วันนี้</button>
-          <button class="btn-link-sm" onclick="scCalNav(1)"><i class="fa-solid fa-chevron-right"></i></button>
-        </div>
-        <strong id="scCalLabel" style="font-size:.95rem"></strong>
+    <!-- Recent activity -->
+    <div class="card" style="padding:.5rem .75rem">
+      <div style="font-size:.88rem;font-weight:700;color:#444;padding:.35rem .3rem .55rem;display:flex;align-items:center;justify-content:space-between">
+        <span><i class="fa-solid fa-clock-rotate-left" style="color:#1877f2;font-size:.82rem"></i> กิจกรรมล่าสุด</span>
+        <span id="db-recent-count" style="background:#e4e6ea;padding:.1rem .5rem;border-radius:999px;font-size:.78rem;font-weight:600;color:#666"></span>
       </div>
-      <div id="scCalBody"></div>
+      <div id="scRecentList"></div>
     </div>
 
   </main>
@@ -93,25 +202,16 @@
 <style>
 .sc-row { display:flex; align-items:flex-start; gap:.7rem; padding:.55rem .4rem; border-bottom:1px solid var(--border-color) }
 .sc-row:last-child { border-bottom:none }
-.sc-group-header { font-size:.78rem; font-weight:700; color:#666; padding:.5rem .4rem .25rem; text-transform:uppercase; letter-spacing:.02em }
-.sc-day-cell { border:1px solid #eee; border-radius:6px; min-height:78px; padding:.25rem; font-size:.7rem; cursor:pointer; background:#fff }
-.sc-day-cell:hover { background:#f7f9fc }
-.sc-day-cell.today { border-color:#1877f2; box-shadow:inset 0 0 0 1px #1877f2 }
-.sc-day-num { font-weight:700; color:#444; font-size:.72rem }
-.sc-chip { background:#fff3cd; color:#856404; border-radius:4px; padding:.05rem .3rem; margin-top:.15rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:.64rem }
-.sc-chip.failed, .sc-chip.expired { background:#fde8e8; color:#c62828 }
-.sc-chip.success { background:#d1e7dd; color:#0a3622 }
 .badge-purple { background:#e7e0fb; color:#5b3fa3 }
 </style>
 
 <script>
 let _scItems = <%- JSON.stringify(items) %>;
-let _scView  = 'list';
-let _scCalUnit = 'month';
-let _scCalDate = new Date();
-const _scIcons = { pending:'⏳', running:'🔄', success:'✅', failed:'❌', expired:'⏰', cancelled:'🚫' };
-const _scStatusTH = { pending:'รอ', running:'กำลังโพส', success:'สำเร็จ', failed:'ล้มเหลว', expired:'หมดเวลา', cancelled:'ยกเลิก' };
+let _scChartUnit = 'day';
+let _scChart = null;
+const _scStatusTH  = { pending:'รอ', running:'กำลังโพส', success:'สำเร็จ', failed:'ล้มเหลว', expired:'หมดเวลา', cancelled:'ยกเลิก' };
 const _scStatusCls = { pending:'badge-yellow', running:'badge-blue', success:'badge-green', failed:'badge-red', expired:'badge-red', cancelled:'badge-red' };
+const _scIcons     = { pending:'⏳', running:'🔄', success:'✅', failed:'❌', expired:'⏰', cancelled:'🚫' };
 
 function esc(s) { return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function fmtDT(s) { return s ? new Date(s).toLocaleString('th-TH', { timeZone:'Asia/Bangkok', hour12:false, dateStyle:'short', timeStyle:'short' }) : ''; }
@@ -171,134 +271,82 @@ function dtQuick(prefix, minutes) {
   mEl.value = bkk.getMinutes();
 }
 
-// ── Populate filter dropdowns from data ─────────────────────────
-(function initFilterOptions() {
-  const pages = new Set(), groups = new Set();
-  _scItems.forEach(it => { (it.targetPages||[]).forEach(p=>pages.add(p)); (it.targetGroups||[]).forEach(g=>groups.add(g)); });
-  const pageSel = document.getElementById('scPage'), groupSel = document.getElementById('scGroup');
-  [...pages].sort().forEach(p => pageSel.insertAdjacentHTML('beforeend', `<option value="${esc(p)}">${esc(p)}</option>`));
-  [...groups].sort().forEach(g => groupSel.insertAdjacentHTML('beforeend', `<option value="${esc(g)}">${esc(g)}</option>`));
-})();
+/* ── Stats ── */
+function scRenderStats() {
+  const pi = _scItems.filter(i => i.type === 'page');
+  const gi = _scItems.filter(i => i.type === 'group');
+  const pPending = pi.filter(i => i.status === 'pending').length;
+  const pRunning = pi.filter(i => i.status === 'running').length;
+  const pSuccess = pi.filter(i => i.status === 'success').length;
+  const pFailed  = pi.filter(i => ['failed','expired','cancelled'].includes(i.status)).length;
+  const gSuccess = gi.reduce((s, i) => s + (i.successCount || 0), 0);
+  const gFailed  = gi.reduce((s, i) => s + (i.failCount || 0), 0);
+  const gPosted  = gSuccess + gFailed;
+  const gRate    = gPosted > 0 ? Math.round(gSuccess / gPosted * 100) : 0;
+  const rc       = gRate >= 80 ? '#2e7d32' : gRate >= 50 ? '#f59f00' : '#c62828';
 
-function scDateRangeValid() {
-  const from = document.getElementById('scDateFrom').value;
-  const to   = document.getElementById('scDateTo').value;
-  const err  = document.getElementById('scDateRangeErr');
-  const bad  = from && to && from > to;
-  document.getElementById('scDateFrom').style.borderColor = bad ? '#c62828' : '';
-  document.getElementById('scDateTo').style.borderColor   = bad ? '#c62828' : '';
-  err.style.display = bad ? 'inline' : 'none';
-  return !bad;
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('db-p-total',   pi.length);
+  set('db-p-pending', pPending);
+  set('db-p-running', pRunning);
+  set('db-p-success', pSuccess);
+  set('db-p-failed',  pFailed);
+  set('db-g-jobs',    gi.length);
+  set('db-g-jobs2',   gi.length);
+  set('db-g-success-kpi', gSuccess);
+  set('db-g-success', gSuccess);
+  set('db-g-failed',  gFailed);
+  set('db-g-rate-kpi', gRate + '%');
+  set('db-g-rate',     gRate + '%');
+  const bar = document.getElementById('db-g-rate-bar');
+  if (bar) { bar.style.width = gRate + '%'; bar.style.background = rc; }
+  const rateEl = document.getElementById('db-g-rate');
+  if (rateEl) rateEl.style.color = rc;
+  const kpiRateEl = document.getElementById('db-g-rate-kpi');
+  if (kpiRateEl) kpiRateEl.style.color = rc;
 }
 
-['scSearch','scStatus','scSource','scPage','scGroup','scDateFrom','scDateTo','scGroupBy'].forEach(id => {
-  document.getElementById(id).addEventListener('input',  () => { _scListLimit = 20; if (scDateRangeValid()) scRender(); });
-  document.getElementById(id).addEventListener('change', () => { _scListLimit = 20; if (scDateRangeValid()) scRender(); });
-});
-
-function scClearFilters() {
-  ['scSearch','scDateFrom','scDateTo'].forEach(id => document.getElementById(id).value = '');
-  ['scStatus','scSource','scPage','scGroup'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('scGroupBy').value = 'none';
-  document.getElementById('scDateFrom').style.borderColor = '';
-  document.getElementById('scDateTo').style.borderColor   = '';
-  document.getElementById('scDateRangeErr').style.display = 'none';
-  _scListLimit = 20;
-  scRender();
-}
-
-function scFilterExpiredOnly() { document.getElementById('scStatus').value = 'expired'; scSetView('list'); scRender(); }
-
-function getFilteredItems() {
-  const q      = document.getElementById('scSearch').value.toLowerCase().trim();
-  const status = document.getElementById('scStatus').value;
-  const source = document.getElementById('scSource').value;
-  const page   = document.getElementById('scPage').value;
-  const group  = document.getElementById('scGroup').value;
-  const from   = document.getElementById('scDateFrom').value;
-  const to     = document.getElementById('scDateTo').value;
-  return _scItems.filter(it => {
-    if (q && !it.message.toLowerCase().includes(q)) return false;
-    if (status && it.status !== status) return false;
-    if (source && it.sourceType !== source) return false;
-    if (page  && !(it.targetPages||[]).includes(page)) return false;
-    if (group && !(it.targetGroups||[]).includes(group)) return false;
-    const at = displayAt(it);
-    if (from && at && dayKey(at) < from) return false;
-    if (to   && at && dayKey(at) > to)   return false;
-    return true;
-  }).sort((a,b) => new Date(displayAt(b)) - new Date(displayAt(a)));
-}
-
-// ── Metrics cards + chart (Part 13) ─────────────────────────────
-let _scChartUnit = 'day';
-let _scChart = null;
-const _scMetricStatuses = ['pending','running','success','failed','expired','cancelled'];
-
-function scRenderMetrics() {
-  const items = getFilteredItems();
-  const counts = {};
-  _scMetricStatuses.forEach(s => counts[s] = 0);
-  items.forEach(it => { if (counts[it.status] !== undefined) counts[it.status]++; });
-  const cardColor = { pending:'#856404', running:'#084298', success:'#0a3622', failed:'#842029', expired:'#842029', cancelled:'#666' };
-  const cardBg    = { pending:'#fff3cd', running:'#cfe2ff', success:'#d1e7dd', failed:'#f8d7da', expired:'#fde2cd', cancelled:'#eee' };
-  document.getElementById('scMetricCards').innerHTML = _scMetricStatuses.map(s => `
-    <div style="flex:1;min-width:100px;background:${cardBg[s]};border-radius:8px;padding:.55rem .7rem">
-      <div style="font-size:1.3rem;font-weight:800;color:${cardColor[s]}">${counts[s]}</div>
-      <div style="font-size:.74rem;color:${cardColor[s]};font-weight:600">${_scStatusTH[s]}</div>
-    </div>`).join('');
-}
-
+/* ── Chart (2 datasets) ── */
 function scChartBucketKey(at, unit) {
   const d = new Date(at);
   if (unit === 'day')   return d.toLocaleDateString('en-CA');
   if (unit === 'month') return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
   return String(d.getFullYear());
 }
-
 function scSetChartUnit(u) {
   _scChartUnit = u;
   document.querySelectorAll('[data-chartunit]').forEach(b => b.classList.toggle('active', b.dataset.chartunit===u));
   scRenderChart();
 }
-
 function scRenderChart() {
   if (typeof Chart === 'undefined') return;
-  const items = getFilteredItems().filter(it => displayAt(it));
-  const buckets = {};
-  items.forEach(it => { const k = scChartBucketKey(displayAt(it), _scChartUnit); (buckets[k] = buckets[k]||0); buckets[k]++; });
-  const keys = Object.keys(buckets).sort().slice(-30); // last 30 buckets max, keeps chart readable
-  const data = keys.map(k => buckets[k]);
+  const pi = _scItems.filter(i => i.type === 'page'  && displayAt(i));
+  const gi = _scItems.filter(i => i.type === 'group' && displayAt(i));
+  const pBuckets = {}, gBuckets = {};
+  pi.forEach(it => { const k = scChartBucketKey(displayAt(it), _scChartUnit); pBuckets[k] = (pBuckets[k]||0)+1; });
+  gi.forEach(it => { const k = scChartBucketKey(displayAt(it), _scChartUnit); gBuckets[k] = (gBuckets[k]||0)+1; });
+  const allKeys = [...new Set([...Object.keys(pBuckets), ...Object.keys(gBuckets)])].sort().slice(-30);
   const ctx = document.getElementById('scChart');
   if (_scChart) _scChart.destroy();
   _scChart = new Chart(ctx, {
     type: 'bar',
-    data: { labels: keys, datasets: [{ label: 'จำนวนรายการ', data, backgroundColor: '#1877f2' }] },
-    options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } },
+    data: {
+      labels: allKeys,
+      datasets: [
+        { label: 'โพสเพจ',    data: allKeys.map(k => pBuckets[k]||0), backgroundColor: '#1877f2', borderRadius: 3 },
+        { label: 'แชร์กลุ่ม', data: allKeys.map(k => gBuckets[k]||0), backgroundColor: '#2e7d32', borderRadius: 3 },
+      ],
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'top', labels: { font: { size: 11 }, usePointStyle: true } } },
+      scales: { x: { stacked: false }, y: { beginAtZero: true, ticks: { precision: 0 } } },
+    },
   });
 }
 
-function scSetView(v) {
-  _scView = v;
-  document.getElementById('scListView').style.display = v==='list' ? '' : 'none';
-  document.getElementById('scCalView').style.display   = v==='calendar' ? '' : 'none';
-  document.getElementById('scViewList').style.fontWeight = v==='list' ? '800':'400';
-  document.getElementById('scViewCal').style.fontWeight  = v==='calendar' ? '800':'400';
-  scRender();
-}
-
-function scGroupKey(it, by) {
-  const at = displayAt(it);
-  switch (by) {
-    case 'status': return _scStatusTH[it.status] || it.status;
-    case 'page':   return (it.targetPages||[])[0] || 'ไม่ระบุเพจ';
-    case 'agent':  return it.sourceType==='agent' ? (it.agentId ? `Agent (${it.agentId})` : 'Desktop Agent') : 'Web';
-    case 'day':    return at ? new Date(at).toLocaleDateString('th-TH',{dateStyle:'medium'}) : 'ไม่ระบุวัน';
-    case 'month':  return at ? new Date(at).toLocaleDateString('th-TH',{year:'numeric',month:'long'}) : 'ไม่ระบุเดือน';
-    default: return null;
-  }
-}
-
+/* ── Recent activity ── */
+function scApiBase(type, id) { return type === 'page' ? `/api/posts/${id}` : `/api/agent/jobs/${id}`; }
 function scActionButtons(it) {
   const btn = (label, fn, color) => `<button class="btn-link-sm" style="${color?`color:${color}`:''}" onclick="${fn}">${label}</button>`;
   const ref = `'${it.type}','${it.id}'`;
@@ -318,206 +366,71 @@ function scActionButtons(it) {
   }
   return out.join('');
 }
-
 function scRowHtml(it) {
-  const icon = _scIcons[it.status] || '❓';
-  const targets = [...(it.targetPages||[]).map(p=>'🏢 '+p), ...(it.targetGroups||[]).map(g=>'👥 '+g)].join(', ') || '—';
-  const srcBadge = it.sourceType==='agent'
-    ? `<span class="badge badge-purple" title="Desktop Agent">🤖 Agent</span>`
-    : `<span class="badge" style="background:#e7f3ff;color:#1877f2">🌐 Web</span>`;
-  const msg = (it.message||'').slice(0,90);
+  const icon    = _scIcons[it.status] || '❓';
+  const typeBadge = it.type === 'page'
+    ? `<span class="badge" style="background:#e7f3ff;color:#1877f2;font-size:.68rem">📄 เพจ</span>`
+    : `<span class="badge" style="background:#e8fde8;color:#2e7d32;font-size:.68rem">👥 กลุ่ม</span>`;
+  const srcBadge = it.sourceType === 'agent'
+    ? `<span class="badge badge-purple" style="font-size:.68rem">🤖 Agent</span>`
+    : `<span class="badge" style="background:#e7f3ff;color:#1877f2;font-size:.68rem">🌐 Web</span>`;
+  const targets = it.type === 'page'
+    ? (it.targetPages||[]).slice(0,2).map(p=>'🏢 '+p).join(', ')
+    : (it.targetGroups||[]).slice(0,2).map(g=>'👥 '+g).join(', ') + (it.targetGroups&&it.targetGroups.length>2 ? ` +${it.targetGroups.length-2}` : '');
+  const msg = (it.message||'').slice(0, 70);
   return `<div class="sc-row">
-    <span style="font-size:1.1rem;flex-shrink:0;margin-top:.1rem">${icon}</span>
+    <span style="font-size:1rem;flex-shrink:0;margin-top:.1rem">${icon}</span>
     <div style="flex:1;min-width:0">
-      <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(msg)}</div>
-      <div style="font-size:.76rem;color:var(--text-secondary);margin-top:.15rem">
-        ${esc(targets)} ·
-        ${it.scheduledAt ? `<i class="fa-solid fa-clock" style="font-size:.68rem"></i> ${fmtDT(it.scheduledAt)}` : fmtDT(it.createdAt)}
-        ${(it.status==='success'||it.status==='failed') ? ` · <strong>${it.successCount}/${it.successCount+it.failCount}</strong> สำเร็จ` : ''}
+      <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.87rem">${esc(msg)||'(ไม่มีข้อความ)'}</div>
+      <div style="font-size:.74rem;color:var(--text-secondary);margin-top:.12rem">
+        ${esc(targets)||'—'} &middot; ${fmtDT(displayAt(it))}
+        ${(it.status==='success'||it.status==='failed') ? ` &middot; <strong>${it.successCount}/${it.successCount+it.failCount}</strong> สำเร็จ` : ''}
       </div>
     </div>
-    <span class="badge ${_scStatusCls[it.status]||''}" style="flex-shrink:0">${_scStatusTH[it.status]||it.status}</span>
-    ${srcBadge}
-    <div style="flex-shrink:0;white-space:nowrap">${scActionButtons(it)}</div>
+    <div style="display:flex;align-items:center;gap:.3rem;flex-shrink:0;flex-wrap:wrap">
+      ${typeBadge}
+      ${srcBadge}
+      <span class="badge ${_scStatusCls[it.status]||''}" style="font-size:.68rem">${_scStatusTH[it.status]||it.status}</span>
+      ${scActionButtons(it)}
+    </div>
   </div>`;
 }
-
-let _scListLimit = 20;
-
-function scRenderList() {
-  const items = getFilteredItems();
-  document.getElementById('scCount').textContent = items.length;
-  const el = document.getElementById('scListView');
-  if (!items.length) { el.innerHTML = '<div style="color:var(--text-secondary);text-align:center;padding:1.5rem;font-size:.9rem">ไม่พบรายการ</div>'; return; }
-
-  const shown   = items.slice(0, _scListLimit);
-  const groupBy = document.getElementById('scGroupBy').value;
-  let html = '';
-  if (groupBy === 'none') {
-    html = shown.map(scRowHtml).join('');
-  } else {
-    const buckets = {};
-    shown.forEach(it => { const k = scGroupKey(it, groupBy); (buckets[k] = buckets[k] || []).push(it); });
-    html = Object.keys(buckets).sort().map(k =>
-      `<div class="sc-group-header">${esc(k)} (${buckets[k].length})</div>${buckets[k].map(scRowHtml).join('')}`
-    ).join('');
+function scRenderRecent() {
+  const el = document.getElementById('scRecentList');
+  if (!el) return;
+  const cnt = document.getElementById('db-recent-count');
+  if (cnt) cnt.textContent = _scItems.length + ' รายการ';
+  if (!_scItems.length) {
+    el.innerHTML = '<div style="color:var(--text-secondary);text-align:center;padding:1.5rem;font-size:.9rem">ยังไม่มีกิจกรรม</div>';
+    return;
   }
-  if (items.length > _scListLimit) {
-    const rem = items.length - _scListLimit;
-    html += `<div style="text-align:center;padding:.75rem 0"><button onclick="_scListLimit+=20;scRenderList()" style="background:#f0f2f5;border:none;border-radius:8px;padding:.42rem 1.2rem;font-size:.83rem;cursor:pointer;color:#555;font-family:inherit;font-weight:600">ดูเพิ่มเติม (${rem} รายการ)</button></div>`;
-  }
-  el.innerHTML = html;
+  el.innerHTML = _scItems.slice(0, 15).map(scRowHtml).join('');
 }
 
-// ── Calendar ─────────────────────────────────────────────────
-function scSetCalUnit(u) {
-  _scCalUnit = u;
-  document.querySelectorAll('#scCalView .filter-btn').forEach(b => b.classList.toggle('active', b.dataset.unit===u));
-  scRenderCalendar();
-}
-function scCalToday() { _scCalDate = new Date(); scRenderCalendar(); }
-function scCalNav(dir) {
-  const d = new Date(_scCalDate);
-  if (_scCalUnit==='day') d.setDate(d.getDate()+dir);
-  else if (_scCalUnit==='week') d.setDate(d.getDate()+dir*7);
-  else if (_scCalUnit==='month') d.setMonth(d.getMonth()+dir);
-  else d.setFullYear(d.getFullYear()+dir);
-  _scCalDate = d;
-  scRenderCalendar();
-}
-
-function scItemsByDay(items) {
-  const map = {};
-  items.forEach(it => { const at = displayAt(it); if (!at) return; (map[dayKey(at)] = map[dayKey(at)] || []).push(it); });
-  return map;
-}
-
-function scChip(it) {
-  const t = new Date(displayAt(it));
-  const time = t.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',hour12:false});
-  return `<div class="sc-chip ${it.status}" title="${esc(it.message)}" onclick="scEdit('${it.type}','${it.id}')">${time} ${esc((it.message||'').slice(0,16))}</div>`;
-}
-
-function scRenderCalendar() {
-  const items = getFilteredItems();
-  document.getElementById('scCount').textContent = items.length;
-  const byDay = scItemsByDay(items);
-  const body  = document.getElementById('scCalBody');
-  const label = document.getElementById('scCalLabel');
-  const d = _scCalDate;
-
-  if (_scCalUnit === 'month') {
-    label.textContent = d.toLocaleDateString('th-TH', { year:'numeric', month:'long' });
-    const first = new Date(d.getFullYear(), d.getMonth(), 1);
-    const startOffset = first.getDay();
-    const daysInMonth = new Date(d.getFullYear(), d.getMonth()+1, 0).getDate();
-    const todayKey = dayKey(new Date());
-    let cells = '';
-    for (let i=0; i<startOffset; i++) cells += `<div></div>`;
-    for (let day=1; day<=daysInMonth; day++) {
-      const cellDate = new Date(d.getFullYear(), d.getMonth(), day);
-      const key = dayKey(cellDate);
-      const dayItems = byDay[key] || [];
-      const isToday = key === todayKey;
-      cells += `<div class="sc-day-cell ${isToday?'today':''}" onclick="scGoToDay('${key}')">
-        <div class="sc-day-num">${day}</div>
-        ${dayItems.slice(0,3).map(scChip).join('')}
-        ${dayItems.length>3 ? `<div style="font-size:.62rem;color:#888">+${dayItems.length-3} เพิ่มเติม</div>` : ''}
-      </div>`;
-    }
-    body.innerHTML = `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;font-size:.7rem;color:#888;margin-bottom:4px">
-        ${['อา','จ','อ','พ','พฤ','ศ','ส'].map(x=>`<div style="text-align:center;font-weight:700">${x}</div>`).join('')}
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">${cells}</div>`;
-
-  } else if (_scCalUnit === 'week') {
-    const start = new Date(d); start.setDate(d.getDate() - d.getDay());
-    label.textContent = `${start.toLocaleDateString('th-TH',{dateStyle:'medium'})} — ${new Date(start.getTime()+6*86400000).toLocaleDateString('th-TH',{dateStyle:'medium'})}`;
-    let cols = '';
-    for (let i=0;i<7;i++) {
-      const cellDate = new Date(start.getTime()+i*86400000);
-      const key = dayKey(cellDate);
-      const dayItems = (byDay[key]||[]).sort((a,b)=>new Date(displayAt(a))-new Date(displayAt(b)));
-      cols += `<div style="flex:1;min-width:130px">
-        <div style="font-size:.78rem;font-weight:700;text-align:center;margin-bottom:.3rem;cursor:pointer" onclick="scGoToDay('${key}')">${cellDate.toLocaleDateString('th-TH',{weekday:'short',day:'numeric',month:'short'})}</div>
-        <div style="border:1px solid #eee;border-radius:8px;min-height:300px;padding:.3rem;background:#fafbfc">${dayItems.map(scChip).join('') || '<div style="color:#ccc;font-size:.7rem;text-align:center;padding-top:1rem">—</div>'}</div>
-      </div>`;
-    }
-    body.innerHTML = `<div style="display:flex;gap:.5rem;overflow-x:auto">${cols}</div>`;
-
-  } else if (_scCalUnit === 'day') {
-    const key = dayKey(d);
-    label.textContent = d.toLocaleDateString('th-TH',{dateStyle:'full'});
-    const dayItems = (byDay[key]||[]).sort((a,b)=>new Date(displayAt(a))-new Date(displayAt(b)));
-    body.innerHTML = dayItems.length ? dayItems.map(scRowHtml).join('') : '<div style="color:var(--text-secondary);text-align:center;padding:1.5rem">ไม่มีรายการในวันนี้</div>';
-
-  } else { // year
-    label.textContent = String(d.getFullYear());
-    let months = '';
-    for (let m=0; m<12; m++) {
-      const mDate = new Date(d.getFullYear(), m, 1);
-      const count = items.filter(it => { const at=displayAt(it); return at && new Date(at).getFullYear()===d.getFullYear() && new Date(at).getMonth()===m; }).length;
-      months += `<div class="sc-day-cell" style="min-height:70px;cursor:pointer" onclick="scGoToMonth(${m})">
-        <div class="sc-day-num">${mDate.toLocaleDateString('th-TH',{month:'long'})}</div>
-        <div style="font-size:1.3rem;font-weight:700;color:${count?'#1877f2':'#ccc'};text-align:center;margin-top:.3rem">${count}</div>
-        <div style="font-size:.65rem;color:#888;text-align:center">รายการ</div>
-      </div>`;
-    }
-    body.innerHTML = `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${months}</div>`;
-  }
-}
-function scGoToDay(key) { _scCalDate = new Date(key+'T00:00:00'); scSetCalUnit('day'); }
-function scGoToMonth(m) { _scCalDate = new Date(_scCalDate.getFullYear(), m, 1); scSetCalUnit('month'); }
-
-function scRender() {
-  if (_scView === 'list') scRenderList(); else scRenderCalendar();
-  scRenderExpiredBanner();
-  scRenderMetrics();
-  scRenderChart();
-}
-
-function scRenderExpiredBanner() {
-  const n = _scItems.filter(it => it.status === 'expired').length;
-  const el = document.getElementById('scExpiredBanner');
-  if (!n) { el.style.display = 'none'; return; }
-  el.style.display = 'flex';
-  document.getElementById('scExpiredMsg').textContent = `มีงานหมดเวลาแล้ว ${n} รายการ — ระบบไม่โพสให้อัตโนมัติ ต้องเลื่อนเวลาหรือโพสเองใหม่`;
-}
-
-// ── Actions ──────────────────────────────────────────────────
-function scApiBase(type, id) { return type==='page' ? `/api/posts/${id}` : `/api/agent/jobs/${id}`; }
-
+/* ── Actions ── */
 async function scEdit(type, id) {
   const it = _scItems.find(x => x.type===type && x.id===id);
   if (!it) return;
-  const { value, isConfirmed } = await Swal.fire({
-    title: 'แก้ไขรายการที่ตั้งเวลาไว้',
-    html: `<div style="text-align:left">
-      <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:.3rem">ข้อความ</label>
-      <textarea id="swal-scMsg" rows="4" style="width:100%;padding:.5rem;border:1px solid #ddd;border-radius:6px;font-family:inherit">${esc(it.message)}</textarea>
-      <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin:.6rem 0 .3rem">เวลาโพส (เว้นว่าง = โพสทันที)</label>
-      ${dt24Html('swal-scAt', it.scheduledAt ? new Date(it.scheduledAt).toISOString().slice(0,16) : '')}
-      ${it.type==='group' ? `<div style="font-size:.74rem;color:#888;margin-top:.5rem">เป้าหมาย: ${esc((it.targetGroups||[]).join(', ') || '—')} (แก้กลุ่มเป้าหมาย/รูปภาพ — กรุณาลบแล้วสร้างใหม่)</div>` : ''}
-    </div>`,
+  const localAt = it.scheduledAt ? new Date(it.scheduledAt).toLocaleString('en-CA', { timeZone:'Asia/Bangkok', hour12:false }).replace(', ',' T').replace(' ','T').slice(0,16) : '';
+  const { isConfirmed, value } = await Swal.fire({
+    title: type==='page' ? 'แก้ไขโพส' : 'แก้ไขงานกลุ่ม',
+    html: `<textarea id="swal-scMsg" style="width:100%;min-height:80px;border:1px solid #ddd;border-radius:8px;padding:.5rem;font-size:.85rem;font-family:inherit;resize:vertical">${esc(it.message)}</textarea>
+      <div style="margin-top:.5rem;font-size:.8rem;font-weight:600;color:#555;text-align:left">เวลาโพส (ไม่ระบุ = โพสเลย)</div>
+      <div style="margin-top:.3rem">${dt24Html('swal-scAt', localAt)}</div>
+      ${type==='group' ? `<div style="font-size:.75rem;color:#888;margin-top:.5rem;text-align:left">เป้าหมาย: ${esc((it.targetGroups||[]).join(', ')||'—')} (หากต้องการเปลี่ยนกลุ่ม/รูป กรุณาลบแล้วสร้างใหม่)</div>` : ''}`,
     showCancelButton: true,
-    confirmButtonText: 'บันทึก',
-    cancelButtonText: 'ยกเลิก',
-    confirmButtonColor: '#1877f2',
+    confirmButtonText: 'บันทึก', cancelButtonText: 'ยกเลิก', confirmButtonColor: '#1877f2',
     focusConfirm: false,
     preConfirm: () => ({ message: document.getElementById('swal-scMsg').value, scheduledAt: dt24Get('swal-scAt') }),
   });
   if (!isConfirmed) return;
-  const body = {
-    message: value.message,
-    scheduledAt: value.scheduledAt ? new Date(value.scheduledAt+':00+07:00').toISOString() : null,
-  };
+  const body = { message: value.message, scheduledAt: value.scheduledAt ? new Date(value.scheduledAt+':00+07:00').toISOString() : null };
   try {
     const r = await fetch(`${scApiBase(type,id)}/edit`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
     if (!r.ok) throw new Error((await r.json()).error || `HTTP ${r.status}`);
     await scRefresh();
   } catch(e) { Swal.fire({ icon:'error', title:'บันทึกไม่สำเร็จ', text:e.message }); }
 }
-
 async function scPostNow(type, id) {
   const { isConfirmed } = await Swal.fire({ icon:'question', title:'โพสทันทีเลยหรือไม่?', showCancelButton:true, confirmButtonText:'โพสเลย', cancelButtonText:'ยกเลิก', confirmButtonColor:'#1877f2' });
   if (!isConfirmed) return;
@@ -529,7 +442,6 @@ async function scPostNow(type, id) {
     else Swal.fire({ icon:'success', title:'นำเข้าคิวแล้ว', text:'Agent จะหยิบไปโพสในรอบถัดไป', timer:2000, showConfirmButton:false });
   } catch(e) { Swal.fire({ icon:'error', title:'ทำไม่สำเร็จ', text:e.message }); }
 }
-
 async function scRetry(type, id) {
   try {
     const url = type==='group' ? `/api/agent/jobs/${id}/retry` : `/api/posts/${id}/post-now`;
@@ -538,7 +450,6 @@ async function scRetry(type, id) {
     await scRefresh();
   } catch(e) { Swal.fire({ icon:'error', title:'ทำไม่สำเร็จ', text:e.message }); }
 }
-
 async function scCancel(type, id) {
   const { isConfirmed } = await Swal.fire({ icon:'warning', title:'ยกเลิกรายการนี้?', showCancelButton:true, confirmButtonText:'ยกเลิกรายการ', cancelButtonText:'ปิด', confirmButtonColor:'#856404' });
   if (!isConfirmed) return;
@@ -548,7 +459,6 @@ async function scCancel(type, id) {
     await scRefresh();
   } catch(e) { Swal.fire({ icon:'error', title:'ทำไม่สำเร็จ', text:e.message }); }
 }
-
 async function scDelete(type, id) {
   const { isConfirmed } = await Swal.fire({ icon:'warning', title:'ลบรายการนี้?', text:'ลบแล้วกู้คืนไม่ได้', showCancelButton:true, confirmButtonText:'ลบ', confirmButtonColor:'#c62828', cancelButtonText:'ยกเลิก' });
   if (!isConfirmed) return;
@@ -560,15 +470,12 @@ async function scDelete(type, id) {
   } catch(e) { Swal.fire({ icon:'error', title:'ลบไม่สำเร็จ', text:e.message }); }
 }
 
-async function scDeleteAllExpired() {
-  const expired = _scItems.filter(it => it.status === 'expired');
-  if (!expired.length) return;
-  const { isConfirmed } = await Swal.fire({ icon:'warning', title:`ลบงานหมดเวลาทั้งหมด ${expired.length} รายการ?`, text:'ลบแล้วกู้คืนไม่ได้', showCancelButton:true, confirmButtonText:'ลบทั้งหมด', confirmButtonColor:'#c62828', cancelButtonText:'ยกเลิก' });
-  if (!isConfirmed) return;
-  await Promise.all(expired.map(it => fetch(it.type==='page' ? `/history/${it.id}` : `/api/agent/jobs/${it.id}`, { method:'DELETE' }).catch(()=>{})));
-  await scRefresh();
+/* ── Render & Refresh ── */
+function scRender() {
+  scRenderStats();
+  scRenderChart();
+  scRenderRecent();
 }
-
 async function scRefresh() {
   try {
     const r = await fetch('/api/schedule-center/items');
@@ -577,7 +484,6 @@ async function scRefresh() {
   } catch {}
 }
 
-// initial render + light auto-refresh so expired/running states stay fresh
 scRender();
 setInterval(scRefresh, 30000);
 </script>
