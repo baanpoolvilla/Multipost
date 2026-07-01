@@ -7,6 +7,12 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .q-btn{background:#e8f0fe;color:#1877f2;border:1.5px solid #1877f2;border-radius:8px;padding:.3rem .75rem;font-size:.8rem;cursor:pointer;font-family:inherit;transition:background .15s,color .15s}
+    .q-btn[data-period="all"]{background:#fff;color:#555;border-color:#ccc}
+    .q-btn.q-active{background:#1877f2!important;color:#fff!important;border-color:#1877f2!important}
+    .q-btn[data-period="all"].q-active{background:#555!important;color:#fff!important;border-color:#555!important}
+  </style>
 </head>
 <body>
 
@@ -62,11 +68,11 @@
 
       <!-- Quick period buttons -->
       <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.9rem">
-        <button onclick="qPeriod('today')" style="background:#e8f0fe;color:#1877f2;border:1.5px solid #1877f2;border-radius:8px;padding:.3rem .75rem;font-size:.8rem;cursor:pointer;font-family:inherit">วันนี้</button>
-        <button onclick="qPeriod('7d')" style="background:#e8f0fe;color:#1877f2;border:1.5px solid #1877f2;border-radius:8px;padding:.3rem .75rem;font-size:.8rem;cursor:pointer;font-family:inherit">7 วันที่ผ่านมา</button>
-        <button onclick="qPeriod('30d')" style="background:#e8f0fe;color:#1877f2;border:1.5px solid #1877f2;border-radius:8px;padding:.3rem .75rem;font-size:.8rem;cursor:pointer;font-family:inherit">30 วันที่ผ่านมา</button>
-        <button onclick="qPeriod('month')" style="background:#e8f0fe;color:#1877f2;border:1.5px solid #1877f2;border-radius:8px;padding:.3rem .75rem;font-size:.8rem;cursor:pointer;font-family:inherit">เดือนนี้</button>
-        <button onclick="qPeriod('all')" style="background:#fff;color:#555;border:1.5px solid #ccc;border-radius:8px;padding:.3rem .75rem;font-size:.8rem;cursor:pointer;font-family:inherit">ทั้งหมด</button>
+        <button onclick="qPeriod('today')" data-period="today" class="q-btn">วันนี้</button>
+        <button onclick="qPeriod('7d')" data-period="7d" class="q-btn">7 วันที่ผ่านมา</button>
+        <button onclick="qPeriod('30d')" data-period="30d" class="q-btn">30 วันที่ผ่านมา</button>
+        <button onclick="qPeriod('month')" data-period="month" class="q-btn">เดือนนี้</button>
+        <button onclick="qPeriod('all')" data-period="all" class="q-btn">ทั้งหมด</button>
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem">
@@ -300,6 +306,27 @@ function submitPS() {
   if (!from && !to) params.set('all', '1');
   window.location.href = '/page-summary?' + params;
 }
+
+(function(){
+  const curFrom = '<%= from %>';
+  const curTo   = '<%= to %>';
+  const now = _bkk();
+  const today = _bkkDate(now);
+  let active = (!curFrom && !curTo) ? 'all' : null;
+  if (curFrom || curTo) {
+    const d7  = (() => { const d = _bkk(); d.setDate(d.getDate()-6); return _bkkDate(d); })();
+    const d30 = (() => { const d = _bkk(); d.setDate(d.getDate()-29); return _bkkDate(d); })();
+    const dMon = `${now.getFullYear()}-${_pad(now.getMonth()+1)}-01`;
+    if (curFrom===today && curTo===today) active='today';
+    else if (curFrom===d7 && curTo===today) active='7d';
+    else if (curFrom===d30 && curTo===today) active='30d';
+    else if (curFrom===dMon && curTo===today) active='month';
+  }
+  if (active) {
+    const btn = document.querySelector('.q-btn[data-period="'+active+'"]');
+    if (btn) btn.classList.add('q-active');
+  }
+})();
 </script>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
