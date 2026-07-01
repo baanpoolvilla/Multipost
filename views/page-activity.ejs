@@ -333,5 +333,8 @@
     Swal.fire({ html:`<video src="${src}" controls autoplay style="max-width:100%;max-height:70vh;border-radius:8px"></video>`, showConfirmButton:false, showCloseButton:true, width:'auto', background:'#000', padding:'1rem' });
   }
 </script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>(function(){var O={dateFormat:'Y-m-d',altInput:true,altFormat:'d/m/Y',allowInput:true,disableMobile:true};function I(e){if(e._flatpickr)return;flatpickr(e,O);var ai=e._flatpickr&&e._flatpickr.altInput;if(ai){var s=e.getAttribute('style');if(s)ai.style.cssText=s;ai.style.cursor='pointer';}}document.querySelectorAll('input[type="date"]').forEach(I);new MutationObserver(function(m){m.forEach(function(r){r.addedNodes.forEach(function(n){if(n.nodeType!==1)return;if(n.matches&&n.matches('input[type="date"]'))I(n);n.querySelectorAll&&n.querySelectorAll('input[type="date"]').forEach(I)})})}).observe(document.body,{childList:true,subtree:true});})()</script>
 </body>
 </html>

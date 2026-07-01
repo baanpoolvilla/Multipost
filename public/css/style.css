@@ -335,7 +335,8 @@ textarea::placeholder { color: #8a8d91; }
 
 /* ── 24h date/time widget ── */
 .dt24-wrap { display: inline-flex; gap: .3rem; align-items: center; }
-.dt24-wrap input[type=date] { padding: .28rem .4rem; border: 1.5px solid #1877f2; border-radius: 7px; font-size: .82rem; font-family: inherit; color: #444; outline: none; }
+.dt24-wrap input[type=date],
+.dt24-wrap .flatpickr-input { padding: .28rem .4rem; border: 1.5px solid #1877f2; border-radius: 7px; font-size: .82rem; font-family: inherit; color: #444; outline: none; cursor: pointer; background: #fff; }
 .dt24-wrap input[type=number] { width: 46px; text-align: center; padding: .28rem .2rem; border: 1.5px solid #1877f2; border-radius: 7px; font-size: .82rem; font-family: inherit; color: #444; outline: none; }
 .dt24-wrap span { color: #444; font-weight: 600; }
 
