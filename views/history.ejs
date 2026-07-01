@@ -334,7 +334,7 @@
     <div class="card stats-card" onclick="showSummaryModal()" style="cursor:pointer;transition:box-shadow .15s" onmouseover="this.style.boxShadow='0 0 0 2px #1877f2'" onmouseout="this.style.boxShadow=''">
       <div class="stats-title" style="display:flex;align-items:center;justify-content:space-between">
         <span><i class="fa-solid fa-chart-simple"></i> สถิติรวม</span>
-        <span style="font-size:.72rem;color:#1877f2;font-weight:600"><i class="fa-solid fa-arrow-up-right-from-square"></i> ดูสรุป</span>
+        <a href="/post-queue" onclick="event.stopPropagation()" style="font-size:.72rem;color:#1877f2;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:.25rem"><i class="fa-solid fa-calendar-days"></i> ปฏิทินโพส</a>
       </div>
       <%
         const totalPosts = posts.length;
