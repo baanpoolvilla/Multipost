@@ -49,7 +49,7 @@
     <!-- Notice -->
     <div style="background:#e8f0fe;border:1.5px solid #1877f2;border-radius:12px;padding:.7rem 1.1rem;margin-bottom:.6rem;display:flex;align-items:center;gap:.6rem;font-size:.83rem;font-weight:600;color:#0d47a1">
       <i class="fa-solid fa-chart-bar" style="color:#1877f2"></i>
-      หน้านี้สำหรับดูสถิติโพสเพจ และแชร์กลุ่มตามช่วงเวลาเท่านั้น
+      หน้านี้สำหรับดูสถิติโพสเพจตามช่วงเวลาเท่านั้น
       &nbsp;·&nbsp;
       <a href="/overview" style="color:#1877f2;text-decoration:underline">ดูภาพรวมทั้งหมด</a>
     </div>
@@ -108,16 +108,14 @@
 
     <% if (result && result.error) { %>
     <div class="card" style="color:#c62828"><i class="fa-solid fa-circle-xmark"></i> เกิดข้อผิดพลาด: <%= result.error %></div>
-    <% } %>
-
-    <% if (result && !result.error) { %>
+    <% } else { %>
 
     <%
       function fmtDateTH(d) {
         return new Date(d + 'T00:00:00').toLocaleDateString('th-TH', { dateStyle:'short' });
       }
       const rangeLabel = (() => {
-        if (all === '1' && !from && !to) return 'ข้อมูลทั้งหมด';
+        if (!from && !to) return 'ข้อมูลทั้งหมด';
         const parts = [];
         if (from) parts.push(fmtDateTH(from));
         if (to && to !== from) parts.push(fmtDateTH(to));
@@ -193,34 +191,6 @@
       </div>
     </div>
 
-    <!-- Group shares section -->
-    <div style="font-size:.8rem;font-weight:700;color:#2e7d32;margin-bottom:.45rem;display:flex;align-items:center;gap:.35rem">
-      <i class="fa-solid fa-users"></i> แชร์ลงกลุ่ม
-    </div>
-    <div class="overview-grid" style="margin-bottom:.75rem">
-      <div class="metric-card green">
-        <div class="metric-icon"><i class="fa-solid fa-list-check"></i></div>
-        <div class="metric-body">
-          <div class="metric-val"><%= result.grp.total %></div>
-          <div class="metric-label">งาน (Job)</div>
-        </div>
-      </div>
-      <div class="metric-card green" style="border:2px solid #059669;background:#f0fdf4">
-        <div class="metric-icon" style="background:#059669"><i class="fa-solid fa-circle-check"></i></div>
-        <div class="metric-body">
-          <div class="metric-val" style="color:#059669"><%= result.grp.success %></div>
-          <div class="metric-label">สำเร็จ</div>
-        </div>
-      </div>
-      <div class="metric-card red">
-        <div class="metric-icon"><i class="fa-solid fa-circle-xmark"></i></div>
-        <div class="metric-body">
-          <div class="metric-val"><%= result.grp.fail %></div>
-          <div class="metric-label">ล้มเหลว</div>
-        </div>
-      </div>
-    </div>
-
     <!-- Top pages table -->
     <% if (result.topPages.length > 0) { %>
     <div class="card">
@@ -268,7 +238,7 @@
     </div>
     <% } %>
 
-    <% } %> <!-- end result block -->
+    <% } %>
 
   </main>
 

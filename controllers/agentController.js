@@ -96,66 +96,67 @@ exports.showGroupOverview = async (req, res) => {
 // ── Group Summary Page ─────────────────────────────────────────
 exports.showGroupSummary = async (req, res) => {
     const referer = req.headers.referer || '';
-    const isAllowed = referer.includes('/group-overview') || referer.includes('/group-summary');
+    let isAllowed = referer.includes('/group-overview') || referer.includes('/group-summary');
+    if (!isAllowed) {
+        try { isAllowed = new URL(referer).pathname === '/overview'; } catch {}
+    }
     if (!isAllowed) return res.redirect('/group-overview');
 
-    const { from = '', to = '', timeFrom = '', timeTo = '', all = '' } = req.query;
+    const { from = '', to = '', timeFrom = '', timeTo = '' } = req.query;
     let result = null;
 
-    if (from || to || all === '1') {
-        try {
-            const fromDate = from ? new Date(`${from}T${timeFrom || '00:00:00'}+07:00`) : null;
-            const toDate   = to   ? new Date(`${to}T${timeTo ? timeTo+':59' : '23:59:59'}+07:00`) : null;
+    try {
+        const fromDate = from ? new Date(`${from}T${timeFrom || '00:00:00'}+07:00`) : null;
+        const toDate   = to   ? new Date(`${to}T${timeTo ? timeTo+':59' : '23:59:59'}+07:00`) : null;
 
-            const [grpJobs, groups] = await Promise.all([groupJobStore.listHistory(), groupStore.list()]);
-            const privacyMap = {};
-            groups.forEach(g => { privacyMap[g.groupId] = g.privacy || null; });
+        const [grpJobs, groups] = await Promise.all([groupJobStore.listHistory(), groupStore.list()]);
+        const privacyMap = {};
+        groups.forEach(g => { privacyMap[g.groupId] = g.privacy || null; });
 
-            const filtered = grpJobs.filter(j => {
-                const t = new Date(j.createdAt).getTime();
-                if (fromDate && t < fromDate.getTime()) return false;
-                if (toDate   && t > toDate.getTime())   return false;
-                return true;
+        const filtered = grpJobs.filter(j => {
+            const t = new Date(j.createdAt).getTime();
+            if (fromDate && t < fromDate.getTime()) return false;
+            if (toDate   && t > toDate.getTime())   return false;
+            return true;
+        });
+
+        let totalSuccess = 0, totalFail = 0;
+        const privacyStats = {
+            public:  { success:0, fail:0 },
+            private: { success:0, fail:0 },
+            paid:    { success:0, fail:0 },
+        };
+        const grpCounts = {};
+
+        filtered.forEach(j => {
+            (j.results || []).forEach(r => {
+                const ok = r.status === 'success';
+                if (ok) totalSuccess++; else totalFail++;
+                const pv = privacyMap[r.groupId] || null;
+                if (pv === 'public' || pv === 'private' || pv === 'paid') {
+                    if (ok) privacyStats[pv].success++; else privacyStats[pv].fail++;
+                }
+                const key = r.groupId || r.groupName || 'ไม่ทราบ';
+                if (!grpCounts[key]) grpCounts[key] = {
+                    name: r.groupName || r.groupId || 'ไม่ทราบ',
+                    privacy: privacyMap[r.groupId] || null,
+                    success: 0, fail: 0,
+                };
+                if (ok) grpCounts[key].success++; else grpCounts[key].fail++;
             });
+        });
 
-            let totalSuccess = 0, totalFail = 0;
-            const privacyStats = {
-                public:  { success:0, fail:0 },
-                private: { success:0, fail:0 },
-                paid:    { success:0, fail:0 },
-            };
-            const grpCounts = {};
+        const allGroupStats = Object.values(grpCounts)
+            .sort((a,b) => (b.success+b.fail)-(a.success+a.fail));
+        const successRate = (totalSuccess+totalFail) > 0
+            ? Math.round(totalSuccess/(totalSuccess+totalFail)*100) : 0;
 
-            filtered.forEach(j => {
-                (j.results || []).forEach(r => {
-                    const ok = r.status === 'success';
-                    if (ok) totalSuccess++; else totalFail++;
-                    const pv = privacyMap[r.groupId] || null;
-                    if (pv === 'public' || pv === 'private' || pv === 'paid') {
-                        if (ok) privacyStats[pv].success++; else privacyStats[pv].fail++;
-                    }
-                    const key = r.groupId || r.groupName || 'ไม่ทราบ';
-                    if (!grpCounts[key]) grpCounts[key] = {
-                        name: r.groupName || r.groupId || 'ไม่ทราบ',
-                        privacy: privacyMap[r.groupId] || null,
-                        success: 0, fail: 0,
-                    };
-                    if (ok) grpCounts[key].success++; else grpCounts[key].fail++;
-                });
-            });
-
-            const allGroupStats = Object.values(grpCounts)
-                .sort((a,b) => (b.success+b.fail)-(a.success+a.fail));
-            const successRate = (totalSuccess+totalFail) > 0
-                ? Math.round(totalSuccess/(totalSuccess+totalFail)*100) : 0;
-
-            result = { totalJobs: filtered.length, totalSuccess, totalFail, successRate, privacyStats, allGroupStats };
-        } catch (e) {
-            result = { error: e.message };
-        }
+        result = { totalJobs: filtered.length, totalSuccess, totalFail, successRate, privacyStats, allGroupStats };
+    } catch (e) {
+        result = { error: e.message };
     }
 
-    res.render('group-summary', { from, to, timeFrom, timeTo, all, result });
+    res.render('group-summary', { from, to, timeFrom, timeTo, result });
 };
 
 // ── Agent status page ──────────────────────────────────────────

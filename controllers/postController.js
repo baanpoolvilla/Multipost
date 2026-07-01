@@ -288,53 +288,48 @@ exports.showPageSummary = async (req, res) => {
     } catch { isAllowed = false; }
     if (!isAllowed) return res.redirect('/overview');
 
-    const { from = '', to = '', timeFrom = '', timeTo = '', all = '' } = req.query;
+    const { from = '', to = '', timeFrom = '', timeTo = '' } = req.query;
     let result = null;
 
-    if (from || to || all === '1') {
-        try {
-            const fromDate = from ? new Date(`${from}T${timeFrom || '00:00:00'}+07:00`) : null;
-            const toDate   = to   ? new Date(`${to}T${timeTo ? timeTo+':59' : '23:59:59'}+07:00`) : null;
+    try {
+        const fromDate = from ? new Date(`${from}T${timeFrom || '00:00:00'}+07:00`) : null;
+        const toDate   = to   ? new Date(`${to}T${timeTo ? timeTo+':59' : '23:59:59'}+07:00`) : null;
 
-            let posts = await postStore.load();
-            if (fromDate) posts = posts.filter(p => new Date(p.createdAt) >= fromDate);
-            if (toDate)   posts = posts.filter(p => new Date(p.createdAt) <= toDate);
+        let posts = await postStore.load();
+        if (fromDate) posts = posts.filter(p => new Date(p.createdAt) >= fromDate);
+        if (toDate)   posts = posts.filter(p => new Date(p.createdAt) <= toDate);
 
-            const pageSuccess  = posts.reduce((s,p) => s+(p.successCount||0), 0);
-            const pageFail     = posts.reduce((s,p) => s+(p.failCount||0), 0);
-            const pageLikes    = posts.reduce((s,p) => s+(p.results||[]).reduce((a,r)=>a+(r.analytics?.likes||0),0), 0);
-            const pageComments = posts.reduce((s,p) => s+(p.results||[]).reduce((a,r)=>a+(r.analytics?.comments||0),0), 0);
-            const pageShares   = posts.reduce((s,p) => s+(p.results||[]).reduce((a,r)=>a+(r.analytics?.shares||0),0), 0);
-            const pageReach    = posts.reduce((s,p) => s+(p.results||[]).reduce((a,r)=>a+(r.analytics?.reach||0),0), 0);
-            const pageRate = (pageSuccess+pageFail) > 0 ? Math.round(pageSuccess/(pageSuccess+pageFail)*100) : 0;
+        const pageSuccess  = posts.reduce((s,p) => s+(p.successCount||0), 0);
+        const pageFail     = posts.reduce((s,p) => s+(p.failCount||0), 0);
+        const pageLikes    = posts.reduce((s,p) => s+(p.results||[]).reduce((a,r)=>a+(r.analytics?.likes||0),0), 0);
+        const pageComments = posts.reduce((s,p) => s+(p.results||[]).reduce((a,r)=>a+(r.analytics?.comments||0),0), 0);
+        const pageShares   = posts.reduce((s,p) => s+(p.results||[]).reduce((a,r)=>a+(r.analytics?.shares||0),0), 0);
+        const pageReach    = posts.reduce((s,p) => s+(p.results||[]).reduce((a,r)=>a+(r.analytics?.reach||0),0), 0);
+        const pageRate = (pageSuccess+pageFail) > 0 ? Math.round(pageSuccess/(pageSuccess+pageFail)*100) : 0;
 
-            const pageCounts = {};
-            posts.forEach(p => {
-                (p.results||[]).forEach(r => {
-                    const key = r.pageId || r.pageName || 'ไม่ทราบ';
-                    if (!pageCounts[key]) pageCounts[key] = { name: r.pageName||r.pageId||'ไม่ทราบ', success:0, fail:0 };
-                    if (r.status==='published'||r.status==='success') pageCounts[key].success++;
-                    else pageCounts[key].fail++;
-                });
+        const pageCounts = {};
+        posts.forEach(p => {
+            (p.results||[]).forEach(r => {
+                const key = r.pageId || r.pageName || 'ไม่ทราบ';
+                if (!pageCounts[key]) pageCounts[key] = { name: r.pageName||r.pageId||'ไม่ทราบ', success:0, fail:0 };
+                if (r.status==='published'||r.status==='success') pageCounts[key].success++;
+                else pageCounts[key].fail++;
             });
-            const topPages = Object.values(pageCounts)
-                .sort((a,b) => (b.success+b.fail)-(a.success+a.fail))
-                .slice(0,10);
+        });
+        const topPages = Object.values(pageCounts)
+            .sort((a,b) => (b.success+b.fail)-(a.success+a.fail))
+            .slice(0,10);
 
-            const grpStats = await groupJobStore.statsByDateRange(fromDate, toDate);
-
-            result = {
-                page: { total: posts.length, success: pageSuccess, fail: pageFail, rate: pageRate,
-                        likes: pageLikes, comments: pageComments, shares: pageShares, reach: pageReach },
-                topPages,
-                grp: grpStats,
-            };
-        } catch (e) {
-            result = { error: e.message };
-        }
+        result = {
+            page: { total: posts.length, success: pageSuccess, fail: pageFail, rate: pageRate,
+                    likes: pageLikes, comments: pageComments, shares: pageShares, reach: pageReach },
+            topPages,
+        };
+    } catch (e) {
+        result = { error: e.message };
     }
 
-    res.render('page-summary', { from, to, timeFrom, timeTo, all, result });
+    res.render('page-summary', { from, to, timeFrom, timeTo, result });
 };
 
 exports.showPostQueue = async (req, res) => {
