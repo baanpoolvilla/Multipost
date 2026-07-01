@@ -96,10 +96,7 @@ exports.showGroupOverview = async (req, res) => {
 // ── Group Summary Page ─────────────────────────────────────────
 exports.showGroupSummary = async (req, res) => {
     const referer = req.headers.referer || '';
-    let isAllowed = referer.includes('/group-overview') || referer.includes('/group-summary');
-    if (!isAllowed) {
-        try { isAllowed = new URL(referer).pathname === '/overview'; } catch {}
-    }
+    const isAllowed = referer.includes('/group-overview') || referer.includes('/group-summary');
     if (!isAllowed) return res.redirect('/group-overview');
 
     const { from = '', to = '', timeFrom = '', timeTo = '' } = req.query;
