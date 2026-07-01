@@ -308,6 +308,42 @@
       </div>
     </div>
 
+    <!-- ══ Group Donut (1/3) + Group Table (2/3) ══ -->
+    <div id="row-group-bottom" class="row-2" style="grid-template-columns:1fr 2fr;display:none">
+
+      <!-- Group status donut -->
+      <div class="db-card" style="display:flex;flex-direction:column">
+        <div class="s-hd">
+          <div class="s-hd-l">
+            <i class="fa-solid fa-circle-half-stroke" style="color:var(--c-purple)"></i>
+            สัดส่วนงานกลุ่ม
+          </div>
+        </div>
+        <div style="flex:1;display:flex;align-items:center;justify-content:center;min-height:130px;position:relative">
+          <canvas id="groupDonutChart" style="max-height:120px;max-width:120px"></canvas>
+          <div style="position:absolute;text-align:center;pointer-events:none">
+            <div id="group-donut-total" style="font-size:1.5rem;font-weight:900;color:#333;line-height:1">—</div>
+            <div style="font-size:.62rem;color:#aaa">งานทั้งหมด</div>
+          </div>
+        </div>
+        <div class="d-legend" id="group-donut-legend"></div>
+      </div>
+
+      <!-- Per-group table -->
+      <div class="db-card">
+        <div class="s-hd">
+          <div class="s-hd-l">
+            <i class="fa-solid fa-table-cells" style="color:var(--c-green)"></i>
+            ภาพรวมแต่ละกลุ่ม
+          </div>
+          <a href="/group-overview" class="s-link" style="color:var(--c-green)">ดูรายละเอียด →</a>
+        </div>
+        <div class="tbl-wrap" id="group-table-wrap">
+          <div class="no-data">กำลังโหลด...</div>
+        </div>
+      </div>
+    </div>
+
     <!-- ══ Donut (1/3) + Engagement (2/3) ══ -->
     <div id="row-donut-eng" class="row-2" style="grid-template-columns:1fr 2fr">
 
@@ -392,7 +428,8 @@ let _type      = '';
 let _chartUnit = 'day';
 let _actChartPage  = null;
 let _actChartGroup = null;
-let _donut     = null;
+let _donut      = null;
+let _groupDonut = null;
 
 const fmt = n   => Number(n).toLocaleString();
 const set = (id,v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
@@ -623,6 +660,91 @@ function renderPageTable(all) {
   </tr></thead><tbody>${rows}</tbody></table>`;
 }
 
+/* ── Group Donut ── */
+function renderGroupDonut(all) {
+  const gi=all.filter(i=>i.type==='group');
+  const data=[
+    gi.filter(i=>i.status==='success').length,
+    gi.filter(i=>i.status==='failed').length,
+    gi.filter(i=>['pending','running'].includes(i.status)).length,
+    gi.filter(i=>['expired','cancelled'].includes(i.status)).length,
+  ];
+  const labels=['สำเร็จ','ล้มเหลว','รอ/กำลัง','อื่นๆ'];
+  const colors=['#2e7d32','#e03131','#f59f00','#ccc'];
+  const total=gi.length;
+  set('group-donut-total', fmt(total));
+  const ctx=document.getElementById('groupDonutChart');
+  if(!ctx) return;
+  if(_groupDonut)_groupDonut.destroy();
+  _groupDonut=new Chart(ctx,{
+    type:'doughnut',
+    data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:2,borderColor:'#fff',hoverBorderColor:'#fff'}]},
+    options:{
+      cutout:'64%',responsive:true,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw} (${total>0?Math.round(c.raw/total*100):0}%)`}}}
+    }
+  });
+  const leg=document.getElementById('group-donut-legend');
+  if(leg) leg.innerHTML=labels.map((l,i)=>
+    `<div class="d-leg-row">
+      <div class="d-dot" style="background:${colors[i]}"></div>
+      <span style="color:#555;flex:1">${l}</span>
+      <span style="font-weight:700;color:#333;min-width:24px;text-align:right">${data[i]}</span>
+      <span style="color:#bbb;font-size:.68rem;min-width:30px;text-align:right">${total>0?Math.round(data[i]/total*100):0}%</span>
+    </div>`
+  ).join('');
+}
+
+/* ── Per-group table ── */
+function renderGroupTable(all) {
+  const gi=all.filter(i=>i.type==='group');
+  const wrap=document.getElementById('group-table-wrap');
+  if(!wrap) return;
+  if(!gi.length){wrap.innerHTML='<div class="no-data">ไม่มีข้อมูลในช่วงที่เลือก</div>';return;}
+  const map={};
+  gi.forEach(item=>{
+    const groups=(item.targetGroups||[]).length?item.targetGroups:['(ไม่ระบุ)'];
+    groups.forEach(g=>{
+      if(!map[g])map[g]={jobs:0,success:0,fail:0,pending:0};
+      map[g].jobs++;
+      if(item.status==='success')                            map[g].success++;
+      else if(item.status==='failed')                        map[g].fail++;
+      else if(['pending','running'].includes(item.status))   map[g].pending++;
+    });
+  });
+  const rows=Object.entries(map)
+    .sort((a,b)=>b[1].jobs-a[1].jobs)
+    .slice(0,30)
+    .map(([g,d])=>{
+      const t=d.success+d.fail;
+      const r=t>0?Math.round(d.success/t*100):0;
+      const col=rateColor(r);
+      const badge=d.fail>0?'<span class="bdg bdg-err">มีล้มเหลว</span>'
+                 :d.pending>0?'<span class="bdg bdg-pnd">รออยู่</span>'
+                 :d.success>0?'<span class="bdg bdg-ok">ปกติ</span>'
+                 :'<span class="bdg bdg-oth">—</span>';
+      return `<tr>
+        <td style="font-weight:600;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(g)}">${esc(g)}</td>
+        <td>${badge}</td>
+        <td class="tc" style="font-weight:800">${d.jobs}</td>
+        <td class="tc" style="color:var(--c-green);font-weight:700">${d.success}</td>
+        <td class="tc" style="color:var(--c-red)">${d.fail}</td>
+        <td class="tc" style="color:var(--c-amber)">${d.pending||0}</td>
+        <td class="tc">
+          <div class="mini-rt">
+            <div class="mini-bg"><div class="mini-fg" style="width:${r}%;background:${col}"></div></div>
+            <span style="color:${col};font-weight:700;min-width:30px">${r}%</span>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  wrap.innerHTML=`<table class="db-tbl"><thead><tr>
+    <th>กลุ่ม</th><th>สถานะ</th>
+    <th class="tc">งาน</th><th class="tc">✅</th><th class="tc">❌</th><th class="tc">⏳</th>
+    <th class="tc">อัตราสำเร็จ</th>
+  </tr></thead><tbody>${rows}</tbody></table>`;
+}
+
 /* ── Activity chart ── */
 function bucketKey(at,unit) {
   const d=new Date(at);
@@ -685,6 +807,8 @@ function render() {
   renderEngagement(f);
   renderDonut(f);
   renderAgentList(f);
+  renderGroupDonut(f);
+  renderGroupTable(f);
   renderPageTable(f);
   renderActChart(f);
   updateFilterDot();
@@ -705,8 +829,9 @@ function updateSections(type) {
   _s('kc-page-results', showPage);
   _s('kc-group-jobs',   showGroup);
   _s('kc-group-rate',   showGroup);
-  _s('card-agent',      showGroup);
-  _s('row-donut-eng',   showPage);
+  _s('card-agent',       showGroup);
+  _s('row-group-bottom', showGroup);
+  _s('row-donut-eng',    showPage);
   _s('card-page-table', showPage);
 }
 function setType(t) {
