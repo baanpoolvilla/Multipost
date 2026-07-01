@@ -230,7 +230,9 @@ exports.showScheduleCenter = async (req, res) => {
     const groupJobStore = require('../services/groupJobStore');
     const groupStore    = require('../services/groupStore');
     const [items, groups] = await Promise.all([buildScheduleCenterItems(), groupStore.list()]);
-    res.render('schedule-center', { items, gTotal: groups.length });
+    const groupPrivacyMap = {};
+    groups.forEach(g => { if (g.groupName) groupPrivacyMap[g.groupName] = g.privacy || null; });
+    res.render('schedule-center', { items, gTotal: groups.length, groupPrivacyMap });
 };
 
 exports.scheduleCenterItems = async (req, res) => {

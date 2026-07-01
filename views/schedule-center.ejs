@@ -422,7 +422,8 @@
 </div>
 
 <script>
-let _items     = <%- JSON.stringify(items) %>;
+let _items           = <%- JSON.stringify(items) %>;
+let _groupPrivacyMap = <%- JSON.stringify(groupPrivacyMap) %>;
 let _range     = 'all';
 let _type      = '';
 let _chartUnit = 'day';
@@ -712,20 +713,27 @@ function renderGroupTable(all) {
       else if(['pending','running'].includes(item.status))   map[g].pending++;
     });
   });
+  const pvBadge = p =>
+    p==='public'  ? '<span style="display:inline-block;padding:.1rem .38rem;border-radius:5px;font-size:.67rem;font-weight:700;background:#d3f9d8;color:#2f9e44;border:1px solid #b2f2bb">🌐 สาธารณะ</span>'
+    :p==='private'? '<span style="display:inline-block;padding:.1rem .38rem;border-radius:5px;font-size:.67rem;font-weight:700;background:#fff4e6;color:#e67700;border:1px solid #ffd8a8">🔒 ส่วนตัว</span>'
+    :p==='paid'   ? '<span style="display:inline-block;padding:.1rem .38rem;border-radius:5px;font-size:.67rem;font-weight:700;background:#fff3bf;color:#e67700;border:1px solid #ffe066">💰 เสียตัง</span>'
+    : '<span style="display:inline-block;padding:.1rem .38rem;border-radius:5px;font-size:.67rem;background:#f1f3f5;color:#adb5bd;border:1px solid #dee2e6">– –</span>';
   const rows=Object.entries(map)
     .sort((a,b)=>b[1].jobs-a[1].jobs)
-    .slice(0,30)
+    .slice(0,8)
     .map(([g,d])=>{
       const t=d.success+d.fail;
       const r=t>0?Math.round(d.success/t*100):0;
       const col=rateColor(r);
-      const badge=d.fail>0?'<span class="bdg bdg-err">มีล้มเหลว</span>'
-                 :d.pending>0?'<span class="bdg bdg-pnd">รออยู่</span>'
-                 :d.success>0?'<span class="bdg bdg-ok">ปกติ</span>'
-                 :'<span class="bdg bdg-oth">—</span>';
+      const statBadge=d.fail>0?'<span class="bdg bdg-err">มีล้มเหลว</span>'
+                     :d.pending>0?'<span class="bdg bdg-pnd">รออยู่</span>'
+                     :d.success>0?'<span class="bdg bdg-ok">ปกติ</span>'
+                     :'<span class="bdg bdg-oth">—</span>';
+      const pv=_groupPrivacyMap[g]||null;
       return `<tr>
-        <td style="font-weight:600;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(g)}">${esc(g)}</td>
-        <td>${badge}</td>
+        <td style="font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(g)}">${esc(g)}</td>
+        <td>${pvBadge(pv)}</td>
+        <td>${statBadge}</td>
         <td class="tc" style="font-weight:800">${d.jobs}</td>
         <td class="tc" style="color:var(--c-green);font-weight:700">${d.success}</td>
         <td class="tc" style="color:var(--c-red)">${d.fail}</td>
@@ -739,7 +747,7 @@ function renderGroupTable(all) {
       </tr>`;
     }).join('');
   wrap.innerHTML=`<table class="db-tbl"><thead><tr>
-    <th>กลุ่ม</th><th>สถานะ</th>
+    <th>กลุ่ม</th><th>ประเภท</th><th>สถานะ</th>
     <th class="tc">งาน</th><th class="tc">✅</th><th class="tc">❌</th><th class="tc">⏳</th>
     <th class="tc">อัตราสำเร็จ</th>
   </tr></thead><tbody>${rows}</tbody></table>`;
