@@ -96,6 +96,47 @@
       </div>
     </div>
 
+    <!-- Privacy breakdown -->
+    <%
+      const pvCards = [
+        { key:'public',  icon:'🌐', label:'สาธารณะ (Public)',  color:'#1877f2', bg:'#e8f0fe', border:'#93c5fd' },
+        { key:'private', icon:'🔒', label:'ส่วนตัว (Private)', color:'#7048e8', bg:'#f3f0ff', border:'#c4b5fd' },
+        { key:'paid',    icon:'💰', label:'เสียตัง (Paid)',    color:'#c0392b', bg:'#fff5f5', border:'#fca5a5' },
+      ];
+    %>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.65rem;margin-bottom:.75rem">
+      <% pvCards.forEach(pv => {
+           const st = privacyStats[pv.key] || {success:0,fail:0};
+           const total = st.success + st.fail;
+           const rate  = total > 0 ? Math.round(st.success/total*100) : 0;
+      %>
+      <div style="background:<%= pv.bg %>;border:1.5px solid <%= pv.border %>;border-radius:14px;padding:.85rem 1rem">
+        <div style="font-size:.8rem;font-weight:700;color:<%= pv.color %>;margin-bottom:.55rem;display:flex;align-items:center;gap:.35rem">
+          <%= pv.icon %> <%= pv.label %>
+        </div>
+        <div style="display:flex;gap:.5rem;align-items:flex-end;margin-bottom:.5rem">
+          <div>
+            <div style="font-size:1.5rem;font-weight:800;color:#2e7d32;line-height:1"><%= st.success %></div>
+            <div style="font-size:.7rem;color:#2e7d32;font-weight:600">สำเร็จ</div>
+          </div>
+          <div style="font-size:1rem;color:#ccc;margin-bottom:.2rem">/</div>
+          <div>
+            <div style="font-size:1.5rem;font-weight:800;color:#c62828;line-height:1"><%= st.fail %></div>
+            <div style="font-size:.7rem;color:#c62828;font-weight:600">ล้มเหลว</div>
+          </div>
+          <div style="margin-left:auto;text-align:right">
+            <div style="font-size:1.1rem;font-weight:800;color:<%= pv.color %>"><%= rate %>%</div>
+            <div style="font-size:.7rem;color:#8a8d91">อัตราสำเร็จ</div>
+          </div>
+        </div>
+        <div style="background:rgba(0,0,0,.08);border-radius:999px;height:5px;overflow:hidden">
+          <div style="height:100%;width:<%= rate %>%;background:<%= pv.color %>;border-radius:999px;transition:width .4s"></div>
+        </div>
+        <div style="font-size:.7rem;color:#8a8d91;margin-top:.3rem">รวม <%= total %> ครั้ง</div>
+      </div>
+      <% }); %>
+    </div>
+
     <!-- Group stats table -->
     <% if (allGroupStats.length > 0) { %>
     <div class="card">

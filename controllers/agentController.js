@@ -8,12 +8,28 @@ const { STATUS }     = require('../desktop-agent/src/scheduler/statuses');
 // ── Group Overview Dashboard ───────────────────────────────────
 exports.showGroupOverview = async (req, res) => {
     try {
-        const jobs = await groupJobStore.listHistory();
+        const [jobs, groups] = await Promise.all([groupJobStore.listHistory(), groupStore.list()]);
 
         const totalJobs    = jobs.length;
         const totalSuccess = jobs.reduce((s, j) => s + (j.results||[]).filter(r=>r.status==='success').length, 0);
         const totalFail    = jobs.reduce((s, j) => s + (j.results||[]).filter(r=>r.status==='failed').length, 0);
         const successRate  = (totalSuccess + totalFail) > 0 ? Math.round(totalSuccess/(totalSuccess+totalFail)*100) : 0;
+
+        // groupId → privacy map
+        const privacyMap = {};
+        groups.forEach(g => { privacyMap[g.groupId] = g.privacy || null; });
+
+        // Privacy breakdown stats
+        const privacyStats = { public: { success:0, fail:0 }, private: { success:0, fail:0 }, paid: { success:0, fail:0 } };
+        jobs.forEach(j => {
+            (j.results||[]).forEach(r => {
+                const pv = privacyMap[r.groupId] || null;
+                if (pv === 'public' || pv === 'private' || pv === 'paid') {
+                    if (r.status === 'success') privacyStats[pv].success++;
+                    else privacyStats[pv].fail++;
+                }
+            });
+        });
 
         // All groups sorted by activity — include analytics totals
         const grpCounts = {};
@@ -65,7 +81,7 @@ exports.showGroupOverview = async (req, res) => {
             totalLikes, totalComments, totalShares, hasAnalytics,
             chartLabels: JSON.stringify(labels),
             chartData:   JSON.stringify(chartData),
-            recentJobs,
+            recentJobs, privacyStats,
         });
     } catch (e) {
         res.status(500).send('เกิดข้อผิดพลาด: ' + e.message);
