@@ -264,14 +264,10 @@
 
       <!-- Activity chart -->
       <div class="db-card">
-        <div class="s-hd">
+        <div class="s-hd" style="margin-bottom:.6rem">
           <div class="s-hd-l">
             <i class="fa-solid fa-chart-column" style="color:var(--c-blue)"></i>
             กิจกรรมรวม
-            <span style="font-weight:400;font-size:.7rem;color:#ccc">
-              <span style="display:inline-block;width:8px;height:8px;background:var(--c-blue);border-radius:2px;margin:0 3px 0 4px"></span>โพสเพจ
-              <span style="display:inline-block;width:8px;height:8px;background:var(--c-green);border-radius:2px;margin:0 3px 0 5px"></span>แชร์กลุ่ม
-            </span>
           </div>
           <div class="status-filter" style="gap:.22rem">
             <button class="filter-btn active" data-cu="day"   onclick="setChartUnit('day')">วัน</button>
@@ -279,7 +275,18 @@
             <button class="filter-btn"        data-cu="year"  onclick="setChartUnit('year')">ปี</button>
           </div>
         </div>
-        <canvas id="actChart" height="95"></canvas>
+        <div style="margin-bottom:.9rem">
+          <div style="font-size:.72rem;font-weight:700;color:var(--c-blue);margin-bottom:.3rem">
+            <span style="display:inline-block;width:8px;height:8px;background:var(--c-blue);border-radius:2px;margin-right:4px;vertical-align:middle"></span>โพสเพจ
+          </div>
+          <canvas id="actChartPage" height="75"></canvas>
+        </div>
+        <div>
+          <div style="font-size:.72rem;font-weight:700;color:var(--c-green);margin-bottom:.3rem">
+            <span style="display:inline-block;width:8px;height:8px;background:var(--c-green);border-radius:2px;margin-right:4px;vertical-align:middle"></span>แชร์กลุ่ม
+          </div>
+          <canvas id="actChartGroup" height="75"></canvas>
+        </div>
       </div>
 
       <!-- Agent breakdown -->
@@ -379,7 +386,8 @@ let _items     = <%- JSON.stringify(items) %>;
 let _range     = 'all';
 let _type      = '';
 let _chartUnit = 'day';
-let _actChart  = null;
+let _actChartPage  = null;
+let _actChartGroup = null;
 let _donut     = null;
 
 const fmt = n   => Number(n).toLocaleString();
@@ -623,31 +631,38 @@ function setChartUnit(u) {
   document.querySelectorAll('[data-cu]').forEach(b=>b.classList.toggle('active',b.dataset.cu===u));
   renderActChart(getFiltered());
 }
-function renderActChart(all) {
-  if(typeof Chart==='undefined') return;
-  const pi=all.filter(i=>i.type==='page' &&(i.scheduledAt||i.createdAt));
-  const gi=all.filter(i=>i.type==='group'&&(i.scheduledAt||i.createdAt));
-  const pB={},gB={};
-  pi.forEach(i=>{const k=bucketKey(i.scheduledAt||i.createdAt,_chartUnit);pB[k]=(pB[k]||0)+1;});
-  gi.forEach(i=>{const k=bucketKey(i.scheduledAt||i.createdAt,_chartUnit);gB[k]=(gB[k]||0)+1;});
-  const keys=[...new Set([...Object.keys(pB),...Object.keys(gB)])].sort().slice(-30);
-  const ctx=document.getElementById('actChart');
-  if(_actChart)_actChart.destroy();
-  _actChart=new Chart(ctx,{
-    type:'bar',
-    data:{labels:keys,datasets:[
-      {label:'โพสเพจ',    data:keys.map(k=>pB[k]||0),backgroundColor:'rgba(24,119,242,.75)',borderRadius:5,borderSkipped:false},
-      {label:'แชร์กลุ่ม', data:keys.map(k=>gB[k]||0),backgroundColor:'rgba(46,125,50,.75)',  borderRadius:5,borderSkipped:false},
-    ]},
-    options:{
-      responsive:true,
-      plugins:{legend:{display:false}},
-      scales:{
-        x:{grid:{display:false},ticks:{font:{size:10},maxRotation:30}},
-        y:{beginAtZero:true,ticks:{precision:0,font:{size:10}},grid:{color:'#f2f4f5'}}
-      }
-    }
+function _makeChart(canvasId, data, color, prev) {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return null;
+  if (prev) prev.destroy();
+  return new Chart(ctx, {
+    type: 'bar',
+    data: { labels: data.keys, datasets: [{
+      data: data.vals, backgroundColor: color,
+      borderRadius: 5, borderSkipped: false,
+    }]},
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 30 } },
+        y: { beginAtZero: true, ticks: { precision: 0, font: { size: 10 } }, grid: { color: '#f2f4f5' } },
+      },
+    },
   });
+}
+function renderActChart(all) {
+  if (typeof Chart === 'undefined') return;
+  const pi = all.filter(i => i.type === 'page'  && (i.scheduledAt || i.createdAt));
+  const gi = all.filter(i => i.type === 'group' && (i.scheduledAt || i.createdAt));
+  const pB = {}, gB = {};
+  pi.forEach(i => { const k = bucketKey(i.scheduledAt||i.createdAt, _chartUnit); pB[k] = (pB[k]||0)+1; });
+  gi.forEach(i => { const k = bucketKey(i.scheduledAt||i.createdAt, _chartUnit); gB[k] = (gB[k]||0)+1; });
+  const allKeys = [...new Set([...Object.keys(pB), ...Object.keys(gB)])].sort().slice(-30);
+  const pKeys = [...new Set([...Object.keys(pB)])].sort().slice(-30);
+  const gKeys = [...new Set([...Object.keys(gB)])].sort().slice(-30);
+  _actChartPage  = _makeChart('actChartPage',  { keys: allKeys, vals: allKeys.map(k => pB[k]||0) }, 'rgba(24,119,242,.75)', _actChartPage);
+  _actChartGroup = _makeChart('actChartGroup', { keys: allKeys, vals: allKeys.map(k => gB[k]||0) }, 'rgba(46,125,50,.75)',  _actChartGroup);
 }
 
 /* ── Main render ── */
