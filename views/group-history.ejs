@@ -74,8 +74,8 @@
         </button>
       </div>
 
-      <!-- Row 1: search + status + group + category -->
-      <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:.65rem;margin-bottom:.65rem">
+      <!-- Row 1: search + status + group + category + privacy -->
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;gap:.65rem;margin-bottom:.65rem">
         <div>
           <div style="font-size:.73rem;color:#8a8d91;font-weight:600;margin-bottom:.28rem">
             <i class="fa-solid fa-magnifying-glass" style="width:12px"></i> ค้นหาข้อความ
@@ -114,6 +114,19 @@
             <% allCats.forEach(c => { %>
             <option value="<%= c %>"><%= c %></option>
             <% }) %>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:.73rem;color:#8a8d91;font-weight:600;margin-bottom:.28rem">
+            <i class="fa-solid fa-tag" style="width:12px"></i> ประเภท
+          </div>
+          <select id="hPrivacy" onchange="applyFilters()"
+            style="width:100%;padding:.42rem .5rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.83rem;font-family:inherit;color:#444;background:#fff;cursor:pointer;outline:none">
+            <option value="">ทุกประเภท</option>
+            <option value="public">🌐 Public</option>
+            <option value="private">🔒 Private</option>
+            <option value="paid">💰 เสียตัง</option>
+            <option value="__unset__">– ไม่ระบุ</option>
           </select>
         </div>
       </div>
@@ -344,7 +357,8 @@
     document.getElementById(prefix+'_m').value = m||'';
   }
 
-  const _groupCatMap = <%- JSON.stringify(groupCatMap) %>;
+  const _groupCatMap     = <%- JSON.stringify(groupCatMap) %>;
+  const _groupPrivacyMap = <%- JSON.stringify(groupPrivacyMap) %>;
 
   const _hJobs = <%- JSON.stringify(jobs.map(j => ({
     id:      String(j._id),
@@ -373,6 +387,7 @@
     const st       = document.getElementById('hStatus')?.value   || '';
     const grp      = document.getElementById('hGroup')?.value    || '';
     const cat      = document.getElementById('hCat')?.value      || '';
+    const priv     = document.getElementById('hPrivacy')?.value  || '';
     const fromVal  = document.getElementById('hDateFrom')?.value || '';
     const toVal    = document.getElementById('hDateTo')?.value   || '';
     const timeFrom = t24Get('hTimeFrom');
@@ -419,6 +434,15 @@
         if (groupsInCat.length === 0) ok = false;
       }
 
+      // Privacy filter
+      if (priv) {
+        const match = j.groups.some(g => {
+          const p = _groupPrivacyMap[g.id] || null;
+          return priv === '__unset__' ? !p : p === priv;
+        });
+        if (!match) ok = false;
+      }
+
       const postDate = new Date(j.at);
       const postTs   = postDate.getTime();
       if (fromTs !== null && postTs < fromTs) ok = false;
@@ -436,7 +460,7 @@
       if (ok) { shown++; sumSuccess += j.success; sumFail += j.fail; sumGroups += j.groups.length; }
     });
 
-    const hasFilter = q || st || grp || cat || fromVal || toVal || timeFrom || timeTo;
+    const hasFilter = q || st || grp || cat || priv || fromVal || toVal || timeFrom || timeTo;
     const info = document.getElementById('hFilterInfo');
     if (info) {
       info.style.display = hasFilter ? 'block' : 'none';
@@ -458,7 +482,7 @@
   }
 
   function clearFilters() {
-    ['hSearch','hStatus','hGroup','hCat','hDateFrom','hDateTo'].forEach(id => {
+    ['hSearch','hStatus','hGroup','hCat','hPrivacy','hDateFrom','hDateTo'].forEach(id => {
       const el = document.getElementById(id); if (el) el.value = '';
     });
     document.getElementById('hDateFrom').style.borderColor = '';

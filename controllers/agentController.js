@@ -339,6 +339,10 @@ exports.showGroupHistory = async (req, res) => {
     const groupCatMap = {};
     groups.forEach(g => { groupCatMap[g.groupId] = g.categories || ['ทั่วไป']; });
 
+    // groupId → privacy map for privacy-based filtering on client
+    const groupPrivacyMap = {};
+    groups.forEach(g => { groupPrivacyMap[g.groupId] = g.privacy || null; });
+
     // All distinct categories (from DB + from group data)
     const catSet = new Set(dbCategories.map(c => c.name));
     groups.forEach(g => (g.categories || ['ทั่วไป']).forEach(c => catSet.add(c)));
@@ -355,7 +359,7 @@ exports.showGroupHistory = async (req, res) => {
         };
     });
 
-    res.render('group-history', { jobs: enriched, groupCatMap, allCats });
+    res.render('group-history', { jobs: enriched, groupCatMap, groupPrivacyMap, allCats });
 };
 
 exports.deleteGroupHistoryJob = async (req, res) => {
