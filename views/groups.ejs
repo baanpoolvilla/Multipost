@@ -134,10 +134,11 @@ groups.forEach(g => {
         </div>
         <div>
           <label class="form-label">ประเภทกลุ่ม</label>
-          <div style="display:flex;gap:.4rem">
+          <div style="display:flex;gap:.4rem;flex-wrap:wrap">
             <button type="button" id="fPrivBtn-null"   class="priv-pick active-priv" data-val=""        onclick="pickPrivacy(this)">– ไม่ระบุ</button>
             <button type="button" id="fPrivBtn-public" class="priv-pick"             data-val="public"  onclick="pickPrivacy(this)">🌐 Public</button>
             <button type="button" id="fPrivBtn-private"class="priv-pick"             data-val="private" onclick="pickPrivacy(this)">🔒 Private</button>
+            <button type="button" id="fPrivBtn-paid"   class="priv-pick"             data-val="paid"    onclick="pickPrivacy(this)">💰 เสียตัง</button>
           </div>
           <input type="hidden" id="fGroupPrivacy" value="">
         </div>
@@ -152,7 +153,8 @@ groups.forEach(g => {
 
     <!-- ── Filter tabs (max 4 visible, rest in dropdown) ── -->
     <% if (cats.length > 0) { %>
-    <div class="card" style="padding:.55rem 1rem;display:flex;gap:.4rem;flex-wrap:wrap;align-items:center">
+    <div class="card" style="padding:.55rem 1rem;display:flex;flex-direction:column;gap:.5rem">
+      <div style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:center">
       <span style="font-size:.78rem;color:var(--text-secondary);font-weight:600;margin-right:.2rem;flex-shrink:0">
         <i class="fa-solid fa-filter" style="font-size:.72rem"></i> ดูหมวด:
       </span>
@@ -183,6 +185,17 @@ groups.forEach(g => {
         </div>
       </div>
       <% } %>
+      </div>
+      <div style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:center">
+        <span style="font-size:.78rem;color:var(--text-secondary);font-weight:600;margin-right:.2rem;flex-shrink:0">
+          <i class="fa-solid fa-tag" style="font-size:.72rem"></i> ประเภท:
+        </span>
+        <button class="priv-tab active" data-priv="__all__" onclick="filterPrivacy('__all__')">ทั้งหมด</button>
+        <button class="priv-tab" data-priv="public"    onclick="filterPrivacy('public')">🌐 Public</button>
+        <button class="priv-tab" data-priv="private"   onclick="filterPrivacy('private')">🔒 Private</button>
+        <button class="priv-tab" data-priv="paid"      onclick="filterPrivacy('paid')">💰 เสียตัง</button>
+        <button class="priv-tab" data-priv="__unset__" onclick="filterPrivacy('__unset__')">– ไม่ระบุ</button>
+      </div>
     </div>
     <% } %>
 
@@ -267,6 +280,7 @@ groups.forEach(g => {
              const hiddenByLimit = cat === 'ทั่วไป' && gi >= 20;
         %>
         <div class="group-row<%= hiddenByLimit ? ' tw-more' : '' %>"
+             data-privacy="<%= g.privacy || '' %>"
              style="background:<%= gi % 2 === 0 ? '#fff' : '#fafbfc' %><%= hiddenByLimit ? ';display:none' : '' %>">
           <span style="width:1.5rem;text-align:right;font-size:.73rem;color:#c0c4cc;flex-shrink:0;margin-left:.85rem;font-weight:500;font-family:monospace"><%= gi + 1 %></span>
           <div style="width:2px;height:1.8rem;background:#e8eaed;margin:0 .5rem;flex-shrink:0;border-radius:1px"></div>
@@ -298,6 +312,8 @@ groups.forEach(g => {
               <span class="priv-badge priv-public">🌐 Public</span>
             <% } else if (g.privacy === 'private') { %>
               <span class="priv-badge priv-private">🔒 Private</span>
+            <% } else if (g.privacy === 'paid') { %>
+              <span class="priv-badge priv-paid">💰 เสียตัง</span>
             <% } else { %>
               <span class="priv-badge priv-unknown">– –</span>
             <% } %>
@@ -434,6 +450,7 @@ groups.forEach(g => {
 .priv-pick.active-priv[data-val=""]       { background:#f1f3f5;border-color:#adb5bd;color:#444;font-weight:700 }
 .priv-pick.active-priv[data-val="public"] { background:#d3f9d8;border-color:#2f9e44;color:#2f9e44;font-weight:700 }
 .priv-pick.active-priv[data-val="private"]{ background:#fff4e6;border-color:#e67700;color:#e67700;font-weight:700 }
+.priv-pick.active-priv[data-val="paid"]   { background:#fff3bf;border-color:#f59f00;color:#e67700;font-weight:700 }
 
 /* Privacy badge */
 .privacy-btn {
@@ -447,7 +464,24 @@ groups.forEach(g => {
 }
 .priv-public  { background:#d3f9d8;color:#2f9e44;border-color:#b2f2bb }
 .priv-private { background:#fff4e6;color:#e67700;border-color:#ffd8a8 }
+.priv-paid    { background:#fff3bf;color:#e67700;border-color:#ffe066 }
 .priv-unknown { background:#f1f3f5;color:#adb5bd;border-color:#dee2e6;font-weight:400 }
+
+/* Privacy filter tabs */
+.priv-tab {
+  background:#f0f2f5;border:1.5px solid transparent;border-radius:999px;
+  padding:.25rem .65rem;font-size:.8rem;cursor:pointer;font-family:inherit;
+  color:#555;font-weight:500;transition:all .15s;white-space:nowrap
+}
+.priv-tab:hover { background:#e4e6ea }
+.priv-tab.active { background:#fff8e1;border-color:#f59f00;color:#e67700;font-weight:700 }
+.priv-tab[data-priv="__all__"].active { background:#e7f3ff;border-color:#1877f2;color:#1877f2 }
+.priv-tab[data-priv="public"].active  { background:#d3f9d8;border-color:#2f9e44;color:#2f9e44 }
+.priv-tab[data-priv="private"].active { background:#fff4e6;border-color:#e67700;color:#e67700 }
+.priv-tab[data-priv="__unset__"].active { background:#f1f3f5;border-color:#adb5bd;color:#444 }
+
+/* Hidden by privacy filter */
+.priv-hidden { display:none !important }
 
 /* More tabs dropdown */
 .more-tab-item {
@@ -843,10 +877,14 @@ function filterCat(cat) {
 function _privHTML(p) {
   if (p === 'public')  return '<span class="priv-badge priv-public">🌐 Public</span>';
   if (p === 'private') return '<span class="priv-badge priv-private">🔒 Private</span>';
+  if (p === 'paid')    return '<span class="priv-badge priv-paid">💰 เสียตัง</span>';
   return '<span class="priv-badge priv-unknown">– –</span>';
 }
 async function togglePrivacy(id, current) {
-  const next = current === 'public' ? 'private' : current === 'private' ? null : 'public';
+  const next = current === 'public' ? 'private'
+             : current === 'private' ? 'paid'
+             : current === 'paid' ? null
+             : 'public';
   try {
     const r = await fetch(`/api/agent/groups/${id}/privacy`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
@@ -857,10 +895,34 @@ async function togglePrivacy(id, current) {
     document.querySelectorAll(`.privacy-btn[data-id="${id}"]`).forEach(btn => {
       btn.dataset.privacy = next || '';
       btn.innerHTML = _privHTML(next);
+      const row = btn.closest('.group-row');
+      if (row) row.dataset.privacy = next || '';
     });
+    applyPrivacyFilter();
   } catch(e) {
     Swal.fire({ icon:'error', title:'เกิดข้อผิดพลาด', text:e.message, confirmButtonColor:'#1877f2' });
   }
+}
+
+/* ── Privacy filter ── */
+let _activePrivacy = '__all__';
+function applyPrivacyFilter() {
+  document.querySelectorAll('.group-row').forEach(row => {
+    if (_activePrivacy === '__all__') {
+      row.classList.remove('priv-hidden');
+    } else {
+      const p = row.dataset.privacy || '';
+      const match = _activePrivacy === '__unset__' ? !p : p === _activePrivacy;
+      row.classList.toggle('priv-hidden', !match);
+    }
+  });
+}
+function filterPrivacy(type) {
+  _activePrivacy = type;
+  document.querySelectorAll('.priv-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.priv === type);
+  });
+  applyPrivacyFilter();
 }
 
 /* ── Category color picker ── */
