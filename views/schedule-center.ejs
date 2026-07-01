@@ -275,17 +275,21 @@
             <button class="filter-btn"        data-cu="year"  onclick="setChartUnit('year')">ปี</button>
           </div>
         </div>
-        <div style="margin-bottom:.9rem">
+        <div id="actWrapPage" style="margin-bottom:.9rem;display:none">
           <div style="font-size:.72rem;font-weight:700;color:var(--c-blue);margin-bottom:.3rem">
             <span style="display:inline-block;width:8px;height:8px;background:var(--c-blue);border-radius:2px;margin-right:4px;vertical-align:middle"></span>โพสเพจ
           </div>
           <canvas id="actChartPage" height="75"></canvas>
         </div>
-        <div>
+        <div id="actWrapGroup" style="display:none">
           <div style="font-size:.72rem;font-weight:700;color:var(--c-green);margin-bottom:.3rem">
             <span style="display:inline-block;width:8px;height:8px;background:var(--c-green);border-radius:2px;margin-right:4px;vertical-align:middle"></span>แชร์กลุ่ม
           </div>
           <canvas id="actChartGroup" height="75"></canvas>
+        </div>
+        <div id="actNoData" style="display:none;text-align:center;padding:1.5rem;color:#aaa;font-size:.8rem">
+          <i class="fa-solid fa-chart-column" style="font-size:1.5rem;opacity:.3;display:block;margin-bottom:.4rem"></i>
+          ไม่มีข้อมูลในช่วงเวลาที่เลือก
         </div>
       </div>
 
@@ -651,6 +655,10 @@ function _makeChart(canvasId, data, color, prev) {
     },
   });
 }
+function _setChartSection(wrapperId, hasData) {
+  const el = document.getElementById(wrapperId);
+  if (el) el.style.display = hasData ? '' : 'none';
+}
 function renderActChart(all) {
   if (typeof Chart === 'undefined') return;
   const pi = all.filter(i => i.type === 'page'  && (i.scheduledAt || i.createdAt));
@@ -658,11 +666,16 @@ function renderActChart(all) {
   const pB = {}, gB = {};
   pi.forEach(i => { const k = bucketKey(i.scheduledAt||i.createdAt, _chartUnit); pB[k] = (pB[k]||0)+1; });
   gi.forEach(i => { const k = bucketKey(i.scheduledAt||i.createdAt, _chartUnit); gB[k] = (gB[k]||0)+1; });
-  const allKeys = [...new Set([...Object.keys(pB), ...Object.keys(gB)])].sort().slice(-30);
-  const pKeys = [...new Set([...Object.keys(pB)])].sort().slice(-30);
-  const gKeys = [...new Set([...Object.keys(gB)])].sort().slice(-30);
-  _actChartPage  = _makeChart('actChartPage',  { keys: allKeys, vals: allKeys.map(k => pB[k]||0) }, 'rgba(24,119,242,.75)', _actChartPage);
-  _actChartGroup = _makeChart('actChartGroup', { keys: allKeys, vals: allKeys.map(k => gB[k]||0) }, 'rgba(46,125,50,.75)',  _actChartGroup);
+  const pKeys = Object.keys(pB).sort().slice(-30);
+  const gKeys = Object.keys(gB).sort().slice(-30);
+  _setChartSection('actWrapPage',  pKeys.length > 0);
+  _setChartSection('actWrapGroup', gKeys.length > 0);
+  const noDataEl = document.getElementById('actNoData');
+  if (noDataEl) noDataEl.style.display = (pKeys.length === 0 && gKeys.length === 0) ? '' : 'none';
+  if (_actChartPage)  { _actChartPage.destroy();  _actChartPage  = null; }
+  if (_actChartGroup) { _actChartGroup.destroy(); _actChartGroup = null; }
+  if (pKeys.length > 0) _actChartPage  = _makeChart('actChartPage',  { keys: pKeys, vals: pKeys.map(k => pB[k]) }, 'rgba(24,119,242,.75)', null);
+  if (gKeys.length > 0) _actChartGroup = _makeChart('actChartGroup', { keys: gKeys, vals: gKeys.map(k => gB[k]) }, 'rgba(46,125,50,.75)',  null);
 }
 
 /* ── Main render ── */
