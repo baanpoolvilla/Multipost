@@ -131,13 +131,12 @@ exports.updateCategoryColor = async (req, res) => {
 
 // ── Groups API ─────────────────────────────────────────────────
 exports.addGroup = async (req, res) => {
-    const { groupId, groupName, category } = req.body;
+    const { groupId, groupName, category, privacy } = req.body;
     if (!groupId?.trim() || !groupName?.trim())
         return res.status(400).json({ error: 'กรุณากรอก Group ID และชื่อกลุ่ม' });
     const cat = category?.trim() || 'ทั่วไป';
-    // Auto-create category in DB if it doesn't exist yet
     await categoryStore.add(cat);
-    const result = await groupStore.add(groupId.trim(), groupName.trim(), cat);
+    const result = await groupStore.add(groupId.trim(), groupName.trim(), cat, privacy || null);
     if (result.error) return res.status(409).json({ error: result.error });
     res.json({ ok: true, group: result.group });
 };

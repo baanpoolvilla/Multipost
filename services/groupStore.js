@@ -33,12 +33,12 @@ async function list() {
     } catch { return []; }
 }
 
-async function add(groupId, groupName, category = 'ทั่วไป') {
+async function add(groupId, groupName, category = 'ทั่วไป', privacy = null) {
     try {
         await connect();
         if (await Group.findOne({ groupId })) return { error: 'Group ID ซ้ำ' };
         const cats = category === 'ทั่วไป' ? ['ทั่วไป'] : ['ทั่วไป', category];
-        const g = await Group.create({ groupId, groupName, categories: cats });
+        const g = await Group.create({ groupId, groupName, categories: cats, privacy: privacy || null });
         return { ok: true, group: _norm(g.toObject()) };
     } catch(e) { return { error: e.message }; }
 }
