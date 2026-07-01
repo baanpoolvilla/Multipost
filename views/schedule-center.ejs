@@ -6,7 +6,6 @@
   <title>Dashboard - Multi Post System</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="/css/style.css">
 </head>
@@ -22,7 +21,6 @@
 </nav>
 
 <div class="page-wrap">
-
   <aside class="sidebar">
     <a href="/schedule-center" class="sidebar-item active"><i class="fa-solid fa-house"></i><span>Dashboard</span></a>
     <div class="sidebar-divider"></div>
@@ -32,7 +30,6 @@
     <a href="/post-queue" class="sidebar-item"><i class="fa-solid fa-list-check"></i><span>คิวโพส</span></a>
     <a href="/overview" class="sidebar-item"><i class="fa-solid fa-chart-line"></i><span>ภาพรวม</span></a>
     <a href="/history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพส</span></a>
-
     <div class="sidebar-divider"></div>
     <div class="sidebar-label">โพส&amp;แชร์ ลงกลุ่ม</div>
     <a href="/agent" class="sidebar-item"><i class="fa-solid fa-robot"></i><span>ติดตั้ง Desktop Agent</span></a>
@@ -47,258 +44,327 @@
   <main class="feed">
 
     <!-- Header -->
-    <div class="card" style="padding:.85rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">
-      <div class="card-title" style="font-size:1.05rem">
-        <i class="fa-solid fa-house"></i> Dashboard
-      </div>
+    <div class="card" style="padding:.8rem 1.25rem;display:flex;align-items:center;justify-content:space-between;gap:.5rem">
+      <span class="card-title" style="font-size:1rem;margin:0"><i class="fa-solid fa-house"></i> Dashboard</span>
       <button class="btn-link-sm" onclick="scRefresh()"><i class="fa-solid fa-rotate-right"></i> รีเฟรช</button>
     </div>
 
-    <!-- ── โพสลงเพจ ─────────────────────────────────────────────── -->
-    <div class="card" style="padding:1rem 1.25rem">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-bottom:.85rem">
-        <div class="card-title" style="font-size:.95rem;margin-bottom:0">
-          <i class="fa-solid fa-pen-to-square" style="color:#1877f2"></i> โพสลงเพจ
-          <span style="background:#e7f3ff;color:#1877f2;border-radius:999px;padding:.1rem .5rem;font-size:.78rem;font-weight:700;margin-left:.3rem" id="db-p-total"><%= pTotal %></span>
-          <span style="font-size:.75rem;font-weight:400;color:#8a8d91;margin-left:.5rem">
-            โพสถึง <span id="db-p-pages"><%= pPageCount %></span> เพจ
-          </span>
+    <!-- Time filter -->
+    <div class="card" style="padding:.6rem 1rem;display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">
+      <span style="font-size:.78rem;color:var(--text-secondary);font-weight:600;margin-right:.2rem">
+        <i class="fa-solid fa-calendar-days" style="font-size:.72rem"></i> ช่วงเวลา:
+      </span>
+      <button class="filter-tab active" data-range="all"   onclick="setRange('all')">ทั้งหมด</button>
+      <button class="filter-tab"        data-range="today" onclick="setRange('today')">วันนี้</button>
+      <button class="filter-tab"        data-range="7d"    onclick="setRange('7d')">7 วัน</button>
+      <button class="filter-tab"        data-range="30d"   onclick="setRange('30d')">30 วัน</button>
+    </div>
+
+    <!-- โพสลงเพจ -->
+    <div class="card" style="padding:1.1rem 1.3rem">
+
+      <!-- Section header -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+        <div style="display:flex;align-items:center;gap:.6rem">
+          <div style="width:36px;height:36px;background:#e7f3ff;border-radius:10px;display:flex;align-items:center;justify-content:center">
+            <i class="fa-solid fa-pen-to-square" style="color:#1877f2;font-size:.95rem"></i>
+          </div>
+          <div>
+            <div style="font-weight:700;font-size:.95rem">โพสลงเพจ</div>
+            <div style="font-size:.73rem;color:var(--text-secondary)">
+              รวม <span class="db-val" id="p-total" style="color:#1877f2;font-weight:700">—</span> โพส
+              · โพสถึง <span class="db-val" id="p-pages" style="color:#1877f2;font-weight:700">—</span> เพจ
+              · ผลสำเร็จ <span class="db-val" id="p-results">—</span> ครั้ง
+            </div>
+          </div>
         </div>
-        <div style="display:flex;gap:.4rem;flex-wrap:wrap">
-          <a href="/post-queue" class="btn-link-sm"><i class="fa-solid fa-list-check"></i> คิวโพส</a>
-          <a href="/history" class="btn-link-sm"><i class="fa-solid fa-clock-rotate-left"></i> ประวัติ</a>
-          <a href="/overview" class="btn-link-sm"><i class="fa-solid fa-chart-line"></i> ภาพรวม</a>
-          <a href="/" class="btn-link-sm" style="color:#1877f2;font-weight:700"><i class="fa-solid fa-plus"></i> โพสใหม่</a>
-        </div>
+        <a href="/overview" style="font-size:.78rem;color:#1877f2;text-decoration:none;font-weight:600;opacity:.8">ดูรายละเอียด →</a>
       </div>
 
       <!-- Status row -->
-      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:.4rem;margin-bottom:.85rem">
-        <div class="db-stat-box" style="background:#fff3cd">
-          <div class="db-stat-num" style="color:#856404" id="db-p-pending"><%= pPending %></div>
-          <div class="db-stat-lbl" style="color:#856404">รอ</div>
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:.5rem;margin-bottom:1rem">
+        <div class="db-box">
+          <div class="db-num" id="p-pending">—</div>
+          <div class="db-lbl">⏳ รอ</div>
         </div>
-        <div class="db-stat-box" style="background:#cfe2ff">
-          <div class="db-stat-num" style="color:#084298" id="db-p-running"><%= pRunning %></div>
-          <div class="db-stat-lbl" style="color:#084298">กำลังโพส</div>
+        <div class="db-box">
+          <div class="db-num" id="p-running" style="color:#084298">—</div>
+          <div class="db-lbl">🔄 กำลังโพส</div>
         </div>
-        <div class="db-stat-box" style="background:#d1e7dd">
-          <div class="db-stat-num" style="color:#0a3622" id="db-p-success"><%= pSuccess %></div>
-          <div class="db-stat-lbl" style="color:#0a3622">สำเร็จ</div>
+        <div class="db-box db-box-green">
+          <div class="db-num" id="p-success" style="color:#2e7d32">—</div>
+          <div class="db-lbl">✅ สำเร็จ</div>
         </div>
-        <div class="db-stat-box" style="background:#f8d7da">
-          <div class="db-stat-num" style="color:#842029" id="db-p-failed"><%= pFailed %></div>
-          <div class="db-stat-lbl" style="color:#842029">ล้มเหลว</div>
+        <div class="db-box db-box-red">
+          <div class="db-num" id="p-failed" style="color:#c62828">—</div>
+          <div class="db-lbl">❌ ล้มเหลว</div>
         </div>
-        <div class="db-stat-box" style="background:#fde8cd">
-          <div class="db-stat-num" style="color:#854d0e" id="db-p-expired"><%= pExpired %></div>
-          <div class="db-stat-lbl" style="color:#854d0e">หมดเวลา</div>
+        <div class="db-box">
+          <div class="db-num" id="p-expired" style="color:#854d0e">—</div>
+          <div class="db-lbl">⏰ หมดเวลา</div>
         </div>
-        <div class="db-stat-box" style="background:#f1f3f5">
-          <div class="db-stat-num" style="color:#666" id="db-p-cancelled"><%= pCancelled %></div>
-          <div class="db-stat-lbl" style="color:#666">ยกเลิก</div>
+        <div class="db-box">
+          <div class="db-num" id="p-cancelled" style="color:#888">—</div>
+          <div class="db-lbl">🚫 ยกเลิก</div>
         </div>
       </div>
 
-      <!-- Engagement row -->
-      <div style="border-top:1px solid var(--border-color);padding-top:.75rem">
-        <div style="font-size:.73rem;font-weight:700;color:#8a8d91;margin-bottom:.45rem;text-transform:uppercase;letter-spacing:.04em">
-          Engagement (จากผลโพสสำเร็จ · <%= pTotalSuccess %> ครั้ง)
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem">
-          <div class="db-stat-box" style="background:#f0f7ff">
-            <div class="db-stat-num" style="color:#1877f2;font-size:1.1rem"><%= pLikes.toLocaleString() %></div>
-            <div class="db-stat-lbl" style="color:#1877f2">👍 ไลค์</div>
+      <!-- Engagement -->
+      <div style="border-top:1px solid var(--border-color);padding-top:.85rem">
+        <div style="font-size:.72rem;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.6rem">Engagement</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem">
+          <div style="display:flex;align-items:center;gap:.55rem">
+            <div style="width:34px;height:34px;background:#e7f3ff;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.95rem">👍</div>
+            <div>
+              <div style="font-size:1.1rem;font-weight:800;color:#1877f2;line-height:1.1" id="p-likes">—</div>
+              <div style="font-size:.7rem;color:#8a8d91">ไลค์</div>
+            </div>
           </div>
-          <div class="db-stat-box" style="background:#fff8f0">
-            <div class="db-stat-num" style="color:#e67700;font-size:1.1rem"><%= pComments.toLocaleString() %></div>
-            <div class="db-stat-lbl" style="color:#e67700">💬 คอมเมนต์</div>
+          <div style="display:flex;align-items:center;gap:.55rem">
+            <div style="width:34px;height:34px;background:#fff8f0;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.95rem">💬</div>
+            <div>
+              <div style="font-size:1.1rem;font-weight:800;color:#e67700;line-height:1.1" id="p-comments">—</div>
+              <div style="font-size:.7rem;color:#8a8d91">คอมเมนต์</div>
+            </div>
           </div>
-          <div class="db-stat-box" style="background:#f0fdf4">
-            <div class="db-stat-num" style="color:#2e7d32;font-size:1.1rem"><%= pShares.toLocaleString() %></div>
-            <div class="db-stat-lbl" style="color:#2e7d32">🔁 แชร์</div>
+          <div style="display:flex;align-items:center;gap:.55rem">
+            <div style="width:34px;height:34px;background:#f0fdf4;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.95rem">🔁</div>
+            <div>
+              <div style="font-size:1.1rem;font-weight:800;color:#2e7d32;line-height:1.1" id="p-shares">—</div>
+              <div style="font-size:.7rem;color:#8a8d91">แชร์</div>
+            </div>
           </div>
-          <div class="db-stat-box" style="background:#f9f0ff">
-            <div class="db-stat-num" style="color:#7048e8;font-size:1.1rem"><%= pReach.toLocaleString() %></div>
-            <div class="db-stat-lbl" style="color:#7048e8">👀 Reach</div>
+          <div style="display:flex;align-items:center;gap:.55rem">
+            <div style="width:34px;height:34px;background:#f5f0ff;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.95rem">👀</div>
+            <div>
+              <div style="font-size:1.1rem;font-weight:800;color:#7048e8;line-height:1.1" id="p-reach">—</div>
+              <div style="font-size:.7rem;color:#8a8d91">Reach</div>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- ── แชร์กลุ่ม ──────────────────────────────────────────────── -->
-    <div class="card" style="padding:1rem 1.25rem">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-bottom:.85rem">
-        <div class="card-title" style="font-size:.95rem;margin-bottom:0">
-          <i class="fa-solid fa-users-rectangle" style="color:#2e7d32"></i> แชร์กลุ่ม
-          <span style="background:#e8fde8;color:#2e7d32;border-radius:999px;padding:.1rem .5rem;font-size:.78rem;font-weight:700;margin-left:.3rem" id="db-g-jobs"><%= gJobs %></span>
-          <span style="font-size:.75rem;font-weight:400;color:#8a8d91;margin-left:.5rem">
-            กลุ่มในระบบ <span id="db-g-total"><%= gTotal %></span> กลุ่ม
-          </span>
+    <!-- แชร์กลุ่ม -->
+    <div class="card" style="padding:1.1rem 1.3rem">
+
+      <!-- Section header -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+        <div style="display:flex;align-items:center;gap:.6rem">
+          <div style="width:36px;height:36px;background:#e8fde8;border-radius:10px;display:flex;align-items:center;justify-content:center">
+            <i class="fa-solid fa-users-rectangle" style="color:#2e7d32;font-size:.95rem"></i>
+          </div>
+          <div>
+            <div style="font-weight:700;font-size:.95rem">แชร์กลุ่ม</div>
+            <div style="font-size:.73rem;color:var(--text-secondary)">
+              <span class="db-val" id="g-jobs" style="color:#2e7d32;font-weight:700">—</span> งาน
+              · กลุ่มในระบบ <span style="color:#2e7d32;font-weight:700"><%= gTotal %></span> กลุ่ม
+              · โพสถึงกลุ่มแล้ว <span class="db-val" id="g-posted" style="color:#2e7d32;font-weight:700">—</span> ครั้ง
+            </div>
+          </div>
         </div>
-        <div style="display:flex;gap:.4rem;flex-wrap:wrap">
-          <a href="/job-queue" class="btn-link-sm"><i class="fa-solid fa-list-check"></i> คิวกลุ่ม</a>
-          <a href="/group-history" class="btn-link-sm"><i class="fa-solid fa-clock-rotate-left"></i> ประวัติ</a>
-          <a href="/group-overview" class="btn-link-sm" style="color:#2e7d32;font-weight:700"><i class="fa-solid fa-chart-bar"></i> ภาพรวม</a>
-          <a href="/groups" class="btn-link-sm"><i class="fa-solid fa-users-rectangle"></i> จัดการกลุ่ม</a>
-        </div>
+        <a href="/group-overview" style="font-size:.78rem;color:#2e7d32;text-decoration:none;font-weight:600;opacity:.8">ดูรายละเอียด →</a>
       </div>
 
       <!-- Stats row -->
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem;margin-bottom:.75rem">
-        <div class="db-stat-box" style="background:#f0fdf4">
-          <div class="db-stat-num" style="color:#2e7d32" id="db-g-jobs2"><%= gJobs %></div>
-          <div class="db-stat-lbl" style="color:#2e7d32">งานทั้งหมด</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;margin-bottom:1rem">
+        <div class="db-box">
+          <div class="db-num" id="g-total-jobs" style="color:#2e7d32">—</div>
+          <div class="db-lbl">📋 งานทั้งหมด</div>
         </div>
-        <div class="db-stat-box" style="background:#fff3cd">
-          <div class="db-stat-num" style="color:#856404" id="db-g-pending"><%= gPending %></div>
-          <div class="db-stat-lbl" style="color:#856404">รอโพส</div>
+        <div class="db-box">
+          <div class="db-num" id="g-pending" style="color:#856404">—</div>
+          <div class="db-lbl">⏳ รอโพส</div>
         </div>
-        <div class="db-stat-box" style="background:#d1e7dd">
-          <div class="db-stat-num" style="color:#0a3622" id="db-g-success"><%= gSuccess %></div>
-          <div class="db-stat-lbl" style="color:#0a3622">แชร์สำเร็จ</div>
+        <div class="db-box db-box-green">
+          <div class="db-num" id="g-success" style="color:#2e7d32">—</div>
+          <div class="db-lbl">✅ แชร์สำเร็จ</div>
         </div>
-        <div class="db-stat-box" style="background:#f8d7da">
-          <div class="db-stat-num" style="color:#842029" id="db-g-failed"><%= gFailed %></div>
-          <div class="db-stat-lbl" style="color:#842029">แชร์ล้มเหลว</div>
+        <div class="db-box db-box-red">
+          <div class="db-num" id="g-failed" style="color:#c62828">—</div>
+          <div class="db-lbl">❌ แชร์ล้มเหลว</div>
         </div>
       </div>
 
       <!-- Rate bar -->
-      <div style="border-top:1px solid var(--border-color);padding-top:.7rem">
-        <div style="display:flex;justify-content:space-between;align-items:center;font-size:.8rem;font-weight:700;color:#555;margin-bottom:.3rem">
-          <span>อัตราสำเร็จ &nbsp;·&nbsp; โพสถึงกลุ่มแล้ว <span id="db-g-posted" style="color:#1877f2"><%= gPosted %></span> ครั้ง</span>
-          <span id="db-g-rate" style="color:<%= gRate>=80?'#2e7d32':gRate>=50?'#f59f00':'#c62828' %>;font-size:.95rem"><%= gRate %>%</span>
+      <div style="border-top:1px solid var(--border-color);padding-top:.85rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.35rem">
+          <span style="font-size:.72rem;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.06em">อัตราสำเร็จ</span>
+          <span id="g-rate" style="font-size:1.25rem;font-weight:900;color:#2e7d32">—</span>
         </div>
-        <div style="background:#e9ecef;border-radius:999px;height:10px">
-          <div id="db-g-rate-bar" style="background:<%= gRate>=80?'#2e7d32':gRate>=50?'#f59f00':'#c62828' %>;border-radius:999px;height:10px;width:<%= gRate %>%;transition:width .5s"></div>
+        <div style="background:#e9ecef;border-radius:999px;height:10px;overflow:hidden">
+          <div id="g-rate-bar" style="background:#2e7d32;border-radius:999px;height:10px;width:0%;transition:width .6s ease"></div>
         </div>
       </div>
     </div>
 
-    <!-- ── Combined chart ──────────────────────────────────────────── -->
-    <div class="card" style="padding:.85rem 1rem">
-      <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem;flex-wrap:wrap">
-        <strong style="font-size:.85rem;color:#555">
-          <i class="fa-solid fa-chart-column" style="color:#1877f2;font-size:.78rem"></i>
-          กิจกรรมรวม
-        </strong>
-        <span style="font-size:.75rem;color:#aaa">
-          <span style="display:inline-block;width:10px;height:10px;background:#1877f2;border-radius:2px;margin-right:3px"></span>โพสเพจ
-          <span style="display:inline-block;width:10px;height:10px;background:#2e7d32;border-radius:2px;margin:0 3px 0 10px"></span>แชร์กลุ่ม
-        </span>
-        <div class="status-filter" style="margin-left:auto">
-          <button class="filter-btn active" data-chartunit="day"   onclick="scSetChartUnit('day')">รายวัน</button>
-          <button class="filter-btn"        data-chartunit="month" onclick="scSetChartUnit('month')">รายเดือน</button>
-          <button class="filter-btn"        data-chartunit="year"  onclick="scSetChartUnit('year')">รายปี</button>
+    <!-- Chart -->
+    <div class="card" style="padding:.9rem 1rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.4rem;margin-bottom:.5rem">
+        <div style="font-size:.85rem;font-weight:700;color:#444;display:flex;align-items:center;gap:.6rem">
+          <i class="fa-solid fa-chart-column" style="color:#1877f2;font-size:.8rem"></i> กิจกรรมรวม
+          <span style="font-weight:400;font-size:.72rem;color:#bbb">
+            <span style="display:inline-block;width:9px;height:9px;background:#1877f2;border-radius:2px;margin-right:3px"></span>โพสเพจ
+            <span style="display:inline-block;width:9px;height:9px;background:#2e7d32;border-radius:2px;margin:0 3px 0 8px"></span>แชร์กลุ่ม
+          </span>
+        </div>
+        <div class="status-filter">
+          <button class="filter-btn active" data-chartunit="day"   onclick="setChartUnit('day')">รายวัน</button>
+          <button class="filter-btn"        data-chartunit="month" onclick="setChartUnit('month')">รายเดือน</button>
+          <button class="filter-btn"        data-chartunit="year"  onclick="setChartUnit('year')">รายปี</button>
         </div>
       </div>
-      <canvas id="scChart" height="70"></canvas>
+      <canvas id="dbChart" height="75"></canvas>
     </div>
 
   </main>
 </div>
 
 <style>
-.db-stat-box { border-radius:8px; padding:.45rem .6rem; text-align:center }
-.db-stat-num { font-size:1.3rem; font-weight:800; line-height:1.2 }
-.db-stat-lbl { font-size:.7rem; font-weight:600; margin-top:.1rem }
+.db-box {
+  background:#f8f9fa; border-radius:10px; padding:.6rem .5rem; text-align:center;
+  border:1.5px solid transparent; transition:border-color .15s
+}
+.db-box-green { background:#f0fdf4 }
+.db-box-red   { background:#fff5f5 }
+.db-num { font-size:1.5rem; font-weight:900; line-height:1.1; color:#333 }
+.db-lbl { font-size:.7rem; color:#8a8d91; margin-top:.2rem; white-space:nowrap }
+.db-val { transition:opacity .2s }
 </style>
 
 <script>
-let _scItems = <%- JSON.stringify(items) %>;
-let _scChartUnit = 'day';
-let _scChart = null;
+let _items = <%- JSON.stringify(items) %>;
+let _gTotal = <%= gTotal %>;
+let _range  = 'all';
+let _chartUnit = 'day';
+let _chart = null;
 
-function displayAt(it) { return it.scheduledAt || it.createdAt; }
-function dayKey(s) { return new Date(s).toLocaleDateString('en-CA'); }
+/* ── Date range filter ── */
+function filterByRange(items) {
+  if (_range === 'all') return items;
+  const now  = Date.now();
+  const cutMs = _range === 'today' ? (() => { const d=new Date(); d.setHours(0,0,0,0); return d.getTime(); })()
+              : _range === '7d'    ? now - 7  * 86400000
+              :                      now - 30 * 86400000;
+  return items.filter(i => new Date(i.createdAt).getTime() >= cutMs);
+}
 
-/* ── Stats (dynamic refresh) ── */
-function scRenderStats() {
-  const pi = _scItems.filter(i => i.type === 'page');
-  const gi = _scItems.filter(i => i.type === 'group');
+function setRange(r) {
+  _range = r;
+  document.querySelectorAll('[data-range]').forEach(b => b.classList.toggle('active', b.dataset.range === r));
+  render();
+}
 
-  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-  set('db-p-total',     pi.length);
-  set('db-p-pending',   pi.filter(i => i.status === 'pending').length);
-  set('db-p-running',   pi.filter(i => i.status === 'running').length);
-  set('db-p-success',   pi.filter(i => i.status === 'success').length);
-  set('db-p-failed',    pi.filter(i => i.status === 'failed').length);
-  set('db-p-expired',   pi.filter(i => i.status === 'expired').length);
-  set('db-p-cancelled', pi.filter(i => i.status === 'cancelled').length);
+/* ── Stats ── */
+function set(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
+function fmt(n) { return Number(n).toLocaleString(); }
 
+function renderStats() {
+  const all = filterByRange(_items);
+  const pi  = all.filter(i => i.type === 'page');
+  const gi  = all.filter(i => i.type === 'group');
+
+  // Page posts
+  const pPages = new Set(pi.flatMap(i => i.targetPages || [])).size;
+  const pTotalSuccess = pi.reduce((s, i) => s + (i.successCount || 0), 0);
+  set('p-total',     fmt(pi.length));
+  set('p-pages',     fmt(pPages));
+  set('p-results',   fmt(pTotalSuccess));
+  set('p-pending',   fmt(pi.filter(i => i.status === 'pending').length));
+  set('p-running',   fmt(pi.filter(i => i.status === 'running').length));
+  set('p-success',   fmt(pi.filter(i => i.status === 'success').length));
+  set('p-failed',    fmt(pi.filter(i => i.status === 'failed').length));
+  set('p-expired',   fmt(pi.filter(i => i.status === 'expired').length));
+  set('p-cancelled', fmt(pi.filter(i => i.status === 'cancelled').length));
+
+  let likes = 0, comments = 0, shares = 0, reach = 0;
+  pi.forEach(i => {
+    const a = i.analytics || {};
+    likes    += a.likes    || 0;
+    comments += a.comments || 0;
+    shares   += a.shares   || 0;
+    reach    += a.reach    || 0;
+  });
+  set('p-likes',    fmt(likes));
+  set('p-comments', fmt(comments));
+  set('p-shares',   fmt(shares));
+  set('p-reach',    fmt(reach));
+
+  // Group shares
   const gJobs    = gi.length;
   const gPending = gi.filter(i => ['pending','running'].includes(i.status)).length;
   const gSuccess = gi.reduce((s, i) => s + (i.successCount || 0), 0);
   const gFailed  = gi.reduce((s, i) => s + (i.failCount    || 0), 0);
   const gPosted  = gSuccess + gFailed;
   const gRate    = gPosted > 0 ? Math.round(gSuccess / gPosted * 100) : 0;
-  const rc       = gRate >= 80 ? '#2e7d32' : gRate >= 50 ? '#f59f00' : '#c62828';
+  const rc = gRate >= 80 ? '#2e7d32' : gRate >= 50 ? '#f59f00' : '#c62828';
 
-  set('db-g-jobs',     gJobs);
-  set('db-g-jobs2',    gJobs);
-  set('db-g-pending',  gPending);
-  set('db-g-success',  gSuccess);
-  set('db-g-failed',   gFailed);
-  set('db-g-posted',   gPosted);
-  set('db-g-rate',     gRate + '%');
+  set('g-jobs',       fmt(gJobs));
+  set('g-total-jobs', fmt(gJobs));
+  set('g-pending',    fmt(gPending));
+  set('g-success',    fmt(gSuccess));
+  set('g-failed',     fmt(gFailed));
+  set('g-posted',     fmt(gPosted));
+  set('g-rate',       gRate + '%');
 
-  const bar = document.getElementById('db-g-rate-bar');
-  const rEl = document.getElementById('db-g-rate');
+  const bar = document.getElementById('g-rate-bar');
+  const rEl = document.getElementById('g-rate');
   if (bar) { bar.style.width = gRate + '%'; bar.style.background = rc; }
-  if (rEl)   rEl.style.color = rc;
+  if (rEl) rEl.style.color = rc;
 }
 
 /* ── Chart ── */
-function scChartBucketKey(at, unit) {
+function bucketKey(at, unit) {
   const d = new Date(at);
   if (unit === 'day')   return d.toLocaleDateString('en-CA');
   if (unit === 'month') return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
   return String(d.getFullYear());
 }
-function scSetChartUnit(u) {
-  _scChartUnit = u;
+function setChartUnit(u) {
+  _chartUnit = u;
   document.querySelectorAll('[data-chartunit]').forEach(b => b.classList.toggle('active', b.dataset.chartunit===u));
-  scRenderChart();
+  renderChart();
 }
-function scRenderChart() {
+function renderChart() {
   if (typeof Chart === 'undefined') return;
-  const pi = _scItems.filter(i => i.type === 'page'  && displayAt(i));
-  const gi = _scItems.filter(i => i.type === 'group' && displayAt(i));
+  const all = filterByRange(_items);
+  const pi = all.filter(i => i.type === 'page'  && (i.scheduledAt || i.createdAt));
+  const gi = all.filter(i => i.type === 'group' && (i.scheduledAt || i.createdAt));
   const pB = {}, gB = {};
-  pi.forEach(it => { const k = scChartBucketKey(displayAt(it), _scChartUnit); pB[k] = (pB[k]||0)+1; });
-  gi.forEach(it => { const k = scChartBucketKey(displayAt(it), _scChartUnit); gB[k] = (gB[k]||0)+1; });
+  pi.forEach(i => { const k = bucketKey(i.scheduledAt||i.createdAt, _chartUnit); pB[k]=(pB[k]||0)+1; });
+  gi.forEach(i => { const k = bucketKey(i.scheduledAt||i.createdAt, _chartUnit); gB[k]=(gB[k]||0)+1; });
   const keys = [...new Set([...Object.keys(pB), ...Object.keys(gB)])].sort().slice(-30);
-  const ctx  = document.getElementById('scChart');
-  if (_scChart) _scChart.destroy();
-  _scChart = new Chart(ctx, {
+  const ctx = document.getElementById('dbChart');
+  if (_chart) _chart.destroy();
+  _chart = new Chart(ctx, {
     type: 'bar',
     data: {
       labels: keys,
       datasets: [
-        { label: 'โพสเพจ',    data: keys.map(k => pB[k]||0), backgroundColor: '#1877f2', borderRadius: 3 },
-        { label: 'แชร์กลุ่ม', data: keys.map(k => gB[k]||0), backgroundColor: '#2e7d32', borderRadius: 3 },
+        { label:'โพสเพจ',    data:keys.map(k=>pB[k]||0), backgroundColor:'#1877f2', borderRadius:4 },
+        { label:'แชร์กลุ่ม', data:keys.map(k=>gB[k]||0), backgroundColor:'#2e7d32', borderRadius:4 },
       ],
     },
     options: {
-      responsive: true,
-      plugins: { legend: { display: false } },
-      scales: { x: { stacked: false }, y: { beginAtZero: true, ticks: { precision: 0 } } },
+      responsive:true,
+      plugins:{ legend:{ display:false } },
+      scales:{ y:{ beginAtZero:true, ticks:{ precision:0 } } },
     },
   });
 }
 
 /* ── Render & Refresh ── */
-function scRender() { scRenderStats(); scRenderChart(); }
+function render() { renderStats(); renderChart(); }
+
 async function scRefresh() {
   try {
     const r = await fetch('/api/schedule-center/items');
-    _scItems = await r.json();
-    scRender();
+    _items = await r.json();
+    render();
   } catch {}
 }
 
-scRender();
+render();
 setInterval(scRefresh, 30000);
 </script>
 

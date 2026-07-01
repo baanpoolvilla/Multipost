@@ -181,20 +181,32 @@ async function buildScheduleCenterItems() {
     const pageNameMap = {};
     pages.forEach(p => { pageNameMap[p.pageId] = p.pageName; });
 
-    const pageItems = posts.map(p => ({
-        id: p.id, type: 'page',
-        message: p.message || '',
-        status: p.status || STATUS.SUCCESS,
-        scheduledAt: p.scheduledAt || null,
-        createdAt: p.createdAt,
-        expiredAt: p.expiredAt || null,
-        targetPages: (p.selectedPageIds || []).map(id => pageNameMap[id] || id),
-        targetGroups: [],
-        sourceType: 'web',
-        agentId: null,
-        successCount: p.successCount || 0,
-        failCount: p.failCount || 0,
-    }));
+    const pageItems = posts.map(p => {
+        let likes = 0, comments = 0, shares = 0, reach = 0;
+        (p.results || []).forEach(r => {
+            if (r.status === 'success' && r.analytics) {
+                likes    += r.analytics.likes    || 0;
+                comments += r.analytics.comments || 0;
+                shares   += r.analytics.shares   || 0;
+                reach    += r.analytics.reach    || 0;
+            }
+        });
+        return {
+            id: p.id, type: 'page',
+            message: p.message || '',
+            status: p.status || STATUS.SUCCESS,
+            scheduledAt: p.scheduledAt || null,
+            createdAt: p.createdAt,
+            expiredAt: p.expiredAt || null,
+            targetPages: (p.selectedPageIds || []).map(id => pageNameMap[id] || id),
+            targetGroups: [],
+            sourceType: 'web',
+            agentId: null,
+            successCount: p.successCount || 0,
+            failCount: p.failCount || 0,
+            analytics: { likes, comments, shares, reach },
+        };
+    });
 
     const groupItems = jobs.map(j => ({
         id: String(j._id), type: 'group',
@@ -217,54 +229,8 @@ async function buildScheduleCenterItems() {
 exports.showScheduleCenter = async (req, res) => {
     const groupJobStore = require('../services/groupJobStore');
     const groupStore    = require('../services/groupStore');
-
-    const [items, groups] = await Promise.all([
-        buildScheduleCenterItems(),
-        groupStore.list(),
-    ]);
-
-    // ── Page post stats ──────────────────────────────────────────
-    const posts = await postStore.load();
-    const pPending   = posts.filter(p => p.status === 'pending').length;
-    const pRunning   = posts.filter(p => p.status === 'running').length;
-    const pSuccess   = posts.filter(p => p.status === 'success').length;
-    const pFailed    = posts.filter(p => p.status === 'failed').length;
-    const pExpired   = posts.filter(p => p.status === 'expired').length;
-    const pCancelled = posts.filter(p => p.status === 'cancelled').length;
-
-    let pLikes = 0, pComments = 0, pShares = 0, pReach = 0;
-    const usedPageIds = new Set();
-    posts.forEach(post => {
-        (post.results || []).forEach(r => {
-            if (r.pageId) usedPageIds.add(r.pageId);
-            if (r.status === 'success' && r.analytics) {
-                pLikes    += r.analytics.likes    || 0;
-                pComments += r.analytics.comments || 0;
-                pShares   += r.analytics.shares   || 0;
-                pReach    += r.analytics.reach    || 0;
-            }
-        });
-    });
-    const pTotalSuccess = posts.reduce((s, p) => s + (p.successCount || 0), 0);
-    const pTotalFail    = posts.reduce((s, p) => s + (p.failCount    || 0), 0);
-
-    // ── Group stats ──────────────────────────────────────────────
-    const gi = items.filter(i => i.type === 'group');
-    const gJobs    = gi.length;
-    const gPending = gi.filter(i => ['pending','running'].includes(i.status)).length;
-    const gSuccess = gi.reduce((s, i) => s + (i.successCount || 0), 0);
-    const gFailed  = gi.reduce((s, i) => s + (i.failCount    || 0), 0);
-    const gPosted  = gSuccess + gFailed;
-    const gRate    = gPosted > 0 ? Math.round(gSuccess / gPosted * 100) : 0;
-    const gTotal   = groups.length;
-
-    res.render('schedule-center', {
-        items,
-        pTotal: posts.length, pPending, pRunning, pSuccess, pFailed, pExpired, pCancelled,
-        pTotalSuccess, pTotalFail, pPageCount: usedPageIds.size,
-        pLikes, pComments, pShares, pReach,
-        gJobs, gPending, gSuccess, gFailed, gPosted, gRate, gTotal,
-    });
+    const [items, groups] = await Promise.all([buildScheduleCenterItems(), groupStore.list()]);
+    res.render('schedule-center', { items, gTotal: groups.length });
 };
 
 exports.scheduleCenterItems = async (req, res) => {
