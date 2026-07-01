@@ -588,10 +588,10 @@ async function submitPost() {
       const r2 = await Swal.fire({
         icon: 'success', title: 'ตั้งเวลาโพสแล้ว!',
         html: `<p style="color:#65676b">จะโพสต์อัตโนมัติวันที่ <strong>${dt}</strong></p>`,
-        showCancelButton: true, confirmButtonText: 'ดูประวัติ',
+        showCancelButton: true, confirmButtonText: 'ดูโพสตั้งเวลา',
         cancelButtonText: 'โพสต์ต่อ', confirmButtonColor: '#1877f2',
       });
-      if (r2.isConfirmed) window.location.href = '/history';
+      if (r2.isConfirmed) window.location.href = '/post-queue';
       else { messageEl.value = ''; selectedFiles = []; _supabaseUrls = []; document.getElementById('imagePreview').style.display='none'; }
     } else if (data.id) {
       window.location.href = `/result/${data.id}`;
