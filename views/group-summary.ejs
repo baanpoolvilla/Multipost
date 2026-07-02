@@ -148,28 +148,28 @@
       <div class="metric-card green">
         <div class="metric-icon"><i class="fa-solid fa-list-check"></i></div>
         <div class="metric-body">
-          <div class="metric-val"><%= result.totalJobs %></div>
-          <div class="metric-label">งาน (Job)</div>
+          <div class="metric-val" id="gs-kpi-jobs"><%= result.totalJobs %></div>
+          <div class="metric-label" id="gs-kpi-jobs-label">งาน (Job)</div>
         </div>
       </div>
       <div class="metric-card green" style="border:2px solid #059669;background:#f0fdf4">
         <div class="metric-icon" style="background:#059669"><i class="fa-solid fa-circle-check"></i></div>
         <div class="metric-body">
-          <div class="metric-val" style="color:#059669"><%= result.totalSuccess %></div>
+          <div class="metric-val" style="color:#059669" id="gs-kpi-success"><%= result.totalSuccess %></div>
           <div class="metric-label">สำเร็จ</div>
         </div>
       </div>
       <div class="metric-card red">
         <div class="metric-icon"><i class="fa-solid fa-circle-xmark"></i></div>
         <div class="metric-body">
-          <div class="metric-val"><%= result.totalFail %></div>
+          <div class="metric-val" id="gs-kpi-fail"><%= result.totalFail %></div>
           <div class="metric-label">ล้มเหลว</div>
         </div>
       </div>
       <div class="metric-card green" style="border:2px solid #2e7d32;background:#f0fff4">
         <div class="metric-icon" style="background:#2e7d32"><i class="fa-solid fa-chart-pie"></i></div>
         <div class="metric-body">
-          <div class="metric-val" style="color:#2e7d32"><%= result.successRate %>%</div>
+          <div class="metric-val" style="color:#2e7d32" id="gs-kpi-rate"><%= result.successRate %>%</div>
           <div class="metric-label">อัตราสำเร็จ</div>
         </div>
       </div>
@@ -371,6 +371,13 @@ let _gsExpanded = false;
 let _gsPrivacyFilter = null;
 let _gsSearchQuery = '';
 
+const _origKPI = {
+  jobs: '<%= result.totalJobs %>',
+  success: <%= result.totalSuccess %>,
+  fail: <%= result.totalFail %>,
+  rate: '<%= result.successRate %>%',
+};
+
 function applyGsFilter() {
   const filtering = _gsPrivacyFilter || _gsSearchQuery;
   const rows = document.querySelectorAll('.gs-row');
@@ -398,6 +405,19 @@ function updateSummary() {
   document.getElementById('gs-sum-bar').style.width = rt + '%';
   document.getElementById('gs-sum-label').innerHTML =
     `<i class="fa-solid fa-sigma" style="color:#2e7d32;margin-right:.35rem"></i>สรุปรวม (${rows.length} กลุ่ม)`;
+  if (_gsPrivacyFilter) {
+    document.getElementById('gs-kpi-jobs').textContent = rows.length;
+    document.getElementById('gs-kpi-jobs-label').textContent = 'กลุ่ม';
+    document.getElementById('gs-kpi-success').textContent = s;
+    document.getElementById('gs-kpi-fail').textContent = f;
+    document.getElementById('gs-kpi-rate').textContent = rt + '%';
+  } else {
+    document.getElementById('gs-kpi-jobs').textContent = _origKPI.jobs;
+    document.getElementById('gs-kpi-jobs-label').textContent = 'งาน (Job)';
+    document.getElementById('gs-kpi-success').textContent = _origKPI.success;
+    document.getElementById('gs-kpi-fail').textContent = _origKPI.fail;
+    document.getElementById('gs-kpi-rate').textContent = _origKPI.rate;
+  }
 }
 
 function filterByPrivacy(key) {
