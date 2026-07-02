@@ -301,7 +301,7 @@ function qPeriod(type) {
 function submitPS() {
   const from  = document.getElementById('ps-from').value;
   const to    = document.getElementById('ps-to').value;
-  if (from && to && from > to) { alert('วันที่เริ่มต้องไม่เกินวันที่สิ้นสุด'); return; }
+  if (from && to && from > to) { Swal.fire({ icon:'warning', title:'วันที่เริ่มต้องไม่เกินวันที่สิ้นสุด', confirmButtonColor:'#1877f2' }); return; }
   const tfrom = t24Get('ps-tfrom');
   const tto   = t24Get('ps-tto');
   const params = new URLSearchParams();

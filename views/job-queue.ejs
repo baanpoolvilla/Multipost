@@ -171,7 +171,7 @@
       </div>
 
       <div style="display:flex;gap:.5rem">
-        <button class="btn-post" style="font-size:.85rem;padding:.45rem 1rem" onclick="submitJob()">
+        <button id="btnSubmitJob" class="btn-post" style="font-size:.85rem;padding:.45rem 1rem" onclick="submitJob()">
           <i class="fa-solid fa-paper-plane"></i> เพิ่มลงคิว
         </button>
         <button class="btn-back" onclick="toggleForm()">ยกเลิก</button>
@@ -607,6 +607,9 @@ async function submitJob() {
     return;
   }
 
+  const btn = document.getElementById('btnSubmitJob');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังเพิ่ม...'; }
+
   try {
     const r = await fetch('/api/agent/jobs', {
       method:'POST',
@@ -621,6 +624,7 @@ async function submitJob() {
     await Swal.fire({ icon:'success', title:'เพิ่ม Job สำเร็จ', text: schedMsg, timer:2000, showConfirmButton:false });
     location.reload();
   } catch(e) {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> เพิ่มลงคิว'; }
     Swal.fire({ icon:'error', title:'เกิดข้อผิดพลาด', text:e.message, confirmButtonColor:'#1877f2' });
   }
 }

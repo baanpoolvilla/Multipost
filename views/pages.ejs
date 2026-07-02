@@ -155,9 +155,10 @@
               <i class="fa-solid <%= p.enabled === false ? 'fa-toggle-off' : 'fa-toggle-on' %>"></i>
             </button>
             <button class="icon-btn" title="ต่ออายุ Token 60 วัน"
+              id="exchbtn-<%= p.pageId %>"
               data-id="<%= p.pageId %>" data-name="<%= p.pageName %>"
               onclick="exchangeToken(this.dataset.id, this.dataset.name, this)"
-              style="color:#2e7d32;border-color:#a5d6a7">
+              style="color:#2e7d32;border-color:#a5d6a7<%= p.enabled === false ? ';opacity:.3;pointer-events:none' : '' %>">
               <i class="fa-solid fa-rotate"></i>
             </button>
             <button class="icon-btn" title="แก้ไข Token"
@@ -377,8 +378,18 @@ setInterval(updateAll, 60000);
 /* ── Live token ping (auto on load) ── */
 async function checkAllTokens() {
   let liveOk = 0, liveFail = 0;
+  const TIMEOUT_MS = 5000;
+  const timeoutId = setTimeout(() => {
+    document.querySelectorAll('[id^="live-"]').forEach(el => {
+      if (el.innerHTML.includes('fa-spin')) {
+        el.style.background = '#f0f2f5'; el.style.color = '#8a8d91';
+        el.innerHTML = '<i class="fa-solid fa-question-circle"></i> ตรวจสอบไม่ได้';
+      }
+    });
+  }, TIMEOUT_MS);
   try {
-    const res     = await fetch('/api/check-tokens');
+    const res     = await fetch('/api/check-tokens', { signal: AbortSignal.timeout(TIMEOUT_MS) });
+    clearTimeout(timeoutId);
     const { results } = await res.json();
     results.forEach(r => {
       const el = document.getElementById(`live-${r.pageId}`);
@@ -409,7 +420,15 @@ async function checkAllTokens() {
           </div>
         </div>`;
     }
-  } catch { /* silent */ }
+  } catch {
+    clearTimeout(timeoutId);
+    document.querySelectorAll('[id^="live-"]').forEach(el => {
+      if (el.innerHTML.includes('fa-spin')) {
+        el.style.background = '#f0f2f5'; el.style.color = '#8a8d91';
+        el.innerHTML = '<i class="fa-solid fa-question-circle"></i> ตรวจสอบไม่ได้';
+      }
+    });
+  }
 }
 
 checkAllTokens();
@@ -522,6 +541,8 @@ async function togglePage(pageId) {
   btn.style.borderColor = newEnabled ? '#90caf9' : '#ccc';
   btn.querySelector('i').className = `fa-solid ${newEnabled ? 'fa-toggle-on' : 'fa-toggle-off'}`;
   btn.title = newEnabled ? 'เปิดใช้งานอยู่ — คลิกเพื่อปิด' : 'ปิดใช้งานอยู่ — คลิกเพื่อเปิด';
+  const exchBtn = document.getElementById(`exchbtn-${pageId}`);
+  if (exchBtn) { exchBtn.style.opacity = newEnabled ? '' : '.3'; exchBtn.style.pointerEvents = newEnabled ? '' : 'none'; }
 }
 
 async function deletePage(pageId, pageName, btn) {

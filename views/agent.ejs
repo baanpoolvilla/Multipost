@@ -114,6 +114,13 @@
         <div style="font-size:.78rem;color:var(--text-secondary);margin-top:.2rem">Database</div>
       </div>
     </div>
+    <div id="retryBar" style="text-align:center">
+      <button onclick="checkAgent()" id="retryBtn"
+        style="background:#fa5252;color:#fff;border:none;border-radius:8px;padding:.55rem 1.4rem;font-size:.88rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:.45rem"
+        onmouseover="this.style.background='#e03131'" onmouseout="this.style.background='#fa5252'">
+        <i class="fa-solid fa-rotate-right"></i> ตรวจสอบอีกครั้ง
+      </button>
+    </div>
 
     <div class="card">
       <div class="card-title"><i class="fa-solid fa-circle-info"></i> วิธีใช้งาน (ครั้งแรก)</div>
@@ -140,6 +147,8 @@ code { background:#f0f2f5;padding:.1rem .4rem;border-radius:4px;font-size:.82rem
 
 <script>
 async function checkAgent() {
+  const btn = document.getElementById('retryBtn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-rotate-right fa-spin"></i> กำลังตรวจสอบ...'; }
   try {
     const r   = await fetch('http://localhost:3001/api/status', { signal: AbortSignal.timeout(3000) });
     const d   = await r.json();
@@ -151,6 +160,7 @@ async function checkAgent() {
     document.getElementById('dbStatus').textContent     = d.dbConnected ? 'Connected' : 'Offline';
     document.getElementById('agentDetails').innerHTML   =
       `<span style="color:#42b72a;font-weight:600">✓ เชื่อมต่อสำเร็จ</span> · API version ${d.version||'—'} · Uptime: ${fmtUptime(d.uptime)} · Jobs: ${d.jobCount||0}`;
+    document.getElementById('retryBar').style.display = 'none';
   } catch {
     document.getElementById('agentIcon').textContent    = '🔴';
     document.getElementById('agentStatus').textContent  = 'ออฟไลน์';
@@ -160,6 +170,8 @@ async function checkAgent() {
     document.getElementById('dbStatus').textContent     = '—';
     document.getElementById('agentDetails').innerHTML   =
       '<span style="color:#fa5252">✗ ไม่พบ Agent</span> — กรุณาเปิด <strong>เปิด Agent.bat</strong> ก่อน';
+    document.getElementById('retryBar').style.display = 'block';
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> ตรวจสอบอีกครั้ง'; }
   }
 }
 function fmtUptime(s){if(!s)return'—';const h=Math.floor(s/3600),m=Math.floor((s%3600)/60);return h?`${h}h ${m}m`:`${m}m`;}

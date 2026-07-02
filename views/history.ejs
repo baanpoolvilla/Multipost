@@ -672,9 +672,12 @@
   })();
 
   async function confirmClearAll() {
+    const total   = _hPosts.length;
+    const withFail = _hPosts.filter(p => p.fail > 0).length;
     const result = await Swal.fire({
       title: 'ล้างประวัติทั้งหมด?',
-      text: 'จะลบโพสต์ทั้งหมดและรูปภาพออกจากระบบ',
+      html: `จะลบ <strong>${total} โพสต์</strong> และรูปภาพออกจากระบบ` +
+            (withFail ? `<br><span style="color:#c62828;font-size:.9em">⚠️ มี <strong>${withFail} โพสต์</strong>ที่มีล้มเหลวรวมอยู่ด้วย</span>` : ''),
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#c62828',

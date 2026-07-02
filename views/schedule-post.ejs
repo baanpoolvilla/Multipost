@@ -228,13 +228,13 @@
           <input type="number" id="scheduledAt_m" min="0" max="59" placeholder="น.">
         </div>
         <div style="display:flex;gap:.28rem;flex-wrap:wrap;margin-top:.45rem">
-          <button type="button" onclick="dtToday('scheduledAt')"
+          <button type="button" onclick="setNowWithToast()"
             style="background:#e7f0fd;border:none;border-radius:7px;padding:.26rem .65rem;font-size:.73rem;cursor:pointer;color:#1877f2;font-family:inherit;font-weight:600">วันนี้ตอนนี้</button>
-          <button type="button" onclick="dtQuick(60,'scheduledAt')"
+          <button type="button" onclick="setQuickWithToast(60)"
             style="background:#f0f2f5;border:none;border-radius:7px;padding:.26rem .6rem;font-size:.73rem;cursor:pointer;color:#444;font-family:inherit">+1 ชม.</button>
-          <button type="button" onclick="dtQuick(180,'scheduledAt')"
+          <button type="button" onclick="setQuickWithToast(180)"
             style="background:#f0f2f5;border:none;border-radius:7px;padding:.26rem .6rem;font-size:.73rem;cursor:pointer;color:#444;font-family:inherit">+3 ชม.</button>
-          <button type="button" onclick="dtQuick(1440,'scheduledAt')"
+          <button type="button" onclick="setQuickWithToast(1440)"
             style="background:#f0f2f5;border:none;border-radius:7px;padding:.26rem .6rem;font-size:.73rem;cursor:pointer;color:#444;font-family:inherit">+1 วัน</button>
         </div>
       </div>
@@ -437,6 +437,23 @@
   function toggleVideoInfo() {
     const p = document.getElementById('videoInfoPanel');
     p.style.display = p.style.display === 'none' ? 'flex' : 'none';
+  }
+  function showScheduleToast(prefix) {
+    const d = document.getElementById(prefix+'_d')?.value;
+    if (!d) return;
+    const h = String(document.getElementById(prefix+'_h')?.value||0).padStart(2,'0');
+    const m = String(document.getElementById(prefix+'_m')?.value||0).padStart(2,'0');
+    const dt = new Date(`${d}T${h}:${m}:00+07:00`);
+    const label = dt.toLocaleString('th-TH', { timeZone:'Asia/Bangkok', weekday:'short', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit', hour12:false });
+    Swal.fire({ toast:true, position:'top-end', icon:'success', title:`ตั้งเวลา: ${label}`, timer:2200, showConfirmButton:false, timerProgressBar:true });
+  }
+  function setQuickWithToast(mins) {
+    dtQuick(mins, 'scheduledAt');
+    setTimeout(() => showScheduleToast('scheduledAt'), 30);
+  }
+  function setNowWithToast() {
+    dtToday('scheduledAt');
+    setTimeout(() => showScheduleToast('scheduledAt'), 30);
   }
   // wrapper: dtQuick delegates to app.js dtAddMinutes
   function dtQuick(mins, prefix) {
