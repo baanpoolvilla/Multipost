@@ -408,17 +408,15 @@
   </div>
 </div>
 
-<!-- Staff picker modal ("who is using this install") -->
-<div id="staffModal" class="modal-overlay" style="display:none" onclick="closeStaffModal(event)">
+<!-- Staff picker modal ("who is using this install") — no skip/close-on-background:
+     selecting a name is mandatory, this modal only ever closes via selectStaffMember(). -->
+<div id="staffModal" class="modal-overlay" style="display:none">
   <div class="modal-box" onclick="event.stopPropagation()" style="max-width:380px">
     <div class="modal-header">
       <span>คุณคือใคร?</span>
-      <div style="display:flex;gap:.5rem;margin-left:auto">
-        <button class="btn-link" id="staffModalSkip" style="color:var(--text2)" onclick="closeStaffModal()">ข้ามไปก่อน</button>
-      </div>
     </div>
     <div style="padding:.85rem 1rem;font-size:.82rem;color:var(--text2)">
-      เลือกชื่อของคุณครั้งเดียว โปรแกรมจะจำไว้ในเครื่องนี้ ไม่ต้องเลือกซ้ำอีก — ใช้เพื่อบันทึกว่าใครเป็นคนแชร์งานแต่ละชิ้น
+      กรุณาเลือกชื่อของคุณก่อนใช้งาน โปรแกรมจะจำไว้ในเครื่องนี้ ไม่ต้องเลือกซ้ำอีก — ใช้เพื่อบันทึกว่าใครเป็นคนแชร์งานแต่ละชิ้น
     </div>
     <div id="staffModalList" class="pick-list" style="max-height:300px"></div>
   </div>

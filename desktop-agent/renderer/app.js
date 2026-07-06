@@ -453,10 +453,6 @@ async function openStaffModal() {
       </div>`).join('');
 }
 
-function closeStaffModal(e) {
-    if (!e || e.target === document.getElementById('staffModal')) document.getElementById('staffModal').style.display = 'none';
-}
-
 async function selectStaffMember(id, displayName) {
     await agent.setCurrentStaff(id, displayName);
     updateStaffLabel({ id, displayName });
