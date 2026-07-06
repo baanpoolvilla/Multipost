@@ -35,10 +35,22 @@ const jobStore         = require('./src/jobStore');
 const jobRunner        = require('./src/jobRunner');
 const facebookBot      = require('./src/facebookBot');
 const jobTemplateStore = require('./src/jobTemplateStore');
+const agentPresence    = require('./src/agentPresence');
 
 let win;
 let _userDataDir  = null;
 let _currentStaff = null; // { id, displayName } | null
+let _agentId      = null;
+
+// Tells the web dashboard "this machine is online and signed in as this
+// staff member" so a web-created job for that staff can be pinned here
+// instead of left for any running agent to grab. Runs well inside
+// agentPresence.ONLINE_THRESHOLD_MS so a closed/crashed Agent is correctly
+// seen as offline soon after it stops.
+const HEARTBEAT_INTERVAL_MS = 20 * 1000;
+function heartbeat() {
+    agentPresence.heartbeat(_agentId, _currentStaff?.id, _currentStaff?.displayName).catch(() => {});
+}
 
 // ── Window ─────────────────────────────────────────────────────
 function createWindow() {
@@ -65,8 +77,8 @@ app.whenReady().then(async () => {
     accountStore.init(userDataDir);
     facebookBot.init(userDataDir);
     // jobTemplateStore now uses MongoDB — no local init needed
-    const agentId = getOrCreateAgentId(userDataDir);
-    jobStore.setAgentId(agentId);
+    _agentId = getOrCreateAgentId(userDataDir);
+    jobStore.setAgentId(_agentId);
     await jobStore.connect().catch(() => {});
 
     _currentStaff = getSelectedStaff(userDataDir);
@@ -83,6 +95,11 @@ app.whenReady().then(async () => {
         }
     }
 
+    // Tell the web dashboard this machine is online (and who as) right away,
+    // then keep doing so — see agentPresence.js.
+    heartbeat();
+    setInterval(heartbeat, HEARTBEAT_INTERVAL_MS);
+
     // Part 9: catch up on expiry as soon as the Agent has a DB connection —
     // before the queue is ever shown or polled, regardless of whether
     // auto-posting is turned on yet.
@@ -96,7 +113,7 @@ app.whenReady().then(async () => {
     // Start job runner
     jobRunner.init(jobStore, facebookBot, accountStore, (event, data) => {
         if (win && !win.isDestroyed()) win.webContents.send(event, data);
-    });
+    }, _agentId);
 
     createWindow();
 });
@@ -132,6 +149,7 @@ ipcMain.handle('staff:set-current', async (_, id, name) => {
     _currentStaff = { id: match.id, displayName: match.displayName };
     saveSelectedStaff(_userDataDir, _currentStaff);
     jobStore.setStaffId(match.id);
+    heartbeat(); // reflect the switch immediately instead of waiting up to HEARTBEAT_INTERVAL_MS
     return { ok: true };
 });
 

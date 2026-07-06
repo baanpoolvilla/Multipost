@@ -4,6 +4,7 @@ const categoryStore  = require('../services/categoryStore');
 const postStore      = require('../services/postStore');
 const { refreshPostAnalytics } = require('../services/facebookService');
 const { STATUS }     = require('../desktop-agent/src/scheduler/statuses');
+const agentPresence  = require('../desktop-agent/src/agentPresence');
 
 // ── Group Overview Dashboard ───────────────────────────────────
 exports.showGroupOverview = async (req, res) => {
@@ -291,6 +292,14 @@ exports.createJob = async (req, res) => {
     if (!Array.isArray(groups) || !groups.length) return res.status(400).json({ error: 'กรุณาเลือกกลุ่ม' });
     try {
         const schedDate = scheduledAt ? new Date(scheduledAt) : null;
+        const staffId = req.staffId || null;
+        // If the staff member who's creating this has their own Desktop
+        // Agent machine online right now, pin the job there (same agentId
+        // mechanism that already safely prevents a different machine from
+        // grabbing it — see desktop-agent/src/scheduler/schedulerService.js).
+        // If they don't have one online, leave agentId null: any running
+        // agent may claim it, same as before.
+        const pinnedAgentId = await agentPresence.findOnlineAgentForStaff(staffId).catch(() => null);
         const job = await groupJobStore.create({
             message: message.trim(),
             groups,
@@ -300,7 +309,8 @@ exports.createJob = async (req, res) => {
             accountId: accountId || null,
             scheduledAt: (schedDate && schedDate > new Date()) ? schedDate.toISOString() : null,
             images: Array.isArray(images) ? images : [],
-            staffId: req.staffId || null,
+            staffId,
+            agentId: pinnedAgentId,
         });
         res.json({ ok: true, job });
     } catch(e) {

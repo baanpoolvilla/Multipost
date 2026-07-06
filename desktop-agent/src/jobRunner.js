@@ -1,21 +1,25 @@
-const fs         = require('fs');
-const imgStore   = require('./agentImageStore');
-const { STATUS } = require('./scheduler/statuses');
+const fs          = require('fs');
+const imgStore    = require('./agentImageStore');
+const postingLock = require('./postingLock');
+const { STATUS }  = require('./scheduler/statuses');
 
 let _store   = null;
 let _bot     = null;
 let _accounts = null;
 let _emit    = null;
+let _agentId = null;
 let _running = false;
 let _timer   = null;
 let _lastExpireSweep = 0;
 const EXPIRE_SWEEP_INTERVAL_MS = 30 * 1000; // don't hit the DB on every 3s poll tick
+const LOCK_RETRY_MS = 2000;
 
-function init(store, bot, accounts, emit) {
+function init(store, bot, accounts, emit, agentId) {
     _store    = store;
     _bot      = bot;
     _accounts = accounts;
     _emit     = emit;
+    _agentId  = agentId;
 }
 
 function isRunning() { return _running; }
@@ -93,17 +97,9 @@ async function processJob(job) {
         return;
     }
 
-    // Open ONE page and switch identity on it — reuse same page for all groups
-    log(`ℹ️ postAsPage: ${job.postAsPage || '(ไม่ได้เลือก — โพสเป็น user)'}`);
-    let sharedPage = null;
-    let sharedPageId = null;
-    if (job.postAsPage) {
-        const result = await _bot.openSwitchedPage(acc.id, job.postAsPage, (m) => log(`   ${m}`));
-        sharedPage   = result?.page   || null;
-        sharedPageId = result?.pageId || null;
-    }
-
-    // Download images from Supabase / MongoDB to temp files
+    // Download images from Supabase / MongoDB to temp files — no Facebook
+    // interaction involved, so this happens before the posting lock below
+    // rather than holding it for longer than necessary.
     let tempImagePaths = [];
     const rawImages = job.images || [];
     if (rawImages.length > 0) {
@@ -133,30 +129,54 @@ async function processJob(job) {
         log(`   ✅ พร้อมแนบ ${tempImagePaths.length} รูป`);
     }
 
+    // Global posting lock — every Agent machine shares the same Facebook
+    // session, so even though this job was already safely claimed by this
+    // machine alone (claimNextJob), we still wait our turn here before any
+    // actual Facebook action, so no two machines are ever mid-post at once.
+    log('🔒 รอคิวโพส (global lock)...');
+    while (!(await postingLock.acquire(_agentId))) {
+        if (!_running) return;
+        await sleep(LOCK_RETRY_MS);
+    }
+    log('🔓 ได้คิวแล้ว เริ่มโพส');
+
     const results = [];
     let ok = 0;
-
-    for (let i=0; i<job.groups.length; i++) {
-        if (!_running) break;
-        const g = job.groups[i];
-        log(`➡️ [${i+1}/${job.groups.length}] ${g.groupName}`);
-        _emit?.('jobs:progress', { groupName:g.groupName, status:'posting', current:i+1, total:job.groups.length });
-
-        const res = await _bot.postToGroup(acc.id, g.groupId, g.groupName, job.message, job.postAsPage||null, (m)=>log(`   ${m}`), sharedPage, sharedPageId, tempImagePaths);
-        results.push({ groupId:g.groupId, groupName:g.groupName, status:res.ok?'success':'failed', error:res.error||null, timestamp:new Date().toISOString(), postUrl:res.postUrl||null });
-
-        if (res.ok) { ok++; log(`   ✅ สำเร็จ`); _emit?.('jobs:progress', { groupName:g.groupName, status:'success' }); }
-        else        { log(`   ❌ ${res.error}`); _emit?.('jobs:progress', { groupName:g.groupName, status:'failed', error:res.error }); }
-
-        if (i < job.groups.length-1 && job.delaySeconds>0 && _running) {
-            log(`   ⏳ รอ ${job.delaySeconds}s...`);
-            await sleep(job.delaySeconds*1000);
+    let sharedPage = null;
+    let sharedPageId = null;
+    try {
+        // Open ONE page and switch identity on it — reuse same page for all groups
+        log(`ℹ️ postAsPage: ${job.postAsPage || '(ไม่ได้เลือก — โพสเป็น user)'}`);
+        if (job.postAsPage) {
+            const result = await _bot.openSwitchedPage(acc.id, job.postAsPage, (m) => log(`   ${m}`));
+            sharedPage   = result?.page   || null;
+            sharedPageId = result?.pageId || null;
         }
-    }
 
-    // Switch back to personal and close the shared page
-    if (sharedPage) {
-        await _bot.switchBackOnPage(sharedPage, (m) => log(`   ${m}`), job.postAsPage).catch(()=>{});
+        for (let i=0; i<job.groups.length; i++) {
+            if (!_running) break;
+            const g = job.groups[i];
+            log(`➡️ [${i+1}/${job.groups.length}] ${g.groupName}`);
+            _emit?.('jobs:progress', { groupName:g.groupName, status:'posting', current:i+1, total:job.groups.length });
+
+            const res = await _bot.postToGroup(acc.id, g.groupId, g.groupName, job.message, job.postAsPage||null, (m)=>log(`   ${m}`), sharedPage, sharedPageId, tempImagePaths);
+            results.push({ groupId:g.groupId, groupName:g.groupName, status:res.ok?'success':'failed', error:res.error||null, timestamp:new Date().toISOString(), postUrl:res.postUrl||null });
+
+            if (res.ok) { ok++; log(`   ✅ สำเร็จ`); _emit?.('jobs:progress', { groupName:g.groupName, status:'success' }); }
+            else        { log(`   ❌ ${res.error}`); _emit?.('jobs:progress', { groupName:g.groupName, status:'failed', error:res.error }); }
+
+            if (i < job.groups.length-1 && job.delaySeconds>0 && _running) {
+                log(`   ⏳ รอ ${job.delaySeconds}s...`);
+                await sleep(job.delaySeconds*1000);
+            }
+        }
+
+        // Switch back to personal and close the shared page
+        if (sharedPage) {
+            await _bot.switchBackOnPage(sharedPage, (m) => log(`   ${m}`), job.postAsPage).catch(()=>{});
+        }
+    } finally {
+        await postingLock.release(_agentId).catch(() => {});
     }
 
     // Clean up temp image files
