@@ -24,6 +24,7 @@ const schema = new mongoose.Schema({
     scheduledAt:     { type: String, default: null },
     expiredAt:       { type: String, default: null },
     selectedPageIds: { type: [String], default: null },
+    staffId:         { type: String, default: null },
 }, { versionKey: false });
 const Post = mongoose.models.Post || mongoose.model('Post', schema);
 

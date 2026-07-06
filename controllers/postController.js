@@ -43,6 +43,7 @@ exports.sendPost = async (req, res) => {
                 status: STATUS.PENDING,
                 scheduledAt: schedDate.toISOString(),
                 selectedPageIds: pageIds || null,
+                staffId: req.staffId || null,
             });
             return res.json({ id: post.id, scheduled: true, scheduledAt: post.scheduledAt });
         }
@@ -66,6 +67,7 @@ exports.sendPost = async (req, res) => {
         location: location || null, images, results,
         successCount, failCount: results.length - successCount,
         status: STATUS.SUCCESS,
+        staffId: req.staffId || null,
     });
 
     res.json({ id: post.id });

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>จัดการผู้ใช้งาน - Multi Post System</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-inner">
+    <div class="navbar-brand">
+      <div class="fb-logo"><i class="fa-brands fa-facebook"></i></div>
+      <span>Multi Post System</span>
+    </div>
+    <div class="navbar-right">
+      <% if (locals.currentStaff) { %>
+      <span style="font-size:.82rem;color:#65676b;margin-right:.6rem"><i class="fa-solid fa-user-circle"></i> <%= currentStaff.name %></span>
+      <form method="POST" action="/logout" style="display:inline">
+        <button type="submit" class="btn-back" style="border:none;cursor:pointer"><i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ</button>
+      </form>
+      <% } %>
+      <a href="/" class="btn-back"><i class="fa-solid fa-house"></i> หน้าหลัก</a>
+    </div>
+  </div>
+</nav>
+
+<div class="page-wrap">
+
+  <aside class="sidebar">
+    <a href="/schedule-center" class="sidebar-item"><i class="fa-solid fa-house"></i><span>Dashboard</span></a>
+    <div class="sidebar-divider"></div>
+        <div class="sidebar-label">โพสลงเพจ</div>
+    <a href="/" class="sidebar-item"><i class="fa-solid fa-pen-to-square"></i><span>โพสใหม่</span></a>
+    <a href="/pages" class="sidebar-item"><i class="fa-brands fa-facebook"></i><span>จัดการเพจ</span></a>
+    <a href="/post-queue" class="sidebar-item"><i class="fa-solid fa-list-check"></i><span>คิวโพส</span></a>
+    <a href="/overview" class="sidebar-item"><i class="fa-solid fa-chart-line"></i><span>ภาพรวม</span></a>
+    <a href="/history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพส</span></a>
+
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-label">โพส&amp;แชร์ ลงกลุ่ม</div>
+    <a href="/agent" class="sidebar-item"><i class="fa-solid fa-robot"></i><span>ติดตั้ง Desktop Agent</span></a>
+    <a href="/groups" class="sidebar-item"><i class="fa-solid fa-users-rectangle"></i><span>จัดการกลุ่ม</span></a>
+    <a href="/job-queue" class="sidebar-item"><i class="fa-solid fa-list-check"></i><span>คิวโพสกลุ่ม</span></a>
+    <a href="/group-overview" class="sidebar-item"><i class="fa-solid fa-chart-line" style="color:#2e7d32"></i><span>ภาพรวม</span></a>
+    <a href="/group-history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพสกลุ่ม</span></a>
+    <a href="/guide" class="sidebar-item"><i class="fa-solid fa-book-open"></i><span>คู่มือการใช้งาน</span></a>
+
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-label">ระบบ</div>
+    <a href="/user-activity" class="sidebar-item"><i class="fa-solid fa-user-clock"></i><span>ใครทำอะไร</span></a>
+    <a href="/manage-staff" class="sidebar-item active"><i class="fa-solid fa-users-gear"></i><span>จัดการผู้ใช้งาน</span></a>
+    <%- include('partials/sidebar-pages') %>
+  </aside>
+
+  <main class="feed">
+
+    <div class="card" style="padding:.8rem 1.25rem;display:flex;align-items:center;justify-content:space-between">
+      <div class="card-title" style="font-size:1.05rem">
+        <i class="fa-solid fa-users-gear"></i> จัดการผู้ใช้งาน
+        <span style="background:#e4e6ea;padding:.12rem .5rem;border-radius:999px;font-size:.78rem;font-weight:400;margin-left:.35rem"><%= staffList.length %> คน</span>
+      </div>
+      <button class="btn-post" onclick="openAddStaff()" style="padding:.45rem 1rem;font-size:.86rem">
+        <i class="fa-solid fa-user-plus"></i> เพิ่มผู้ใช้งาน
+      </button>
+    </div>
+
+    <div class="card">
+      <% if (staffList.length === 0) { %>
+      <div class="empty-state">ยังไม่มีผู้ใช้งาน</div>
+      <% } else { %>
+      <% staffList.forEach(s => { %>
+      <div class="history-card" style="display:flex;align-items:center;gap:.75rem;padding:.7rem 0;border-bottom:1px solid var(--border)">
+        <div class="avatar avatar-blue" style="width:36px;height:36px;flex-shrink:0"><%= s.displayName.charAt(0).toUpperCase() %></div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;color:var(--text)"><%= s.displayName %></div>
+          <div style="font-size:.78rem;color:var(--text3)">@<%= s.username %></div>
+        </div>
+        <a href="/user-activity/<%= s._id %>" style="font-size:.78rem;color:#1877f2;text-decoration:none;font-weight:600;margin-right:.5rem"><i class="fa-solid fa-chart-bar"></i> ดูกิจกรรม</a>
+        <button onclick="deleteStaff('<%= s._id %>','<%= s.displayName %>')" style="background:none;border:none;color:#c62828;cursor:pointer;font-size:.9rem" title="ลบผู้ใช้งาน">
+          <i class="fa-solid fa-trash"></i>
+        </button>
+      </div>
+      <% }); %>
+      <% } %>
+    </div>
+
+  </main>
+
+</div>
+
+<!-- Add staff modal -->
+<div id="addStaffModal" class="map-modal-overlay" style="display:none">
+  <div class="map-modal-box" style="width:380px;max-width:92vw;padding:1.25rem">
+    <div style="font-weight:700;font-size:1rem;margin-bottom:1rem"><i class="fa-solid fa-user-plus" style="color:#1877f2"></i> เพิ่มผู้ใช้งานใหม่</div>
+    <div style="margin-bottom:.7rem">
+      <label style="font-size:.78rem;color:#65676b;display:block;margin-bottom:.25rem">ชื่อที่แสดง</label>
+      <input id="newStaffDisplayName" type="text" placeholder="เช่น สมชาย" style="width:100%;padding:.5rem .7rem;border:1.5px solid #dbe0e6;border-radius:8px;font-family:inherit;font-size:.86rem;outline:none;box-sizing:border-box">
+    </div>
+    <div style="margin-bottom:.7rem">
+      <label style="font-size:.78rem;color:#65676b;display:block;margin-bottom:.25rem">ชื่อผู้ใช้ (username)</label>
+      <input id="newStaffUsername" type="text" placeholder="username" style="width:100%;padding:.5rem .7rem;border:1.5px solid #dbe0e6;border-radius:8px;font-family:inherit;font-size:.86rem;outline:none;box-sizing:border-box">
+    </div>
+    <div style="margin-bottom:1rem">
+      <label style="font-size:.78rem;color:#65676b;display:block;margin-bottom:.25rem">รหัสผ่าน</label>
+      <input id="newStaffPassword" type="password" placeholder="••••••••" style="width:100%;padding:.5rem .7rem;border:1.5px solid #dbe0e6;border-radius:8px;font-family:inherit;font-size:.86rem;outline:none;box-sizing:border-box">
+    </div>
+    <div style="display:flex;gap:.5rem;justify-content:flex-end">
+      <button onclick="closeAddStaff()" style="background:#f0f2f5;border:none;border-radius:8px;padding:.5rem 1rem;font-size:.84rem;cursor:pointer;font-family:inherit">ยกเลิก</button>
+      <button onclick="submitAddStaff()" style="background:#1877f2;color:#fff;border:none;border-radius:8px;padding:.5rem 1rem;font-size:.84rem;cursor:pointer;font-family:inherit;font-weight:700">เพิ่ม</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function openAddStaff() { document.getElementById('addStaffModal').style.display = 'flex'; }
+  function closeAddStaff() { document.getElementById('addStaffModal').style.display = 'none'; }
+
+  async function submitAddStaff() {
+    const displayName = document.getElementById('newStaffDisplayName').value.trim();
+    const username    = document.getElementById('newStaffUsername').value.trim();
+    const password    = document.getElementById('newStaffPassword').value;
+    if (!displayName || !username || !password) {
+      Swal.fire({ icon:'warning', title:'กรุณากรอกข้อมูลให้ครบ', confirmButtonColor:'#1877f2' });
+      return;
+    }
+    try {
+      const r = await fetch('/api/staff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ displayName, username, password }),
+      });
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.error || 'เกิดข้อผิดพลาด');
+      location.reload();
+    } catch (e) {
+      Swal.fire({ icon:'error', title:'เพิ่มไม่สำเร็จ', text: e.message, confirmButtonColor:'#1877f2' });
+    }
+  }
+
+  async function deleteStaff(id, name) {
+    const { isConfirmed } = await Swal.fire({
+      icon: 'warning', title: `ลบผู้ใช้งาน "${name}"?`,
+      text: 'ประวัติการโพส/แชร์ของคนนี้จะยังอยู่ แต่จะขึ้นเป็น "ไม่ระบุ"',
+      showCancelButton: true, confirmButtonText: 'ลบ', cancelButtonText: 'ยกเลิก', confirmButtonColor: '#c62828',
+    });
+    if (!isConfirmed) return;
+    await fetch(`/api/staff/${id}`, { method: 'DELETE' });
+    location.reload();
+  }
+</script>
+</body>
+</html>

@@ -6,6 +6,8 @@ const fs         = require('fs');
 const AdmZip     = require('adm-zip');
 const ctrl       = require('../controllers/postController');
 const agentCtrl  = require('../controllers/agentController');
+const authCtrl   = require('../controllers/authController');
+const staffCtrl  = require('../controllers/staffController');
 const imageStore = require('../services/imageStore');
 
 // Use memory storage — files are saved to MongoDB (and local disk) by saveUploadedFiles
@@ -74,6 +76,18 @@ router.get('/api/sign-upload', async (req, res) => {
         res.status(500).json({ ok: false, error: e.message });
     }
 });
+
+// Auth
+router.get('/login',   authCtrl.showLogin);
+router.post('/login',  authCtrl.login);
+router.post('/logout', authCtrl.logout);
+
+// Staff (ผู้ดำเนินการ) management + "ใครทำอะไร" activity reports
+router.get('/manage-staff',          staffCtrl.showManageStaff);
+router.post('/api/staff',            staffCtrl.createStaffAccount);
+router.delete('/api/staff/:id',      staffCtrl.deleteStaffAccount);
+router.get('/user-activity',         staffCtrl.showUserActivity);
+router.get('/user-activity/:staffId', staffCtrl.showUserActivityDetail);
 
 // Templates — accept JSON body (images already uploaded via /api/upload-images)
 router.get('/api/templates',        ctrl.getTemplates);

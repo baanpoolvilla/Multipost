@@ -121,6 +121,14 @@
       <div class="fb-logo"><i class="fa-brands fa-facebook"></i></div>
       <span>Multi Post System</span>
     </div>
+    <div class="navbar-right">
+      <% if (locals.currentStaff) { %>
+      <span style="font-size:.82rem;color:#65676b;margin-right:.6rem"><i class="fa-solid fa-user-circle"></i> <%= currentStaff.name %></span>
+      <form method="POST" action="/logout" style="display:inline">
+        <button type="submit" class="btn-back" style="border:none;cursor:pointer;background:none"><i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ</button>
+      </form>
+      <% } %>
+    </div>
   </div>
 </nav>
 
@@ -142,6 +150,10 @@
     <a href="/group-overview" class="sidebar-item"><i class="fa-solid fa-chart-line" style="color:#2e7d32"></i><span>ภาพรวม</span></a>
     <a href="/group-history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพสกลุ่ม</span></a>
     <a href="/guide" class="sidebar-item"><i class="fa-solid fa-book-open"></i><span>คู่มือการใช้งาน</span></a>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-label">ระบบ</div>
+    <a href="/user-activity" class="sidebar-item"><i class="fa-solid fa-user-clock"></i><span>ใครทำอะไร</span></a>
+    <a href="/manage-staff" class="sidebar-item"><i class="fa-solid fa-users-gear"></i><span>จัดการผู้ใช้งาน</span></a>
     <%- include('partials/sidebar-pages') %>
   </aside>
 

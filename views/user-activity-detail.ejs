@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="th">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= page.pageName %> – กิจกรรม</title>
+  <title><%= staffInfo.displayName %> – กิจกรรม</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -24,7 +24,7 @@
         <button type="submit" class="btn-back" style="border:none;cursor:pointer;background:none"><i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ</button>
       </form>
       <% } %>
-      <a href="/" class="btn-back"><i class="fa-solid fa-arrow-left"></i> กลับ</a>
+      <a href="/user-activity" class="btn-back"><i class="fa-solid fa-arrow-left"></i> กลับ</a>
     </div>
   </div>
 </nav>
@@ -34,7 +34,7 @@
   <aside class="sidebar">
     <a href="/schedule-center" class="sidebar-item"><i class="fa-solid fa-house"></i><span>Dashboard</span></a>
     <div class="sidebar-divider"></div>
-    <div class="sidebar-label">โพสลงเพจ</div>
+        <div class="sidebar-label">โพสลงเพจ</div>
     <a href="/" class="sidebar-item"><i class="fa-solid fa-pen-to-square"></i><span>โพสใหม่</span></a>
     <a href="/pages" class="sidebar-item"><i class="fa-brands fa-facebook"></i><span>จัดการเพจ</span></a>
     <a href="/post-queue" class="sidebar-item"><i class="fa-solid fa-list-check"></i><span>คิวโพส</span></a>
@@ -49,25 +49,24 @@
     <a href="/group-overview" class="sidebar-item"><i class="fa-solid fa-chart-line" style="color:#2e7d32"></i><span>ภาพรวม</span></a>
     <a href="/group-history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพสกลุ่ม</span></a>
     <a href="/guide" class="sidebar-item"><i class="fa-solid fa-book-open"></i><span>คู่มือการใช้งาน</span></a>
+
     <div class="sidebar-divider"></div>
     <div class="sidebar-label">ระบบ</div>
-    <a href="/user-activity" class="sidebar-item"><i class="fa-solid fa-user-clock"></i><span>ใครทำอะไร</span></a>
+    <a href="/user-activity" class="sidebar-item active"><i class="fa-solid fa-user-clock"></i><span>ใครทำอะไร</span></a>
     <a href="/manage-staff" class="sidebar-item"><i class="fa-solid fa-users-gear"></i><span>จัดการผู้ใช้งาน</span></a>
     <%- include('partials/sidebar-pages') %>
   </aside>
 
   <main class="feed">
 
-    <!-- Page header banner -->
+    <!-- Header banner -->
     <div class="card" style="padding:1rem 1.25rem;display:flex;align-items:center;gap:.85rem">
       <div class="avatar avatar-blue" style="width:44px;height:44px;font-size:1.1rem;flex-shrink:0">
-        <i class="fa-brands fa-facebook"></i>
+        <% if (staffInfo.id === 'unassigned') { %><i class="fa-solid fa-question"></i><% } else { %><%= staffInfo.displayName.charAt(0).toUpperCase() %><% } %>
       </div>
       <div style="flex:1;min-width:0">
-        <div style="font-size:1.05rem;font-weight:700;color:var(--text)"><%= page.pageName %></div>
+        <div style="font-size:1.05rem;font-weight:700;color:var(--text)"><%= staffInfo.displayName %></div>
         <div style="font-size:.78rem;color:var(--text3);margin-top:.1rem">
-          Page ID: <%= page.pageId %>
-          &nbsp;·&nbsp;
           <span style="color:#1877f2"><%= posts.length %> โพสเพจ</span>
           &nbsp;·&nbsp;
           <span style="color:#2e7d32"><%= jobs.length %> แชร์กลุ่ม</span>
@@ -89,49 +88,47 @@
 
     <!-- Filter bar -->
     <div class="card" style="padding:.6rem .85rem;display:flex;flex-wrap:wrap;align-items:center;gap:.45rem;margin-bottom:.1rem">
-      <input id="paSearch" type="text" placeholder="🔍 ค้นหาข้อความ..." oninput="applyPageFilter()"
+      <input id="uaSearch" type="text" placeholder="🔍 ค้นหาข้อความ..." oninput="applyUaFilter()"
         style="flex:2;min-width:130px;padding:.35rem .65rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.83rem;font-family:inherit;color:#333;outline:none">
-      <input id="paFrom" type="date" lang="en-GB" onchange="applyPageFilter()" title="ตั้งแต่วันที่"
+      <input id="uaFrom" type="date" lang="en-GB" onchange="applyUaFilter()" title="ตั้งแต่วันที่"
         style="padding:.35rem .5rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;color:#333;outline:none;cursor:pointer">
       <span style="color:#bbb">—</span>
-      <input id="paTo" type="date" lang="en-GB" onchange="applyPageFilter()" title="ถึงวันที่"
+      <input id="uaTo" type="date" lang="en-GB" onchange="applyUaFilter()" title="ถึงวันที่"
         style="padding:.35rem .5rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;color:#333;outline:none;cursor:pointer">
-      <span id="paDateRangeErr" style="display:none;font-size:.75rem;color:#c62828;font-weight:600">⚠️ วันที่เริ่มต้องไม่เกินวันที่สิ้นสุด</span>
-      <button onclick="clearPageFilter()" style="padding:.35rem .6rem;background:#f0f2f5;border:none;border-radius:8px;font-size:.82rem;cursor:pointer;color:#666;font-family:inherit">✕ ล้าง</button>
+      <span id="uaDateRangeErr" style="display:none;font-size:.75rem;color:#c62828;font-weight:600">⚠️ วันที่เริ่มต้องไม่เกินวันที่สิ้นสุด</span>
+      <button onclick="clearUaFilter()" style="padding:.35rem .6rem;background:#f0f2f5;border:none;border-radius:8px;font-size:.82rem;cursor:pointer;color:#666;font-family:inherit">✕ ล้าง</button>
     </div>
 
     <!-- ── PAGE POSTS TAB ── -->
     <div id="tabPage">
     <div id="emptyPage" class="card" style="display:none"><div class="empty-state">ไม่พบโพสที่ตรงกับเงื่อนไข</div></div>
     <% if (posts.length === 0) { %>
-    <div class="card"><div class="empty-state">ยังไม่มีโพสลงเพจนี้</div></div>
+    <div class="card"><div class="empty-state">ยังไม่มีโพสลงเพจของคนนี้</div></div>
     <% } else { %>
     <% posts.forEach(post => { %>
     <%
-      const r       = post.pageResult;
-      const isOk    = r.status === 'success';
+      const total   = (post.results || []).length;
+      const allOk   = (post.successCount||0) > 0 && (post.failCount||0) === 0;
+      const allFail = (post.successCount||0) === 0 && (post.failCount||0) > 0;
       const msg     = (post.message || '');
       const display = msg.includes('|||') ? (msg.slice(0, msg.indexOf('|||')).trim() || msg.slice(msg.indexOf('|||')+3).trim()) : msg;
       const imgs    = (post.images || []).filter(img => img && !img.startsWith('localpath::') && !/^[A-Za-z]:[\\\/]/.test(img));
     %>
-    <div class="card history-card pa-card-page" data-at="<%= post.createdAt %>" data-msg="<%= (display||'').toLowerCase().replace(/"/g,'') %>" data-ok="<%= isOk ? 1 : 0 %>">
+    <div class="card history-card ua-card-page" data-at="<%= post.createdAt %>" data-msg="<%= (display||'').toLowerCase().replace(/"/g,'') %>" data-ok="<%= post.successCount||0 %>" data-fail="<%= post.failCount||0 %>">
       <div class="fb-post-header">
-        <div class="avatar avatar-<%= isOk ? 'green' : 'red' %>">
-          <i class="fa-solid fa-<%= isOk ? 'circle-check' : 'circle-xmark' %>"></i>
+        <div class="avatar avatar-<%= allOk ? 'green' : allFail ? 'red' : 'orange' %>">
+          <i class="fa-brands fa-facebook"></i>
         </div>
         <div style="flex:1">
           <div class="fb-post-author">
-            <%= page.pageName %>
-            <span style="background:<%= isOk ? '#d1e7dd' : '#f8d7da' %>;color:<%= isOk ? '#0a3622' : '#842029' %>;border-radius:999px;font-size:.7rem;padding:.1rem .5rem;font-weight:700;margin-left:.35rem">
-              <%= isOk ? 'สำเร็จ' : 'ล้มเหลว' %>
+            โพสลงเพจ
+            <span style="background:<%= allOk ? '#d1e7dd' : allFail ? '#f8d7da' : '#fff3cd' %>;color:<%= allOk ? '#0a3622' : allFail ? '#842029' : '#856404' %>;border-radius:999px;font-size:.7rem;padding:.1rem .5rem;font-weight:700;margin-left:.35rem">
+              <%= allOk ? 'สำเร็จทั้งหมด' : allFail ? 'ล้มเหลว' : `สำเร็จ ${post.successCount}/${total}` %>
             </span>
           </div>
           <div class="fb-post-time">
             <i class="fa-solid fa-clock"></i>
             <%= new Date(post.createdAt).toLocaleString('th-TH', { timeZone:'Asia/Bangkok', dateStyle:'short', timeStyle:'short', hour12:false }) %>
-            <% if (r.postUrl) { %>
-            &nbsp;·&nbsp;<a href="<%= r.postUrl %>" target="_blank" rel="noopener" style="color:#1877f2;text-decoration:none;font-size:.78rem"><i class="fa-solid fa-arrow-up-right-from-square"></i> ดูโพสต์</a>
-            <% } %>
           </div>
         </div>
         <a href="/result/<%= post.id %>" style="display:inline-flex;align-items:center;gap:.28rem;background:#e7f0fd;color:#1877f2;border-radius:7px;padding:.28rem .65rem;font-size:.78rem;font-weight:700;text-decoration:none">
@@ -171,12 +168,16 @@
       </div>
       <% } %>
 
-      <% if (r.analytics) { %>
-      <div style="display:flex;gap:.85rem;font-size:.78rem;color:var(--text3);border-top:1px solid var(--border);padding-top:.5rem;margin-top:.4rem;flex-wrap:wrap">
-        <% if (r.analytics.likes)    { %><span><i class="fa-solid fa-thumbs-up" style="color:#1877f2"></i> <%= r.analytics.likes.toLocaleString() %></span><% } %>
-        <% if (r.analytics.comments) { %><span><i class="fa-solid fa-comment"   style="color:#e67e22"></i> <%= r.analytics.comments.toLocaleString() %></span><% } %>
-        <% if (r.analytics.shares)   { %><span><i class="fa-solid fa-share-nodes" style="color:#2e7d32"></i> <%= r.analytics.shares.toLocaleString() %></span><% } %>
-        <% if (r.analytics.reach)    { %><span><i class="fa-solid fa-eye"         style="color:#8e44ad"></i> <%= r.analytics.reach.toLocaleString() %></span><% } %>
+      <!-- Pages this post went to -->
+      <% const pageResults = post.results || []; %>
+      <% if (pageResults.length > 0) { %>
+      <div style="display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.3rem">
+        <% pageResults.slice(0,8).forEach(r => { %>
+        <span style="background:<%= r.status==='success' ? '#d1e7dd' : '#f8d7da' %>;color:<%= r.status==='success' ? '#0a3622' : '#842029' %>;border-radius:999px;font-size:.7rem;padding:.1rem .5rem">
+          <%= r.status==='success' ? '✓' : '✕' %> <%= r.pageName || r.pageId %>
+        </span>
+        <% }); %>
+        <% if (pageResults.length > 8) { %><span style="font-size:.7rem;color:var(--text3)">+<%= pageResults.length-8 %> เพจ</span><% } %>
       </div>
       <% } %>
     </div>
@@ -188,7 +189,7 @@
     <div id="tabGrp" style="display:none">
     <div id="emptyGrp" class="card" style="display:none"><div class="empty-state">ไม่พบรายการที่ตรงกับเงื่อนไข</div></div>
     <% if (jobs.length === 0) { %>
-    <div class="card"><div class="empty-state">ยังไม่มีการแชร์ลงกลุ่มจากเพจนี้</div></div>
+    <div class="card"><div class="empty-state">ยังไม่มีการแชร์ลงกลุ่มของคนนี้</div></div>
     <% } else { %>
     <% jobs.forEach(job => { %>
     <%
@@ -197,7 +198,7 @@
       const jmsg    = (job.message || '');
       const jdisplay = jmsg.includes('|||') ? (jmsg.slice(0, jmsg.indexOf('|||')).trim() || jmsg.slice(jmsg.indexOf('|||')+3).trim()) : jmsg;
     %>
-    <div class="card history-card pa-card-grp" data-at="<%= job.createdAt %>" data-msg="<%= (jdisplay||'').toLowerCase().replace(/"/g,'') %>" data-ok="<%= job.successCount %>" data-fail="<%= job.failCount %>">
+    <div class="card history-card ua-card-grp" data-at="<%= job.createdAt %>" data-msg="<%= (jdisplay||'').toLowerCase().replace(/"/g,'') %>" data-ok="<%= job.successCount %>" data-fail="<%= job.failCount %>">
       <div class="fb-post-header">
         <div class="avatar avatar-<%= allOk ? 'green' : allFail ? 'red' : 'orange' %>">
           <i class="fa-solid fa-users"></i>
@@ -222,7 +223,6 @@
       <div class="history-message" style="margin:.6rem 0">
         <%= jdisplay.length > 200 ? jdisplay.slice(0,200) + '…' : jdisplay %>
       </div>
-      <!-- Groups involved -->
       <% const allJobGroups = job.groups || []; %>
       <% if (allJobGroups.length > 0) { %>
       <div style="display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.3rem">
@@ -241,7 +241,7 @@
 
   <aside class="right-panel">
     <div class="card stats-card">
-      <div class="stats-title"><i class="fa-solid fa-chart-simple"></i> สถิติเพจ</div>
+      <div class="stats-title"><i class="fa-solid fa-chart-simple"></i> สถิติ</div>
       <div style="font-size:.72rem;font-weight:700;color:#1877f2;margin:.5rem 0 .25rem">โพสลงเพจ</div>
       <div class="stats-row"><span>โพสทั้งหมด</span><span id="stPageTotal"   class="stats-val blue"><%= posts.length %></span></div>
       <div class="stats-row"><span>สำเร็จ</span>    <span id="stPageSuccess" class="stats-val green"><%= pageSuccess %></span></div>
@@ -270,36 +270,34 @@
     bg.style.borderBottomColor = t==='grp'  ? '#1877f2' : 'transparent';
     bg.style.color             = t==='grp'  ? '#1877f2' : 'var(--text3)';
     bg.style.fontWeight        = t==='grp'  ? '700' : '600';
-    applyPageFilter();
+    applyUaFilter();
   }
 
-  function applyPageFilter() {
-    const q       = (document.getElementById('paSearch')?.value || '').toLowerCase().trim();
-    const fromVal = document.getElementById('paFrom')?.value || '';
-    const toVal   = document.getElementById('paTo')?.value   || '';
+  function applyUaFilter() {
+    const q       = (document.getElementById('uaSearch')?.value || '').toLowerCase().trim();
+    const fromVal = document.getElementById('uaFrom')?.value || '';
+    const toVal   = document.getElementById('uaTo')?.value   || '';
 
     const _drBad = fromVal && toVal && fromVal > toVal;
-    document.getElementById('paFrom').style.borderColor        = _drBad ? '#c62828' : '';
-    document.getElementById('paTo').style.borderColor          = _drBad ? '#c62828' : '';
-    document.getElementById('paDateRangeErr').style.display    = _drBad ? 'inline' : 'none';
+    document.getElementById('uaFrom').style.borderColor        = _drBad ? '#c62828' : '';
+    document.getElementById('uaTo').style.borderColor          = _drBad ? '#c62828' : '';
+    document.getElementById('uaDateRangeErr').style.display    = _drBad ? 'inline' : 'none';
     if (_drBad) return;
 
     const fromMs  = fromVal ? new Date(fromVal + 'T00:00:00+07:00').getTime() : 0;
     const toMs    = toVal   ? new Date(toVal   + 'T23:59:59+07:00').getTime() : Infinity;
 
-    // Filter page posts
     let pageShown = 0, pageSuccess = 0, pageFail = 0;
-    document.querySelectorAll('.pa-card-page').forEach(el => {
+    document.querySelectorAll('.ua-card-page').forEach(el => {
       const msg = el.dataset.msg || '';
       const ts  = new Date(el.dataset.at).getTime();
       const ok  = (!q || msg.includes(q)) && ts >= fromMs && ts <= toMs;
       el.style.display = ok ? '' : 'none';
-      if (ok) { pageShown++; if (el.dataset.ok === '1') pageSuccess++; else pageFail++; }
+      if (ok) { pageShown++; pageSuccess += parseInt(el.dataset.ok||0); pageFail += parseInt(el.dataset.fail||0); }
     });
 
-    // Filter group shares
     let grpShown = 0, grpSuccess = 0, grpFail = 0;
-    document.querySelectorAll('.pa-card-grp').forEach(el => {
+    document.querySelectorAll('.ua-card-grp').forEach(el => {
       const msg = el.dataset.msg || '';
       const ts  = new Date(el.dataset.at).getTime();
       const ok  = (!q || msg.includes(q)) && ts >= fromMs && ts <= toMs;
@@ -309,17 +307,14 @@
 
     const hasFilter = q || fromVal || toVal;
 
-    // Update tab counts
     document.getElementById('cntPage').textContent = `(${pageShown})`;
     document.getElementById('cntGrp').textContent  = `(${grpShown})`;
 
-    // Empty states
     const ep = document.getElementById('emptyPage');
     const eg = document.getElementById('emptyGrp');
     if (ep) ep.style.display = (hasFilter && pageShown === 0 && <%- posts.length %> > 0) ? '' : 'none';
     if (eg) eg.style.display = (hasFilter && grpShown  === 0 && <%- jobs.length  %> > 0) ? '' : 'none';
 
-    // Update stats
     document.getElementById('stPageTotal').textContent   = pageShown;
     document.getElementById('stPageSuccess').textContent = pageSuccess;
     document.getElementById('stPageFail').textContent    = pageFail;
@@ -328,12 +323,12 @@
     document.getElementById('stGrpFail').textContent     = grpFail;
   }
 
-  function clearPageFilter() {
-    const s = document.getElementById('paSearch'); if (s) s.value = '';
-    const f = document.getElementById('paFrom');   if (f) { f.value = ''; f.style.borderColor = ''; }
-    const t = document.getElementById('paTo');     if (t) { t.value = ''; t.style.borderColor = ''; }
-    document.getElementById('paDateRangeErr').style.display = 'none';
-    applyPageFilter();
+  function clearUaFilter() {
+    const s = document.getElementById('uaSearch'); if (s) s.value = '';
+    const f = document.getElementById('uaFrom');   if (f) { f.value = ''; f.style.borderColor = ''; }
+    const t = document.getElementById('uaTo');     if (t) { t.value = ''; t.style.borderColor = ''; }
+    document.getElementById('uaDateRangeErr').style.display = 'none';
+    applyUaFilter();
   }
 
   function viewImage(src) {

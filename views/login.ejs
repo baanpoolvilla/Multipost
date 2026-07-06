@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= isBootstrap ? 'ตั้งค่าบัญชีแรก' : 'เข้าสู่ระบบ' %> - Multi Post System</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    body { display:flex; align-items:center; justify-content:center; min-height:100vh; background:#f0f2f5; font-family:'Noto Sans Thai',sans-serif; }
+    .login-box { background:#fff; border-radius:14px; padding:2rem 2.2rem; width:360px; max-width:92vw; box-shadow:0 8px 32px rgba(0,0,0,.12); }
+    .login-logo { display:flex; align-items:center; gap:.6rem; margin-bottom:1.4rem; }
+    .login-logo .fb-logo { width:38px; height:38px; border-radius:10px; background:#1877f2; color:#fff; display:flex; align-items:center; justify-content:center; font-size:1.1rem; }
+    .login-logo span { font-weight:700; font-size:1.05rem; color:#1c1e21; }
+    .login-title { font-size:.95rem; font-weight:700; color:#1c1e21; margin-bottom:.3rem; }
+    .login-sub { font-size:.8rem; color:#65676b; margin-bottom:1.1rem; line-height:1.6; }
+    .login-field { margin-bottom:.8rem; }
+    .login-field label { display:block; font-size:.78rem; font-weight:600; color:#444; margin-bottom:.3rem; }
+    .login-field input { width:100%; padding:.55rem .75rem; border:1.5px solid #dbe0e6; border-radius:8px; font-size:.88rem; font-family:inherit; outline:none; box-sizing:border-box; }
+    .login-field input:focus { border-color:#1877f2; }
+    .login-error { background:#fdecea; color:#c62828; border-radius:8px; padding:.55rem .75rem; font-size:.8rem; margin-bottom:.9rem; }
+    .login-btn { width:100%; background:#1877f2; color:#fff; border:none; border-radius:9px; padding:.65rem; font-size:.9rem; font-weight:700; cursor:pointer; font-family:inherit; margin-top:.3rem; }
+    .login-btn:hover { background:#166fe0; }
+  </style>
+</head>
+<body>
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="fb-logo"><i class="fa-brands fa-facebook"></i></div>
+      <span>Multi Post System</span>
+    </div>
+
+    <% if (isBootstrap) { %>
+      <div class="login-title">ตั้งค่าบัญชีแรกของระบบ</div>
+      <div class="login-sub">ยังไม่มีบัญชีผู้ใช้งานในระบบนี้ — กรอกข้อมูลด้านล่างเพื่อสร้างบัญชีแรก (จะได้สิทธิ์ใช้งานทุกส่วน)</div>
+    <% } else { %>
+      <div class="login-title">เข้าสู่ระบบ</div>
+      <div class="login-sub">กรอกชื่อผู้ใช้และรหัสผ่านของคุณ</div>
+    <% } %>
+
+    <% if (error) { %>
+      <div class="login-error"><i class="fa-solid fa-circle-exclamation"></i> <%= error %></div>
+    <% } %>
+
+    <form method="POST" action="/login">
+      <% if (isBootstrap) { %>
+      <div class="login-field">
+        <label>ชื่อที่แสดง</label>
+        <input type="text" name="displayName" placeholder="เช่น สมชาย" required autofocus>
+      </div>
+      <% } %>
+      <div class="login-field">
+        <label>ชื่อผู้ใช้</label>
+        <input type="text" name="username" placeholder="username" required <%= isBootstrap ? '' : 'autofocus' %> autocomplete="username">
+      </div>
+      <div class="login-field">
+        <label>รหัสผ่าน</label>
+        <input type="password" name="password" placeholder="••••••••" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="login-btn">
+        <i class="fa-solid <%= isBootstrap ? 'fa-user-plus' : 'fa-right-to-bracket' %>"></i>
+        <%= isBootstrap ? 'สร้างบัญชีและเข้าสู่ระบบ' : 'เข้าสู่ระบบ' %>
+      </button>
+    </form>
+  </div>
+</body>
+</html>

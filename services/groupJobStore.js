@@ -24,6 +24,7 @@ const groupJobSchema = new mongoose.Schema({
     lastAttemptAt:  { type: String, default: null },
     sourceType:     { type: String, default: 'web' }, // 'web' | 'agent'
     agentId:        { type: String, default: null },
+    staffId:        { type: String, default: null },
     images:       { type: [String], default: [] },
     results:      [{
         groupId:   String,

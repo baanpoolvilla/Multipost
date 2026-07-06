@@ -300,6 +300,7 @@ exports.createJob = async (req, res) => {
             accountId: accountId || null,
             scheduledAt: (schedDate && schedDate > new Date()) ? schedDate.toISOString() : null,
             images: Array.isArray(images) ? images : [],
+            staffId: req.staffId || null,
         });
         res.json({ ok: true, job });
     } catch(e) {
