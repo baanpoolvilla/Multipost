@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ใครทำอะไร - Multi Post System</title>
+  <title>กิจกรรมพนักงาน - Multi Post System</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
@@ -58,8 +58,8 @@
 
     <div class="sidebar-divider"></div>
     <div class="sidebar-label">ระบบ</div>
-    <a href="/user-activity" class="sidebar-item active"><i class="fa-solid fa-user-clock"></i><span>ใครทำอะไร</span></a>
-    <a href="/manage-staff" class="sidebar-item"><i class="fa-solid fa-users-gear"></i><span>จัดการผู้ใช้งาน</span></a>
+    <a href="/user-activity" class="sidebar-item active"><i class="fa-solid fa-user-clock"></i><span>กิจกรรมพนักงาน</span></a>
+    <a href="/manage-staff" class="sidebar-item"><i class="fa-solid fa-users-gear"></i><span>จัดการบัญชีผู้ใช้งาน</span></a>
     <%- include('partials/sidebar-pages') %>
   </aside>
 
@@ -67,36 +67,41 @@
 
     <div class="card" style="padding:.8rem 1.25rem">
       <div class="card-title" style="font-size:1.05rem">
-        <i class="fa-solid fa-user-clock"></i> ใครทำอะไร
-        <span style="background:#e4e6ea;padding:.12rem .5rem;border-radius:999px;font-size:.78rem;font-weight:400;margin-left:.35rem"><%= staffSummaries.length %> คน</span>
+        <i class="fa-solid fa-user-clock"></i> กิจกรรมพนักงาน
+        <span style="background:#e4e6ea;padding:.12rem .5rem;border-radius:999px;font-size:.78rem;font-weight:400;margin-left:.35rem">ผู้ใช้งานทั้งหมด <%= staffSummaries.length %> คน</span>
       </div>
     </div>
 
     <% if (staffSummaries.length === 0) { %>
-    <div class="card"><div class="empty-state">ยังไม่มีข้อมูลกิจกรรม</div></div>
+    <div class="card empty-state">
+      <i class="fa-solid fa-user-clock"></i>
+      <h3>ยังไม่มีข้อมูลกิจกรรม</h3>
+      <p>เมื่อพนักงานเริ่มโพสต์หรือแชร์ ข้อมูลจะแสดงที่นี่</p>
+    </div>
     <% } else { %>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.85rem">
+    <div class="staff-grid">
       <% staffSummaries.forEach((s, i) => { %>
       <% const colors = ['blue','green','orange','purple','red']; const isUnassigned = s.id === 'unassigned'; %>
-      <a href="/user-activity/<%= s.id %>" class="card" style="padding:1rem 1.1rem;text-decoration:none;color:inherit;display:block">
-        <div style="display:flex;align-items:center;gap:.7rem;margin-bottom:.7rem">
-          <div class="avatar avatar-<%= isUnassigned ? 'red' : colors[i%5] %>" style="width:40px;height:40px;font-size:1rem;flex-shrink:0">
+      <a href="/user-activity/<%= s.id %>" class="staff-card">
+        <div class="staff-card-head">
+          <div class="avatar avatar-<%= isUnassigned ? 'red' : colors[i%5] %>">
             <% if (isUnassigned) { %><i class="fa-solid fa-question"></i><% } else { %><%= s.displayName.charAt(0).toUpperCase() %><% } %>
           </div>
           <div style="flex:1;min-width:0">
-            <div style="font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><%= s.displayName %></div>
+            <div class="staff-card-name"><%= s.displayName %></div>
             <% if (s.lastActivityAt) { %>
-            <div style="font-size:.74rem;color:var(--text3)">ล่าสุด <%= new Date(s.lastActivityAt).toLocaleString('th-TH', { timeZone:'Asia/Bangkok', dateStyle:'short', timeStyle:'short' }) %></div>
+            <div class="staff-card-sub">ใช้งานล่าสุด <%= new Date(s.lastActivityAt).toLocaleString('th-TH', { timeZone:'Asia/Bangkok', dateStyle:'short', timeStyle:'short' }) %></div>
             <% } %>
           </div>
         </div>
-        <div style="display:flex;gap:.6rem;font-size:.78rem;color:var(--text2);flex-wrap:wrap">
-          <span><i class="fa-brands fa-facebook" style="color:#1877f2"></i> <%= s.pagePostCount %> โพสเพจ</span>
-          <span><i class="fa-solid fa-users" style="color:#2e7d32"></i> <%= s.groupJobCount %> แชร์กลุ่ม</span>
+        <div class="staff-card-divider"></div>
+        <div class="staff-stat-row">
+          <span class="staff-stat fb"><i class="fa-brands fa-facebook"></i> <%= s.pagePostCount %> โพสต์เพจ</span>
+          <span class="staff-stat grp"><i class="fa-solid fa-users"></i> <%= s.groupJobCount %> แชร์กลุ่ม</span>
         </div>
-        <div style="display:flex;gap:.6rem;font-size:.78rem;margin-top:.35rem">
-          <span style="color:#2e7d32">✓ <%= s.successCount %> สำเร็จ</span>
-          <span style="color:#c62828">✕ <%= s.failCount %> ล้มเหลว</span>
+        <div class="staff-stat-row" style="margin-top:.5rem">
+          <span class="staff-stat ok"><i class="fa-solid fa-circle-check"></i> <%= s.successCount %> สำเร็จ</span>
+          <span class="staff-stat fail"><i class="fa-solid fa-circle-xmark"></i> <%= s.failCount %> ล้มเหลว</span>
         </div>
       </a>
       <% }); %>

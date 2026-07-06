@@ -54,7 +54,7 @@ exports.showUserActivity = async (req, res) => {
 
     const buckets = new Map();
     staffList.forEach(s => buckets.set(String(s._id), emptyBucket(String(s._id), s.displayName, s.username)));
-    buckets.set('unassigned', emptyBucket('unassigned', 'ไม่ระบุ', null));
+    buckets.set('unassigned', emptyBucket('unassigned', 'ไม่ระบุตัวตน', null));
 
     const bucketFor = (staffId) => buckets.get(staffId && buckets.has(String(staffId)) ? String(staffId) : 'unassigned');
 
@@ -87,7 +87,7 @@ exports.showUserActivityDetail = async (req, res) => {
 
     let staffInfo;
     if (isUnassigned) {
-        staffInfo = { id: 'unassigned', displayName: 'ไม่ระบุ' };
+        staffInfo = { id: 'unassigned', displayName: 'ไม่ระบุตัวตน' };
     } else {
         const s = await staffStore.findById(staffId);
         if (!s) return res.status(404).send('ไม่พบผู้ใช้งาน');

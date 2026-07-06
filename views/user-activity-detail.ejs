@@ -59,8 +59,8 @@
 
     <div class="sidebar-divider"></div>
     <div class="sidebar-label">ระบบ</div>
-    <a href="/user-activity" class="sidebar-item active"><i class="fa-solid fa-user-clock"></i><span>ใครทำอะไร</span></a>
-    <a href="/manage-staff" class="sidebar-item"><i class="fa-solid fa-users-gear"></i><span>จัดการผู้ใช้งาน</span></a>
+    <a href="/user-activity" class="sidebar-item active"><i class="fa-solid fa-user-clock"></i><span>กิจกรรมพนักงาน</span></a>
+    <a href="/manage-staff" class="sidebar-item"><i class="fa-solid fa-users-gear"></i><span>จัดการบัญชีผู้ใช้งาน</span></a>
     <%- include('partials/sidebar-pages') %>
   </aside>
 
@@ -68,13 +68,13 @@
 
     <!-- Header banner -->
     <div class="card" style="padding:1rem 1.25rem;display:flex;align-items:center;gap:.85rem">
-      <div class="avatar avatar-blue" style="width:44px;height:44px;font-size:1.1rem;flex-shrink:0">
+      <div class="avatar avatar-<%= staffInfo.id === 'unassigned' ? 'red' : 'blue' %>" style="width:44px;height:44px;font-size:1.1rem;flex-shrink:0">
         <% if (staffInfo.id === 'unassigned') { %><i class="fa-solid fa-question"></i><% } else { %><%= staffInfo.displayName.charAt(0).toUpperCase() %><% } %>
       </div>
       <div style="flex:1;min-width:0">
-        <div style="font-size:1.05rem;font-weight:700;color:var(--text)"><%= staffInfo.displayName %></div>
-        <div style="font-size:.78rem;color:var(--text3);margin-top:.1rem">
-          <span style="color:#1877f2"><%= posts.length %> โพสเพจ</span>
+        <div style="font-size:1.05rem;font-weight:700;color:#1c1e21"><%= staffInfo.displayName %></div>
+        <div style="font-size:.78rem;color:#8a8d91;margin-top:.1rem">
+          <span style="color:#1877f2"><%= posts.length %> โพสต์เพจ</span>
           &nbsp;·&nbsp;
           <span style="color:#2e7d32"><%= jobs.length %> แชร์กลุ่ม</span>
         </div>
@@ -82,13 +82,13 @@
     </div>
 
     <!-- Tab bar + filter -->
-    <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:.5rem">
+    <div style="display:flex;gap:0;border-bottom:2px solid #e4e6ea;margin-bottom:.5rem">
       <button id="tabBtnPage" onclick="switchTab('page')"
         style="padding:.55rem 1.2rem;background:none;border:none;border-bottom:2.5px solid #1877f2;margin-bottom:-2px;font-size:.88rem;font-weight:700;color:#1877f2;cursor:pointer;font-family:inherit">
         <i class="fa-brands fa-facebook"></i> โพสลงเพจ <span id="cntPage">(<%= posts.length %>)</span>
       </button>
       <button id="tabBtnGrp" onclick="switchTab('grp')"
-        style="padding:.55rem 1.2rem;background:none;border:none;border-bottom:2.5px solid transparent;margin-bottom:-2px;font-size:.88rem;font-weight:600;color:var(--text3);cursor:pointer;font-family:inherit">
+        style="padding:.55rem 1.2rem;background:none;border:none;border-bottom:2.5px solid transparent;margin-bottom:-2px;font-size:.88rem;font-weight:600;color:#8a8d91;cursor:pointer;font-family:inherit">
         <i class="fa-solid fa-users"></i> แชร์ลงกลุ่ม <span id="cntGrp">(<%= jobs.length %>)</span>
       </button>
     </div>
@@ -264,7 +264,7 @@
           <%= r.status==='success' ? '✓' : '✕' %> <%= r.pageName || r.pageId %>
         </span>
         <% }); %>
-        <% if (pageResults.length > 8) { %><span style="font-size:.7rem;color:var(--text3)">+<%= pageResults.length-8 %> เพจ</span><% } %>
+        <% if (pageResults.length > 8) { %><span style="font-size:.7rem;color:#8a8d91">+<%= pageResults.length-8 %> เพจ</span><% } %>
       </div>
       <% } %>
     </div>
@@ -340,7 +340,7 @@
                   <span style="font-weight:600"><%= g.name %></span>
                 </div>
               </td>
-              <td style="font-size:.78rem;color:var(--text3)"><%= g.categories.join(', ') %></td>
+              <td style="font-size:.78rem;color:#8a8d91"><%= g.categories.join(', ') %></td>
               <td class="num"><%= tot %></td>
               <td class="num" style="color:#2e7d32"><%= g.success %></td>
               <td class="num" style="color:#c62828"><%= g.fail %></td>
@@ -405,9 +405,9 @@
       <% if (allJobGroups.length > 0) { %>
       <div style="display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.3rem">
         <% allJobGroups.slice(0,8).forEach(g => { %>
-        <span style="background:var(--surface2);border-radius:999px;font-size:.7rem;padding:.1rem .5rem;color:var(--text2)"><%= g.groupName || g.groupId %></span>
+        <span style="background:#f0f2f5;border-radius:999px;font-size:.7rem;padding:.1rem .5rem;color:#65676b"><%= g.groupName || g.groupId %></span>
         <% }); %>
-        <% if (allJobGroups.length > 8) { %><span style="font-size:.7rem;color:var(--text3)">+<%= allJobGroups.length-8 %> กลุ่ม</span><% } %>
+        <% if (allJobGroups.length > 8) { %><span style="font-size:.7rem;color:#8a8d91">+<%= allJobGroups.length-8 %> กลุ่ม</span><% } %>
       </div>
       <% } %>
     </div>
@@ -446,10 +446,10 @@
     const bp = document.getElementById('tabBtnPage');
     const bg = document.getElementById('tabBtnGrp');
     bp.style.borderBottomColor = t==='page' ? '#1877f2' : 'transparent';
-    bp.style.color             = t==='page' ? '#1877f2' : 'var(--text3)';
+    bp.style.color             = t==='page' ? '#1877f2' : '#8a8d91';
     bp.style.fontWeight        = t==='page' ? '700' : '600';
     bg.style.borderBottomColor = t==='grp'  ? '#1877f2' : 'transparent';
-    bg.style.color             = t==='grp'  ? '#1877f2' : 'var(--text3)';
+    bg.style.color             = t==='grp'  ? '#1877f2' : '#8a8d91';
     bg.style.fontWeight        = t==='grp'  ? '700' : '600';
 
     const pageSel = document.getElementById('uaPageSelect');
