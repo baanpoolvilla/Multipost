@@ -68,14 +68,35 @@
 
   <main class="feed">
 
-    <div class="card" style="padding:.8rem 1.25rem;display:flex;align-items:center;justify-content:space-between">
-      <div class="card-title" style="font-size:1.05rem">
-        <i class="fa-solid fa-users-gear"></i> จัดการบัญชีผู้ใช้งาน
-        <span style="background:#e4e6ea;padding:.12rem .5rem;border-radius:999px;font-size:.78rem;font-weight:400;margin-left:.35rem">ผู้ใช้งานทั้งหมด <%= staffList.length %> บัญชี</span>
+    <div class="card" style="padding:.8rem 1.25rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem">
+        <div class="card-title" style="margin-bottom:0;font-size:1.05rem">
+          <i class="fa-solid fa-users-gear"></i> จัดการบัญชีผู้ใช้งาน
+          <span style="background:#e4e6ea;padding:.12rem .5rem;border-radius:999px;font-size:.78rem;font-weight:400;margin-left:.35rem">ผู้ใช้งานทั้งหมด <%= staffList.length %> บัญชี</span>
+        </div>
+        <button class="btn-post" onclick="openAddStaff()" style="padding:.45rem 1rem;font-size:.86rem">
+          <i class="fa-solid fa-user-plus"></i> เพิ่มบัญชีผู้ใช้งาน
+        </button>
       </div>
-      <button class="btn-post" onclick="openAddStaff()" style="padding:.45rem 1rem;font-size:.86rem">
-        <i class="fa-solid fa-user-plus"></i> เพิ่มบัญชีผู้ใช้งาน
-      </button>
+      <% if (staffList.length > 0) { %>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.7rem">
+        <div style="position:relative">
+          <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:.6rem;top:50%;transform:translateY(-50%);color:#8a8d91;font-size:.8rem;pointer-events:none"></i>
+          <input id="staffSearch" type="text" placeholder="ค้นหาชื่อ/username..." oninput="applyStaffFilter()"
+            style="padding:.35rem .7rem .35rem 1.9rem;border:1px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;width:200px;outline:none;color:#333">
+        </div>
+        <select id="staffSort" onchange="applyStaffSort()"
+          style="padding:.35rem .6rem;border:1px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;color:#333;outline:none;cursor:pointer">
+          <option value="name">เรียงตาม: ชื่อ (ก-ฮ)</option>
+          <option value="role">เรียงตาม: สิทธิ์ (แอดมินก่อน)</option>
+        </select>
+      </div>
+      <% } %>
+    </div>
+
+    <div id="staffEmptyFiltered" class="card empty-state" style="display:none">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <h3>ไม่พบผู้ใช้งานที่ค้นหา</h3>
     </div>
 
     <div class="card">
@@ -86,9 +107,10 @@
         <p>เพิ่มบัญชีผู้ใช้งานแรกเพื่อเริ่มใช้งานระบบ</p>
       </div>
       <% } else { %>
+      <div id="staffList">
       <% const colors = ['blue','green','orange','purple','red']; %>
       <% staffList.forEach((s, i) => { %>
-      <div class="staff-row">
+      <div class="staff-row" data-name="<%= s.displayName.toLowerCase() %>" data-username="<%= s.username.toLowerCase() %>" data-role="<%= s.role === 'admin' ? 'admin' : 'staff' %>">
         <div class="avatar avatar-<%= colors[i%5] %>" style="width:38px;height:38px"><%= s.displayName.charAt(0).toUpperCase() %></div>
         <div style="flex:1;min-width:0">
           <div class="staff-row-name"><%= s.displayName %></div>
@@ -109,6 +131,7 @@
         </div>
       </div>
       <% }); %>
+      </div>
       <% } %>
     </div>
 
@@ -164,6 +187,35 @@
 <script>
   function openAddStaff() { document.getElementById('addStaffModal').style.display = 'flex'; }
   function closeAddStaff() { document.getElementById('addStaffModal').style.display = 'none'; }
+
+  function applyStaffFilter() {
+    const el = document.getElementById('staffSearch');
+    const q = el ? el.value.toLowerCase().trim() : '';
+    const rows = [...document.querySelectorAll('#staffList .staff-row')];
+    let visible = 0;
+    rows.forEach(r => {
+      const match = r.dataset.name.includes(q) || r.dataset.username.includes(q);
+      r.style.display = match ? '' : 'none';
+      if (match) visible++;
+    });
+    const empty = document.getElementById('staffEmptyFiltered');
+    if (empty) empty.style.display = visible === 0 ? '' : 'none';
+  }
+
+  function applyStaffSort() {
+    const list = document.getElementById('staffList');
+    const sel = document.getElementById('staffSort');
+    if (!list || !sel) return;
+    const rows = [...list.querySelectorAll('.staff-row')];
+    rows.sort((a, b) => {
+      if (sel.value === 'role') {
+        if (a.dataset.role !== b.dataset.role) return a.dataset.role === 'admin' ? -1 : 1;
+        return a.dataset.name.localeCompare(b.dataset.name, 'th');
+      }
+      return a.dataset.name.localeCompare(b.dataset.name, 'th');
+    });
+    rows.forEach(r => list.appendChild(r));
+  }
 
   async function submitAddStaff() {
     const displayName = document.getElementById('newStaffDisplayName').value.trim();
