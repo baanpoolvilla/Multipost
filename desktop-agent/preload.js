@@ -4,6 +4,11 @@ contextBridge.exposeInMainWorld('agent', {
     // System
     getStatus:       ()         => ipcRenderer.invoke('get-status'),
 
+    // Staff ("who is using this install")
+    listStaff:        ()             => ipcRenderer.invoke('staff:list'),
+    getCurrentStaff:   ()             => ipcRenderer.invoke('staff:get-current'),
+    setCurrentStaff:   (id, name)     => ipcRenderer.invoke('staff:set-current', id, name),
+
     // Accounts
     listAccounts:    ()         => ipcRenderer.invoke('accounts:list'),
     addAccount:      (e, p)     => ipcRenderer.invoke('accounts:add', e, p),

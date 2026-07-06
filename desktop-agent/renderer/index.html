@@ -43,6 +43,11 @@
       <span class="dot" id="dotRunner"></span>
       <span id="lblRunner">ระบบ: หยุด</span>
     </div>
+    <div class="status-row">
+      <span class="nav-icon" style="font-size:.85rem">🙋</span>
+      <span id="lblCurrentStaff">ไม่ระบุผู้ใช้งาน</span>
+      <button class="btn-link" style="margin-left:auto;font-size:.75rem" onclick="openStaffModal()">เปลี่ยน</button>
+    </div>
   </div>
 </nav>
 
@@ -400,6 +405,22 @@
       </div>
     </div>
     <div id="groupsModalList" class="pick-list" style="max-height:380px;border-radius:0 0 var(--radius) var(--radius)"></div>
+  </div>
+</div>
+
+<!-- Staff picker modal ("who is using this install") -->
+<div id="staffModal" class="modal-overlay" style="display:none" onclick="closeStaffModal(event)">
+  <div class="modal-box" onclick="event.stopPropagation()" style="max-width:380px">
+    <div class="modal-header">
+      <span>คุณคือใคร?</span>
+      <div style="display:flex;gap:.5rem;margin-left:auto">
+        <button class="btn-link" id="staffModalSkip" style="color:var(--text2)" onclick="closeStaffModal()">ข้ามไปก่อน</button>
+      </div>
+    </div>
+    <div style="padding:.85rem 1rem;font-size:.82rem;color:var(--text2)">
+      เลือกชื่อของคุณครั้งเดียว โปรแกรมจะจำไว้ในเครื่องนี้ ไม่ต้องเลือกซ้ำอีก — ใช้เพื่อบันทึกว่าใครเป็นคนแชร์งานแต่ละชิ้น
+    </div>
+    <div id="staffModalList" class="pick-list" style="max-height:300px"></div>
   </div>
 </div><script src="flatpickr.min.js"></script>
 <script>(function(){var O={dateFormat:'Y-m-d',altInput:true,altFormat:'d/m/Y',allowInput:true,disableMobile:true};function I(e){if(e._flatpickr)return;flatpickr(e,O);var ai=e._flatpickr&&e._flatpickr.altInput;if(ai){var s=e.getAttribute('style');if(s)ai.style.cssText=s;ai.style.cursor='pointer';ai.placeholder=e.getAttribute('title')||e.getAttribute('placeholder')||'วว/ดด/ปปปป';}}document.querySelectorAll('input[type="date"]').forEach(I);new MutationObserver(function(m){m.forEach(function(r){r.addedNodes.forEach(function(n){if(n.nodeType!==1)return;if(n.matches&&n.matches('input[type="date"]'))I(n);n.querySelectorAll&&n.querySelectorAll('input[type="date"]').forEach(I)})})}).observe(document.body,{childList:true,subtree:true});})()</script>

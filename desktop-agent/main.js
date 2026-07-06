@@ -15,6 +15,20 @@ function getOrCreateAgentId(userDataDir) {
     return id;
 }
 
+// "Who is using this Desktop Agent install" — picked once via the renderer's
+// staff picker (see renderer/app.js checkStaffSelection), persisted locally
+// so it survives restarts without asking again. Unlike agentId this is never
+// auto-generated — it stays null (shows as "ไม่ระบุ" in /user-activity) until
+// a person actually picks their name.
+function getSelectedStaff(userDataDir) {
+    const staffFile = path.join(userDataDir, 'staff-selection.json');
+    try { return JSON.parse(fs.readFileSync(staffFile, 'utf-8')); } catch { return null; }
+}
+function saveSelectedStaff(userDataDir, staff) {
+    const staffFile = path.join(userDataDir, 'staff-selection.json');
+    fs.writeFileSync(staffFile, JSON.stringify(staff));
+}
+
 const apiServer        = require('./api/server');
 const accountStore     = require('./src/accountStore');
 const jobStore         = require('./src/jobStore');
@@ -23,6 +37,8 @@ const facebookBot      = require('./src/facebookBot');
 const jobTemplateStore = require('./src/jobTemplateStore');
 
 let win;
+let _userDataDir  = null;
+let _currentStaff = null; // { id, displayName } | null
 
 // ── Window ─────────────────────────────────────────────────────
 function createWindow() {
@@ -43,6 +59,7 @@ function createWindow() {
 
 app.whenReady().then(async () => {
     const userDataDir = app.getPath('userData');
+    _userDataDir = userDataDir;
 
     // Init stores
     accountStore.init(userDataDir);
@@ -51,6 +68,9 @@ app.whenReady().then(async () => {
     const agentId = getOrCreateAgentId(userDataDir);
     jobStore.setAgentId(agentId);
     await jobStore.connect().catch(() => {});
+
+    _currentStaff = getSelectedStaff(userDataDir);
+    if (_currentStaff) jobStore.setStaffId(_currentStaff.id);
 
     // Part 9: catch up on expiry as soon as the Agent has a DB connection —
     // before the queue is ever shown or polled, regardless of whether
@@ -85,6 +105,16 @@ ipcMain.handle('get-status', () => ({
     version:     '2.0.0',
     uptime:      Math.floor(process.uptime()),
 }));
+
+// ── IPC: Staff ("who is using this install") ───────────────────
+ipcMain.handle('staff:list',        ()             => jobStore.listStaff());
+ipcMain.handle('staff:get-current', ()             => _currentStaff);
+ipcMain.handle('staff:set-current', (_, id, name)  => {
+    _currentStaff = { id, displayName: name };
+    saveSelectedStaff(_userDataDir, _currentStaff);
+    jobStore.setStaffId(id);
+    return { ok: true };
+});
 
 // ── IPC: Accounts ──────────────────────────────────────────────
 ipcMain.handle('accounts:list',   ()          => accountStore.list());

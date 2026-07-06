@@ -23,6 +23,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     try { await Promise.race([loadAccounts(),  _timeout(5000)]); } catch {}
     try { await Promise.race([loadJobs(),      _timeout(5000)]); } catch {}
     try { loadGroups(); } catch {}
+    try { await checkStaffSelection(); } catch {}
     _statusInterval = setInterval(() => { refreshStatus().catch(()=>{}); }, 5000);
     checkScheduledNotifications();
     checkExpiredJobsBanner();
@@ -421,6 +422,46 @@ function renderGroupsModal() {
 
 function openGroupsModal()  { renderGroupsModal(); document.getElementById('groupsModal').style.display='flex'; }
 function closeGroupsModal(e){ if(!e||e.target===document.getElementById('groupsModal')) document.getElementById('groupsModal').style.display='none'; }
+
+// ── Staff picker ("who is using this install") ─────────────────
+// Not a login — just a one-time local label so jobs created straight from
+// this Agent window (not via the web) can be attributed in /user-activity
+// the same way web-created ones are.
+async function checkStaffSelection() {
+    const current = await agent.getCurrentStaff();
+    updateStaffLabel(current);
+    if (!current) openStaffModal();
+}
+
+function updateStaffLabel(staff) {
+    const el = document.getElementById('lblCurrentStaff');
+    if (el) el.textContent = staff ? `กำลังใช้งานโดย: ${staff.displayName}` : 'ไม่ระบุผู้ใช้งาน';
+}
+
+async function openStaffModal() {
+    const el = document.getElementById('staffModalList');
+    el.innerHTML = '<div style="padding:.75rem;font-size:.8rem;color:var(--text2)">กำลังโหลด...</div>';
+    document.getElementById('staffModal').style.display = 'flex';
+    const staffList = await agent.listStaff().catch(() => []);
+    if (!staffList.length) {
+        el.innerHTML = '<div style="padding:.75rem;font-size:.8rem;color:var(--text2)">ยังไม่มีรายชื่อผู้ใช้งาน — เพิ่มได้ที่หน้าเว็บ (จัดการผู้ใช้งาน)</div>';
+        return;
+    }
+    el.innerHTML = staffList.map(s => `
+      <div class="pick-item" onclick="selectStaffMember('${s.id}', '${(s.displayName||'').replace(/'/g,"\\'")}')">
+        <label>${s.displayName}</label>
+      </div>`).join('');
+}
+
+function closeStaffModal(e) {
+    if (!e || e.target === document.getElementById('staffModal')) document.getElementById('staffModal').style.display = 'none';
+}
+
+async function selectStaffMember(id, displayName) {
+    await agent.setCurrentStaff(id, displayName);
+    updateStaffLabel({ id, displayName });
+    document.getElementById('staffModal').style.display = 'none';
+}
 
 function togGrp(i) {
     _selected[i] = !_selected[i];

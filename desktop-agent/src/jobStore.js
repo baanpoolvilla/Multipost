@@ -7,13 +7,22 @@ const { STATUS } = require('./scheduler/statuses');
 let _conn = null;
 let _dbOk = false;
 let _dataPath = null;
-let Job, Page, WebPost, FbGroup;
+let Job, Page, WebPost, FbGroup, Staff;
 let _scheduler = null;
 let _agentId   = null;
+let _staffId   = null;
 
 function setAgentId(id) {
     _agentId   = id;
     _scheduler = null; // recreate with correct agentId on next use
+}
+
+// Which staff member is using this Desktop Agent install — set once via the
+// "who are you" picker in the renderer (see main.js staff:set-current), then
+// stamped on every job this instance creates so /user-activity can attribute
+// agent-created shares the same way it does web-created ones.
+function setStaffId(id) {
+    _staffId = id || null;
 }
 
 // ── Schemas ───────────────────────────────────────────────────
@@ -48,6 +57,7 @@ const jobSchema = new mongoose.Schema({
     lastAttemptAt:  { type: String, default: null },
     sourceType:     { type: String, default: 'agent' }, // 'web' | 'agent'
     agentId:        { type: String, default: null },
+    staffId:        { type: String, default: null },
     images:       { type: [String], default: [] },
     results:      [resultSchema],
     createdAt:    { type: String, default: () => new Date().toISOString() },
@@ -71,6 +81,13 @@ const postSchema = new mongoose.Schema({
     message: String, successCount: Number, results: Array, createdAt: String,
 }, { versionKey: false, collection: 'posts' });
 
+// Read-only here — the Web side (services/staffStore.js) owns creating/deleting
+// staff accounts. The Agent only needs the list of names for the "who are you"
+// picker, plus writing staffId onto jobs it creates.
+const staffSchema = new mongoose.Schema({
+    username:    String, displayName: String, color: String, createdAt: Date,
+}, { versionKey: false, collection: 'staffmembers' });
+
 // ── Connect ───────────────────────────────────────────────────
 async function connect() {
     if (_conn) return;
@@ -81,6 +98,7 @@ async function connect() {
     Page    = mongoose.models.AgentPage2  || mongoose.model('AgentPage2',  pageSchema,    'pages');
     WebPost = mongoose.models.AgentPost2  || mongoose.model('AgentPost2',  postSchema,    'posts');
     FbGroup = mongoose.models.AgentFbGrp  || mongoose.model('AgentFbGrp',  fbGroupSchema, 'fbgroups');
+    Staff   = mongoose.models.AgentStaff  || mongoose.model('AgentStaff',  staffSchema,   'staffmembers');
     _dbOk = true;
 }
 
@@ -129,15 +147,25 @@ async function getRecentPosts() {
     } catch { return []; }
 }
 
-// ── CRUD (delegates to SchedulerService — see scheduler/) ───────
-async function createJob(data) {
+// ── Staff (for the "who are you" picker) ───────────────────────
+async function listStaff() {
     try {
         await connect();
-        return await scheduler().CreateJob(data);
+        const staff = await Staff.find().sort({ displayName: 1 }).lean();
+        return staff.map(s => ({ id: String(s._id), displayName: s.displayName, username: s.username }));
+    } catch { return []; }
+}
+
+// ── CRUD (delegates to SchedulerService — see scheduler/) ───────
+async function createJob(data) {
+    const withStaff = { ...data, staffId: data.staffId ?? _staffId };
+    try {
+        await connect();
+        return await scheduler().CreateJob(withStaff);
     } catch (e) {
         if (e.validationErrors) throw e;
         const jobs = fLoad();
-        const j = { _id: fId(), ...data, status: STATUS.PENDING, results: [], createdAt: new Date().toISOString() };
+        const j = { _id: fId(), ...withStaff, status: STATUS.PENDING, results: [], createdAt: new Date().toISOString() };
         jobs.push(j); fSave(jobs); return j;
     }
 }
@@ -236,7 +264,7 @@ async function listExpiredJobs() {
 function _s(j) { return j ? { ...j, _id: j._id?.toString?.()??j._id } : j; }
 
 module.exports = {
-    connect, isDbConnected, setDataPath, setAgentId, getAllGroups, getRecentPosts,
+    connect, isDbConnected, setDataPath, setAgentId, setStaffId, listStaff, getAllGroups, getRecentPosts,
     createJob, getJobs, getPendingJobs, claimNextJob, updateJob, deleteJob, deleteAllJobs,
     getCompletedJobs, rescheduleJob, expireOverdueJobs, migrateLegacyStatuses,
     retryJob, cancelJob, listExpiredJobs,
