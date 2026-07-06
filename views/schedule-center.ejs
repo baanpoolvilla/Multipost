@@ -921,6 +921,12 @@ async function scRefresh() {
   if(el) el.addEventListener(id==='sc-search'?'input':'change', render);
 });
 
+// Deep-link support, e.g. /schedule-center?status=expired from the
+// "หมดเวลา" reminder modal on the dashboard — lands the user straight on
+// the filtered list instead of the generic unfiltered view.
+const _deepLinkStatus = new URLSearchParams(location.search).get('status');
+if (_deepLinkStatus) document.getElementById('sc-status').value = _deepLinkStatus;
+
 populateFilters();
 render();
 setInterval(scRefresh, 60000);

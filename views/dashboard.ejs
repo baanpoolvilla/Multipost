@@ -466,7 +466,7 @@
         denyButtonColor: '#c62828',
       });
       if (isConfirmed) {
-        location.href = '/schedule-center';
+        location.href = '/schedule-center?status=expired';
       } else if (isDenied) {
         await Promise.all([
           ...expiredPosts.map(p => fetch(`/history/${p.id}`, { method: 'DELETE' }).catch(() => {})),
