@@ -1,6 +1,7 @@
 const staffStore    = require('../services/staffStore');
 const postStore     = require('../services/postStore');
 const groupJobStore = require('../services/groupJobStore');
+const groupStore    = require('../services/groupStore');
 
 // ── Manage staff accounts ──────────────────────────────────────
 exports.showManageStaff = async (req, res) => {
@@ -93,12 +94,19 @@ exports.showUserActivityDetail = async (req, res) => {
         staffInfo = { id: String(s._id), displayName: s.displayName };
     }
 
-    const [allPosts, allJobs] = await Promise.all([
+    const [allPosts, allJobs, allGroups] = await Promise.all([
         postStore.load(),
         groupJobStore.listHistory(),
+        groupStore.list(),
     ]);
 
     const matches = (recordStaffId) => isUnassigned ? !recordStaffId : String(recordStaffId) === staffId;
+
+    // groupId → categories, joined at read-time exactly like the privacy join
+    // in controllers/agentController.js showGroupSummary (job/result rows
+    // never carry the group's category themselves).
+    const groupCatMap = {};
+    allGroups.forEach(g => { groupCatMap[g.groupId] = (g.categories && g.categories.length) ? g.categories : ['ทั่วไป']; });
 
     const posts = allPosts.filter(p => matches(p.staffId));
     const jobs  = allJobs.filter(j => matches(j.staffId)).map(j => ({
@@ -107,6 +115,7 @@ exports.showUserActivityDetail = async (req, res) => {
         successCount: (j.results || []).filter(r => r.status === 'success').length,
         failCount:    (j.results || []).filter(r => r.status === 'failed').length,
         groupCount:   (j.groups  || []).length,
+        categories:   [...new Set((j.groups || []).flatMap(g => groupCatMap[g.groupId] || ['ทั่วไป']))],
     }));
 
     const pageSuccess = posts.reduce((s, p) => s + (p.successCount || 0), 0);
@@ -114,8 +123,53 @@ exports.showUserActivityDetail = async (req, res) => {
     const grpSuccess  = jobs.reduce((s, j) => s + j.successCount, 0);
     const grpFail     = jobs.reduce((s, j) => s + j.failCount, 0);
 
+    // ── Per-page breakdown (which pages, how many, success/fail each) ──
+    // Same aggregation shape as controllers/postController.js showPageSummary.
+    const pageCounts = {};
+    posts.forEach(p => {
+        (p.results || []).forEach(r => {
+            const key = r.pageId || r.pageName || 'ไม่ทราบ';
+            // `id` must match the same key used in each post card's data-pages
+            // list (views/user-activity-detail.ejs) or clicking a row here
+            // would never match any card.
+            if (!pageCounts[key]) pageCounts[key] = { id: key, name: r.pageName || r.pageId || 'ไม่ทราบ', success: 0, fail: 0 };
+            if (r.status === 'success') pageCounts[key].success++; else pageCounts[key].fail++;
+        });
+    });
+    const pageStats = Object.values(pageCounts).sort((a, b) => (b.success + b.fail) - (a.success + a.fail));
+
+    // ── Per-group + per-category breakdown ──────────────────────────
+    // Same join pattern as controllers/agentController.js showGroupSummary
+    // (there it joins privacy; here we join category, since job/result rows
+    // only carry groupId/groupName, never the group's category itself).
+    const groupCounts = {};
+    const categoryCounts = {};
+    jobs.forEach(j => {
+        (j.results || []).forEach(r => {
+            const ok  = r.status === 'success';
+            const key = r.groupId || r.groupName || 'ไม่ทราบ';
+            const cats = groupCatMap[r.groupId] || ['ทั่วไป'];
+            // `id` must match the same key used in each job card's
+            // data-groups list (views/user-activity-detail.ejs).
+            if (!groupCounts[key]) groupCounts[key] = { id: key, name: r.groupName || r.groupId || 'ไม่ทราบ', categories: cats, success: 0, fail: 0 };
+            if (ok) groupCounts[key].success++; else groupCounts[key].fail++;
+
+            cats.forEach(cat => {
+                if (!categoryCounts[cat]) categoryCounts[cat] = { success: 0, fail: 0 };
+                if (ok) categoryCounts[cat].success++; else categoryCounts[cat].fail++;
+            });
+        });
+    });
+    const groupStats = Object.values(groupCounts).sort((a, b) => (b.success + b.fail) - (a.success + a.fail));
+    // 'ทั่วไป' (general) first, rest alphabetically — matches the convention
+    // used by /groups and /job-queue category dropdowns.
+    const categoryStats = Object.entries(categoryCounts)
+        .map(([name, st]) => ({ name, ...st }))
+        .sort((a, b) => a.name === 'ทั่วไป' ? -1 : b.name === 'ทั่วไป' ? 1 : a.name.localeCompare(b.name, 'th'));
+
     res.render('user-activity-detail', {
         staffInfo, posts, jobs,
         pageSuccess, pageFail, grpSuccess, grpFail,
+        pageStats, groupStats, categoryStats,
     });
 };

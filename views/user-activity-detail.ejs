@@ -102,6 +102,69 @@
 
     <!-- ── PAGE POSTS TAB ── -->
     <div id="tabPage">
+
+    <!-- Per-page breakdown (same table style as /page-summary) -->
+    <% if (pageStats.length > 0) { %>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;margin-bottom:1rem">
+        <div class="card-title" style="margin-bottom:0">
+          <i class="fa-brands fa-facebook" style="color:#1877f2"></i> สถิติแต่ละเพจ
+          <span style="font-size:.8rem;font-weight:400;color:#8a8d91;margin-left:.4rem">(<%= pageStats.length %> เพจ)</span>
+        </div>
+        <div style="position:relative">
+          <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:.6rem;top:50%;transform:translateY(-50%);color:#8a8d91;font-size:.8rem;pointer-events:none"></i>
+          <input id="pageTblSearch" type="text" placeholder="ค้นหาชื่อเพจ..." oninput="filterPageTable(this.value)"
+            style="padding:.35rem .7rem .35rem 1.9rem;border:1px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;width:180px;outline:none;color:#333">
+        </div>
+      </div>
+      <div class="overview-table-wrap">
+        <table class="overview-table">
+          <thead>
+            <tr>
+              <th>เพจ</th>
+              <th><i class="fa-solid fa-paper-plane"></i> โพส</th>
+              <th><i class="fa-solid fa-circle-check" style="color:#2e7d32"></i> สำเร็จ</th>
+              <th><i class="fa-solid fa-circle-xmark" style="color:#c62828"></i> ล้มเหลว</th>
+              <th>อัตราสำเร็จ</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% pageStats.forEach((p, i) => {
+                 const tot = p.success + p.fail;
+                 const rate = tot > 0 ? Math.round(p.success/tot*100) : 0;
+            %>
+            <tr class="page-tbl-row" data-name="<%= p.name.toLowerCase() %>" data-id="<%= p.id %>" onclick="filterByPageEl(this)" style="cursor:pointer;<%= i >= 5 ? 'display:none' : '' %>">
+              <td>
+                <div style="display:flex;align-items:center;gap:.5rem">
+                  <div class="avatar avatar-blue avatar-sm"><%= p.name.slice(0,1).toUpperCase() %></div>
+                  <span style="font-weight:600"><%= p.name %></span>
+                </div>
+              </td>
+              <td class="num"><%= tot %></td>
+              <td class="num" style="color:#2e7d32"><%= p.success %></td>
+              <td class="num" style="color:#c62828"><%= p.fail %></td>
+              <td>
+                <div class="rate-bar-wrap">
+                  <div class="rate-bar" style="width:<%= rate %>%;background:#1877f2"></div>
+                  <span class="rate-text"><%= rate %>%</span>
+                </div>
+              </td>
+            </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+      <% if (pageStats.length > 5) { %>
+      <div id="pageTblMoreBtn" style="text-align:center;margin-top:.75rem">
+        <button onclick="_pageTblExpanded=true;filterPageTable(document.getElementById('pageTblSearch').value)" style="background:#e7f0fd;color:#1877f2;border:1.5px solid #1877f2;border-radius:8px;padding:.4rem 1.2rem;font-size:.82rem;cursor:pointer;font-family:inherit">
+          <i class="fa-solid fa-chevron-down"></i> ดูเพิ่มเติม (<%= pageStats.length - 5 %> เพจ)
+        </button>
+      </div>
+      <% } %>
+      <div id="pageFilterBadge" style="margin-top:.5rem"></div>
+    </div>
+    <% } %>
+
     <div id="emptyPage" class="card" style="display:none"><div class="empty-state">ไม่พบโพสที่ตรงกับเงื่อนไข</div></div>
     <% if (posts.length === 0) { %>
     <div class="card"><div class="empty-state">ยังไม่มีโพสลงเพจของคนนี้</div></div>
@@ -115,7 +178,7 @@
       const display = msg.includes('|||') ? (msg.slice(0, msg.indexOf('|||')).trim() || msg.slice(msg.indexOf('|||')+3).trim()) : msg;
       const imgs    = (post.images || []).filter(img => img && !img.startsWith('localpath::') && !/^[A-Za-z]:[\\\/]/.test(img));
     %>
-    <div class="card history-card ua-card-page" data-at="<%= post.createdAt %>" data-msg="<%= (display||'').toLowerCase().replace(/"/g,'') %>" data-ok="<%= post.successCount||0 %>" data-fail="<%= post.failCount||0 %>">
+    <div class="card history-card ua-card-page" data-at="<%= post.createdAt %>" data-msg="<%= (display||'').toLowerCase().replace(/"/g,'') %>" data-ok="<%= post.successCount||0 %>" data-fail="<%= post.failCount||0 %>" data-pages="<%= (post.results||[]).map(r=>r.pageId||r.pageName).join(',') %>">
       <div class="fb-post-header">
         <div class="avatar avatar-<%= allOk ? 'green' : allFail ? 'red' : 'orange' %>">
           <i class="fa-brands fa-facebook"></i>
@@ -188,6 +251,97 @@
 
     <!-- ── GROUP SHARES TAB ── -->
     <div id="tabGrp" style="display:none">
+
+    <!-- Category cards (same clickable-filter pattern as /group-summary's privacy cards) -->
+    <% if (categoryStats.length > 0) { %>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.6rem;margin-bottom:.75rem">
+      <% categoryStats.forEach(cat => {
+           const tot = cat.success + cat.fail;
+           const rate = tot > 0 ? Math.round(cat.success/tot*100) : 0;
+      %>
+      <div id="catCard-<%= cat.name %>" data-cat="<%= cat.name %>" onclick="filterByCategory(this.dataset.cat)" style="background:#f0fff4;border:1.5px solid #a7d7b5;border-radius:14px;padding:.75rem .9rem;cursor:pointer;transition:box-shadow .15s,transform .15s">
+        <div style="font-size:.78rem;font-weight:700;color:#2e7d32;margin-bottom:.4rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><%= cat.name %></div>
+        <div style="display:flex;gap:.4rem;align-items:flex-end">
+          <div>
+            <div style="font-size:1.15rem;font-weight:800;color:#2e7d32;line-height:1"><%= cat.success %></div>
+            <div style="font-size:.65rem;color:#2e7d32">สำเร็จ</div>
+          </div>
+          <div style="font-size:.85rem;color:#ccc">/</div>
+          <div>
+            <div style="font-size:1.15rem;font-weight:800;color:#c62828;line-height:1"><%= cat.fail %></div>
+            <div style="font-size:.65rem;color:#c62828">ล้มเหลว</div>
+          </div>
+          <div style="margin-left:auto;font-size:.9rem;font-weight:800;color:#2e7d32"><%= rate %>%</div>
+        </div>
+      </div>
+      <% }); %>
+    </div>
+    <% } %>
+
+    <!-- Per-group breakdown (same table style as /group-summary) -->
+    <% if (groupStats.length > 0) { %>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;margin-bottom:1rem">
+        <div class="card-title" style="margin-bottom:0">
+          <i class="fa-solid fa-layer-group" style="color:#2e7d32"></i> สถิติแต่ละกลุ่ม
+          <span id="catFilterBadge" style="margin-left:.4rem"></span>
+          <span style="font-size:.8rem;font-weight:400;color:#8a8d91;margin-left:.4rem">(<%= groupStats.length %> กลุ่ม)</span>
+        </div>
+        <div style="position:relative">
+          <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:.6rem;top:50%;transform:translateY(-50%);color:#8a8d91;font-size:.8rem;pointer-events:none"></i>
+          <input id="grpTblSearch" type="text" placeholder="ค้นหาชื่อกลุ่ม..." oninput="filterGrpTable(this.value)"
+            style="padding:.35rem .7rem .35rem 1.9rem;border:1px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;width:180px;outline:none;color:#333">
+        </div>
+      </div>
+      <div class="overview-table-wrap">
+        <table class="overview-table">
+          <thead>
+            <tr>
+              <th>กลุ่ม</th>
+              <th>หมวดหมู่</th>
+              <th><i class="fa-solid fa-paper-plane"></i> แชร์</th>
+              <th><i class="fa-solid fa-circle-check" style="color:#2e7d32"></i> สำเร็จ</th>
+              <th><i class="fa-solid fa-circle-xmark" style="color:#c62828"></i> ล้มเหลว</th>
+              <th>อัตราสำเร็จ</th>
+            </tr>
+          </thead>
+          <tbody id="grpTblBody">
+            <% groupStats.forEach((g, i) => {
+                 const tot = g.success + g.fail;
+                 const rate = tot > 0 ? Math.round(g.success/tot*100) : 0;
+            %>
+            <tr class="grp-tbl-row" data-name="<%= g.name.toLowerCase() %>" data-id="<%= g.id %>" data-cats="<%= g.categories.join(',') %>" onclick="filterByGroupEl(this)" style="cursor:pointer;<%= i >= 5 ? 'display:none' : '' %>">
+              <td>
+                <div style="display:flex;align-items:center;gap:.5rem">
+                  <div class="avatar avatar-green avatar-sm" style="background:#2e7d32"><%= g.name.slice(0,1).toUpperCase() %></div>
+                  <span style="font-weight:600"><%= g.name %></span>
+                </div>
+              </td>
+              <td style="font-size:.78rem;color:var(--text3)"><%= g.categories.join(', ') %></td>
+              <td class="num"><%= tot %></td>
+              <td class="num" style="color:#2e7d32"><%= g.success %></td>
+              <td class="num" style="color:#c62828"><%= g.fail %></td>
+              <td>
+                <div class="rate-bar-wrap">
+                  <div class="rate-bar" style="width:<%= rate %>%;background:#2e7d32"></div>
+                  <span class="rate-text"><%= rate %>%</span>
+                </div>
+              </td>
+            </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+      <% if (groupStats.length > 5) { %>
+      <div id="grpTblMoreBtn" style="text-align:center;margin-top:.75rem">
+        <button onclick="grpTableExpand()" style="background:#f0fdf4;color:#2e7d32;border:1.5px solid #2e7d32;border-radius:8px;padding:.4rem 1.2rem;font-size:.82rem;cursor:pointer;font-family:inherit">
+          <i class="fa-solid fa-chevron-down"></i> ดูเพิ่มเติม (<%= groupStats.length - 5 %> กลุ่ม)
+        </button>
+      </div>
+      <% } %>
+    </div>
+    <% } %>
+
     <div id="emptyGrp" class="card" style="display:none"><div class="empty-state">ไม่พบรายการที่ตรงกับเงื่อนไข</div></div>
     <% if (jobs.length === 0) { %>
     <div class="card"><div class="empty-state">ยังไม่มีการแชร์ลงกลุ่มของคนนี้</div></div>
@@ -199,7 +353,7 @@
       const jmsg    = (job.message || '');
       const jdisplay = jmsg.includes('|||') ? (jmsg.slice(0, jmsg.indexOf('|||')).trim() || jmsg.slice(jmsg.indexOf('|||')+3).trim()) : jmsg;
     %>
-    <div class="card history-card ua-card-grp" data-at="<%= job.createdAt %>" data-msg="<%= (jdisplay||'').toLowerCase().replace(/"/g,'') %>" data-ok="<%= job.successCount %>" data-fail="<%= job.failCount %>">
+    <div class="card history-card ua-card-grp" data-at="<%= job.createdAt %>" data-msg="<%= (jdisplay||'').toLowerCase().replace(/"/g,'') %>" data-ok="<%= job.successCount %>" data-fail="<%= job.failCount %>" data-groups="<%= (job.groups||[]).map(g=>g.groupId||g.groupName).join(',') %>" data-cats="<%= job.categories.join(',') %>">
       <div class="fb-post-header">
         <div class="avatar avatar-<%= allOk ? 'green' : allFail ? 'red' : 'orange' %>">
           <i class="fa-solid fa-users"></i>
@@ -258,6 +412,9 @@
 
 <script>
   let _curTab = 'page';
+  let _pageFilter = null;     // page-post tab: filter to posts that included this page
+  let _categoryFilter = null; // group-share tab: filter to jobs with a group in this category
+  let _groupFilter = null;    // group-share tab: filter to jobs that included this specific group
 
   function switchTab(t) {
     _curTab = t;
@@ -292,7 +449,8 @@
     document.querySelectorAll('.ua-card-page').forEach(el => {
       const msg = el.dataset.msg || '';
       const ts  = new Date(el.dataset.at).getTime();
-      const ok  = (!q || msg.includes(q)) && ts >= fromMs && ts <= toMs;
+      const pageOk = !_pageFilter || (el.dataset.pages || '').split(',').includes(_pageFilter);
+      const ok  = (!q || msg.includes(q)) && ts >= fromMs && ts <= toMs && pageOk;
       el.style.display = ok ? '' : 'none';
       if (ok) { pageShown++; pageSuccess += parseInt(el.dataset.ok||0); pageFail += parseInt(el.dataset.fail||0); }
     });
@@ -301,12 +459,14 @@
     document.querySelectorAll('.ua-card-grp').forEach(el => {
       const msg = el.dataset.msg || '';
       const ts  = new Date(el.dataset.at).getTime();
-      const ok  = (!q || msg.includes(q)) && ts >= fromMs && ts <= toMs;
+      const catOk   = !_categoryFilter || (el.dataset.cats || '').split(',').includes(_categoryFilter);
+      const groupOk = !_groupFilter || (el.dataset.groups || '').split(',').includes(_groupFilter);
+      const ok  = (!q || msg.includes(q)) && ts >= fromMs && ts <= toMs && catOk && groupOk;
       el.style.display = ok ? '' : 'none';
       if (ok) { grpShown++; grpSuccess += parseInt(el.dataset.ok || 0); grpFail += parseInt(el.dataset.fail || 0); }
     });
 
-    const hasFilter = q || fromVal || toVal;
+    const hasFilter = q || fromVal || toVal || _pageFilter || _categoryFilter || _groupFilter;
 
     document.getElementById('cntPage').textContent = `(${pageShown})`;
     document.getElementById('cntGrp').textContent  = `(${grpShown})`;
@@ -329,6 +489,99 @@
     const f = document.getElementById('uaFrom');   if (f) { f.value = ''; f.style.borderColor = ''; }
     const t = document.getElementById('uaTo');     if (t) { t.value = ''; t.style.borderColor = ''; }
     document.getElementById('uaDateRangeErr').style.display = 'none';
+
+    _pageFilter = null;
+    document.querySelectorAll('.page-tbl-row').forEach(r => { r.style.boxShadow = ''; r.style.background = ''; });
+    const pageBadge = document.getElementById('pageFilterBadge'); if (pageBadge) pageBadge.innerHTML = '';
+
+    _categoryFilter = null;
+    document.querySelectorAll('[id^="catCard-"]').forEach(card => { card.style.boxShadow = ''; card.style.transform = ''; });
+    const catBadge = document.getElementById('catFilterBadge'); if (catBadge) catBadge.innerHTML = '';
+
+    _groupFilter = null;
+    document.querySelectorAll('.grp-tbl-row').forEach(r => { r.style.boxShadow = ''; r.style.background = ''; });
+
+    filterGrpTable('');
+    applyUaFilter();
+  }
+
+  // ── Per-page breakdown table: search + click-a-row-to-filter ───
+  let _pageTblExpanded = false;
+  function filterPageTable(q) {
+    q = q.toLowerCase();
+    const moreBtn = document.getElementById('pageTblMoreBtn');
+    document.querySelectorAll('.page-tbl-row').forEach((r, i) => {
+      const nameOk = !q || r.dataset.name.includes(q);
+      r.style.display = nameOk && (q || _pageTblExpanded || i < 5) ? '' : 'none';
+    });
+    if (moreBtn) moreBtn.style.display = (q || _pageTblExpanded) ? 'none' : '';
+  }
+
+  function filterByPageEl(rowEl) { filterByPage(rowEl.dataset.id); }
+
+  function filterByPage(name) {
+    _pageFilter = (_pageFilter === name) ? null : name;
+    document.querySelectorAll('.page-tbl-row').forEach(r => {
+      r.style.boxShadow = (r.dataset.id === _pageFilter) ? 'inset 3px 0 0 #1877f2' : '';
+      r.style.background = (r.dataset.id === _pageFilter) ? '#f0f7ff' : '';
+    });
+    const badge = document.getElementById('pageFilterBadge');
+    if (badge) {
+      badge.innerHTML = _pageFilter
+        ? `<span style="background:#e7f0fd;color:#1877f2;border-radius:999px;padding:.2rem .65rem;font-size:.78rem;font-weight:600;display:inline-flex;align-items:center;gap:.4rem">
+             กรองเฉพาะเพจ "${_pageFilter}"
+             <span onclick="filterByPage('${_pageFilter.replace(/'/g,"\\'")}')" style="cursor:pointer;font-weight:800">×</span>
+           </span>`
+        : '';
+    }
+    applyUaFilter();
+  }
+
+  // ── Per-group breakdown table: search + expand ──────────────────
+  function filterGrpTable(q) {
+    q = q.toLowerCase();
+    const moreBtn = document.getElementById('grpTblMoreBtn');
+    document.querySelectorAll('.grp-tbl-row').forEach((r, i) => {
+      const nameOk = !q || r.dataset.name.includes(q);
+      const catOk  = !_categoryFilter || (r.dataset.cats || '').split(',').includes(_categoryFilter);
+      const show   = nameOk && catOk && (q || _categoryFilter || _grpTblExpanded || i < 5);
+      r.style.display = show ? '' : 'none';
+    });
+    if (moreBtn) moreBtn.style.display = (q || _categoryFilter || _grpTblExpanded) ? 'none' : '';
+  }
+
+  let _grpTblExpanded = false;
+  function grpTableExpand() { _grpTblExpanded = true; filterGrpTable(document.getElementById('grpTblSearch')?.value || ''); }
+
+  function filterByGroupEl(rowEl) { filterByGroup(rowEl.dataset.id); }
+
+  function filterByGroup(id) {
+    _groupFilter = (_groupFilter === id) ? null : id;
+    document.querySelectorAll('.grp-tbl-row').forEach(r => {
+      r.style.boxShadow  = (r.dataset.id === _groupFilter) ? 'inset 3px 0 0 #2e7d32' : '';
+      r.style.background = (r.dataset.id === _groupFilter) ? '#f0fdf4' : '';
+    });
+    applyUaFilter();
+  }
+
+  // ── Category cards: click to filter both the group table and the job cards ──
+  function filterByCategory(cat) {
+    _categoryFilter = (_categoryFilter === cat) ? null : cat;
+    document.querySelectorAll('[id^="catCard-"]').forEach(card => {
+      const active = card.id === 'catCard-' + _categoryFilter;
+      card.style.boxShadow = active ? '0 0 0 3px #2e7d32' : '';
+      card.style.transform  = active ? 'scale(1.03)' : '';
+    });
+    const badge = document.getElementById('catFilterBadge');
+    if (badge) {
+      badge.innerHTML = _categoryFilter
+        ? `<span style="background:#fff;border:1px solid #ccc;border-radius:6px;padding:.1rem .5rem;font-size:.75rem;display:inline-flex;align-items:center;gap:.3rem;vertical-align:middle">
+             ${_categoryFilter}
+             <span onclick="filterByCategory('${_categoryFilter.replace(/'/g,"\\'")}')" style="cursor:pointer;color:#c62828;font-weight:700">×</span>
+           </span>`
+        : '';
+    }
+    filterGrpTable(document.getElementById('grpTblSearch')?.value || '');
     applyUaFilter();
   }
 
