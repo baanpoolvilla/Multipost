@@ -18,6 +18,19 @@ exports.createStaffAccount = async (req, res) => {
 };
 
 exports.deleteStaffAccount = async (req, res) => {
+    // There is no role system yet (every logged-in account has equal
+    // access) — this guard at least prevents the whole team from ever being
+    // wiped out down to zero accounts, which would silently re-open the
+    // public bootstrap ("create the first account") flow on /login.
+    let count;
+    try {
+        count = await staffStore.count();
+    } catch {
+        return res.status(500).json({ error: 'ระบบขัดข้องชั่วคราว (เชื่อมต่อฐานข้อมูลไม่ได้) กรุณาลองใหม่อีกครั้ง' });
+    }
+    if (count <= 1) {
+        return res.status(400).json({ error: 'ไม่สามารถลบผู้ใช้งานคนสุดท้ายได้ ระบบต้องมีอย่างน้อย 1 บัญชีเสมอ' });
+    }
     const staff = await staffStore.remove(req.params.id);
     res.json({ ok: !!staff });
 };

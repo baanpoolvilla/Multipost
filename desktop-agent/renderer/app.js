@@ -440,21 +440,51 @@ function updateStaffLabel(staff) {
 
 async function openStaffModal() {
     const el = document.getElementById('staffModalList');
+    el.textContent = '';
     el.innerHTML = '<div style="padding:.75rem;font-size:.8rem;color:var(--text2)">กำลังโหลด...</div>';
     document.getElementById('staffModal').style.display = 'flex';
     const staffList = await agent.listStaff().catch(() => []);
+    el.textContent = '';
+
     if (!staffList.length) {
-        el.innerHTML = '<div style="padding:.75rem;font-size:.8rem;color:var(--text2)">ยังไม่มีรายชื่อผู้ใช้งาน — เพิ่มได้ที่หน้าเว็บ (จัดการผู้ใช้งาน)</div>';
+        // Selecting a name is normally mandatory (no skip/background-dismiss —
+        // see index.html), but there is nothing to pick when the list is
+        // empty (no staff created yet, or a transient DB hiccup) — without an
+        // escape hatch here the whole Agent window would be stuck forever.
+        const msg = document.createElement('div');
+        msg.style.cssText = 'padding:.75rem;font-size:.8rem;color:var(--text2)';
+        msg.textContent = 'ยังไม่มีรายชื่อผู้ใช้งาน (เพิ่มได้ที่หน้าเว็บ "จัดการผู้ใช้งาน") หรือเชื่อมต่อฐานข้อมูลไม่ได้ชั่วคราว';
+        const retryBtn = document.createElement('button');
+        retryBtn.className = 'btn-link';
+        retryBtn.style.margin = '.5rem .75rem';
+        retryBtn.textContent = 'ลองใหม่';
+        retryBtn.addEventListener('click', openStaffModal);
+        el.append(msg, retryBtn);
         return;
     }
-    el.innerHTML = staffList.map(s => `
-      <div class="pick-item" onclick="selectStaffMember('${s.id}', '${(s.displayName||'').replace(/'/g,"\\'")}')">
-        <label>${s.displayName}</label>
-      </div>`).join('');
+
+    // Built via DOM APIs (not innerHTML/onclick string interpolation) so a
+    // staff displayName can never be parsed as HTML or break out of a JS
+    // string literal — it is always treated as plain text.
+    staffList.forEach(s => {
+        const row = document.createElement('div');
+        row.className = 'pick-item';
+        const label = document.createElement('label');
+        label.textContent = s.displayName;
+        row.appendChild(label);
+        row.addEventListener('click', () => selectStaffMember(s.id, s.displayName));
+        el.appendChild(row);
+    });
 }
 
 async function selectStaffMember(id, displayName) {
-    await agent.setCurrentStaff(id, displayName);
+    const result = await agent.setCurrentStaff(id, displayName);
+    if (!result?.ok) {
+        // Stale id (deleted on the web side between listing and this click) —
+        // refresh the list instead of silently keeping the old selection.
+        openStaffModal();
+        return;
+    }
     updateStaffLabel({ id, displayName });
     document.getElementById('staffModal').style.display = 'none';
 }

@@ -8,6 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/auth-guard.js"></script>
 </head>
 <body>
 
@@ -194,7 +195,7 @@
     <% jobs.forEach(job => { %>
     <%
       const allOk   = job.successCount > 0 && job.failCount === 0;
-      const allFail = job.successCount === 0;
+      const allFail = job.successCount === 0 && job.failCount > 0;
       const jmsg    = (job.message || '');
       const jdisplay = jmsg.includes('|||') ? (jmsg.slice(0, jmsg.indexOf('|||')).trim() || jmsg.slice(jmsg.indexOf('|||')+3).trim()) : jmsg;
     %>

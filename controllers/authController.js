@@ -9,14 +9,29 @@ const COOKIE_OPTIONS = {
     secure: process.env.NODE_ENV === 'production',
 };
 
+// A DB error must never be treated as "collection is empty" — that would
+// silently reopen anonymous bootstrap registration on the public /login
+// page during a transient outage. Returns null (caller should show a DB
+// error) instead of falling back to isBootstrap: true.
+async function getIsBootstrap() {
+    try { return (await staffStore.count()) === 0; }
+    catch { return null; }
+}
+
 exports.showLogin = async (req, res) => {
-    const isBootstrap = (await staffStore.count()) === 0;
+    const isBootstrap = await getIsBootstrap();
+    if (isBootstrap === null) {
+        return res.render('login', { isBootstrap: false, error: 'ระบบขัดข้องชั่วคราว (เชื่อมต่อฐานข้อมูลไม่ได้) กรุณาลองใหม่อีกครั้ง' });
+    }
     res.render('login', { isBootstrap, error: null });
 };
 
 exports.login = async (req, res) => {
     const { username, password, displayName } = req.body;
-    const isBootstrap = (await staffStore.count()) === 0;
+    const isBootstrap = await getIsBootstrap();
+    if (isBootstrap === null) {
+        return res.render('login', { isBootstrap: false, error: 'ระบบขัดข้องชั่วคราว (เชื่อมต่อฐานข้อมูลไม่ได้) กรุณาลองใหม่อีกครั้ง' });
+    }
 
     if (!username?.trim() || !password) {
         return res.render('login', { isBootstrap, error: 'กรุณากรอกข้อมูลให้ครบ' });

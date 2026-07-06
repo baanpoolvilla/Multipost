@@ -8,6 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/auth-guard.js"></script>
 </head>
 <body>
 
@@ -81,7 +82,7 @@
           <div style="font-size:.78rem;color:var(--text3)">@<%= s.username %></div>
         </div>
         <a href="/user-activity/<%= s._id %>" style="font-size:.78rem;color:#1877f2;text-decoration:none;font-weight:600;margin-right:.5rem"><i class="fa-solid fa-chart-bar"></i> ดูกิจกรรม</a>
-        <button onclick="deleteStaff('<%= s._id %>','<%= s.displayName %>')" style="background:none;border:none;color:#c62828;cursor:pointer;font-size:.9rem" title="ลบผู้ใช้งาน">
+        <button class="btn-delete-staff" data-id="<%= s._id %>" data-name="<%= s.displayName %>" style="background:none;border:none;color:#c62828;cursor:pointer;font-size:.9rem" title="ลบผู้ใช้งาน">
           <i class="fa-solid fa-trash"></i>
         </button>
       </div>
@@ -149,9 +150,20 @@
       showCancelButton: true, confirmButtonText: 'ลบ', cancelButtonText: 'ยกเลิก', confirmButtonColor: '#c62828',
     });
     if (!isConfirmed) return;
-    await fetch(`/api/staff/${id}`, { method: 'DELETE' });
+    const r = await fetch(`/api/staff/${id}`, { method: 'DELETE' });
+    const d = await r.json().catch(() => ({}));
+    if (!d.ok) {
+      Swal.fire({ icon: 'error', title: 'ลบไม่สำเร็จ', text: d.error || 'เกิดข้อผิดพลาด', confirmButtonColor: '#1877f2' });
+      return;
+    }
     location.reload();
   }
+
+  // Bound via data-id/data-name (not inline onclick built from a string) so a
+  // displayName containing a quote can never break out of an inline handler.
+  document.querySelectorAll('.btn-delete-staff').forEach(btn => {
+    btn.addEventListener('click', () => deleteStaff(btn.dataset.id, btn.dataset.name));
+  });
 </script>
 </body>
 </html>

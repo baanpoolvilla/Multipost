@@ -70,7 +70,18 @@ app.whenReady().then(async () => {
     await jobStore.connect().catch(() => {});
 
     _currentStaff = getSelectedStaff(userDataDir);
-    if (_currentStaff) jobStore.setStaffId(_currentStaff.id);
+    if (_currentStaff) {
+        // Best-effort re-check: if this staff was deleted on the web side
+        // while the Agent was closed, don't keep silently stamping a
+        // nonexistent staffId on every job. If the DB isn't reachable right
+        // now, keep the cached selection rather than forcing the picker.
+        const staffList = await jobStore.listStaff().catch(() => null);
+        if (staffList && !staffList.some(s => s.id === _currentStaff.id)) {
+            _currentStaff = null;
+        } else {
+            jobStore.setStaffId(_currentStaff.id);
+        }
+    }
 
     // Part 9: catch up on expiry as soon as the Agent has a DB connection —
     // before the queue is ever shown or polled, regardless of whether
@@ -109,10 +120,18 @@ ipcMain.handle('get-status', () => ({
 // ── IPC: Staff ("who is using this install") ───────────────────
 ipcMain.handle('staff:list',        ()             => jobStore.listStaff());
 ipcMain.handle('staff:get-current', ()             => _currentStaff);
-ipcMain.handle('staff:set-current', (_, id, name)  => {
-    _currentStaff = { id, displayName: name };
+ipcMain.handle('staff:set-current', async (_, id, name) => {
+    // Re-check against the DB rather than trusting the renderer's id blindly —
+    // it may have gone stale (deleted on the web side) between listing and
+    // the click, or the message could be spoofed by anything running in the
+    // renderer's JS context.
+    const staffList = await jobStore.listStaff();
+    const match = staffList.find(s => s.id === id);
+    if (!match) return { ok: false, error: 'ไม่พบผู้ใช้งานนี้ในระบบ กรุณาเลือกใหม่' };
+
+    _currentStaff = { id: match.id, displayName: match.displayName };
     saveSelectedStaff(_userDataDir, _currentStaff);
-    jobStore.setStaffId(id);
+    jobStore.setStaffId(match.id);
     return { ok: true };
 });
 

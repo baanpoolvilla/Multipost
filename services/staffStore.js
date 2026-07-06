@@ -17,9 +17,14 @@ async function list() {
     catch { return []; }
 }
 
+// Does NOT swallow errors to 0 like the other methods here — callers use
+// this specifically to decide "is it safe to open bootstrap/anonymous
+// account creation?", and a DB hiccup must never look the same as a
+// genuinely empty collection (that would silently reopen public
+// registration on /login). Callers must catch and handle failure explicitly.
 async function count() {
-    try { await connect(); return Staff.countDocuments(); }
-    catch { return 0; }
+    await connect();
+    return Staff.countDocuments();
 }
 
 async function findByUsername(username) {
