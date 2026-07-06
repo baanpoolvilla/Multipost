@@ -84,7 +84,11 @@ exports.changeStaffRole = async (req, res) => {
 
 // ── "ใครทำอะไร" overview ────────────────────────────────────────
 function emptyBucket(id, displayName, username) {
-    return { id, displayName, username, pagePostCount: 0, groupJobCount: 0, successCount: 0, failCount: 0, lastActivityAt: null };
+    return {
+        id, displayName, username,
+        pagePostCount: 0, groupJobCount: 0, successCount: 0, failCount: 0, lastActivityAt: null,
+        pageSet: new Set(), groupSet: new Set(),
+    };
 }
 
 function touchBucket(bucket, at) {
@@ -109,6 +113,7 @@ exports.showUserActivity = async (req, res) => {
         b.pagePostCount++;
         b.successCount += p.successCount || 0;
         b.failCount    += p.failCount || 0;
+        (p.results || []).forEach(r => { const key = r.pageId || r.pageName; if (key) b.pageSet.add(key); });
         touchBucket(b, p.createdAt);
     });
 
@@ -117,10 +122,12 @@ exports.showUserActivity = async (req, res) => {
         b.groupJobCount++;
         b.successCount += (j.results || []).filter(r => r.status === 'success').length;
         b.failCount    += (j.results || []).filter(r => r.status === 'failed').length;
+        (j.results || []).forEach(r => { const key = r.groupId || r.groupName; if (key) b.groupSet.add(key); });
         touchBucket(b, j.createdAt);
     });
 
     const staffSummaries = [...buckets.values()]
+        .map(b => ({ ...b, pageCount: b.pageSet.size, groupCount: b.groupSet.size }))
         .filter(b => b.id !== 'unassigned' || (b.pagePostCount + b.groupJobCount) > 0)
         .sort((a, b) => (b.pagePostCount + b.groupJobCount) - (a.pagePostCount + a.groupJobCount));
 

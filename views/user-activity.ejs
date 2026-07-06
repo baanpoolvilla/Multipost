@@ -68,9 +68,24 @@
   <main class="feed">
 
     <div class="card" style="padding:.8rem 1.25rem">
-      <div class="card-title" style="font-size:1.05rem">
-        <i class="fa-solid fa-user-clock"></i> กิจกรรมพนักงาน
-        <span style="background:#e4e6ea;padding:.12rem .5rem;border-radius:999px;font-size:.78rem;font-weight:400;margin-left:.35rem">ผู้ใช้งานทั้งหมด <%= staffSummaries.length %> คน</span>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem">
+        <div class="card-title" style="margin-bottom:0;font-size:1.05rem">
+          <i class="fa-solid fa-user-clock"></i> กิจกรรมพนักงาน
+          <span style="background:#e4e6ea;padding:.12rem .5rem;border-radius:999px;font-size:.78rem;font-weight:400;margin-left:.35rem">ผู้ใช้งานทั้งหมด <%= staffSummaries.length %> คน</span>
+        </div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <div style="position:relative">
+            <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:.6rem;top:50%;transform:translateY(-50%);color:#8a8d91;font-size:.8rem;pointer-events:none"></i>
+            <input id="uaNameSearch" type="text" placeholder="ค้นหาชื่อพนักงาน..." oninput="applyUaNameFilter()"
+              style="padding:.35rem .7rem .35rem 1.9rem;border:1px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;width:180px;outline:none;color:#333">
+          </div>
+          <select id="uaSort" onchange="applyUaSort()"
+            style="padding:.35rem .6rem;border:1px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;color:#333;outline:none;cursor:pointer">
+            <option value="recent">เรียงตาม: กิจกรรมล่าสุด</option>
+            <option value="total">เรียงตาม: งานทั้งหมดมากสุด</option>
+            <option value="name">เรียงตาม: ชื่อ (ก-ฮ)</option>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -81,10 +96,17 @@
       <p>เมื่อพนักงานเริ่มโพสต์หรือแชร์ ข้อมูลจะแสดงที่นี่</p>
     </div>
     <% } else { %>
-    <div class="staff-grid">
+    <div id="uaEmptyFiltered" class="card empty-state" style="display:none">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <h3>ไม่พบพนักงานที่ค้นหา</h3>
+    </div>
+    <div class="staff-grid" id="uaGrid">
       <% staffSummaries.forEach((s, i) => { %>
       <% const colors = ['blue','green','orange','purple','red']; const isUnassigned = s.id === 'unassigned'; %>
-      <a href="/user-activity/<%= s.id %>" class="staff-card">
+      <a href="/user-activity/<%= s.id %>" class="staff-card"
+         data-name="<%= s.displayName.toLowerCase() %>"
+         data-total="<%= s.pagePostCount + s.groupJobCount %>"
+         data-last-at="<%= s.lastActivityAt ? new Date(s.lastActivityAt).getTime() : 0 %>">
         <div class="staff-card-head">
           <div class="avatar avatar-<%= isUnassigned ? 'red' : colors[i%5] %>">
             <% if (isUnassigned) { %><i class="fa-solid fa-question"></i><% } else { %><%= s.displayName.charAt(0).toUpperCase() %><% } %>
@@ -98,8 +120,8 @@
         </div>
         <div class="staff-card-divider"></div>
         <div class="staff-stat-row">
-          <span class="staff-stat fb"><i class="fa-brands fa-facebook"></i> <%= s.pagePostCount %> โพสต์เพจ</span>
-          <span class="staff-stat grp"><i class="fa-solid fa-users"></i> <%= s.groupJobCount %> แชร์กลุ่ม</span>
+          <span class="staff-stat fb"><i class="fa-brands fa-facebook"></i> <%= s.pagePostCount %> โพสต์เพจ<% if (s.pageCount > 0) { %> (<%= s.pageCount %> เพจ)<% } %></span>
+          <span class="staff-stat grp"><i class="fa-solid fa-users"></i> <%= s.groupJobCount %> แชร์กลุ่ม<% if (s.groupCount > 0) { %> (<%= s.groupCount %> กลุ่ม)<% } %></span>
         </div>
         <div class="staff-stat-row" style="margin-top:.5rem">
           <span class="staff-stat ok"><i class="fa-solid fa-circle-check"></i> <%= s.successCount %> สำเร็จ</span>
@@ -109,6 +131,34 @@
       <% }); %>
     </div>
     <% } %>
+
+    <script>
+      function applyUaNameFilter() {
+        const q = document.getElementById('uaNameSearch').value.toLowerCase().trim();
+        const cards = [...document.querySelectorAll('#uaGrid .staff-card')];
+        let visible = 0;
+        cards.forEach(c => {
+          const match = c.dataset.name.includes(q);
+          c.style.display = match ? '' : 'none';
+          if (match) visible++;
+        });
+        const empty = document.getElementById('uaEmptyFiltered');
+        if (empty) empty.style.display = visible === 0 ? '' : 'none';
+      }
+
+      function applyUaSort() {
+        const grid = document.getElementById('uaGrid');
+        if (!grid) return;
+        const sortBy = document.getElementById('uaSort').value;
+        const cards = [...grid.querySelectorAll('.staff-card')];
+        cards.sort((a, b) => {
+          if (sortBy === 'name') return a.dataset.name.localeCompare(b.dataset.name, 'th');
+          if (sortBy === 'total') return parseInt(b.dataset.total) - parseInt(a.dataset.total);
+          return parseInt(b.dataset.lastAt) - parseInt(a.dataset.lastAt);
+        });
+        cards.forEach(c => grid.appendChild(c));
+      }
+    </script>
 
   </main>
 
