@@ -466,7 +466,10 @@
         denyButtonColor: '#c62828',
       });
       if (isConfirmed) {
-        location.href = '/schedule-center?status=expired';
+        // Send to whichever queue actually has the expired items (post
+        // queue takes priority when both do), pre-filtered to "หมดเวลา"
+        // instead of the KPI-style /schedule-center overview.
+        location.href = expiredPosts.length > 0 ? '/post-queue?status=expired' : '/job-queue?status=expired';
       } else if (isDenied) {
         await Promise.all([
           ...expiredPosts.map(p => fetch(`/history/${p.id}`, { method: 'DELETE' }).catch(() => {})),

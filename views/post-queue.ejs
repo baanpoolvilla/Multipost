@@ -130,7 +130,7 @@
            const pageNames = (p.selectedPageIds||[]).map(id => pageNameMap[id]||id).join(', ') || 'ทุกเพจ';
       %>
       <div style="display:flex;align-items:flex-start;gap:.7rem;padding:.65rem .5rem;border-bottom:1px solid var(--border-color)"
-           id="post_<%= p.id %>" class="post-row" data-idx="<%= idx %>" data-scheduled="<%= p.status==='pending' ? '1' : '0' %>">
+           id="post_<%= p.id %>" class="post-row" data-idx="<%= idx %>" data-scheduled="<%= p.status==='pending' ? '1' : '0' %>" data-status="<%= p.status %>">
         <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;min-width:2rem">
           <span style="font-size:1.1rem;line-height:1.2"><%= icons[p.status]||'❓' %></span>
           <span style="font-size:.62rem;font-weight:600;color:#888;white-space:nowrap"><%= statusTH[p.status]||p.status %></span>
@@ -211,6 +211,17 @@ let _pqVisible = 20;
 document.querySelectorAll('.post-row').forEach(r => {
   if (parseInt(r.dataset.idx) >= _pqVisible) r.style.display = 'none';
 });
+
+// Deep-link support, e.g. /post-queue?status=expired from the "หมดเวลา"
+// reminder modal on the compose page — shows only the items that need
+// attention instead of the full unfiltered queue.
+if (new URLSearchParams(location.search).get('status') === 'expired') {
+  document.querySelectorAll('.post-row').forEach(r => {
+    r.style.display = r.dataset.status === 'expired' ? 'flex' : 'none';
+  });
+  const moreRow = document.getElementById('showMoreRow');
+  if (moreRow) moreRow.style.display = 'none';
+}
 
 function showMorePosts() {
   _pqVisible += 20;

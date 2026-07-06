@@ -253,7 +253,7 @@
            if (dispMsg.length>70) dispMsg = dispMsg.slice(0,70)+'…';
       %>
       <div style="display:flex;align-items:flex-start;gap:.7rem;padding:.65rem .5rem;border-bottom:1px solid var(--border-color)"
-           id="job_<%= j._id %>" class="job-row" data-idx="<%= idx %>" data-scheduled="<%= (j.status==='pending' && j.scheduledAt) ? '1' : '0' %>">
+           id="job_<%= j._id %>" class="job-row" data-idx="<%= idx %>" data-scheduled="<%= (j.status==='pending' && j.scheduledAt) ? '1' : '0' %>" data-status="<%= j.status %>">
         <span style="font-size:1.2rem;flex-shrink:0;margin-top:.1rem"><%= icons[j.status]||'❓' %></span>
         <div style="flex:1;min-width:0">
           <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
@@ -388,6 +388,17 @@ let _visibleJobs = 20;
 document.querySelectorAll('.job-row').forEach(r => {
   if (parseInt(r.dataset.idx) >= _visibleJobs) r.style.display = 'none';
 });
+
+// Deep-link support, e.g. /job-queue?status=expired from the "หมดเวลา"
+// reminder modal on the compose page — shows only the items that need
+// attention instead of the full unfiltered queue.
+if (new URLSearchParams(location.search).get('status') === 'expired') {
+  document.querySelectorAll('.job-row').forEach(r => {
+    r.style.display = r.dataset.status === 'expired' ? 'flex' : 'none';
+  });
+  const moreRow = document.getElementById('showMoreRow');
+  if (moreRow) moreRow.style.display = 'none';
+}
 
 function showMoreJobs() {
   _visibleJobs += 20;
