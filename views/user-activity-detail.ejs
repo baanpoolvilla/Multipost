@@ -124,7 +124,7 @@
     </div>
 
     <!-- ── PAGE POSTS TAB ── -->
-    <div id="tabPage">
+    <div id="tabPage" style="display:flex;flex-direction:column;gap:1rem">
 
     <!-- Per-page breakdown (same table style as /page-summary) -->
     <% if (pageStats.length > 0) { %>
@@ -273,7 +273,7 @@
     </div>
 
     <!-- ── GROUP SHARES TAB ── -->
-    <div id="tabGrp" style="display:none">
+    <div id="tabGrp" style="display:none;flex-direction:column;gap:1rem">
 
     <!-- Category cards (same clickable-filter pattern as /group-summary's privacy cards) -->
     <% if (categoryStats.length > 0) { %>
@@ -441,8 +441,8 @@
 
   function switchTab(t) {
     _curTab = t;
-    document.getElementById('tabPage').style.display = t === 'page' ? '' : 'none';
-    document.getElementById('tabGrp').style.display  = t === 'grp'  ? '' : 'none';
+    document.getElementById('tabPage').style.display = t === 'page' ? 'flex' : 'none';
+    document.getElementById('tabGrp').style.display  = t === 'grp'  ? 'flex' : 'none';
     const bp = document.getElementById('tabBtnPage');
     const bg = document.getElementById('tabBtnGrp');
     bp.style.borderBottomColor = t==='page' ? '#1877f2' : 'transparent';
