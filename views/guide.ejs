@@ -8,6 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
   <script src="/js/auth-guard.js"></script>
+  <script src="/js/navbar-user.js"></script>
 </head>
 <body>
 
@@ -19,10 +20,16 @@
     </div>
     <div class="navbar-right">
       <% if (locals.currentStaff) { %>
-      <span style="font-size:.82rem;color:#65676b;margin-right:.6rem"><i class="fa-solid fa-user-circle"></i> <%= currentStaff.name %></span>
-      <form method="POST" action="/logout" style="display:inline">
-        <button type="submit" class="btn-back" style="border:none;cursor:pointer;background:none"><i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ</button>
-      </form>
+      <div class="navbar-user">
+        <div class="avatar avatar-blue avatar-xs"><%= currentStaff.name.charAt(0).toUpperCase() %></div>
+        <span class="navbar-user-name"><%= currentStaff.name %></span>
+        <i class="fa-solid fa-chevron-down navbar-user-caret"></i>
+        <div class="navbar-user-menu">
+          <form method="POST" action="/logout">
+            <button type="submit" class="navbar-user-menu-item"><i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ</button>
+          </form>
+        </div>
+      </div>
       <% } %>
     </div>
 

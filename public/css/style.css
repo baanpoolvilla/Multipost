@@ -22,6 +22,26 @@ body {
 .btn-back { background: #e4e6ea; color: #1c1e21; border: none; padding: .4rem .9rem; border-radius: 8px; font-size: .88rem; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: .4rem; transition: background .15s; }
 .btn-back:hover { background: #d8dadf; }
 
+/* ── Navbar user menu ── */
+.navbar-user { position: relative; display: flex; align-items: center; gap: .5rem; padding: .3rem .7rem .3rem .35rem; border-radius: 999px; cursor: pointer; user-select: none; transition: background .15s; }
+.navbar-user:hover, .navbar-user.open { background: #f0f2f5; }
+.navbar-user-name { font-size: .86rem; font-weight: 600; color: #1c1e21; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.navbar-user-caret { font-size: .65rem; color: #8a8d91; transition: transform .15s; }
+.navbar-user.open .navbar-user-caret { transform: rotate(180deg); }
+.navbar-user-menu {
+  position: absolute; top: calc(100% + 8px); right: 0; min-width: 190px;
+  background: #fff; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.16);
+  padding: .4rem; display: none; z-index: 300;
+}
+.navbar-user.open .navbar-user-menu { display: block; }
+.navbar-user-menu-item {
+  width: 100%; display: flex; align-items: center; gap: .55rem;
+  background: none; border: none; padding: .6rem .7rem; border-radius: 7px;
+  font-size: .85rem; font-weight: 600; color: #c62828; cursor: pointer;
+  font-family: inherit; text-align: left; transition: background .12s;
+}
+.navbar-user-menu-item:hover { background: #fdecea; }
+
 /* ── Layout ── */
 .page-wrap { margin-top: 56px; max-width: 1200px; margin-left: auto; margin-right: auto; display: grid; grid-template-columns: 240px 1fr 240px; gap: 1rem; padding: 1rem; align-items: start; }
 
