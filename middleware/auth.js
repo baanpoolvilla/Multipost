@@ -49,7 +49,8 @@ module.exports = function auth(req, res, next) {
         const payload = jwt.verify(token, JWT_SECRET);
         req.staffId   = payload.id;
         req.staffName = payload.name;
-        res.locals.currentStaff = { id: payload.id, name: payload.name };
+        req.staffRole = payload.role || 'staff';
+        res.locals.currentStaff = { id: payload.id, name: payload.name, role: payload.role || 'staff' };
         next();
     } catch {
         res.clearCookie('token');

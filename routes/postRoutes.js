@@ -83,11 +83,13 @@ router.post('/login',  authCtrl.login);
 router.post('/logout', authCtrl.logout);
 
 // Staff (ผู้ดำเนินการ) management + "ใครทำอะไร" activity reports
-router.get('/manage-staff',          staffCtrl.showManageStaff);
-router.post('/api/staff',            staffCtrl.createStaffAccount);
-router.delete('/api/staff/:id',      staffCtrl.deleteStaffAccount);
-router.get('/user-activity',         staffCtrl.showUserActivity);
-router.get('/user-activity/:staffId', staffCtrl.showUserActivityDetail);
+router.get('/manage-staff',                staffCtrl.requireAdmin, staffCtrl.showManageStaff);
+router.post('/api/staff',                  staffCtrl.requireAdmin, staffCtrl.createStaffAccount);
+router.delete('/api/staff/:id',            staffCtrl.requireAdmin, staffCtrl.deleteStaffAccount);
+router.patch('/api/staff/:id/password',    staffCtrl.requireAdmin, staffCtrl.changeStaffPassword);
+router.patch('/api/staff/:id/role',        staffCtrl.requireAdmin, staffCtrl.changeStaffRole);
+router.get('/user-activity',                staffCtrl.showUserActivity);
+router.get('/user-activity/:staffId',       staffCtrl.showUserActivityDetail);
 
 // Templates — accept JSON body (images already uploaded via /api/upload-images)
 router.get('/api/templates',        ctrl.getTemplates);

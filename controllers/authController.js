@@ -42,7 +42,7 @@ exports.login = async (req, res) => {
         if (!displayName?.trim()) {
             return res.render('login', { isBootstrap, error: 'กรุณากรอกชื่อที่แสดง' });
         }
-        const result = await staffStore.create({ username: username.trim(), password, displayName: displayName.trim() });
+        const result = await staffStore.create({ username: username.trim(), password, displayName: displayName.trim(), role: 'admin' });
         if (result.error) return res.render('login', { isBootstrap, error: result.error });
         staff = result.staff;
     } else {
@@ -50,7 +50,7 @@ exports.login = async (req, res) => {
         if (!staff) return res.render('login', { isBootstrap: false, error: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' });
     }
 
-    const token = jwt.sign({ id: String(staff._id), name: staff.displayName }, JWT_SECRET, { expiresIn: '30d' });
+    const token = jwt.sign({ id: String(staff._id), name: staff.displayName, role: staff.role || 'staff' }, JWT_SECRET, { expiresIn: '30d' });
     res.cookie('token', token, COOKIE_OPTIONS);
     res.redirect('/');
 };

@@ -60,7 +60,9 @@
     <div class="sidebar-divider"></div>
     <div class="sidebar-label">ระบบ</div>
     <a href="/user-activity" class="sidebar-item"><i class="fa-solid fa-user-clock"></i><span>กิจกรรมพนักงาน</span></a>
+    <% if (locals.currentStaff && currentStaff.role === 'admin') { %>
     <a href="/manage-staff" class="sidebar-item active"><i class="fa-solid fa-users-gear"></i><span>จัดการบัญชีผู้ใช้งาน</span></a>
+    <% } %>
     <%- include('partials/sidebar-pages') %>
   </aside>
 
@@ -92,8 +94,15 @@
           <div class="staff-row-name"><%= s.displayName %></div>
           <div class="staff-row-role">@<%= s.username %></div>
         </div>
+        <select class="role-select" data-id="<%= s._id %>" data-name="<%= s.displayName %>" title="สิทธิ์การใช้งาน">
+          <option value="staff" <%= s.role === 'admin' ? '' : 'selected' %>>พนักงาน</option>
+          <option value="admin" <%= s.role === 'admin' ? 'selected' : '' %>>แอดมิน</option>
+        </select>
         <div class="staff-row-actions">
           <a href="/user-activity/<%= s._id %>" class="btn-view-activity"><i class="fa-solid fa-chart-bar"></i> ดูกิจกรรม</a>
+          <button class="btn-change-password icon-btn" data-id="<%= s._id %>" data-name="<%= s.displayName %>" title="เปลี่ยนรหัสผ่าน">
+            <i class="fa-solid fa-key"></i>
+          </button>
           <button class="btn-delete-staff icon-btn danger" data-id="<%= s._id %>" data-name="<%= s.displayName %>" title="ลบบัญชีผู้ใช้งาน">
             <i class="fa-solid fa-trash"></i>
           </button>
@@ -123,9 +132,31 @@
       <label style="font-size:.78rem;color:#65676b;display:block;margin-bottom:.25rem">รหัสผ่าน</label>
       <input id="newStaffPassword" type="password" placeholder="••••••••" style="width:100%;padding:.5rem .7rem;border:1.5px solid #dbe0e6;border-radius:8px;font-family:inherit;font-size:.86rem;outline:none;box-sizing:border-box">
     </div>
+    <div style="margin-bottom:1rem">
+      <label style="font-size:.78rem;color:#65676b;display:block;margin-bottom:.25rem">สิทธิ์การใช้งาน</label>
+      <select id="newStaffRole" style="width:100%;padding:.5rem .7rem;border:1.5px solid #dbe0e6;border-radius:8px;font-family:inherit;font-size:.86rem;outline:none;box-sizing:border-box">
+        <option value="staff" selected>พนักงาน</option>
+        <option value="admin">แอดมิน</option>
+      </select>
+    </div>
     <div style="display:flex;gap:.5rem;justify-content:flex-end">
       <button onclick="closeAddStaff()" style="background:#f0f2f5;border:none;border-radius:8px;padding:.5rem 1rem;font-size:.84rem;cursor:pointer;font-family:inherit">ยกเลิก</button>
       <button onclick="submitAddStaff()" style="background:#1877f2;color:#fff;border:none;border-radius:8px;padding:.5rem 1rem;font-size:.84rem;cursor:pointer;font-family:inherit;font-weight:700">เพิ่ม</button>
+    </div>
+  </div>
+</div>
+
+<!-- Change password modal -->
+<div id="changePasswordModal" class="map-modal-overlay" style="display:none">
+  <div class="map-modal-box" style="width:380px;max-width:92vw;padding:1.25rem">
+    <div style="font-weight:700;font-size:1rem;margin-bottom:1rem"><i class="fa-solid fa-key" style="color:#1877f2"></i> เปลี่ยนรหัสผ่าน — <span id="cpStaffName"></span></div>
+    <div style="margin-bottom:1rem">
+      <label style="font-size:.78rem;color:#65676b;display:block;margin-bottom:.25rem">รหัสผ่านใหม่</label>
+      <input id="cpNewPassword" type="password" placeholder="••••••••" style="width:100%;padding:.5rem .7rem;border:1.5px solid #dbe0e6;border-radius:8px;font-family:inherit;font-size:.86rem;outline:none;box-sizing:border-box">
+    </div>
+    <div style="display:flex;gap:.5rem;justify-content:flex-end">
+      <button onclick="closeChangePassword()" style="background:#f0f2f5;border:none;border-radius:8px;padding:.5rem 1rem;font-size:.84rem;cursor:pointer;font-family:inherit">ยกเลิก</button>
+      <button onclick="submitChangePassword()" style="background:#1877f2;color:#fff;border:none;border-radius:8px;padding:.5rem 1rem;font-size:.84rem;cursor:pointer;font-family:inherit;font-weight:700">บันทึก</button>
     </div>
   </div>
 </div>
@@ -138,6 +169,7 @@
     const displayName = document.getElementById('newStaffDisplayName').value.trim();
     const username    = document.getElementById('newStaffUsername').value.trim();
     const password    = document.getElementById('newStaffPassword').value;
+    const role        = document.getElementById('newStaffRole').value;
     if (!displayName || !username || !password) {
       Swal.fire({ icon:'warning', title:'กรุณากรอกข้อมูลให้ครบ', confirmButtonColor:'#1877f2' });
       return;
@@ -146,13 +178,59 @@
       const r = await fetch('/api/staff', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ displayName, username, password }),
+        body: JSON.stringify({ displayName, username, password, role }),
       });
       const d = await r.json();
       if (!d.ok) throw new Error(d.error || 'เกิดข้อผิดพลาด');
       location.reload();
     } catch (e) {
       Swal.fire({ icon:'error', title:'เพิ่มไม่สำเร็จ', text: e.message, confirmButtonColor:'#1877f2' });
+    }
+  }
+
+  let _cpStaffId = null;
+  function openChangePassword(id, name) {
+    _cpStaffId = id;
+    document.getElementById('cpStaffName').textContent = name;
+    document.getElementById('cpNewPassword').value = '';
+    document.getElementById('changePasswordModal').style.display = 'flex';
+  }
+  function closeChangePassword() { document.getElementById('changePasswordModal').style.display = 'none'; }
+
+  async function submitChangePassword() {
+    const password = document.getElementById('cpNewPassword').value;
+    if (!password) {
+      Swal.fire({ icon:'warning', title:'กรุณากรอกรหัสผ่านใหม่', confirmButtonColor:'#1877f2' });
+      return;
+    }
+    try {
+      const r = await fetch(`/api/staff/${_cpStaffId}/password`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.error || 'เกิดข้อผิดพลาด');
+      closeChangePassword();
+      Swal.fire({ icon:'success', title:'เปลี่ยนรหัสผ่านสำเร็จ', confirmButtonColor:'#1877f2' });
+    } catch (e) {
+      Swal.fire({ icon:'error', title:'เปลี่ยนรหัสผ่านไม่สำเร็จ', text: e.message, confirmButtonColor:'#1877f2' });
+    }
+  }
+
+  async function changeRole(id, name, role, selectEl) {
+    const prevValue = role === 'admin' ? 'staff' : 'admin';
+    try {
+      const r = await fetch(`/api/staff/${id}/role`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role }),
+      });
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.error || 'เกิดข้อผิดพลาด');
+    } catch (e) {
+      selectEl.value = prevValue;
+      Swal.fire({ icon:'error', title:'เปลี่ยนสิทธิ์ไม่สำเร็จ', text: e.message, confirmButtonColor:'#1877f2' });
     }
   }
 
@@ -176,6 +254,12 @@
   // displayName containing a quote can never break out of an inline handler.
   document.querySelectorAll('.btn-delete-staff').forEach(btn => {
     btn.addEventListener('click', () => deleteStaff(btn.dataset.id, btn.dataset.name));
+  });
+  document.querySelectorAll('.btn-change-password').forEach(btn => {
+    btn.addEventListener('click', () => openChangePassword(btn.dataset.id, btn.dataset.name));
+  });
+  document.querySelectorAll('.role-select').forEach(sel => {
+    sel.addEventListener('change', () => changeRole(sel.dataset.id, sel.dataset.name, sel.value, sel));
   });
 </script>
 </body>

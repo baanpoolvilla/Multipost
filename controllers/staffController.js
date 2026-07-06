@@ -4,25 +4,40 @@ const groupJobStore = require('../services/groupJobStore');
 const groupStore    = require('../services/groupStore');
 
 // ── Manage staff accounts ──────────────────────────────────────
+
+// Gated by a live DB lookup (not the JWT's cached role claim) so a role
+// change takes effect on the demoted/promoted account's very next request,
+// not only after they log out and back in.
+//
+// Bootstrap escape hatch: accounts created before this role system existed
+// have no admin at all, which would permanently lock everyone out of
+// /manage-staff (nobody could ever promote the first admin). While zero
+// admins exist system-wide, let any logged-in user through — mirrors the
+// /login "first account" bootstrap flow in controllers/authController.js.
+exports.requireAdmin = async (req, res, next) => {
+    const admins = await staffStore.countAdmins().catch(() => null);
+    if (admins === 0) return next();
+    const staff = await staffStore.findById(req.staffId).catch(() => null);
+    if (staff?.role === 'admin') return next();
+    if (req.path.startsWith('/api/')) return res.status(403).json({ error: 'หน้านี้สำหรับแอดมินเท่านั้น' });
+    return res.status(403).send('หน้านี้สำหรับแอดมินเท่านั้น');
+};
+
 exports.showManageStaff = async (req, res) => {
     const staffList = await staffStore.list();
     res.render('manage-staff', { staffList });
 };
 
 exports.createStaffAccount = async (req, res) => {
-    const { username, password, displayName } = req.body;
+    const { username, password, displayName, role } = req.body;
     if (!username?.trim() || !password || !displayName?.trim())
         return res.status(400).json({ error: 'กรุณากรอกข้อมูลให้ครบ' });
-    const result = await staffStore.create({ username: username.trim(), password, displayName: displayName.trim() });
+    const result = await staffStore.create({ username: username.trim(), password, displayName: displayName.trim(), role });
     if (result.error) return res.status(400).json({ error: result.error });
     res.json({ ok: true, staff: result.staff });
 };
 
 exports.deleteStaffAccount = async (req, res) => {
-    // There is no role system yet (every logged-in account has equal
-    // access) — this guard at least prevents the whole team from ever being
-    // wiped out down to zero accounts, which would silently re-open the
-    // public bootstrap ("create the first account") flow on /login.
     let count;
     try {
         count = await staffStore.count();
@@ -32,8 +47,39 @@ exports.deleteStaffAccount = async (req, res) => {
     if (count <= 1) {
         return res.status(400).json({ error: 'ไม่สามารถลบผู้ใช้งานคนสุดท้ายได้ ระบบต้องมีอย่างน้อย 1 บัญชีเสมอ' });
     }
+
+    const target = await staffStore.findById(req.params.id);
+    if (target?.role === 'admin') {
+        const admins = await staffStore.countAdmins();
+        if (admins <= 1) return res.status(400).json({ error: 'ไม่สามารถลบแอดมินคนสุดท้ายได้ ระบบต้องมีแอดมินอย่างน้อย 1 คนเสมอ' });
+    }
+
     const staff = await staffStore.remove(req.params.id);
     res.json({ ok: !!staff });
+};
+
+exports.changeStaffPassword = async (req, res) => {
+    const { password } = req.body;
+    if (!password) return res.status(400).json({ error: 'กรุณากรอกรหัสผ่านใหม่' });
+    const result = await staffStore.setPassword(req.params.id, password);
+    if (result.error) return res.status(400).json({ error: result.error });
+    res.json({ ok: true });
+};
+
+exports.changeStaffRole = async (req, res) => {
+    const { role } = req.body;
+    if (role !== 'admin' && role !== 'staff') return res.status(400).json({ error: 'บทบาทไม่ถูกต้อง' });
+
+    if (role === 'staff') {
+        const target = await staffStore.findById(req.params.id);
+        if (target?.role === 'admin') {
+            const admins = await staffStore.countAdmins();
+            if (admins <= 1) return res.status(400).json({ error: 'ไม่สามารถลดสิทธิ์แอดมินคนสุดท้ายได้ ระบบต้องมีแอดมินอย่างน้อย 1 คนเสมอ' });
+        }
+    }
+
+    const staff = await staffStore.setRole(req.params.id, role);
+    res.json({ ok: !!staff, staff });
 };
 
 // ── "ใครทำอะไร" overview ────────────────────────────────────────

@@ -261,6 +261,8 @@ textarea::placeholder { color: #8a8d91; }
 .staff-row-actions { display: flex; align-items: center; gap: .35rem; }
 .btn-view-activity { display: inline-flex; align-items: center; gap: .35rem; font-size: .8rem; color: #1877f2; text-decoration: none; font-weight: 600; padding: .4rem .7rem; border-radius: 8px; transition: background .15s; }
 .btn-view-activity:hover { background: #eaf2ff; }
+.role-select { padding: .35rem .6rem; border: 1.5px solid #dbe0e6; border-radius: 8px; font-size: .8rem; font-family: inherit; font-weight: 600; color: #65676b; background: #f0f2f5; cursor: pointer; outline: none; }
+.role-select option[value="admin"] { color: #856404; }
 .blue-text   { color: #1877f2; }
 .orange-text { color: #e65100; }
 .teal-text   { color: #00897b; }
