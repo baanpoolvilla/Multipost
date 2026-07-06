@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const staffStore = require('../services/staffStore');
 
 // Fail loudly instead of silently signing tokens with a secret that's public
 // in the source tree — a deployed instance without JWT_SECRET set would
@@ -39,7 +40,7 @@ function unauthorized(req, res) {
     return res.redirect('/login');
 }
 
-module.exports = function auth(req, res, next) {
+module.exports = async function auth(req, res, next) {
     if (isPublic(req.path)) return next();
 
     const token = req.cookies?.token;
@@ -50,7 +51,19 @@ module.exports = function auth(req, res, next) {
         req.staffId   = payload.id;
         req.staffName = payload.name;
         req.staffRole = payload.role || 'staff';
-        res.locals.currentStaff = { id: payload.id, name: payload.name, role: payload.role || 'staff' };
+
+        // Same bootstrap window as staffController.requireAdmin: accounts
+        // created before roles existed have nobody with role='admin' yet,
+        // which would otherwise hide the "จัดการบัญชีผู้ใช้งาน" sidebar
+        // link from everyone forever (the route itself is reachable via
+        // its bootstrap escape hatch, but with no visible link nobody would
+        // ever find it to promote the first admin).
+        let canManageStaff = req.staffRole === 'admin';
+        if (!canManageStaff) {
+            try { canManageStaff = (await staffStore.countAdmins()) === 0; } catch { canManageStaff = false; }
+        }
+
+        res.locals.currentStaff = { id: payload.id, name: payload.name, role: req.staffRole, canManageStaff };
         next();
     } catch {
         res.clearCookie('token');
