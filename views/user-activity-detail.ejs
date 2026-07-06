@@ -97,6 +97,23 @@
       <input id="uaTo" type="date" lang="en-GB" onchange="applyUaFilter()" title="ถึงวันที่"
         style="padding:.35rem .5rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;color:#333;outline:none;cursor:pointer">
       <span id="uaDateRangeErr" style="display:none;font-size:.75rem;color:#c62828;font-weight:600">⚠️ วันที่เริ่มต้องไม่เกินวันที่สิ้นสุด</span>
+      <% if (pageStats.length > 0) { %>
+      <select id="uaPageSelect" onchange="applyPageFilterValue(this.value)"
+        style="padding:.35rem .5rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;color:#333;outline:none;cursor:pointer">
+        <option value="">ทุกเพจ</option>
+        <% pageStats.forEach(p => { %><option value="<%= p.id %>"><%= p.name %></option><% }); %>
+      </select>
+      <% } %>
+      <% if (groupStats.length > 0) { %>
+      <select id="uaCatSelect" onchange="applyCategoryFilterValue(this.value)" style="display:none;padding:.35rem .5rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;color:#333;outline:none;cursor:pointer">
+        <option value="">ทุกหมวดหมู่</option>
+        <% categoryStats.forEach(c => { %><option value="<%= c.name %>"><%= c.name %></option><% }); %>
+      </select>
+      <select id="uaGroupSelect" onchange="applyGroupFilterValue(this.value)" style="display:none;padding:.35rem .5rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;color:#333;outline:none;cursor:pointer">
+        <option value="">ทุกกลุ่ม</option>
+        <% groupStats.forEach(g => { %><option value="<%= g.id %>"><%= g.name %></option><% }); %>
+      </select>
+      <% } %>
       <button onclick="clearUaFilter()" style="padding:.35rem .6rem;background:#f0f2f5;border:none;border-radius:8px;font-size:.82rem;cursor:pointer;color:#666;font-family:inherit">✕ ล้าง</button>
     </div>
 
@@ -428,6 +445,14 @@
     bg.style.borderBottomColor = t==='grp'  ? '#1877f2' : 'transparent';
     bg.style.color             = t==='grp'  ? '#1877f2' : 'var(--text3)';
     bg.style.fontWeight        = t==='grp'  ? '700' : '600';
+
+    const pageSel = document.getElementById('uaPageSelect');
+    const catSel  = document.getElementById('uaCatSelect');
+    const grpSel  = document.getElementById('uaGroupSelect');
+    if (pageSel) pageSel.style.display = t === 'page' ? '' : 'none';
+    if (catSel)  catSel.style.display  = t === 'grp'  ? '' : 'none';
+    if (grpSel)  grpSel.style.display  = t === 'grp'  ? '' : 'none';
+
     applyUaFilter();
   }
 
@@ -490,19 +515,9 @@
     const t = document.getElementById('uaTo');     if (t) { t.value = ''; t.style.borderColor = ''; }
     document.getElementById('uaDateRangeErr').style.display = 'none';
 
-    _pageFilter = null;
-    document.querySelectorAll('.page-tbl-row').forEach(r => { r.style.boxShadow = ''; r.style.background = ''; });
-    const pageBadge = document.getElementById('pageFilterBadge'); if (pageBadge) pageBadge.innerHTML = '';
-
-    _categoryFilter = null;
-    document.querySelectorAll('[id^="catCard-"]').forEach(card => { card.style.boxShadow = ''; card.style.transform = ''; });
-    const catBadge = document.getElementById('catFilterBadge'); if (catBadge) catBadge.innerHTML = '';
-
-    _groupFilter = null;
-    document.querySelectorAll('.grp-tbl-row').forEach(r => { r.style.boxShadow = ''; r.style.background = ''; });
-
-    filterGrpTable('');
-    applyUaFilter();
+    applyPageFilterValue('');
+    applyGroupFilterValue('');
+    applyCategoryFilterValue(''); // also re-runs filterGrpTable('') and applyUaFilter()
   }
 
   // ── Per-page breakdown table: search + click-a-row-to-filter ───
@@ -517,20 +532,26 @@
     if (moreBtn) moreBtn.style.display = (q || _pageTblExpanded) ? 'none' : '';
   }
 
-  function filterByPageEl(rowEl) { filterByPage(rowEl.dataset.id); }
+  function filterByPageEl(rowEl) { applyPageFilterValue(_pageFilter === rowEl.dataset.id ? '' : rowEl.dataset.id); }
 
-  function filterByPage(name) {
-    _pageFilter = (_pageFilter === name) ? null : name;
+  // Single source of truth for the page filter — called by the dropdown's
+  // onchange, by clicking a table row, and by the badge's "×" button, so all
+  // three stay in sync no matter which one triggered the change.
+  function applyPageFilterValue(val) {
+    _pageFilter = val || null;
+    const sel = document.getElementById('uaPageSelect');
+    if (sel) sel.value = _pageFilter || '';
     document.querySelectorAll('.page-tbl-row').forEach(r => {
-      r.style.boxShadow = (r.dataset.id === _pageFilter) ? 'inset 3px 0 0 #1877f2' : '';
+      r.style.boxShadow  = (r.dataset.id === _pageFilter) ? 'inset 3px 0 0 #1877f2' : '';
       r.style.background = (r.dataset.id === _pageFilter) ? '#f0f7ff' : '';
     });
     const badge = document.getElementById('pageFilterBadge');
     if (badge) {
+      const name = _pageFilter ? (document.querySelector(`.page-tbl-row[data-id="${_pageFilter}"] span`)?.textContent || _pageFilter) : '';
       badge.innerHTML = _pageFilter
         ? `<span style="background:#e7f0fd;color:#1877f2;border-radius:999px;padding:.2rem .65rem;font-size:.78rem;font-weight:600;display:inline-flex;align-items:center;gap:.4rem">
-             กรองเฉพาะเพจ "${_pageFilter}"
-             <span onclick="filterByPage('${_pageFilter.replace(/'/g,"\\'")}')" style="cursor:pointer;font-weight:800">×</span>
+             กรองเฉพาะเพจ "${name}"
+             <span onclick="applyPageFilterValue('')" style="cursor:pointer;font-weight:800">×</span>
            </span>`
         : '';
     }
@@ -553,10 +574,12 @@
   let _grpTblExpanded = false;
   function grpTableExpand() { _grpTblExpanded = true; filterGrpTable(document.getElementById('grpTblSearch')?.value || ''); }
 
-  function filterByGroupEl(rowEl) { filterByGroup(rowEl.dataset.id); }
+  function filterByGroupEl(rowEl) { applyGroupFilterValue(_groupFilter === rowEl.dataset.id ? '' : rowEl.dataset.id); }
 
-  function filterByGroup(id) {
-    _groupFilter = (_groupFilter === id) ? null : id;
+  function applyGroupFilterValue(val) {
+    _groupFilter = val || null;
+    const sel = document.getElementById('uaGroupSelect');
+    if (sel) sel.value = _groupFilter || '';
     document.querySelectorAll('.grp-tbl-row').forEach(r => {
       r.style.boxShadow  = (r.dataset.id === _groupFilter) ? 'inset 3px 0 0 #2e7d32' : '';
       r.style.background = (r.dataset.id === _groupFilter) ? '#f0fdf4' : '';
@@ -564,9 +587,13 @@
     applyUaFilter();
   }
 
-  // ── Category cards: click to filter both the group table and the job cards ──
-  function filterByCategory(cat) {
-    _categoryFilter = (_categoryFilter === cat) ? null : cat;
+  // ── Category cards / dropdown: filter both the group table and the job cards ──
+  function filterByCategory(cat) { applyCategoryFilterValue(_categoryFilter === cat ? '' : cat); }
+
+  function applyCategoryFilterValue(val) {
+    _categoryFilter = val || null;
+    const sel = document.getElementById('uaCatSelect');
+    if (sel) sel.value = _categoryFilter || '';
     document.querySelectorAll('[id^="catCard-"]').forEach(card => {
       const active = card.id === 'catCard-' + _categoryFilter;
       card.style.boxShadow = active ? '0 0 0 3px #2e7d32' : '';
@@ -577,7 +604,7 @@
       badge.innerHTML = _categoryFilter
         ? `<span style="background:#fff;border:1px solid #ccc;border-radius:6px;padding:.1rem .5rem;font-size:.75rem;display:inline-flex;align-items:center;gap:.3rem;vertical-align:middle">
              ${_categoryFilter}
-             <span onclick="filterByCategory('${_categoryFilter.replace(/'/g,"\\'")}')" style="cursor:pointer;color:#c62828;font-weight:700">×</span>
+             <span onclick="applyCategoryFilterValue('')" style="cursor:pointer;color:#c62828;font-weight:700">×</span>
            </span>`
         : '';
     }
