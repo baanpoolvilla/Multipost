@@ -621,7 +621,7 @@ function renderAgentList(all) {
   const map={};
   gi.forEach(item=>{
     const key=item.agentId||'(ไม่ระบุ)';
-    if(!map[key])map[key]={label:item.agentName||item.agentId||'(ไม่ระบุ)',jobs:0,groups:new Set(),success:0,fail:0,pending:0};
+    if(!map[key])map[key]={label:item.agentName||item.agentId||'(ไม่ระบุ)',staffId:item.agentStaffId||null,jobs:0,groups:new Set(),success:0,fail:0,pending:0};
     map[key].jobs++;
     (item.targetGroups||[]).forEach(g=>map[key].groups.add(g));
     map[key].success+=item.successCount||0;
@@ -634,7 +634,10 @@ function renderAgentList(all) {
       const t=d.success+d.fail;
       const r=t>0?Math.round(d.success/t*100):0;
       const col=rateColor(r);
-      return `<div class="agent-row clickable" onclick="window.location='/group-overview'">
+      // Known staff -> that person's own activity page; otherwise fall back
+      // to the old generic group-overview link (we don't know who did it).
+      const target=d.staffId?`/user-activity/${d.staffId}`:'/group-overview';
+      return `<div class="agent-row clickable" onclick="window.location='${target}'">
         <div class="ag-name">
           <span style="display:inline-block;width:17px;height:17px;background:#f0f2f5;border-radius:5px;text-align:center;font-size:.65rem;line-height:17px;font-style:normal;margin-right:.35rem;font-family:sans-serif">${idx+1}</span>
           <i class="fa-solid fa-robot" style="color:var(--c-purple);font-size:.7rem;margin-right:.3rem"></i>${esc(d.label)}
