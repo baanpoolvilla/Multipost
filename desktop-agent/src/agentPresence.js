@@ -41,4 +41,22 @@ async function findOnlineAgentForStaff(staffId) {
     return doc ? doc.agentId : null;
 }
 
-module.exports = { heartbeat, findOnlineAgentForStaff, ONLINE_THRESHOLD_MS };
+// Used by claimNextDueJob (schedulerService.js) to decide whether a job
+// pinned to a specific agentId should still be treated as pinned, or opened
+// back up to the shared pool because that machine hasn't been seen in a
+// while (closed, crashed, network drop). A longer window than
+// ONLINE_THRESHOLD_MS on purpose — that constant decides routing at job
+// *creation* time (tight, since the picked machine should be live right
+// now); this one decides whether to give up on a pin that's already been
+// waiting, so a brief reconnect blip shouldn't immediately reroute someone
+// else's queued job.
+const REASSIGN_THRESHOLD_MS = 5 * 60 * 1000;
+
+async function listOnlineAgentIds(thresholdMs = REASSIGN_THRESHOLD_MS) {
+    const Model = getModel();
+    const cutoff = new Date(Date.now() - thresholdMs);
+    const docs = await Model.find({ lastSeenAt: { $gte: cutoff } }).select('agentId').lean();
+    return docs.map(d => d.agentId);
+}
+
+module.exports = { heartbeat, findOnlineAgentForStaff, listOnlineAgentIds, ONLINE_THRESHOLD_MS, REASSIGN_THRESHOLD_MS };

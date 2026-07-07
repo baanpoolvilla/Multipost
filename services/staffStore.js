@@ -13,6 +13,14 @@ const staffSchema = new mongoose.Schema({
 
 const Staff = mongoose.models.Staff || mongoose.model('Staff', staffSchema, 'staffmembers');
 
+// The findOne-then-create/-update pattern below is a non-atomic check, so a
+// concurrent request with the same username can still slip past it and hit
+// the schema's unique index instead — this turns that raw MongoDB E11000
+// error back into the same friendly message the pre-check would have given.
+function isDuplicateKeyError(e) {
+    return e && (e.code === 11000 || e.codeName === 'DuplicateKey');
+}
+
 async function list() {
     try { await connect(); return Staff.find().select('-passwordHash').sort({ displayName: 1 }).lean(); }
     catch { return []; }
@@ -57,7 +65,10 @@ async function create({ username, password, displayName, role }) {
         const obj = staff.toObject();
         delete obj.passwordHash;
         return { ok: true, staff: obj };
-    } catch (e) { return { error: e.message }; }
+    } catch (e) {
+        if (isDuplicateKeyError(e)) return { error: 'มีชื่อผู้ใช้นี้อยู่แล้ว' };
+        return { error: e.message };
+    }
 }
 
 async function setPassword(id, password) {
@@ -83,7 +94,10 @@ async function updateProfile(id, { username, displayName }) {
         if (existing) return { error: 'มีชื่อผู้ใช้นี้อยู่แล้ว' };
         const staff = await Staff.findByIdAndUpdate(id, { username, displayName }, { new: true }).select('-passwordHash').lean();
         return staff ? { ok: true, staff } : { error: 'ไม่พบผู้ใช้งาน' };
-    } catch (e) { return { error: e.message }; }
+    } catch (e) {
+        if (isDuplicateKeyError(e)) return { error: 'มีชื่อผู้ใช้นี้อยู่แล้ว' };
+        return { error: e.message };
+    }
 }
 
 async function verifyPassword(username, password) {

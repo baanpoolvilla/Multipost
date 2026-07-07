@@ -466,10 +466,30 @@
         denyButtonColor: '#c62828',
       });
       if (isConfirmed) {
-        // Send to whichever queue actually has the expired items (post
-        // queue takes priority when both do), pre-filtered to "หมดเวลา"
-        // instead of the KPI-style /schedule-center overview.
-        location.href = expiredPosts.length > 0 ? '/post-queue?status=expired' : '/job-queue?status=expired';
+        // Pre-filtered straight to "หมดเวลา" instead of the KPI-style
+        // /schedule-center overview. When only one type has expired items,
+        // go straight there; when BOTH do, ask which one instead of always
+        // picking post-queue and silently hiding the expired group jobs.
+        const hasPosts = expiredPosts.length > 0;
+        const hasJobs  = expiredJobs.length > 0;
+        if (hasPosts && hasJobs) {
+          const pick = await Swal.fire({
+            icon: 'question',
+            title: 'ดูรายการไหน?',
+            html: `มีทั้งโพสต์เพจที่หมดเวลา (${expiredPosts.length}) และแชร์กลุ่มที่หมดเวลา (${expiredJobs.length})`,
+            showDenyButton: true,
+            showCancelButton: true,
+            confirmButtonText: `<i class="fa-brands fa-facebook"></i> โพสต์เพจ (${expiredPosts.length})`,
+            denyButtonText: `<i class="fa-solid fa-users"></i> แชร์กลุ่ม (${expiredJobs.length})`,
+            cancelButtonText: 'ปิด',
+            confirmButtonColor: '#1877f2',
+            denyButtonColor: '#2e7d32',
+          });
+          if (pick.isConfirmed) location.href = '/post-queue?status=expired';
+          else if (pick.isDenied) location.href = '/job-queue?status=expired';
+        } else {
+          location.href = hasPosts ? '/post-queue?status=expired' : '/job-queue?status=expired';
+        }
       } else if (isDenied) {
         await Promise.all([
           ...expiredPosts.map(p => fetch(`/history/${p.id}`, { method: 'DELETE' }).catch(() => {})),

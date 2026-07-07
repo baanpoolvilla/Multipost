@@ -2,23 +2,16 @@ const staffStore    = require('../services/staffStore');
 const postStore     = require('../services/postStore');
 const groupJobStore = require('../services/groupJobStore');
 const groupStore    = require('../services/groupStore');
+const { STATUS }    = require('../desktop-agent/src/scheduler/statuses');
 
 // ── Manage staff accounts ──────────────────────────────────────
 
-// Gated by a live DB lookup (not the JWT's cached role claim) so a role
-// change takes effect on the demoted/promoted account's very next request,
-// not only after they log out and back in.
-//
-// Bootstrap escape hatch: accounts created before this role system existed
-// have no admin at all, which would permanently lock everyone out of
-// /manage-staff (nobody could ever promote the first admin). While zero
-// admins exist system-wide, let any logged-in user through — mirrors the
-// /login "first account" bootstrap flow in controllers/authController.js.
-exports.requireAdmin = async (req, res, next) => {
-    const admins = await staffStore.countAdmins().catch(() => null);
-    if (admins === 0) return next();
-    const staff = await staffStore.findById(req.staffId).catch(() => null);
-    if (staff?.role === 'admin') return next();
+// req.canManageStaff is already computed fresh (live DB role + the
+// zero-admins bootstrap escape hatch) by middleware/auth.js on every
+// request — reusing it here instead of re-querying the DB avoids doing the
+// same admin check twice per request.
+exports.requireAdmin = (req, res, next) => {
+    if (req.canManageStaff) return next();
     if (req.path.startsWith('/api/')) return res.status(403).json({ error: 'หน้านี้สำหรับแอดมินเท่านั้น' });
     return res.status(403).send('หน้านี้สำหรับแอดมินเท่านั้น');
 };
@@ -117,7 +110,15 @@ exports.showUserActivity = async (req, res) => {
 
     const bucketFor = (staffId) => buckets.get(staffId && buckets.has(String(staffId)) ? String(staffId) : 'unassigned');
 
-    posts.forEach(p => {
+    // Only count posts that have actually happened (success/failed) — same
+    // completed-only semantics as groupJobStore.listHistory() already
+    // applies to jobs. postStore.load() returns every status including
+    // still-pending/future-scheduled posts; counting those here would
+    // inflate pagePostCount with work that hasn't occurred yet and skew the
+    // ranking against a colleague who has actually completed real jobs.
+    const completedPosts = posts.filter(p => p.status === STATUS.SUCCESS || p.status === STATUS.FAILED);
+
+    completedPosts.forEach(p => {
         const b = bucketFor(p.staffId);
         b.pagePostCount++;
         b.successCount += p.successCount || 0;
@@ -148,8 +149,11 @@ exports.showUserActivityDetail = async (req, res) => {
     const isUnassigned = staffId === 'unassigned';
 
     let staffInfo;
+    let knownStaffIds = null;
     if (isUnassigned) {
         staffInfo = { id: 'unassigned', displayName: 'ไม่ระบุตัวตน' };
+        const staffList = await staffStore.list();
+        knownStaffIds = new Set(staffList.map(s => String(s._id)));
     } else {
         const s = await staffStore.findById(staffId);
         if (!s) return res.status(404).send('ไม่พบผู้ใช้งาน');
@@ -162,7 +166,15 @@ exports.showUserActivityDetail = async (req, res) => {
         groupStore.list(),
     ]);
 
-    const matches = (recordStaffId) => isUnassigned ? !recordStaffId : String(recordStaffId) === staffId;
+    // Same "unassigned" rule as bucketFor in showUserActivity: a record is
+    // unassigned if it has no staffId, OR its staffId no longer belongs to
+    // any current staff account (e.g. that account was deleted) -- using
+    // only "!recordStaffId" here would exclude deleted-account records that
+    // the overview page's card already counted, so the two pages'
+    // numbers would silently disagree.
+    const matches = (recordStaffId) => isUnassigned
+        ? (!recordStaffId || !knownStaffIds.has(String(recordStaffId)))
+        : String(recordStaffId) === staffId;
 
     // groupId → categories, joined at read-time exactly like the privacy join
     // in controllers/agentController.js showGroupSummary (job/result rows
@@ -170,7 +182,11 @@ exports.showUserActivityDetail = async (req, res) => {
     const groupCatMap = {};
     allGroups.forEach(g => { groupCatMap[g.groupId] = (g.categories && g.categories.length) ? g.categories : ['ทั่วไป']; });
 
-    const posts = allPosts.filter(p => matches(p.staffId));
+    // Completed-only, matching showUserActivity's bucket-building and
+    // groupJobStore.listHistory()'s own completed-only semantics -- so this
+    // page's post count always agrees with the overview card's
+    // pagePostCount for the same person.
+    const posts = allPosts.filter(p => matches(p.staffId) && (p.status === STATUS.SUCCESS || p.status === STATUS.FAILED));
     const jobs  = allJobs.filter(j => matches(j.staffId)).map(j => ({
         ...j,
         _id: String(j._id),

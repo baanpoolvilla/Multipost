@@ -49,4 +49,15 @@ async function release(agentId) {
     await Model.findOneAndUpdate({ _id: LOCK_ID, heldBy: agentId }, { $set: { heldBy: null, lockedAt: null } });
 }
 
-module.exports = { acquire, release, LOCK_STALE_MS };
+// Must be called periodically by whoever holds the lock while still actively
+// posting (see jobRunner.js's per-group loop) — otherwise a job that takes
+// longer than LOCK_STALE_MS to finish (many groups, long delaySeconds) would
+// have `lockedAt` go stale while still legitimately in use, letting another
+// machine's acquire() treat it as abandoned and take over mid-post. Only
+// refreshes the timestamp if WE are still the holder, same guard as release.
+async function renew(agentId) {
+    const Model = getModel();
+    await Model.findOneAndUpdate({ _id: LOCK_ID, heldBy: agentId }, { $set: { lockedAt: new Date() } });
+}
+
+module.exports = { acquire, release, renew, LOCK_STALE_MS };

@@ -12,6 +12,7 @@
 // owns the before/after status bookkeeping around it.
 
 const { STATUS, DEFAULT_GRACE_MS, normalizeStatus, isTerminal } = require('./statuses');
+const agentPresence = require('../agentPresence');
 
 function serialize(doc) {
     if (!doc) return doc;
@@ -221,8 +222,12 @@ function createSchedulerService(Model, opts = {}) {
     //
     // agentId routing: if this agent has an id it only claims
     //   (a) jobs created by itself  (agentId === this id), or
-    //   (b) jobs with no agentId    (web-created / legacy — any agent may run).
-    // Jobs created by a different agent are never claimed.
+    //   (b) jobs with no agentId    (web-created / legacy — any agent may run), or
+    //   (c) jobs pinned to a DIFFERENT agentId that hasn't been seen in a
+    //       while (that machine is offline, so the pin is stale and the job
+    //       would otherwise sit pending forever with no way back into the
+    //       shared pool — see agentPresence.listOnlineAgentIds).
+    // Jobs pinned to another agent that's still online are never claimed.
     async function claimNextDueJob() {
         const now = new Date().toISOString();
         const filter = {
@@ -232,8 +237,14 @@ function createSchedulerService(Model, opts = {}) {
             ],
         };
         if (agentId) {
+            const onlineAgentIds = await agentPresence.listOnlineAgentIds().catch(() => []);
             filter.$and.push({
-                $or: [{ agentId }, { agentId: null }, { agentId: { $exists: false } }],
+                $or: [
+                    { agentId },
+                    { agentId: null },
+                    { agentId: { $exists: false } },
+                    { agentId: { $nin: onlineAgentIds } },
+                ],
             });
         }
         const claimed = await Model.findOneAndUpdate(

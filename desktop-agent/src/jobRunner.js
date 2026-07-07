@@ -135,7 +135,17 @@ async function processJob(job) {
     // actual Facebook action, so no two machines are ever mid-post at once.
     log('🔒 รอคิวโพส (global lock)...');
     while (!(await postingLock.acquire(_agentId))) {
-        if (!_running) return;
+        if (!_running) {
+            // Agent stopped while still waiting for the lock — this job was
+            // already flipped to RUNNING by claimNextJob, and nothing past
+            // this point will ever run to write a final status. Revert it to
+            // PENDING so claimNextDueJob can pick it up again later, instead
+            // of leaving it stuck at "running" forever.
+            log('⏸ Runner หยุดระหว่างรอคิว — คืนสถานะงานเป็น "รอดำเนินการ"');
+            await _store.updateJob(id, { status: STATUS.PENDING }).catch(() => {});
+            _emit?.('jobs:updated', { ...job, _id:id, status: STATUS.PENDING });
+            return;
+        }
         await sleep(LOCK_RETRY_MS);
     }
     log('🔓 ได้คิวแล้ว เริ่มโพส');
@@ -164,6 +174,11 @@ async function processJob(job) {
 
             if (res.ok) { ok++; log(`   ✅ สำเร็จ`); _emit?.('jobs:progress', { groupName:g.groupName, status:'success' }); }
             else        { log(`   ❌ ${res.error}`); _emit?.('jobs:progress', { groupName:g.groupName, status:'failed', error:res.error }); }
+
+            // Refresh the lock's timestamp on every group so a job with many
+            // groups (or long delaySeconds) never goes stale mid-post — see
+            // postingLock.renew's doc comment.
+            await postingLock.renew(_agentId).catch(() => {});
 
             if (i < job.groups.length-1 && job.delaySeconds>0 && _running) {
                 log(`   ⏳ รอ ${job.delaySeconds}s...`);

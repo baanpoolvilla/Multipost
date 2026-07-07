@@ -3,9 +3,13 @@ const staffStore = require('../services/staffStore');
 
 // Fail loudly instead of silently signing tokens with a secret that's public
 // in the source tree — a deployed instance without JWT_SECRET set would
-// otherwise let anyone forge a valid login cookie.
-if (!process.env.JWT_SECRET && process.env.VERCEL) {
-    throw new Error('JWT_SECRET is not set — refusing to start with an insecure default secret in production. Set JWT_SECRET in the Vercel project environment variables.');
+// otherwise let anyone forge a valid login cookie. Checked against
+// NODE_ENV as well as VERCEL: server.js has its own IS_VERCEL branches for
+// local-disk storage, so this app is also meant to run self-hosted
+// (`node server.js` on a VPS/Docker), not only on Vercel — a VERCEL-only
+// check would silently miss that path.
+if (!process.env.JWT_SECRET && (process.env.VERCEL || process.env.NODE_ENV === 'production')) {
+    throw new Error('JWT_SECRET is not set — refusing to start with an insecure default secret in production. Set the JWT_SECRET environment variable.');
 }
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-insecure-secret-change-me';
 
@@ -48,22 +52,37 @@ module.exports = async function auth(req, res, next) {
 
     try {
         const payload = jwt.verify(token, JWT_SECRET);
-        req.staffId   = payload.id;
-        req.staffName = payload.name;
-        req.staffRole = payload.role || 'staff';
 
-        // Same bootstrap window as staffController.requireAdmin: accounts
-        // created before roles existed have nobody with role='admin' yet,
-        // which would otherwise hide the "จัดการบัญชีผู้ใช้งาน" sidebar
-        // link from everyone forever (the route itself is reachable via
-        // its bootstrap escape hatch, but with no visible link nobody would
-        // ever find it to promote the first admin).
+        // Re-checked against the DB on every request (not just trusted from
+        // the JWT payload) for two reasons: (1) deleting a staff account
+        // must actually revoke their access instead of leaving their
+        // existing 30-day cookie working until it naturally expires, and
+        // (2) a role change (promote/demote) must take effect on the very
+        // next request, not only after the affected user logs out and back
+        // in — the JWT's cached `role` claim would otherwise disagree with
+        // the live DB right after an admin flips someone's role.
+        const staff = await staffStore.findById(payload.id).catch(() => null);
+        if (!staff) {
+            res.clearCookie('token');
+            return unauthorized(req, res);
+        }
+
+        req.staffId   = payload.id;
+        req.staffName = staff.displayName;
+        req.staffRole = staff.role || 'staff';
+
+        // Bootstrap window: accounts created before roles existed have
+        // nobody with role='admin' yet, which would otherwise hide the
+        // "จัดการบัญชีผู้ใช้งาน" sidebar link (and block the route itself,
+        // see staffController.requireAdmin) from everyone forever — nobody
+        // could ever promote the first admin after this deploys.
         let canManageStaff = req.staffRole === 'admin';
         if (!canManageStaff) {
             try { canManageStaff = (await staffStore.countAdmins()) === 0; } catch { canManageStaff = false; }
         }
+        req.canManageStaff = canManageStaff;
 
-        res.locals.currentStaff = { id: payload.id, name: payload.name, role: req.staffRole, canManageStaff };
+        res.locals.currentStaff = { id: payload.id, name: req.staffName, role: req.staffRole, canManageStaff };
         next();
     } catch {
         res.clearCookie('token');
