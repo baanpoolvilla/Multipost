@@ -102,6 +102,38 @@
       </div>
     </div>
 
+    <!-- Staff / account system (new) -->
+    <div class="card">
+      <div class="card-title"><i class="fa-solid fa-user-shield"></i> ระบบบัญชีผู้ใช้งาน (ใหม่)</div>
+      <div style="font-size:.83rem;color:var(--text-secondary);line-height:1.7;margin:.5rem 0 .8rem">
+        ตอนนี้ต้อง <strong>ล็อกอิน</strong> ก่อนใช้งานระบบทุกครั้ง เพื่อให้รู้ว่าใครเป็นคนโพส/แชร์อะไรไปบ้าง ทั้งจากหน้าเว็บและ Desktop Agent
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+        <div style="background:#eef0fd;border:1.5px solid #b6bdf7;border-radius:10px;padding:1rem 1.1rem">
+          <div style="font-weight:700;color:#2a2d7c;margin-bottom:.4rem;font-size:.92rem">
+            <i class="fa-solid fa-user-clock" style="color:#4338ca"></i> กิจกรรมพนักงาน
+          </div>
+          <div style="font-size:.82rem;color:#3c3f7a;line-height:1.7">
+            ดูว่าแต่ละคนโพสเพจ/แชร์กลุ่มไปกี่ครั้ง สำเร็จ/ล้มเหลวเท่าไหร่ กดเข้าไปดูรายละเอียดของแต่ละคนได้ทันที<br>
+            <strong>ทุกคนดูได้</strong> ไม่จำกัดเฉพาะแอดมิน
+          </div>
+        </div>
+        <div style="background:#fdf3e2;border:1.5px solid #f0c36d;border-radius:10px;padding:1rem 1.1rem">
+          <div style="font-weight:700;color:#7b3b00;margin-bottom:.4rem;font-size:.92rem">
+            <i class="fa-solid fa-users-gear" style="color:#b45309"></i> จัดการบัญชีผู้ใช้งาน
+          </div>
+          <div style="font-size:.82rem;color:#6b5005;line-height:1.7">
+            เพิ่ม/ลบบัญชี เปลี่ยนรหัสผ่าน หรือเปลี่ยนสิทธิ์ (แอดมิน/พนักงาน) ได้ที่นี่<br>
+            <strong>เฉพาะแอดมิน</strong> เท่านั้นที่เข้าหน้านี้ได้
+          </div>
+        </div>
+      </div>
+      <div style="background:#f0f2f5;border-radius:8px;padding:.6rem .85rem;margin-top:.7rem;font-size:.82rem;color:var(--text-secondary);line-height:1.7">
+        <i class="fa-solid fa-circle-info" style="color:#1877f2"></i>
+        เปิด Desktop Agent ก็ต้อง <strong>เลือกชื่อตัวเอง</strong> ก่อนใช้งานด้วย (บังคับเลือก ไม่มีปุ่มข้าม) เพื่อให้รู้ว่าโพส/แชร์จากเครื่องนั้นเป็นของใคร
+      </div>
+    </div>
+
     <!-- Steps -->
     <div class="card">
       <div class="card-title"><i class="fa-solid fa-list-ol"></i> ขั้นตอนการตั้งค่า (ทำครั้งแรกเท่านั้น)</div>
@@ -283,13 +315,34 @@
           </div>
         </details>
 
-        <details style="padding:.65rem 0">
+        <details style="border-bottom:1px solid var(--border-color);padding:.65rem 0">
           <summary style="cursor:pointer;font-weight:600;font-size:.88rem;color:var(--text-primary);list-style:none;display:flex;align-items:center;gap:.5rem">
             <i class="fa-solid fa-chevron-right" style="font-size:.7rem;color:#aaa"></i>
             ใช้งานได้บน Mac หรือ Linux ไหม?
           </summary>
           <div style="font-size:.83rem;color:var(--text-secondary);padding:.5rem 0 .1rem 1.3rem;line-height:1.7">
             Desktop Agent รองรับ <strong>Windows เท่านั้น</strong> แต่หน้าเว็บ (โพสลงเพจ) ใช้ได้จากทุกอุปกรณ์และทุก OS
+          </div>
+        </details>
+
+        <details style="border-bottom:1px solid var(--border-color);padding:.65rem 0">
+          <summary style="cursor:pointer;font-weight:600;font-size:.88rem;color:var(--text-primary);list-style:none;display:flex;align-items:center;gap:.5rem">
+            <i class="fa-solid fa-chevron-right" style="font-size:.7rem;color:#aaa"></i>
+            แอดมินกับพนักงานต่างกันยังไง?
+          </summary>
+          <div style="font-size:.83rem;color:var(--text-secondary);padding:.5rem 0 .1rem 1.3rem;line-height:1.7">
+            <strong>พนักงาน</strong> ใช้งานโพส/แชร์และดูกิจกรรมได้ตามปกติ แต่เข้าหน้า <strong>จัดการบัญชีผู้ใช้งาน</strong> ไม่ได้<br>
+            <strong>แอดมิน</strong> ทำได้ทุกอย่างที่พนักงานทำได้ บวกกับเพิ่ม/ลบบัญชี เปลี่ยนรหัสผ่านให้คนอื่น และเปลี่ยนสิทธิ์ได้
+          </div>
+        </details>
+
+        <details style="padding:.65rem 0">
+          <summary style="cursor:pointer;font-weight:600;font-size:.88rem;color:var(--text-primary);list-style:none;display:flex;align-items:center;gap:.5rem">
+            <i class="fa-solid fa-chevron-right" style="font-size:.7rem;color:#aaa"></i>
+            ทำไม Desktop Agent ต้องเลือกชื่อก่อนใช้งานทุกครั้ง?
+          </summary>
+          <div style="font-size:.83rem;color:var(--text-secondary);padding:.5rem 0 .1rem 1.3rem;line-height:1.7">
+            เพื่อให้หน้า <strong>กิจกรรมพนักงาน</strong> รู้ว่าใครโพส/แชร์จากเครื่องนั้น จึงบังคับเลือกไว้ก่อน ไม่มีปุ่มข้าม — เลือกครั้งเดียวแล้วจำไว้ให้ ไม่ต้องเลือกซ้ำทุกครั้งที่เปิดโปรแกรม จนกว่าจะกด "เปลี่ยน" เอง
           </div>
         </details>
 
@@ -330,8 +383,9 @@
     <div class="card" style="margin-top:.75rem;padding:1rem 1.1rem">
       <div class="stats-title" style="margin-bottom:.5rem"><i class="fa-solid fa-shield-halved"></i> ข้อควรรู้</div>
       <ul style="font-size:.81rem;color:var(--text-secondary);line-height:1.8;padding-left:1.1rem;margin:0">
+        <li>ต้อง <strong>ล็อกอิน</strong> ก่อนใช้งานทุกครั้ง</li>
         <li>Agent ทำงานได้บน <strong>Windows เท่านั้น</strong></li>
-        <li>ต้องเปิด Agent ไว้ขณะโพส</li>
+        <li>ต้องเปิด Agent ไว้ขณะโพส และเลือกชื่อตัวเองก่อนใช้งาน</li>
         <li>ข้อมูลทั้งหมดเก็บบน Cloud ปลอดภัย</li>
         <li>ติดตั้งครั้งเดียวใช้ได้เลย</li>
       </ul>
