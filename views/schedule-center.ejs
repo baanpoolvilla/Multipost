@@ -225,7 +225,7 @@
           <option value="">📄 ทุกเพจ</option>
         </select>
         <select id="sc-agent" class="db-sel" style="min-width:105px">
-          <option value="">🤖 ทุก Agent</option>
+          <option value="">🤖 ทุกคน</option>
         </select>
         <select id="sc-privacy" class="db-sel" style="min-width:115px">
           <option value="">👥 ทุกประเภท</option>
@@ -329,12 +329,12 @@
         </div>
       </div>
 
-      <!-- Agent breakdown -->
+      <!-- Staff breakdown (which staff member ran each group-share job) -->
       <div id="card-agent" class="db-card" style="display:flex;flex-direction:column">
         <div class="s-hd">
           <div class="s-hd-l">
-            <i class="fa-solid fa-robot" style="color:var(--c-purple)"></i>
-            แยกตาม Agent
+            <i class="fa-solid fa-user-clock" style="color:var(--c-purple)"></i>
+            แยกตามพนักงาน
           </div>
           <a href="/group-overview" class="s-link" style="color:var(--c-purple)">ดูเพิ่ม →</a>
         </div>
@@ -475,15 +475,15 @@ const rateColor = r => r>=80?'var(--c-green)':r>=50?'var(--c-amber)':'var(--c-re
 
 /* ── Populate dropdowns ── */
 function populateFilters() {
-  const pages=new Set(), agents=new Map();
+  const pages=new Set(), staffMap=new Map();
   _items.forEach(i=>{
     if(i.type==='page') (i.targetPages||[]).forEach(p=>pages.add(p));
-    if(i.type==='group'&&i.agentId) agents.set(i.agentId, i.agentName || i.agentId);
+    if(i.type==='group') staffMap.set(i.staffId||'__unassigned__', i.staffName||'ไม่ระบุตัวตน');
   });
   const pgS=document.getElementById('sc-page'), agS=document.getElementById('sc-agent');
   const pv=pgS.value, av=agS.value;
   pgS.innerHTML='<option value="">📄 ทุกเพจ</option>'+[...pages].sort().map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join('');
-  agS.innerHTML='<option value="">🤖 ทุก Agent</option>'+[...agents.entries()].sort((a,b)=>a[1].localeCompare(b[1],'th')).map(([id,name])=>`<option value="${esc(id)}">${esc(name)}</option>`).join('');
+  agS.innerHTML='<option value="">🤖 ทุกคน</option>'+[...staffMap.entries()].sort((a,b)=>a[1].localeCompare(b[1],'th')).map(([id,name])=>`<option value="${esc(id)}">${esc(name)}</option>`).join('');
   pgS.value=pv; agS.value=av;
 }
 
@@ -507,7 +507,7 @@ function getFiltered() {
     if(_type && i.type!==_type) return false;
     if(q && !i.message.toLowerCase().includes(q)) return false;
     if(i.type==='page'  && pg && !(i.targetPages||[]).includes(pg)) return false;
-    if(i.type==='group' && ag && i.agentId!==ag) return false;
+    if(i.type==='group' && ag && (i.staffId||'__unassigned__')!==ag) return false;
     if(status && i.status!==status) return false;
     if(privacy && i.type==='group') {
       const hasMatch=(i.targetGroups||[]).some(g=>_groupPrivacyMap[g]===privacy);
@@ -613,15 +613,20 @@ function renderDonut(all) {
   ).join('');
 }
 
-/* ── Agent list ── */
+/* ── Staff breakdown ── */
+// Grouped by each job's own staffId (set once at creation, never rewritten)
+// -- NOT by which Agent machine ran it, since the same physical Desktop
+// Agent install can be shared by different staff at different times, and
+// grouping by machine would misattribute one person's older jobs to
+// whoever used that computer most recently.
 function renderAgentList(all) {
   const gi=all.filter(i=>i.type==='group');
   const wrap=document.getElementById('agent-list');
   if(!gi.length){wrap.innerHTML='<div class="no-data">ไม่มีข้อมูล</div>';return;}
   const map={};
   gi.forEach(item=>{
-    const key=item.agentId||'(ไม่ระบุ)';
-    if(!map[key])map[key]={label:item.agentName||item.agentId||'(ไม่ระบุ)',staffId:item.agentStaffId||null,jobs:0,groups:new Set(),success:0,fail:0,pending:0};
+    const key=item.staffId||'__unassigned__';
+    if(!map[key])map[key]={label:item.staffName||'ไม่ระบุตัวตน',staffId:item.staffId||null,jobs:0,groups:new Set(),success:0,fail:0,pending:0};
     map[key].jobs++;
     (item.targetGroups||[]).forEach(g=>map[key].groups.add(g));
     map[key].success+=item.successCount||0;
@@ -640,7 +645,7 @@ function renderAgentList(all) {
       return `<div class="agent-row clickable" onclick="window.location='${target}'">
         <div class="ag-name">
           <span style="display:inline-block;width:17px;height:17px;background:#f0f2f5;border-radius:5px;text-align:center;font-size:.65rem;line-height:17px;font-style:normal;margin-right:.35rem;font-family:sans-serif">${idx+1}</span>
-          <i class="fa-solid fa-robot" style="color:var(--c-purple);font-size:.7rem;margin-right:.3rem"></i>${esc(d.label)}
+          <i class="fa-solid fa-user-clock" style="color:var(--c-purple);font-size:.7rem;margin-right:.3rem"></i>${esc(d.label)}
         </div>
         <div class="ag-sub">
           ${d.jobs} งาน · ${d.groups.size} กลุ่ม

@@ -176,16 +176,24 @@ async function buildScheduleCenterItems() {
     const groupJobStore = require('../services/groupJobStore');
     const pageStore     = require('../services/pageStore');
     const groupStore    = require('../services/groupStore');
-    const agentPresence = require('../desktop-agent/src/agentPresence');
+    const staffStore    = require('../services/staffStore');
 
     await Promise.all([postStore.expireOverdueScheduled(), groupJobStore.expireOverdueJobs()]);
 
-    const [posts, jobs, pages, agentStaffInfo] = await Promise.all([
+    const [posts, jobs, pages, staffList] = await Promise.all([
         postStore.load(), groupJobStore.list(), pageStore.load(),
-        agentPresence.getStaffInfoMap().catch(() => ({})),
+        staffStore.list().catch(() => []),
     ]);
     const pageNameMap = {};
     pages.forEach(p => { pageNameMap[p.pageId] = p.pageName; });
+    // Resolved from each job's own staffId (set once, at creation time --
+    // never rewritten), NOT the agentPresence heartbeat, which only tracks
+    // whoever is *currently* signed in on a machine and gets overwritten
+    // when a different person later uses that same Desktop Agent install.
+    // Keying by presence would silently relabel one person's older jobs as
+    // whoever used that computer most recently.
+    const staffNameMap = {};
+    staffList.forEach(s => { staffNameMap[String(s._id)] = s.displayName; });
 
     const pageItems = posts.map(p => {
         let likes = 0, comments = 0, shares = 0, reach = 0;
@@ -225,8 +233,8 @@ async function buildScheduleCenterItems() {
         targetGroups: (j.groups || []).map(g => g.groupName),
         sourceType: j.sourceType || 'agent',
         agentId: j.agentId || null,
-        agentName: (j.agentId && agentStaffInfo[j.agentId]?.staffName) || null,
-        agentStaffId: (j.agentId && agentStaffInfo[j.agentId]?.staffId) || null,
+        staffId: j.staffId || null,
+        staffName: (j.staffId && staffNameMap[String(j.staffId)]) || null,
         successCount: (j.results || []).filter(r => r.status === 'success').length,
         failCount: (j.results || []).filter(r => r.status === 'failed').length,
     }));
