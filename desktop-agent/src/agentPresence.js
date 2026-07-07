@@ -41,4 +41,15 @@ async function findOnlineAgentForStaff(staffId) {
     return doc ? doc.agentId : null;
 }
 
-module.exports = { heartbeat, findOnlineAgentForStaff, ONLINE_THRESHOLD_MS };
+// agentId -> whoever is (or was last) signed in on that machine, so the web
+// dashboard can show "guy" instead of a raw agent UUID. Best-effort: on any
+// DB error, callers just fall back to showing the bare agentId.
+async function getStaffNameMap() {
+    const Model = getModel();
+    const docs = await Model.find().lean();
+    const map = {};
+    docs.forEach(d => { if (d.staffName) map[d.agentId] = d.staffName; });
+    return map;
+}
+
+module.exports = { heartbeat, findOnlineAgentForStaff, getStaffNameMap, ONLINE_THRESHOLD_MS };

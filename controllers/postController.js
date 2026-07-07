@@ -176,10 +176,14 @@ async function buildScheduleCenterItems() {
     const groupJobStore = require('../services/groupJobStore');
     const pageStore     = require('../services/pageStore');
     const groupStore    = require('../services/groupStore');
+    const agentPresence = require('../desktop-agent/src/agentPresence');
 
     await Promise.all([postStore.expireOverdueScheduled(), groupJobStore.expireOverdueJobs()]);
 
-    const [posts, jobs, pages] = await Promise.all([postStore.load(), groupJobStore.list(), pageStore.load()]);
+    const [posts, jobs, pages, agentStaffNames] = await Promise.all([
+        postStore.load(), groupJobStore.list(), pageStore.load(),
+        agentPresence.getStaffNameMap().catch(() => ({})),
+    ]);
     const pageNameMap = {};
     pages.forEach(p => { pageNameMap[p.pageId] = p.pageName; });
 
@@ -221,6 +225,7 @@ async function buildScheduleCenterItems() {
         targetGroups: (j.groups || []).map(g => g.groupName),
         sourceType: j.sourceType || 'agent',
         agentId: j.agentId || null,
+        agentName: (j.agentId && agentStaffNames[j.agentId]) || null,
         successCount: (j.results || []).filter(r => r.status === 'success').length,
         failCount: (j.results || []).filter(r => r.status === 'failed').length,
     }));

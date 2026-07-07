@@ -475,15 +475,15 @@ const rateColor = r => r>=80?'var(--c-green)':r>=50?'var(--c-amber)':'var(--c-re
 
 /* ── Populate dropdowns ── */
 function populateFilters() {
-  const pages=new Set(), agents=new Set();
+  const pages=new Set(), agents=new Map();
   _items.forEach(i=>{
     if(i.type==='page') (i.targetPages||[]).forEach(p=>pages.add(p));
-    if(i.type==='group'&&i.agentId) agents.add(i.agentId);
+    if(i.type==='group'&&i.agentId) agents.set(i.agentId, i.agentName || i.agentId);
   });
   const pgS=document.getElementById('sc-page'), agS=document.getElementById('sc-agent');
   const pv=pgS.value, av=agS.value;
   pgS.innerHTML='<option value="">📄 ทุกเพจ</option>'+[...pages].sort().map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join('');
-  agS.innerHTML='<option value="">🤖 ทุก Agent</option>'+[...agents].sort().map(a=>`<option value="${esc(a)}">${esc(a)}</option>`).join('');
+  agS.innerHTML='<option value="">🤖 ทุก Agent</option>'+[...agents.entries()].sort((a,b)=>a[1].localeCompare(b[1],'th')).map(([id,name])=>`<option value="${esc(id)}">${esc(name)}</option>`).join('');
   pgS.value=pv; agS.value=av;
 }
 
@@ -620,24 +620,24 @@ function renderAgentList(all) {
   if(!gi.length){wrap.innerHTML='<div class="no-data">ไม่มีข้อมูล</div>';return;}
   const map={};
   gi.forEach(item=>{
-    const ag=item.agentId||'(ไม่ระบุ)';
-    if(!map[ag])map[ag]={jobs:0,groups:new Set(),success:0,fail:0,pending:0};
-    map[ag].jobs++;
-    (item.targetGroups||[]).forEach(g=>map[ag].groups.add(g));
-    map[ag].success+=item.successCount||0;
-    map[ag].fail   +=item.failCount||0;
-    if(['pending','running'].includes(item.status))map[ag].pending++;
+    const key=item.agentId||'(ไม่ระบุ)';
+    if(!map[key])map[key]={label:item.agentName||item.agentId||'(ไม่ระบุ)',jobs:0,groups:new Set(),success:0,fail:0,pending:0};
+    map[key].jobs++;
+    (item.targetGroups||[]).forEach(g=>map[key].groups.add(g));
+    map[key].success+=item.successCount||0;
+    map[key].fail   +=item.failCount||0;
+    if(['pending','running'].includes(item.status))map[key].pending++;
   });
   wrap.innerHTML=Object.entries(map)
     .sort((a,b)=>b[1].jobs-a[1].jobs)
-    .map(([ag,d],idx)=>{
+    .map(([key,d],idx)=>{
       const t=d.success+d.fail;
       const r=t>0?Math.round(d.success/t*100):0;
       const col=rateColor(r);
       return `<div class="agent-row clickable" onclick="window.location='/group-overview'">
         <div class="ag-name">
           <span style="display:inline-block;width:17px;height:17px;background:#f0f2f5;border-radius:5px;text-align:center;font-size:.65rem;line-height:17px;font-style:normal;margin-right:.35rem;font-family:sans-serif">${idx+1}</span>
-          <i class="fa-solid fa-robot" style="color:var(--c-purple);font-size:.7rem;margin-right:.3rem"></i>${esc(ag)}
+          <i class="fa-solid fa-robot" style="color:var(--c-purple);font-size:.7rem;margin-right:.3rem"></i>${esc(d.label)}
         </div>
         <div class="ag-sub">
           ${d.jobs} งาน · ${d.groups.size} กลุ่ม
