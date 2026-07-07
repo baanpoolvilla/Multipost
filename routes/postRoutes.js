@@ -197,8 +197,8 @@ router.get('/api/agent/source', (req, res) => {
         const sourceFiles = [
             'main.js', 'preload.js', 'package.json',
             'api/server.js',
-            'src/accountStore.js', 'src/agentImageStore.js',
-            'src/facebookBot.js',  'src/jobRunner.js',
+            'src/accountStore.js', 'src/agentImageStore.js', 'src/agentPresence.js',
+            'src/facebookBot.js',  'src/jobRunner.js', 'src/postingLock.js',
             'src/jobStore.js',     'src/jobTemplateStore.js',
             'src/localGroupStore.js', 'src/supabaseStore.js',
             'src/scheduler/schedulerService.js', 'src/scheduler/statuses.js',
