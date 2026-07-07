@@ -62,6 +62,7 @@
     <a href="/user-activity" class="sidebar-item"><i class="fa-solid fa-user-clock"></i><span>กิจกรรมพนักงาน</span></a>
     <% if (locals.currentStaff && currentStaff.canManageStaff) { %>
     <a href="/manage-staff" class="sidebar-item active"><i class="fa-solid fa-users-gear"></i><span>จัดการบัญชีผู้ใช้งาน</span></a>
+    <a href="/audit-log" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติการเปลี่ยนแปลง</span></a>
     <% } %>
     <%- include('partials/sidebar-pages') %>
   </aside>
@@ -74,9 +75,14 @@
           <i class="fa-solid fa-users-gear"></i> จัดการบัญชีผู้ใช้งาน
           <span style="background:#e4e6ea;padding:.12rem .5rem;border-radius:999px;font-size:.78rem;font-weight:400;margin-left:.35rem">ผู้ใช้งานทั้งหมด <%= staffList.length %> บัญชี</span>
         </div>
-        <button class="btn-post" onclick="openAddStaff()" style="padding:.45rem 1rem;font-size:.86rem">
-          <i class="fa-solid fa-user-plus"></i> เพิ่มบัญชีผู้ใช้งาน
-        </button>
+        <div style="display:flex;gap:.5rem">
+          <a href="/audit-log" style="display:inline-flex;align-items:center;gap:.4rem;background:#f0f2f5;color:#1c1e21;padding:.45rem .9rem;border-radius:8px;font-size:.86rem;font-weight:600;text-decoration:none">
+            <i class="fa-solid fa-clock-rotate-left"></i> ประวัติการเปลี่ยนแปลง
+          </a>
+          <button class="btn-post" onclick="openAddStaff()" style="padding:.45rem 1rem;font-size:.86rem">
+            <i class="fa-solid fa-user-plus"></i> เพิ่มบัญชีผู้ใช้งาน
+          </button>
+        </div>
       </div>
       <% if (staffList.length > 0) { %>
       <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.7rem">
@@ -137,6 +143,32 @@
       </div>
       <% } %>
     </div>
+
+    <% if (locals.deletedStaffList && deletedStaffList.length > 0) { %>
+    <div class="card">
+      <div class="card-title" style="font-size:.95rem;color:#8a8d91">
+        <i class="fa-solid fa-trash-can"></i> บัญชีที่ถูกลบ
+        <span style="background:#e4e6ea;padding:.12rem .5rem;border-radius:999px;font-size:.78rem;font-weight:400;margin-left:.35rem"><%= deletedStaffList.length %> บัญชี</span>
+      </div>
+      <div style="margin-top:.5rem">
+      <% deletedStaffList.forEach((s) => { %>
+      <div class="staff-row" style="opacity:.7">
+        <div class="avatar" style="width:38px;height:38px;background:#8a8d91"><%= s.displayName.charAt(0).toUpperCase() %></div>
+        <div style="flex:1;min-width:0">
+          <div class="staff-row-name"><%= s.displayName %></div>
+          <div class="staff-row-role">@<%= s.username %> · ลบเมื่อ <%= new Date(s.deletedAt).toLocaleString('th-TH', { timeZone:'Asia/Bangkok', dateStyle:'short', timeStyle:'short' }) %></div>
+        </div>
+        <div class="staff-row-actions">
+          <a href="/user-activity/<%= s._id %>" class="btn-view-activity"><i class="fa-solid fa-chart-bar"></i> ดูกิจกรรม</a>
+          <button class="btn-restore-staff icon-btn" data-id="<%= s._id %>" data-name="<%= s.displayName %>" title="กู้คืนบัญชี" style="color:#2e7d32">
+            <i class="fa-solid fa-rotate-left"></i>
+          </button>
+        </div>
+      </div>
+      <% }); %>
+      </div>
+    </div>
+    <% } %>
 
   </main>
 
@@ -353,7 +385,7 @@
   async function deleteStaff(id, name) {
     const { isConfirmed } = await Swal.fire({
       icon: 'warning', title: `ลบบัญชีผู้ใช้งาน "${name}"?`,
-      text: 'ประวัติการโพสต์/แชร์ของบัญชีนี้จะยังอยู่ แต่จะขึ้นเป็น "ไม่ระบุตัวตน"',
+      text: 'บัญชีจะเข้าสู่ระบบไม่ได้อีก แต่ประวัติการโพสต์/แชร์เก่ายังคงแสดงชื่อนี้ตามเดิม และกู้คืนบัญชีได้ภายหลัง',
       showCancelButton: true, confirmButtonText: 'ลบ', cancelButtonText: 'ยกเลิก', confirmButtonColor: '#c62828',
     });
     if (!isConfirmed) return;
@@ -361,6 +393,22 @@
     const d = await r.json().catch(() => ({}));
     if (!d.ok) {
       Swal.fire({ icon: 'error', title: 'ลบไม่สำเร็จ', text: d.error || 'เกิดข้อผิดพลาด', confirmButtonColor: '#1877f2' });
+      return;
+    }
+    location.reload();
+  }
+
+  async function restoreStaff(id, name) {
+    const { isConfirmed } = await Swal.fire({
+      icon: 'question', title: `กู้คืนบัญชีผู้ใช้งาน "${name}"?`,
+      text: 'บัญชีจะกลับมาเข้าสู่ระบบได้ตามปกติ',
+      showCancelButton: true, confirmButtonText: 'กู้คืน', cancelButtonText: 'ยกเลิก', confirmButtonColor: '#2e7d32',
+    });
+    if (!isConfirmed) return;
+    const r = await fetch(`/api/staff/${id}/restore`, { method: 'POST' });
+    const d = await r.json().catch(() => ({}));
+    if (!d.ok) {
+      Swal.fire({ icon: 'error', title: 'กู้คืนไม่สำเร็จ', text: d.error || 'เกิดข้อผิดพลาด', confirmButtonColor: '#1877f2' });
       return;
     }
     location.reload();
@@ -379,6 +427,9 @@
   });
   document.querySelectorAll('.role-select').forEach(sel => {
     sel.addEventListener('change', () => changeRole(sel.dataset.id, sel.dataset.name, sel.value, sel));
+  });
+  document.querySelectorAll('.btn-restore-staff').forEach(btn => {
+    btn.addEventListener('click', () => restoreStaff(btn.dataset.id, btn.dataset.name));
   });
 </script>
 </body>

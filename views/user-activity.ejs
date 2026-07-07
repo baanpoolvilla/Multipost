@@ -61,6 +61,7 @@
     <a href="/user-activity" class="sidebar-item active"><i class="fa-solid fa-user-clock"></i><span>กิจกรรมพนักงาน</span></a>
     <% if (locals.currentStaff && currentStaff.canManageStaff) { %>
     <a href="/manage-staff" class="sidebar-item"><i class="fa-solid fa-users-gear"></i><span>จัดการบัญชีผู้ใช้งาน</span></a>
+    <a href="/audit-log" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติการเปลี่ยนแปลง</span></a>
     <% } %>
     <%- include('partials/sidebar-pages') %>
   </aside>

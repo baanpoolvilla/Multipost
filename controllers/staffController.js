@@ -2,6 +2,7 @@ const staffStore    = require('../services/staffStore');
 const postStore     = require('../services/postStore');
 const groupJobStore = require('../services/groupJobStore');
 const groupStore    = require('../services/groupStore');
+const auditLogStore = require('../services/auditLogStore');
 const { STATUS }    = require('../desktop-agent/src/scheduler/statuses');
 
 // ── Manage staff accounts ──────────────────────────────────────
@@ -17,8 +18,10 @@ exports.requireAdmin = (req, res, next) => {
 };
 
 exports.showManageStaff = async (req, res) => {
-    const staffList = await staffStore.list();
-    res.render('manage-staff', { staffList });
+    const allStaff = await staffStore.list({ includeDeleted: true });
+    const staffList = allStaff.filter(s => !s.deletedAt);
+    const deletedStaffList = allStaff.filter(s => s.deletedAt);
+    res.render('manage-staff', { staffList, deletedStaffList });
 };
 
 exports.createStaffAccount = async (req, res) => {
@@ -27,6 +30,15 @@ exports.createStaffAccount = async (req, res) => {
         return res.status(400).json({ error: 'กรุณากรอกข้อมูลให้ครบ' });
     const result = await staffStore.create({ username: username.trim(), password, displayName: displayName.trim(), role });
     if (result.error) return res.status(400).json({ error: result.error });
+    // Awaited (not fire-and-forget): on Vercel serverless, work left running
+    // after the response is sent isn't guaranteed to finish before the
+    // function is frozen/torn down, which would silently drop the log entry.
+    await auditLogStore.log({
+        action: auditLogStore.ACTIONS.CREATE,
+        actorId: req.staffId, actorName: req.staffName,
+        targetId: String(result.staff._id), targetName: result.staff.displayName,
+        details: { username: result.staff.username, role: result.staff.role },
+    });
     res.json({ ok: true, staff: result.staff });
 };
 
@@ -47,24 +59,65 @@ exports.deleteStaffAccount = async (req, res) => {
         if (admins <= 1) return res.status(400).json({ error: 'ไม่สามารถลบแอดมินคนสุดท้ายได้ ระบบต้องมีแอดมินอย่างน้อย 1 คนเสมอ' });
     }
 
-    const staff = await staffStore.remove(req.params.id);
+    // Soft delete: the row stays (so it can be restored, and its historical
+    // posts/jobs keep resolving to a real name), just marked removed.
+    const staff = await staffStore.softDelete(req.params.id);
+    if (staff) {
+        await auditLogStore.log({
+            action: auditLogStore.ACTIONS.SOFT_DELETE,
+            actorId: req.staffId, actorName: req.staffName,
+            targetId: String(staff._id), targetName: staff.displayName,
+            details: { username: staff.username },
+        });
+    }
     res.json({ ok: !!staff });
+};
+
+exports.restoreStaffAccount = async (req, res) => {
+    const staff = await staffStore.restore(req.params.id);
+    if (!staff) return res.status(404).json({ error: 'ไม่พบผู้ใช้งานที่ถูกลบ' });
+    await auditLogStore.log({
+        action: auditLogStore.ACTIONS.RESTORE,
+        actorId: req.staffId, actorName: req.staffName,
+        targetId: String(staff._id), targetName: staff.displayName,
+        details: { username: staff.username },
+    });
+    res.json({ ok: true, staff });
 };
 
 exports.editStaffAccount = async (req, res) => {
     const { username, displayName } = req.body;
     if (!username?.trim() || !displayName?.trim())
         return res.status(400).json({ error: 'กรุณากรอกข้อมูลให้ครบ' });
+
+    const before = await staffStore.findById(req.params.id);
     const result = await staffStore.updateProfile(req.params.id, { username: username.trim(), displayName: displayName.trim() });
     if (result.error) return res.status(400).json({ error: result.error });
+
+    await auditLogStore.log({
+        action: auditLogStore.ACTIONS.PROFILE_EDIT,
+        actorId: req.staffId, actorName: req.staffName,
+        targetId: String(result.staff._id), targetName: result.staff.displayName,
+        details: {
+            username: { from: before?.username ?? null, to: result.staff.username },
+            displayName: { from: before?.displayName ?? null, to: result.staff.displayName },
+        },
+    });
     res.json({ ok: true, staff: result.staff });
 };
 
 exports.changeStaffPassword = async (req, res) => {
     const { password } = req.body;
     if (!password) return res.status(400).json({ error: 'กรุณากรอกรหัสผ่านใหม่' });
+    const target = await staffStore.findById(req.params.id);
     const result = await staffStore.setPassword(req.params.id, password);
     if (result.error) return res.status(400).json({ error: result.error });
+
+    await auditLogStore.log({
+        action: auditLogStore.ACTIONS.PASSWORD_RESET,
+        actorId: req.staffId, actorName: req.staffName,
+        targetId: req.params.id, targetName: target?.displayName ?? null,
+    });
     res.json({ ok: true });
 };
 
@@ -72,22 +125,28 @@ exports.changeStaffRole = async (req, res) => {
     const { role } = req.body;
     if (role !== 'admin' && role !== 'staff') return res.status(400).json({ error: 'บทบาทไม่ถูกต้อง' });
 
-    if (role === 'staff') {
-        const target = await staffStore.findById(req.params.id);
-        if (target?.role === 'admin') {
-            const admins = await staffStore.countAdmins();
-            if (admins <= 1) return res.status(400).json({ error: 'ไม่สามารถลดสิทธิ์แอดมินคนสุดท้ายได้ ระบบต้องมีแอดมินอย่างน้อย 1 คนเสมอ' });
-        }
+    const target = await staffStore.findById(req.params.id);
+    if (role === 'staff' && target?.role === 'admin') {
+        const admins = await staffStore.countAdmins();
+        if (admins <= 1) return res.status(400).json({ error: 'ไม่สามารถลดสิทธิ์แอดมินคนสุดท้ายได้ ระบบต้องมีแอดมินอย่างน้อย 1 คนเสมอ' });
     }
 
     const staff = await staffStore.setRole(req.params.id, role);
+    if (staff) {
+        await auditLogStore.log({
+            action: auditLogStore.ACTIONS.ROLE_CHANGE,
+            actorId: req.staffId, actorName: req.staffName,
+            targetId: String(staff._id), targetName: staff.displayName,
+            details: { from: target?.role ?? null, to: role },
+        });
+    }
     res.json({ ok: !!staff, staff });
 };
 
 // ── "ใครทำอะไร" overview ────────────────────────────────────────
-function emptyBucket(id, displayName, username) {
+function emptyBucket(id, displayName, username, isDeleted = false) {
     return {
-        id, displayName, username,
+        id, displayName, username, isDeleted,
         pagePostCount: 0, groupJobCount: 0, successCount: 0, failCount: 0, lastActivityAt: null,
         pageSet: new Set(), groupSet: new Set(),
     };
@@ -98,14 +157,17 @@ function touchBucket(bucket, at) {
 }
 
 exports.showUserActivity = async (req, res) => {
+    // includeDeleted: a soft-deleted account's historical posts/jobs should
+    // still show under their real name here, not collapse into
+    // "ไม่ระบุตัวตน" just because the account itself was removed.
     const [staffList, posts, jobs] = await Promise.all([
-        staffStore.list(),
+        staffStore.list({ includeDeleted: true }),
         postStore.load(),
         groupJobStore.listHistory(),
     ]);
 
     const buckets = new Map();
-    staffList.forEach(s => buckets.set(String(s._id), emptyBucket(String(s._id), s.displayName, s.username)));
+    staffList.forEach(s => buckets.set(String(s._id), emptyBucket(String(s._id), s.displayName, s.username, !!s.deletedAt)));
     buckets.set('unassigned', emptyBucket('unassigned', 'ไม่ระบุตัวตน', null));
 
     const bucketFor = (staffId) => buckets.get(staffId && buckets.has(String(staffId)) ? String(staffId) : 'unassigned');
@@ -138,7 +200,11 @@ exports.showUserActivity = async (req, res) => {
 
     const staffSummaries = [...buckets.values()]
         .map(b => ({ ...b, pageCount: b.pageSet.size, groupCount: b.groupSet.size }))
-        .filter(b => b.id !== 'unassigned' || (b.pagePostCount + b.groupJobCount) > 0)
+        // "unassigned" and soft-deleted accounts only show up if they
+        // actually have history -- an active account always shows (so
+        // admins can see everyone), but there's no reason to clutter this
+        // report with a deleted account that never did anything.
+        .filter(b => (b.id !== 'unassigned' && !b.isDeleted) || (b.pagePostCount + b.groupJobCount) > 0)
         .sort((a, b) => (b.pagePostCount + b.groupJobCount) - (a.pagePostCount + a.groupJobCount));
 
     res.render('user-activity', { staffSummaries });
@@ -152,12 +218,16 @@ exports.showUserActivityDetail = async (req, res) => {
     let knownStaffIds = null;
     if (isUnassigned) {
         staffInfo = { id: 'unassigned', displayName: 'ไม่ระบุตัวตน' };
-        const staffList = await staffStore.list();
+        // includeDeleted: a soft-deleted account is still "known" (its
+        // history should resolve to its own page, not fall in here).
+        const staffList = await staffStore.list({ includeDeleted: true });
         knownStaffIds = new Set(staffList.map(s => String(s._id)));
     } else {
-        const s = await staffStore.findById(staffId);
+        // includeDeleted so a soft-deleted account's own detail page still
+        // works and shows their real name, instead of 404ing.
+        const s = await staffStore.findByIdIncludingDeleted(staffId);
         if (!s) return res.status(404).send('ไม่พบผู้ใช้งาน');
-        staffInfo = { id: String(s._id), displayName: s.displayName };
+        staffInfo = { id: String(s._id), displayName: s.displayName, isDeleted: !!s.deletedAt };
     }
 
     const [allPosts, allJobs, allGroups] = await Promise.all([
@@ -250,4 +320,24 @@ exports.showUserActivityDetail = async (req, res) => {
         pageSuccess, pageFail, grpSuccess, grpFail,
         pageStats, groupStats, categoryStats,
     });
+};
+
+// ── Audit log (บัญชีผู้ใช้งานถูกเปลี่ยนแปลงอะไรไปบ้าง) ─────────────
+const ACTION_LABEL_TH = {
+    create:          'เพิ่มบัญชี',
+    soft_delete:     'ลบบัญชี',
+    restore:         'กู้คืนบัญชี',
+    role_change:     'เปลี่ยนสิทธิ์',
+    password_reset:  'เปลี่ยนรหัสผ่าน',
+    profile_edit:    'แก้ไขข้อมูล',
+};
+
+exports.showAuditLog = async (req, res) => {
+    const entries = await auditLogStore.list();
+    const rows = entries.map(e => ({
+        ...e,
+        _id: String(e._id),
+        actionLabel: ACTION_LABEL_TH[e.action] || e.action,
+    }));
+    res.render('audit-log', { rows });
 };

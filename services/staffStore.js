@@ -9,6 +9,13 @@ const staffSchema = new mongoose.Schema({
     color:        { type: String, default: '#1877f2' },
     role:         { type: String, enum: ['admin', 'staff'], default: 'staff' },
     createdAt:    { type: Date, default: Date.now },
+    // Soft delete: a "removed" account is kept forever with this set instead
+    // of being erased from the collection, so its username is unambiguous
+    // (restore is possible instead of silently recreating a new row) and —
+    // the main reason — its historical posts/jobs keep showing the real
+    // displayName in กิจกรรมพนักงาน instead of collapsing to "ไม่ระบุตัวตน"
+    // just because the account record is gone.
+    deletedAt:    { type: Date, default: null },
 }, { versionKey: false });
 
 const Staff = mongoose.models.Staff || mongoose.model('Staff', staffSchema, 'staffmembers');
@@ -27,9 +34,17 @@ function isDuplicateKeyError(e) {
     return String(e.message || '').includes('E11000');
 }
 
-async function list() {
-    try { await connect(); return Staff.find().select('-passwordHash').sort({ displayName: 1 }).lean(); }
-    catch { return []; }
+// includeDeleted: true is only for callers that need soft-deleted accounts
+// to still resolve (e.g. so an old post/job's staffId still shows a real
+// name in กิจกรรมพนักงาน instead of falling into "ไม่ระบุตัวตน"). Every
+// other caller (the manage-staff list, login, admin-gating) wants active
+// accounts only, which is why that's the default.
+async function list({ includeDeleted = false } = {}) {
+    try {
+        await connect();
+        const filter = includeDeleted ? {} : { deletedAt: null };
+        return Staff.find(filter).select('-passwordHash').sort({ displayName: 1 }).lean();
+    } catch { return []; }
 }
 
 // Does NOT swallow errors to 0 like the other methods here — callers use
@@ -37,26 +52,42 @@ async function list() {
 // account creation?", and a DB hiccup must never look the same as a
 // genuinely empty collection (that would silently reopen public
 // registration on /login). Callers must catch and handle failure explicitly.
+// Counts active accounts only — a soft-deleted account shouldn't count
+// toward "the system must always have at least 1 account".
 async function count() {
     await connect();
-    return Staff.countDocuments();
+    return Staff.countDocuments({ deletedAt: null });
 }
 
 // Accounts created before the role system existed have no `role` field
 // stored at all, so this naturally (and correctly) excludes them until
 // someone explicitly promotes an account — see requireAdmin's bootstrap
-// escape hatch in controllers/staffController.js.
+// escape hatch in controllers/staffController.js. Active accounts only, for
+// the same reason as count().
 async function countAdmins() {
     await connect();
-    return Staff.countDocuments({ role: 'admin' });
+    return Staff.countDocuments({ role: 'admin', deletedAt: null });
 }
 
+// Active only — a soft-deleted account must not be able to log in.
 async function findByUsername(username) {
-    try { await connect(); return Staff.findOne({ username }).lean(); }
+    try { await connect(); return Staff.findOne({ username, deletedAt: null }).lean(); }
     catch { return null; }
 }
 
+// Active only — every management action (edit, change role/password,
+// admin-gating) should treat a soft-deleted account as "doesn't exist" so
+// none of those actions can be performed on it through the normal
+// endpoints. Use findByIdIncludingDeleted for display/history lookups.
 async function findById(id) {
+    try { await connect(); return Staff.findOne({ _id: id, deletedAt: null }).select('-passwordHash').lean(); }
+    catch { return null; }
+}
+
+// For display/history purposes only (กิจกรรมพนักงาน's per-person page,
+// name-resolution maps) — a soft-deleted account should still show its real
+// name on its own historical activity, not 404 or fall back to "ไม่ระบุตัวตน".
+async function findByIdIncludingDeleted(id) {
     try { await connect(); return Staff.findById(id).select('-passwordHash').lean(); }
     catch { return null; }
 }
@@ -67,9 +98,12 @@ async function findById(id) {
 // session just because of a transient outage) -- findById above collapses
 // both cases to null, which is fine for its other callers (they just want
 // "found it or didn't, don't crash the page"), but wrong for that one.
+// Active only — a soft-deleted account's session gets revoked the same way
+// a truly-gone one would (findById's null already triggers that in
+// middleware/auth.js, so soft-delete needs no extra code there).
 async function findByIdStrict(id) {
     await connect();
-    return Staff.findById(id).select('-passwordHash').lean();
+    return Staff.findOne({ _id: id, deletedAt: null }).select('-passwordHash').lean();
 }
 
 async function create({ username, password, displayName, role }) {
@@ -126,9 +160,20 @@ async function verifyPassword(username, password) {
     return staff;
 }
 
-async function remove(id) {
-    try { await connect(); return Staff.findByIdAndDelete(id).lean(); }
+// Soft delete: keeps the row (so it can be restored, and its historical
+// posts/jobs keep resolving to a real name) but marks it removed so it's
+// excluded from list()/findById()/login/admin-counts by default.
+async function softDelete(id) {
+    try { await connect(); return Staff.findByIdAndUpdate(id, { deletedAt: new Date() }, { new: true }).select('-passwordHash').lean(); }
     catch { return null; }
 }
 
-module.exports = { list, count, countAdmins, findByUsername, findById, findByIdStrict, create, verifyPassword, remove, setPassword, setRole, updateProfile };
+async function restore(id) {
+    try { await connect(); return Staff.findByIdAndUpdate(id, { deletedAt: null }, { new: true }).select('-passwordHash').lean(); }
+    catch { return null; }
+}
+
+module.exports = {
+    list, count, countAdmins, findByUsername, findById, findByIdIncludingDeleted, findByIdStrict,
+    create, verifyPassword, softDelete, restore, setPassword, setRole, updateProfile,
+};

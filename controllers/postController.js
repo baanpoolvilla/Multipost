@@ -182,7 +182,9 @@ async function buildScheduleCenterItems() {
 
     const [posts, jobs, pages, staffList] = await Promise.all([
         postStore.load(), groupJobStore.list(), pageStore.load(),
-        staffStore.list().catch(() => []),
+        // includeDeleted: a soft-deleted staff member's older dashboard
+        // entries should still resolve to their real name.
+        staffStore.list({ includeDeleted: true }).catch(() => []),
     ]);
     const pageNameMap = {};
     pages.forEach(p => { pageNameMap[p.pageId] = p.pageName; });
