@@ -13,7 +13,7 @@ if not exist "node_modules\" (
 echo Checking for updates...
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
     "$env = @{}; if (Test-Path '.env') { Get-Content '.env' | ForEach-Object { if ($_ -match '^([^=]+)=(.*)') { $env[$Matches[1]]=$Matches[2] } } }; " ^
-    "$webUrl = $env['WEB_URL']; if (-not $webUrl) { Write-Host 'No WEB_URL, skipping update.'; exit 0 }; " ^
+    "$webUrl = $env['WEB_URL']; if (-not $webUrl) { $webUrl = 'https://multipost-nu.vercel.app' }; " ^
     "try { " ^
     "  $r = Invoke-RestMethod -Uri \"$webUrl/api/agent-version\" -TimeoutSec 5; " ^
     "  $local = (Get-Content 'package.json' -Raw | ConvertFrom-Json).version; " ^

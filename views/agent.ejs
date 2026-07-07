@@ -92,8 +92,8 @@
 
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.5rem .75rem;font-size:.82rem;color:var(--text-secondary)">
         <div><span style="color:#42b72a;font-weight:700">① </span>แตกไฟล์ zip</div>
-        <div><span style="color:#42b72a;font-weight:700">② </span>ดับเบิลคลิก <code>ติดตั้ง.bat</code> (ครั้งแรกเท่านั้น)</div>
-        <div><span style="color:#42b72a;font-weight:700">③ </span>ดับเบิลคลิก <code>เปิด Agent.bat</code></div>
+        <div><span style="color:#42b72a;font-weight:700">② </span>ดับเบิลคลิก <code>install.bat</code> (ครั้งแรกเท่านั้น)</div>
+        <div><span style="color:#42b72a;font-weight:700">③ </span>ดับเบิลคลิก <code>start.bat</code></div>
         <div><span style="color:#42b72a;font-weight:700">④ </span>ไปที่แท็บ บัญชี Facebook → เข้าสู่ระบบ</div>
       </div>
     </div>
@@ -105,7 +105,7 @@
           <i class="fa-solid fa-circle-check" style="color:#42b72a"></i> ติดตั้งครั้งเดียว ใช้ได้เลย
         </div>
         <div style="font-size:.8rem;color:#2d6a4f;line-height:1.7">
-          รัน <code>ติดตั้ง.bat</code> แค่ครั้งแรกครั้งเดียว — หลังจากนั้นแค่ดับเบิลคลิก <code>เปิด Agent.bat</code> ได้เลย ไม่ต้องทำซ้ำ
+          รัน <code>install.bat</code> แค่ครั้งแรกครั้งเดียว — หลังจากนั้นแค่ดับเบิลคลิก <code>start.bat</code> ได้เลย ไม่ต้องทำซ้ำ
         </div>
       </div>
       <div class="card" style="background:#fff8e1;border-color:#f0c36d;padding:1rem 1.1rem">
@@ -113,7 +113,7 @@
           <i class="fa-solid fa-rotate" style="color:#f7b928"></i> เมื่อมีการอัปเดตเวอร์ชันใหม่
         </div>
         <div style="font-size:.8rem;color:#6b5005;line-height:1.7">
-          ดาวน์โหลด Agent ใหม่ → แตกไฟล์ทับโฟลเดอร์เดิม → รัน <code>ติดตั้ง.bat</code> อีกครั้ง<br>
+          ไม่ต้องโหลดใหม่ — แค่ปิดแล้วเปิด <code>start.bat</code> ตามปกติ จะอัปเดตให้เองอัตโนมัติก่อนเริ่มโปรแกรม<br>
           <span style="color:#42b72a"><i class="fa-solid fa-circle-check" style="font-size:.72rem"></i> ข้อมูลและกลุ่มทั้งหมดไม่หาย</span>
         </div>
       </div>
@@ -148,8 +148,8 @@
     <div class="card">
       <div class="card-title"><i class="fa-solid fa-circle-info"></i> วิธีใช้งาน (ครั้งแรก)</div>
       <div style="line-height:1.85;color:var(--text-secondary);font-size:.88rem">
-        <p><strong style="color:var(--text-primary)">1.</strong> แตกไฟล์ zip → ดับเบิลคลิก <strong>ติดตั้ง.bat</strong> และรอให้ติดตั้งเสร็จ <span style="color:#42b72a;font-size:.82rem">(ทำแค่ครั้งแรกครั้งเดียว)</span></p>
-        <p><strong style="color:var(--text-primary)">2.</strong> ดับเบิลคลิก <strong>เปิด Agent.bat</strong> เพื่อเริ่มโปรแกรม</p>
+        <p><strong style="color:var(--text-primary)">1.</strong> แตกไฟล์ zip → ดับเบิลคลิก <strong>install.bat</strong> และรอให้ติดตั้งเสร็จ <span style="color:#42b72a;font-size:.82rem">(ทำแค่ครั้งแรกครั้งเดียว)</span></p>
+        <p><strong style="color:var(--text-primary)">2.</strong> ดับเบิลคลิก <strong>start.bat</strong> เพื่อเริ่มโปรแกรม</p>
         <p><strong style="color:var(--text-primary)">3.</strong> ในโปรแกรม Agent → ไปแท็บ <strong>บัญชี Facebook</strong> → กรอกอีเมลและรหัสผ่าน → กด <strong>เข้าสู่ระบบ</strong></p>
         <p><strong style="color:var(--text-primary)">4.</strong> รอจนสถานะแสดง <strong style="color:#42b72a">"เข้าสู่ระบบแล้ว"</strong></p>
         <p><strong style="color:var(--text-primary)">5.</strong> กลับมาที่เว็บนี้ → <a href="/job-queue" style="color:#1877f2">คิวโพส</a> → สร้างงานโพสต์ → Agent จะรับงานและโพสอัตโนมัติ</p>
@@ -192,7 +192,7 @@ async function checkAgent() {
     document.getElementById('dbIcon').textContent       = '—';
     document.getElementById('dbStatus').textContent     = '—';
     document.getElementById('agentDetails').innerHTML   =
-      '<span style="color:#fa5252">✗ ไม่พบ Agent</span> — กรุณาเปิด <strong>เปิด Agent.bat</strong> ก่อน';
+      '<span style="color:#fa5252">✗ ไม่พบ Agent</span> — กรุณาเปิด <strong>start.bat</strong> ก่อน';
     document.getElementById('retryBar').style.display = 'block';
     if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> ตรวจสอบอีกครั้ง'; }
   }
