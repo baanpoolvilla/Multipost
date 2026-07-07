@@ -478,7 +478,7 @@ function populateFilters() {
   const pages=new Set(), staffMap=new Map();
   _items.forEach(i=>{
     if(i.type==='page') (i.targetPages||[]).forEach(p=>pages.add(p));
-    if(i.type==='group') staffMap.set(i.staffId||'__unassigned__', i.staffName||'ไม่ระบุตัวตน');
+    staffMap.set(i.staffId||'__unassigned__', i.staffName||'ไม่ระบุตัวตน');
   });
   const pgS=document.getElementById('sc-page'), agS=document.getElementById('sc-agent');
   const pv=pgS.value, av=agS.value;
@@ -507,7 +507,7 @@ function getFiltered() {
     if(_type && i.type!==_type) return false;
     if(q && !i.message.toLowerCase().includes(q)) return false;
     if(i.type==='page'  && pg && !(i.targetPages||[]).includes(pg)) return false;
-    if(i.type==='group' && ag && (i.staffId||'__unassigned__')!==ag) return false;
+    if(ag && (i.staffId||'__unassigned__')!==ag) return false;
     if(status && i.status!==status) return false;
     if(privacy && i.type==='group') {
       const hasMatch=(i.targetGroups||[]).some(g=>_groupPrivacyMap[g]===privacy);
@@ -620,35 +620,34 @@ function renderDonut(all) {
 // grouping by machine would misattribute one person's older jobs to
 // whoever used that computer most recently.
 function renderAgentList(all) {
-  const gi=all.filter(i=>i.type==='group');
+  const items=all.filter(i=>i.type==='group'||i.type==='page');
   const wrap=document.getElementById('agent-list');
-  if(!gi.length){wrap.innerHTML='<div class="no-data">ไม่มีข้อมูล</div>';return;}
+  if(!items.length){wrap.innerHTML='<div class="no-data">ไม่มีข้อมูล</div>';return;}
   const map={};
-  gi.forEach(item=>{
+  items.forEach(item=>{
     const key=item.staffId||'__unassigned__';
-    if(!map[key])map[key]={label:item.staffName||'ไม่ระบุตัวตน',staffId:item.staffId||null,jobs:0,groups:new Set(),success:0,fail:0,pending:0};
-    map[key].jobs++;
-    (item.targetGroups||[]).forEach(g=>map[key].groups.add(g));
-    map[key].success+=item.successCount||0;
-    map[key].fail   +=item.failCount||0;
-    if(['pending','running'].includes(item.status))map[key].pending++;
+    if(!map[key])map[key]={label:item.staffName||'ไม่ระบุตัวตน',staffId:item.staffId||null,pagePosts:0,groupJobs:0,groups:new Set(),success:0,fail:0,pending:0};
+    const d=map[key];
+    if(item.type==='page') d.pagePosts++; else d.groupJobs++;
+    (item.targetGroups||[]).forEach(g=>d.groups.add(g));
+    d.success+=item.successCount||0;
+    d.fail   +=item.failCount||0;
+    if(['pending','running'].includes(item.status))d.pending++;
   });
   wrap.innerHTML=Object.entries(map)
-    .sort((a,b)=>b[1].jobs-a[1].jobs)
+    .sort((a,b)=>(b[1].pagePosts+b[1].groupJobs)-(a[1].pagePosts+a[1].groupJobs))
     .map(([key,d],idx)=>{
       const t=d.success+d.fail;
       const r=t>0?Math.round(d.success/t*100):0;
       const col=rateColor(r);
-      // Known staff -> that person's own activity page; otherwise fall back
-      // to the old generic group-overview link (we don't know who did it).
-      const target=d.staffId?`/user-activity/${d.staffId}`:'/group-overview';
+      const target=`/user-activity/${d.staffId||'unassigned'}`;
       return `<div class="agent-row clickable" onclick="window.location='${target}'">
         <div class="ag-name">
           <span style="display:inline-block;width:17px;height:17px;background:#f0f2f5;border-radius:5px;text-align:center;font-size:.65rem;line-height:17px;font-style:normal;margin-right:.35rem;font-family:sans-serif">${idx+1}</span>
           <i class="fa-solid fa-user-clock" style="color:var(--c-purple);font-size:.7rem;margin-right:.3rem"></i>${esc(d.label)}
         </div>
         <div class="ag-sub">
-          ${d.jobs} งาน · ${d.groups.size} กลุ่ม
+          ${d.pagePosts} โพสต์เพจ · ${d.groupJobs} แชร์กลุ่ม${d.groups.size?` (${d.groups.size} กลุ่ม)`:''}
           ${d.pending?`· <span style="color:var(--c-amber)">⏳ ${d.pending} รอ</span>`:''}
           · <span style="color:var(--c-green)">✅ ${d.success}</span>
           · <span style="color:var(--c-red)">❌ ${d.fail}</span>

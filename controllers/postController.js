@@ -216,6 +216,8 @@ async function buildScheduleCenterItems() {
             targetGroups: [],
             sourceType: 'web',
             agentId: null,
+            staffId: p.staffId || null,
+            staffName: (p.staffId && staffNameMap[String(p.staffId)]) || null,
             successCount: p.successCount || 0,
             failCount: p.failCount || 0,
             analytics: { likes, comments, shares, reach },
