@@ -621,7 +621,10 @@ function renderDonut(all) {
 // grouping by machine would misattribute one person's older jobs to
 // whoever used that computer most recently.
 function renderAgentList(all) {
-  const items=all.filter(i=>i.type==='group'||i.type==='page');
+  // Soft-deleted staff are hidden here (not shown as "ไม่ระบุตัวตน") until
+  // restored — their other numbers (KPIs, charts, tables) are unaffected,
+  // only this per-person breakdown skips them.
+  const items=all.filter(i=>(i.type==='group'||i.type==='page')&&!i.staffDeleted);
   const wrap=document.getElementById('agent-list');
   if(!items.length){wrap.innerHTML='<div class="no-data">ไม่มีข้อมูล</div>';return;}
   const map={};

@@ -385,7 +385,7 @@
   async function deleteStaff(id, name) {
     const { isConfirmed } = await Swal.fire({
       icon: 'warning', title: `ลบบัญชีผู้ใช้งาน "${name}"?`,
-      text: 'บัญชีจะเข้าสู่ระบบไม่ได้อีก แต่ประวัติการโพสต์/แชร์เก่ายังคงแสดงชื่อนี้ตามเดิม และกู้คืนบัญชีได้ภายหลัง',
+      text: 'บัญชีจะเข้าสู่ระบบไม่ได้อีก และจะถูกซ่อนจากหน้ากิจกรรมพนักงานชั่วคราว ข้อมูลโพสต์/แชร์เก่าไม่ถูกลบ จะกลับมาแสดงตามเดิมทันทีที่กู้คืนบัญชี',
       showCancelButton: true, confirmButtonText: 'ลบ', cancelButtonText: 'ยกเลิก', confirmButtonColor: '#c62828',
     });
     if (!isConfirmed) return;

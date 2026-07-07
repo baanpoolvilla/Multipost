@@ -86,6 +86,7 @@ const postSchema = new mongoose.Schema({
 // picker, plus writing staffId onto jobs it creates.
 const staffSchema = new mongoose.Schema({
     username:    String, displayName: String, color: String, createdAt: Date,
+    deletedAt:   Date,
 }, { versionKey: false, collection: 'staffmembers' });
 
 // ── Connect ───────────────────────────────────────────────────
@@ -151,7 +152,10 @@ async function getRecentPosts() {
 async function listStaff() {
     try {
         await connect();
-        const staff = await Staff.find().sort({ displayName: 1 }).lean();
+        // Active only -- a soft-deleted account must not be selectable here,
+        // and main.js's startup re-check relies on a deleted staffId being
+        // absent from this list to clear a stale cached selection.
+        const staff = await Staff.find({ deletedAt: null }).sort({ displayName: 1 }).lean();
         return staff.map(s => ({ id: String(s._id), displayName: s.displayName, username: s.username }));
     } catch { return []; }
 }

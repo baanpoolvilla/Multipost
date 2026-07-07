@@ -200,11 +200,12 @@ exports.showUserActivity = async (req, res) => {
 
     const staffSummaries = [...buckets.values()]
         .map(b => ({ ...b, pageCount: b.pageSet.size, groupCount: b.groupSet.size }))
-        // "unassigned" and soft-deleted accounts only show up if they
-        // actually have history -- an active account always shows (so
-        // admins can see everyone), but there's no reason to clutter this
-        // report with a deleted account that never did anything.
-        .filter(b => (b.id !== 'unassigned' && !b.isDeleted) || (b.pagePostCount + b.groupJobCount) > 0)
+        // "unassigned" only shows up if it actually has history. Soft-deleted
+        // accounts are hidden here entirely (regardless of history) until
+        // restored -- their historical posts/jobs still count correctly
+        // toward this bucket internally (bucketFor above still resolves
+        // their real staffId, not "unassigned"), just the card is hidden.
+        .filter(b => b.id === 'unassigned' ? (b.pagePostCount + b.groupJobCount) > 0 : !b.isDeleted)
         .sort((a, b) => (b.pagePostCount + b.groupJobCount) - (a.pagePostCount + a.groupJobCount));
 
     res.render('user-activity', { staffSummaries });
@@ -223,11 +224,13 @@ exports.showUserActivityDetail = async (req, res) => {
         const staffList = await staffStore.list({ includeDeleted: true });
         knownStaffIds = new Set(staffList.map(s => String(s._id)));
     } else {
-        // includeDeleted so a soft-deleted account's own detail page still
-        // works and shows their real name, instead of 404ing.
-        const s = await staffStore.findByIdIncludingDeleted(staffId);
+        // Active only: a soft-deleted account's own detail page is hidden
+        // (404) the same as it's hidden from the overview list, until
+        // restored -- staffId on its historical posts/jobs never changes, so
+        // this page works again on its own the moment the account comes back.
+        const s = await staffStore.findById(staffId);
         if (!s) return res.status(404).send('ไม่พบผู้ใช้งาน');
-        staffInfo = { id: String(s._id), displayName: s.displayName, isDeleted: !!s.deletedAt };
+        staffInfo = { id: String(s._id), displayName: s.displayName };
     }
 
     const [allPosts, allJobs, allGroups] = await Promise.all([

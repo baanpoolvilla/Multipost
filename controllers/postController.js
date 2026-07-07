@@ -182,8 +182,9 @@ async function buildScheduleCenterItems() {
 
     const [posts, jobs, pages, staffList] = await Promise.all([
         postStore.load(), groupJobStore.list(), pageStore.load(),
-        // includeDeleted: a soft-deleted staff member's older dashboard
-        // entries should still resolve to their real name.
+        // includeDeleted: need to know WHICH staffIds are soft-deleted (see
+        // deletedStaffIds below) so their rows can be hidden from the
+        // "แยกตามพนักงาน" widget, not to resolve their names.
         staffStore.list({ includeDeleted: true }).catch(() => []),
     ]);
     const pageNameMap = {};
@@ -196,6 +197,10 @@ async function buildScheduleCenterItems() {
     // whoever used that computer most recently.
     const staffNameMap = {};
     staffList.forEach(s => { staffNameMap[String(s._id)] = s.displayName; });
+    // Soft-deleted staff should disappear from the "แยกตามพนักงาน" dashboard
+    // widget (not just get relabeled "ไม่ระบุตัวตน") until restored — checked
+    // live on every render, so a restore makes their row reappear on its own.
+    const deletedStaffIds = new Set(staffList.filter(s => s.deletedAt).map(s => String(s._id)));
 
     const pageItems = posts.map(p => {
         let likes = 0, comments = 0, shares = 0, reach = 0;
@@ -220,6 +225,7 @@ async function buildScheduleCenterItems() {
             agentId: null,
             staffId: p.staffId || null,
             staffName: (p.staffId && staffNameMap[String(p.staffId)]) || null,
+            staffDeleted: !!(p.staffId && deletedStaffIds.has(String(p.staffId))),
             successCount: p.successCount || 0,
             failCount: p.failCount || 0,
             analytics: { likes, comments, shares, reach },
@@ -239,6 +245,7 @@ async function buildScheduleCenterItems() {
         agentId: j.agentId || null,
         staffId: j.staffId || null,
         staffName: (j.staffId && staffNameMap[String(j.staffId)]) || null,
+        staffDeleted: !!(j.staffId && deletedStaffIds.has(String(j.staffId))),
         successCount: (j.results || []).filter(r => r.status === 'success').length,
         failCount: (j.results || []).filter(r => r.status === 'failed').length,
     }));

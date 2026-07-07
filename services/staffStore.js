@@ -77,18 +77,12 @@ async function findByUsername(username) {
 
 // Active only — every management action (edit, change role/password,
 // admin-gating) should treat a soft-deleted account as "doesn't exist" so
-// none of those actions can be performed on it through the normal
-// endpoints. Use findByIdIncludingDeleted for display/history lookups.
+// none of those actions can be performed on it through the normal endpoints.
+// Also used for display/history lookups (กิจกรรมพนักงาน's per-person page) —
+// those are deliberately hidden while the account is deleted, same as the
+// management actions, and come back automatically once restored.
 async function findById(id) {
     try { await connect(); return Staff.findOne({ _id: id, deletedAt: null }).select('-passwordHash').lean(); }
-    catch { return null; }
-}
-
-// For display/history purposes only (กิจกรรมพนักงาน's per-person page,
-// name-resolution maps) — a soft-deleted account should still show its real
-// name on its own historical activity, not 404 or fall back to "ไม่ระบุตัวตน".
-async function findByIdIncludingDeleted(id) {
-    try { await connect(); return Staff.findById(id).select('-passwordHash').lean(); }
     catch { return null; }
 }
 
@@ -174,6 +168,6 @@ async function restore(id) {
 }
 
 module.exports = {
-    list, count, countAdmins, findByUsername, findById, findByIdIncludingDeleted, findByIdStrict,
+    list, count, countAdmins, findByUsername, findById, findByIdStrict,
     create, verifyPassword, softDelete, restore, setPassword, setRole, updateProfile,
 };
