@@ -50,44 +50,60 @@ module.exports = async function auth(req, res, next) {
     const token = req.cookies?.token;
     if (!token) return unauthorized(req, res);
 
+    let payload;
     try {
-        const payload = jwt.verify(token, JWT_SECRET);
-
-        // Re-checked against the DB on every request (not just trusted from
-        // the JWT payload) for two reasons: (1) deleting a staff account
-        // must actually revoke their access instead of leaving their
-        // existing 30-day cookie working until it naturally expires, and
-        // (2) a role change (promote/demote) must take effect on the very
-        // next request, not only after the affected user logs out and back
-        // in — the JWT's cached `role` claim would otherwise disagree with
-        // the live DB right after an admin flips someone's role.
-        const staff = await staffStore.findById(payload.id).catch(() => null);
-        if (!staff) {
-            res.clearCookie('token');
-            return unauthorized(req, res);
-        }
-
-        req.staffId   = payload.id;
-        req.staffName = staff.displayName;
-        req.staffRole = staff.role || 'staff';
-
-        // Bootstrap window: accounts created before roles existed have
-        // nobody with role='admin' yet, which would otherwise hide the
-        // "จัดการบัญชีผู้ใช้งาน" sidebar link (and block the route itself,
-        // see staffController.requireAdmin) from everyone forever — nobody
-        // could ever promote the first admin after this deploys.
-        let canManageStaff = req.staffRole === 'admin';
-        if (!canManageStaff) {
-            try { canManageStaff = (await staffStore.countAdmins()) === 0; } catch { canManageStaff = false; }
-        }
-        req.canManageStaff = canManageStaff;
-
-        res.locals.currentStaff = { id: payload.id, name: req.staffName, role: req.staffRole, canManageStaff };
-        next();
+        payload = jwt.verify(token, JWT_SECRET);
     } catch {
         res.clearCookie('token');
         return unauthorized(req, res);
     }
+
+    // Re-checked against the DB on every request (not just trusted from the
+    // JWT payload) for two reasons: (1) deleting a staff account must
+    // actually revoke their access instead of leaving their existing 30-day
+    // cookie working until it naturally expires, and (2) a role change
+    // (promote/demote) must take effect on the very next request, not only
+    // after the affected user logs out and back in.
+    //
+    // findByIdStrict (unlike findById) rethrows on a DB error instead of
+    // returning null, specifically so this can tell "confirmed: this
+    // account no longer exists" apart from "the DB is temporarily
+    // unreachable" — only the former should clear the cookie. Treating both
+    // the same would mean a brief Mongo blip logs out every active session
+    // on their very next request instead of just degrading gracefully.
+    let staff;
+    let dbUnavailable = false;
+    try {
+        staff = await staffStore.findByIdStrict(payload.id);
+    } catch {
+        dbUnavailable = true;
+    }
+
+    if (!dbUnavailable && !staff) {
+        res.clearCookie('token');
+        return unauthorized(req, res);
+    }
+
+    // staff is the live record, or undefined if the DB call failed — in the
+    // latter case fall back to the JWT's own (possibly stale) claims for
+    // just this request rather than blocking access outright.
+    req.staffId   = payload.id;
+    req.staffName = staff?.displayName ?? payload.name;
+    req.staffRole = staff?.role ?? payload.role ?? 'staff';
+
+    // Bootstrap window: accounts created before roles existed have
+    // nobody with role='admin' yet, which would otherwise hide the
+    // "จัดการบัญชีผู้ใช้งาน" sidebar link (and block the route itself,
+    // see staffController.requireAdmin) from everyone forever — nobody
+    // could ever promote the first admin after this deploys.
+    let canManageStaff = req.staffRole === 'admin';
+    if (!canManageStaff) {
+        try { canManageStaff = (await staffStore.countAdmins()) === 0; } catch { canManageStaff = false; }
+    }
+    req.canManageStaff = canManageStaff;
+
+    res.locals.currentStaff = { id: payload.id, name: req.staffName, role: req.staffRole, canManageStaff };
+    next();
 };
 
 module.exports.JWT_SECRET = JWT_SECRET;

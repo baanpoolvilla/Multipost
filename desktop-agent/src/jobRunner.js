@@ -13,6 +13,7 @@ let _timer   = null;
 let _lastExpireSweep = 0;
 const EXPIRE_SWEEP_INTERVAL_MS = 30 * 1000; // don't hit the DB on every 3s poll tick
 const LOCK_RETRY_MS = 2000;
+const LOCK_RENEW_INTERVAL_MS = 60 * 1000; // well under postingLock's LOCK_STALE_MS (5 min)
 
 function init(store, bot, accounts, emit, agentId) {
     _store    = store;
@@ -150,8 +151,16 @@ async function processJob(job) {
     }
     log('🔓 ได้คิวแล้ว เริ่มโพส');
 
+    // Renew on a fixed timer, not once per group — a per-group renew still
+    // goes stale if delaySeconds (user-configurable) or a single group's
+    // post itself takes close to LOCK_STALE_MS, since nothing touches
+    // lockedAt again until the NEXT group finishes. A timer keeps the lock
+    // fresh regardless of how slow any individual step is.
+    const lockRenewTimer = setInterval(() => { postingLock.renew(_agentId).catch(() => {}); }, LOCK_RENEW_INTERVAL_MS);
+
     const results = [];
     let ok = 0;
+    let interrupted = false;
     let sharedPage = null;
     let sharedPageId = null;
     try {
@@ -164,7 +173,7 @@ async function processJob(job) {
         }
 
         for (let i=0; i<job.groups.length; i++) {
-            if (!_running) break;
+            if (!_running) { interrupted = true; break; }
             const g = job.groups[i];
             log(`➡️ [${i+1}/${job.groups.length}] ${g.groupName}`);
             _emit?.('jobs:progress', { groupName:g.groupName, status:'posting', current:i+1, total:job.groups.length });
@@ -174,11 +183,6 @@ async function processJob(job) {
 
             if (res.ok) { ok++; log(`   ✅ สำเร็จ`); _emit?.('jobs:progress', { groupName:g.groupName, status:'success' }); }
             else        { log(`   ❌ ${res.error}`); _emit?.('jobs:progress', { groupName:g.groupName, status:'failed', error:res.error }); }
-
-            // Refresh the lock's timestamp on every group so a job with many
-            // groups (or long delaySeconds) never goes stale mid-post — see
-            // postingLock.renew's doc comment.
-            await postingLock.renew(_agentId).catch(() => {});
 
             if (i < job.groups.length-1 && job.delaySeconds>0 && _running) {
                 log(`   ⏳ รอ ${job.delaySeconds}s...`);
@@ -191,6 +195,7 @@ async function processJob(job) {
             await _bot.switchBackOnPage(sharedPage, (m) => log(`   ${m}`), job.postAsPage).catch(()=>{});
         }
     } finally {
+        clearInterval(lockRenewTimer);
         await postingLock.release(_agentId).catch(() => {});
     }
 
@@ -199,11 +204,19 @@ async function processJob(job) {
         try { if (p.startsWith(require('os').tmpdir())) fs.unlinkSync(p); } catch {}
     }
 
-    const status = ok>0 ? STATUS.SUCCESS : STATUS.FAILED;
+    // Stopped mid-loop means some groups were never even attempted — they're
+    // simply missing from `results`, not recorded as failed. Reporting that
+    // as SUCCESS (the normal "ok>0" rule) would hide that the job never
+    // finished; force FAILED so it's visibly flagged for the admin instead
+    // of silently looking complete. (Not reverted to PENDING and re-run
+    // automatically: the groups already posted above would be posted again
+    // on a full retry, since there's no per-group resume — a human decides.)
+    const status = interrupted ? STATUS.FAILED : (ok>0 ? STATUS.SUCCESS : STATUS.FAILED);
     const pageData = sharedPageId ? { pageId: sharedPageId, pageName: job.postAsPage || null } : {};
     await _store.updateJob(id, { status, results, ...pageData });
     _emit?.('jobs:updated', { ...job, _id:id, status, results, ...pageData });
-    log(`✅ เสร็จ: ${ok}/${job.groups.length} สำเร็จ`);
+    if (interrupted) log(`⏸ ถูกหยุดกลางคัน: โพสไปแล้ว ${results.length}/${job.groups.length} กลุ่ม (สำเร็จ ${ok}) — เหลือ ${job.groups.length - results.length} กลุ่มที่ยังไม่ได้ทำ`);
+    else log(`✅ เสร็จ: ${ok}/${job.groups.length} สำเร็จ`);
     log('─────────────────────────────');
 }
 

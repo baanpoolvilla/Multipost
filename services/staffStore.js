@@ -17,8 +17,14 @@ const Staff = mongoose.models.Staff || mongoose.model('Staff', staffSchema, 'sta
 // concurrent request with the same username can still slip past it and hit
 // the schema's unique index instead — this turns that raw MongoDB E11000
 // error back into the same friendly message the pre-check would have given.
+// Checks a few different shapes since Mongoose/the driver don't always
+// expose .code on the top-level error (bulk-write paths, wrapped errors).
 function isDuplicateKeyError(e) {
-    return e && (e.code === 11000 || e.codeName === 'DuplicateKey');
+    if (!e) return false;
+    if (e.code === 11000 || e.codeName === 'DuplicateKey') return true;
+    if (Array.isArray(e.writeErrors) && e.writeErrors.some(we => we.code === 11000)) return true;
+    if (e.cause && (e.cause.code === 11000 || e.cause.codeName === 'DuplicateKey')) return true;
+    return String(e.message || '').includes('E11000');
 }
 
 async function list() {
@@ -53,6 +59,17 @@ async function findByUsername(username) {
 async function findById(id) {
     try { await connect(); return Staff.findById(id).select('-passwordHash').lean(); }
     catch { return null; }
+}
+
+// Same rethrow-don't-swallow contract as count(): middleware/auth.js needs
+// to tell "this account no longer exists" (safe to revoke the session) apart
+// from "the DB is temporarily unreachable" (must NOT revoke every active
+// session just because of a transient outage) -- findById above collapses
+// both cases to null, which is fine for its other callers (they just want
+// "found it or didn't, don't crash the page"), but wrong for that one.
+async function findByIdStrict(id) {
+    await connect();
+    return Staff.findById(id).select('-passwordHash').lean();
 }
 
 async function create({ username, password, displayName, role }) {
@@ -114,4 +131,4 @@ async function remove(id) {
     catch { return null; }
 }
 
-module.exports = { list, count, countAdmins, findByUsername, findById, create, verifyPassword, remove, setPassword, setRole, updateProfile };
+module.exports = { list, count, countAdmins, findByUsername, findById, findByIdStrict, create, verifyPassword, remove, setPassword, setRole, updateProfile };

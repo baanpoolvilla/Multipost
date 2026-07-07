@@ -237,13 +237,19 @@ function createSchedulerService(Model, opts = {}) {
             ],
         };
         if (agentId) {
-            const onlineAgentIds = await agentPresence.listOnlineAgentIds().catch(() => []);
+            // null (not []) on failure: an empty array would make every
+            // OTHER agent's pin look stale via $nin, letting this machine
+            // grab jobs pinned to a still-online colleague just because the
+            // presence check itself hiccuped. null instead skips clause (c)
+            // entirely, falling back to the old strict routing (self or
+            // unpinned only) until the presence check works again.
+            const onlineAgentIds = await agentPresence.listOnlineAgentIds().catch(() => null);
             filter.$and.push({
                 $or: [
                     { agentId },
                     { agentId: null },
                     { agentId: { $exists: false } },
-                    { agentId: { $nin: onlineAgentIds } },
+                    ...(onlineAgentIds ? [{ agentId: { $nin: onlineAgentIds } }] : []),
                 ],
             });
         }
