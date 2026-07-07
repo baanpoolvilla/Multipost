@@ -77,11 +77,6 @@
         ประวัติการโพสต์
         <span id="historyCount" style="background:#e4e6ea;padding:.15rem .55rem;border-radius:999px;font-size:.8rem;margin-left:.4rem"><%= posts.length %></span>
       </div>
-      <% if (posts.length > 0) { %>
-      <button class="btn-danger-sm" onclick="confirmClearAll()">
-        <i class="fa-solid fa-trash"></i> ล้างทั้งหมด
-      </button>
-      <% } %>
     </div>
 
     <% if (posts.length > 0) { %>
@@ -105,7 +100,7 @@
       </div>
 
       <!-- Main filters grid -->
-      <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:.65rem;margin-bottom:.65rem">
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:.65rem;margin-bottom:.65rem">
         <!-- Search -->
         <div>
           <div style="font-size:.73rem;color:#8a8d91;font-weight:600;margin-bottom:.28rem">
@@ -138,6 +133,16 @@
           <select id="hPage" onchange="applyFilters()"
             style="width:100%;padding:.42rem .5rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.83rem;font-family:inherit;color:#444;background:#fff;cursor:pointer;outline:none">
             <option value="">ทุกเพจ</option>
+          </select>
+        </div>
+        <!-- Staff -->
+        <div>
+          <div style="font-size:.73rem;color:#8a8d91;font-weight:600;margin-bottom:.28rem">
+            <i class="fa-solid fa-user" style="width:12px"></i> พนักงาน
+          </div>
+          <select id="hStaff" onchange="applyFilters()"
+            style="width:100%;padding:.42rem .5rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.83rem;font-family:inherit;color:#444;background:#fff;cursor:pointer;outline:none">
+            <option value="">ทุกคน</option>
           </select>
         </div>
       </div>
@@ -228,7 +233,7 @@
         </div>
         <div style="flex:1">
           <div class="fb-post-author">
-            Admin
+            <%= post.staffName || 'ไม่ระบุตัวตน' %>
             <% if (isScheduled) { %>
             <span style="background:#fff3cd;color:#856404;border-radius:999px;font-size:.7rem;padding:.1rem .45rem;font-weight:700;margin-left:.35rem">
               <i class="fa-solid fa-clock" style="font-size:.65rem"></i> รอโพส
@@ -408,7 +413,9 @@
     success: p.successCount || 0,
     fail:    p.failCount || 0,
     status:  p.status || 'success',
-    pages:   (p.results || []).map(r => r.pageName)
+    pages:   (p.results || []).map(r => r.pageName),
+    staffId:   p.staffId || null,
+    staffName: p.staffName || 'ไม่ระบุตัวตน',
   }))) %>;
 
   // Populate page select
@@ -424,6 +431,19 @@
     });
   })();
 
+  // Populate staff select (only names that actually appear in this data)
+  (function() {
+    const sel = document.getElementById('hStaff');
+    if (!sel) return;
+    const seen = new Map();
+    _hPosts.forEach(p => seen.set(p.staffId || '__unassigned__', p.staffName));
+    [...seen.entries()].sort((a,b) => a[1].localeCompare(b[1], 'th')).forEach(([id, name]) => {
+      const o = document.createElement('option');
+      o.value = id; o.textContent = name;
+      sel.appendChild(o);
+    });
+  })();
+
   function applyFilters() {
     const q         = (document.getElementById('hSearch')?.value || '').toLowerCase().trim();
     const st        = document.getElementById('hStatus')?.value   || '';
@@ -432,6 +452,7 @@
     const timeFrom  = t24Get('hTimeFrom');
     const timeTo    = t24Get('hTimeTo');
     const pg        = document.getElementById('hPage')?.value     || '';
+    const staff     = document.getElementById('hStaff')?.value    || '';
 
     // Date range validation
     const _drBad = fromVal && toVal && fromVal > toVal;
@@ -475,11 +496,12 @@
         if (postTime > timeOnlyTo)                  ok = false;
       }
       if (pg && !p.pages.includes(pg))              ok = false;
+      if (staff && (p.staffId || '__unassigned__') !== staff) ok = false;
       card.style.display = ok ? '' : 'none';
       if (ok) { shown++; sumSuccess += p.success; sumFail += p.fail; }
     });
 
-    const hasFilter = q || st || fromVal || toVal || timeFrom || timeTo || pg;
+    const hasFilter = q || st || fromVal || toVal || timeFrom || timeTo || pg || staff;
     const info = document.getElementById('hFilterInfo');
     if (info) {
       info.style.display = hasFilter ? 'block' : 'none';
@@ -501,7 +523,7 @@
   }
 
   function clearFilters() {
-    ['hSearch','hStatus','hDateFrom','hDateTo','hPage'].forEach(id => {
+    ['hSearch','hStatus','hDateFrom','hDateTo','hPage','hStaff'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
@@ -690,30 +712,6 @@
     triggerScheduler();
     pollTimer = setTimeout(pollScheduled, 5000);
   })();
-
-  async function confirmClearAll() {
-    const total   = _hPosts.length;
-    const withFail = _hPosts.filter(p => p.fail > 0).length;
-    const result = await Swal.fire({
-      title: 'ล้างประวัติทั้งหมด?',
-      html: `จะลบ <strong>${total} โพสต์</strong> และรูปภาพออกจากระบบ` +
-            (withFail ? `<br><span style="color:#c62828;font-size:.9em">⚠️ มี <strong>${withFail} โพสต์</strong>ที่มีล้มเหลวรวมอยู่ด้วย</span>` : ''),
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#c62828',
-      cancelButtonColor: '#65676b',
-      confirmButtonText: 'ล้างเลย',
-      cancelButtonText: 'ยกเลิก',
-    });
-    if (!result.isConfirmed) return;
-
-    const cards = [...document.querySelectorAll('.history-card')];
-    for (const card of cards) {
-      const id = card.id.replace('card-', '');
-      await fetch(`/history/${id}`, { method: 'DELETE' });
-    }
-    location.reload();
-  }
 
 async function showSummaryModal() {
   const today = new Date().toISOString().slice(0, 10);

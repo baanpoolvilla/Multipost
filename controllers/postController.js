@@ -292,8 +292,21 @@ exports.showResult = async (req, res) => {
 };
 
 exports.showHistory = async (req, res) => {
-    const posts = await postStore.load();
-    res.render('history', { posts });
+    const staffStore = require('../services/staffStore');
+    const [posts, staffList] = await Promise.all([
+        postStore.load(),
+        // includeDeleted: a post's staffName should still resolve here even
+        // if that account was later deleted -- this is a per-record history
+        // list (like the audit log), not a "who's active" summary.
+        staffStore.list({ includeDeleted: true }).catch(() => []),
+    ]);
+    const staffNameMap = {};
+    staffList.forEach(s => { staffNameMap[String(s._id)] = s.displayName; });
+    const enriched = posts.map(p => ({
+        ...p,
+        staffName: (p.staffId && staffNameMap[String(p.staffId)]) || null,
+    }));
+    res.render('history', { posts: enriched });
 };
 
 exports.showSchedulePost = async (req, res) => {

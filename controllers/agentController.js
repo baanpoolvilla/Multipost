@@ -424,11 +424,18 @@ exports.cancelJob = async (req, res) => {
 
 // ── Group History page ─────────────────────────────────────────
 exports.showGroupHistory = async (req, res) => {
-    const [jobs, groups, dbCategories] = await Promise.all([
+    const staffStore = require('../services/staffStore');
+    const [jobs, groups, dbCategories, staffList] = await Promise.all([
         groupJobStore.listHistory(),
         groupStore.list(),
         categoryStore.list(),
+        // includeDeleted: a job's staffName should still resolve here even if
+        // that account was later deleted -- this is a per-record history
+        // list (like the audit log), not a "who's active" summary.
+        staffStore.list({ includeDeleted: true }).catch(() => []),
     ]);
+    const staffNameMap = {};
+    staffList.forEach(s => { staffNameMap[String(s._id)] = s.displayName; });
 
     // groupId → categories map for category-based filtering on client
     const groupCatMap = {};
@@ -451,6 +458,7 @@ exports.showGroupHistory = async (req, res) => {
             _id: String(j._id),
             successCount: results.filter(r => r.status === 'success').length,
             failCount:    results.filter(r => r.status === 'failed').length,
+            staffName: (j.staffId && staffNameMap[String(j.staffId)]) || null,
         };
     });
 

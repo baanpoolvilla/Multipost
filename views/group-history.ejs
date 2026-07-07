@@ -77,11 +77,6 @@
         ประวัติโพสลงกลุ่ม
         <span id="historyCount" style="background:#e4e6ea;padding:.15rem .55rem;border-radius:999px;font-size:.8rem;margin-left:.4rem"><%= jobs.length %></span>
       </div>
-      <% if (jobs.length > 0) { %>
-      <button class="btn-danger-sm" onclick="confirmClearAll()">
-        <i class="fa-solid fa-trash"></i> ล้างทั้งหมด
-      </button>
-      <% } %>
     </div>
 
     <% if (jobs.length > 0) { %>
@@ -103,8 +98,8 @@
         </div>
       </div>
 
-      <!-- Row 1: search + status + group + category + privacy -->
-      <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;gap:.65rem;margin-bottom:.65rem">
+      <!-- Row 1: search + status + group + category + privacy + staff -->
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr;gap:.65rem;margin-bottom:.65rem">
         <div>
           <div style="font-size:.73rem;color:#8a8d91;font-weight:600;margin-bottom:.28rem">
             <i class="fa-solid fa-magnifying-glass" style="width:12px"></i> ค้นหาข้อความ
@@ -156,6 +151,15 @@
             <option value="private">🔒 Private</option>
             <option value="paid">💰 เสียตัง</option>
             <option value="__unset__">– ไม่ระบุ</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:.73rem;color:#8a8d91;font-weight:600;margin-bottom:.28rem">
+            <i class="fa-solid fa-user" style="width:12px"></i> พนักงาน
+          </div>
+          <select id="hStaff" onchange="applyFilters()"
+            style="width:100%;padding:.42rem .5rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.83rem;font-family:inherit;color:#444;background:#fff;cursor:pointer;outline:none">
+            <option value="">ทุกคน</option>
           </select>
         </div>
       </div>
@@ -233,13 +237,15 @@
         </div>
         <div style="flex:1">
           <div class="fb-post-author">
-            Desktop Agent
+            <%= job.staffName || 'ไม่ระบุตัวตน' %>
             <span style="background:<%= allOk ? '#d1e7dd' : allFail ? '#f8d7da' : '#fff3cd' %>;color:<%= allOk ? '#0a3622' : allFail ? '#842029' : '#856404' %>;border-radius:999px;font-size:.7rem;padding:.1rem .5rem;font-weight:700;margin-left:.35rem">
               <i class="fa-solid fa-<%= allOk ? 'check' : allFail ? 'xmark' : 'triangle-exclamation' %>" style="font-size:.65rem"></i>
               <%= allOk ? 'สำเร็จทั้งหมด' : allFail ? 'ล้มเหลวทั้งหมด' : 'สำเร็จบางส่วน' %>
             </span>
           </div>
           <div class="fb-post-time">
+            <i class="fa-solid fa-robot"></i> Desktop Agent
+            &nbsp;·&nbsp;
             <i class="fa-solid fa-clock"></i>
             <%= new Date(job.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', dateStyle:'short', timeStyle:'short', hour12:false }) %>
             &nbsp;·&nbsp;
@@ -399,6 +405,8 @@
     success:     j.successCount || 0,
     fail:        j.failCount || 0,
     groups:      (j.groups || []).map(g => ({ id: g.groupId, name: g.groupName })),
+    staffId:     j.staffId || null,
+    staffName:   j.staffName || 'ไม่ระบุตัวตน',
   }))) %>;
 
   // Populate group select
@@ -414,12 +422,26 @@
     });
   })();
 
+  // Populate staff select (only names that actually appear in this data)
+  (function() {
+    const sel = document.getElementById('hStaff');
+    if (!sel) return;
+    const seen = new Map();
+    _hJobs.forEach(j => seen.set(j.staffId || '__unassigned__', j.staffName));
+    [...seen.entries()].sort((a,b) => a[1].localeCompare(b[1], 'th')).forEach(([id, name]) => {
+      const o = document.createElement('option');
+      o.value = id; o.textContent = name;
+      sel.appendChild(o);
+    });
+  })();
+
   function applyFilters() {
     const q        = (document.getElementById('hSearch')?.value || '').toLowerCase().trim();
     const st       = document.getElementById('hStatus')?.value   || '';
     const grp      = document.getElementById('hGroup')?.value    || '';
     const cat      = document.getElementById('hCat')?.value      || '';
     const priv     = document.getElementById('hPrivacy')?.value  || '';
+    const staff    = document.getElementById('hStaff')?.value    || '';
     const fromVal  = document.getElementById('hDateFrom')?.value || '';
     const toVal    = document.getElementById('hDateTo')?.value   || '';
     const timeFrom = t24Get('hTimeFrom');
@@ -475,6 +497,9 @@
         if (!match) ok = false;
       }
 
+      // Staff filter
+      if (staff && (j.staffId || '__unassigned__') !== staff) ok = false;
+
       const postDate = new Date(j.at);
       const postTs   = postDate.getTime();
       if (fromTs !== null && postTs < fromTs) ok = false;
@@ -492,7 +517,7 @@
       if (ok) { shown++; sumSuccess += j.success; sumFail += j.fail; sumGroups += j.groups.length; }
     });
 
-    const hasFilter = q || st || grp || cat || priv || fromVal || toVal || timeFrom || timeTo;
+    const hasFilter = q || st || grp || cat || priv || staff || fromVal || toVal || timeFrom || timeTo;
     const info = document.getElementById('hFilterInfo');
     if (info) {
       info.style.display = hasFilter ? 'block' : 'none';
@@ -514,7 +539,7 @@
   }
 
   function clearFilters() {
-    ['hSearch','hStatus','hGroup','hCat','hPrivacy','hDateFrom','hDateTo'].forEach(id => {
+    ['hSearch','hStatus','hGroup','hCat','hPrivacy','hStaff','hDateFrom','hDateTo'].forEach(id => {
       const el = document.getElementById(id); if (el) el.value = '';
     });
     document.getElementById('hDateFrom').style.borderColor = '';
@@ -620,27 +645,6 @@
     };
     v.load();
   });
-
-  async function confirmClearAll() {
-    const result = await Swal.fire({
-      title: 'ล้างประวัติทั้งหมด?',
-      text: 'จะลบประวัติโพสกลุ่มทั้งหมดออกจากระบบ',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#c62828',
-      cancelButtonColor: '#65676b',
-      confirmButtonText: 'ล้างเลย',
-      cancelButtonText: 'ยกเลิก',
-    });
-    if (!result.isConfirmed) return;
-
-    const cards = [...document.querySelectorAll('.history-card')];
-    for (const card of cards) {
-      const id = card.id.replace('card-', '');
-      await fetch(`/api/agent/history/${id}`, { method: 'DELETE' });
-    }
-    location.reload();
-  }
 
 async function showGroupSummaryModal() {
   const _ghIs  = 'width:100%;padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none;box-sizing:border-box';
