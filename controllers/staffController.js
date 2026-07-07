@@ -58,6 +58,15 @@ exports.deleteStaffAccount = async (req, res) => {
     res.json({ ok: !!staff });
 };
 
+exports.editStaffAccount = async (req, res) => {
+    const { username, displayName } = req.body;
+    if (!username?.trim() || !displayName?.trim())
+        return res.status(400).json({ error: 'กรุณากรอกข้อมูลให้ครบ' });
+    const result = await staffStore.updateProfile(req.params.id, { username: username.trim(), displayName: displayName.trim() });
+    if (result.error) return res.status(400).json({ error: result.error });
+    res.json({ ok: true, staff: result.staff });
+};
+
 exports.changeStaffPassword = async (req, res) => {
     const { password } = req.body;
     if (!password) return res.status(400).json({ error: 'กรุณากรอกรหัสผ่านใหม่' });

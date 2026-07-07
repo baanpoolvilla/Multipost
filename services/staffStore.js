@@ -76,6 +76,16 @@ async function setRole(id, role) {
     } catch { return null; }
 }
 
+async function updateProfile(id, { username, displayName }) {
+    try {
+        await connect();
+        const existing = await Staff.findOne({ username, _id: { $ne: id } });
+        if (existing) return { error: 'มีชื่อผู้ใช้นี้อยู่แล้ว' };
+        const staff = await Staff.findByIdAndUpdate(id, { username, displayName }, { new: true }).select('-passwordHash').lean();
+        return staff ? { ok: true, staff } : { error: 'ไม่พบผู้ใช้งาน' };
+    } catch (e) { return { error: e.message }; }
+}
+
 async function verifyPassword(username, password) {
     const staff = await findByUsername(username);
     if (!staff) return null;
@@ -90,4 +100,4 @@ async function remove(id) {
     catch { return null; }
 }
 
-module.exports = { list, count, countAdmins, findByUsername, findById, create, verifyPassword, remove, setPassword, setRole };
+module.exports = { list, count, countAdmins, findByUsername, findById, create, verifyPassword, remove, setPassword, setRole, updateProfile };

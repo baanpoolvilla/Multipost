@@ -86,6 +86,7 @@ router.post('/logout', authCtrl.logout);
 router.get('/manage-staff',                staffCtrl.requireAdmin, staffCtrl.showManageStaff);
 router.post('/api/staff',                  staffCtrl.requireAdmin, staffCtrl.createStaffAccount);
 router.delete('/api/staff/:id',            staffCtrl.requireAdmin, staffCtrl.deleteStaffAccount);
+router.patch('/api/staff/:id',             staffCtrl.requireAdmin, staffCtrl.editStaffAccount);
 router.patch('/api/staff/:id/password',    staffCtrl.requireAdmin, staffCtrl.changeStaffPassword);
 router.patch('/api/staff/:id/role',        staffCtrl.requireAdmin, staffCtrl.changeStaffRole);
 router.get('/user-activity',                staffCtrl.showUserActivity);
