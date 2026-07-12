@@ -247,7 +247,16 @@
             <i class="fa-solid fa-robot"></i> Desktop Agent
             &nbsp;·&nbsp;
             <i class="fa-solid fa-clock"></i>
-            <%= new Date(job.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', dateStyle:'short', timeStyle:'short', hour12:false }) %>
+            <%
+              // Show the time it actually posted, not when the job was
+              // queued/scheduled -- lastAttemptAt is stamped the moment the
+              // job leaves 'pending' and starts running, so for a job that
+              // sat scheduled for days this is the only timestamp that
+              // answers "when did this really go out", matching what the
+              // success/fail badge above is reporting on.
+              const postedAt = job.lastAttemptAt || job.createdAt;
+            %>
+            <%= new Date(postedAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', dateStyle:'short', timeStyle:'short', hour12:false }) %>
             &nbsp;·&nbsp;
             <i class="fa-solid fa-users" style="color:#1877f2"></i>
             <%= (job.groups || []).length %> กลุ่ม
@@ -399,7 +408,7 @@
   const _hJobs = <%- JSON.stringify(jobs.map(j => ({
     id:          String(j._id),
     msg:         j.message || '',
-    at:          j.createdAt,
+    at:          j.lastAttemptAt || j.createdAt,
     status:      j.status || 'pending',
     scheduledAt: j.scheduledAt || null,
     success:     j.successCount || 0,
