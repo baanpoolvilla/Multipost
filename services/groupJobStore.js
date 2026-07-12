@@ -89,6 +89,19 @@ async function listHistory() {
     } catch(e) { return []; }
 }
 
+// Every status (pending/running/success/failed/expired/cancelled), no
+// completed-only filter — for a specific person's full activity record
+// (controllers/staffController.js showUserActivityDetail), where the whole
+// point is to show everything they have ever queued, not just what already
+// finished. Higher limit than listHistory() since this is meant to be
+// exhaustive rather than a recent-activity ticker.
+async function listAll() {
+    try {
+        await connect();
+        return GroupJob.find().sort({ createdAt: -1 }).limit(2000).lean();
+    } catch(e) { return []; }
+}
+
 async function deleteHistory(id) {
     try {
         await connect();
@@ -166,7 +179,7 @@ async function updateResultAnalytics(jobId, resultIndex, analytics) {
 }
 
 module.exports = {
-    list, create, remove, listHistory, deleteHistory, getById, statsByDateRange,
+    list, create, remove, listHistory, listAll, deleteHistory, getById, statsByDateRange,
     updateOne, listScheduled, updateResultAnalytics, listExpired, expireOverdueJobs,
     migrateLegacyStatuses, retryJob, cancelJob,
 };

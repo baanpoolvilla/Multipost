@@ -106,6 +106,16 @@
       <input id="uaTo" type="date" lang="en-GB" onchange="applyUaFilter()" title="ถึงวันที่"
         style="padding:.35rem .5rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;color:#333;outline:none;cursor:pointer">
       <span id="uaDateRangeErr" style="display:none;font-size:.75rem;color:#c62828;font-weight:600">⚠️ วันที่เริ่มต้องไม่เกินวันที่สิ้นสุด</span>
+      <select id="uaStatusSelect" onchange="applyUaFilter()"
+        style="padding:.35rem .5rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;color:#333;outline:none;cursor:pointer">
+        <option value="">ทุกสถานะ</option>
+        <option value="pending">รอดำเนินการ</option>
+        <option value="running">กำลังทำ</option>
+        <option value="success">สำเร็จ</option>
+        <option value="failed">ล้มเหลว</option>
+        <option value="expired">หมดเวลา</option>
+        <option value="cancelled">ยกเลิก</option>
+      </select>
       <% if (pageStats.length > 0) { %>
       <select id="uaPageSelect" onchange="applyPageFilterValue(this.value)"
         style="padding:.35rem .5rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;color:#333;outline:none;cursor:pointer">
@@ -125,6 +135,27 @@
       <% } %>
       <button onclick="clearUaFilter()" style="padding:.35rem .6rem;background:#f0f2f5;border:none;border-radius:8px;font-size:.82rem;cursor:pointer;color:#666;font-family:inherit">✕ ล้าง</button>
     </div>
+
+    <%
+      // Shared badge lookup for both tabs -- a pending/running/expired/
+      // cancelled item has no meaningful success/fail split yet (or ever,
+      // for cancelled), so those statuses must be checked before falling
+      // back to the success/fail count-based badge used for finished work.
+      function statusBadge(status, successCount, failCount, total) {
+        const map = {
+          pending:   { bg:'#fff3cd', color:'#856404', icon:'clock',               text:'รอดำเนินการ', avatar:'orange' },
+          running:   { bg:'#cfe2ff', color:'#084298', icon:'spinner fa-spin',     text:'กำลังทำ',      avatar:'blue'   },
+          expired:   { bg:'#f8d7da', color:'#842029', icon:'clock',               text:'หมดเวลา',      avatar:'red'    },
+          cancelled: { bg:'#e2e3e5', color:'#41464b', icon:'ban',                 text:'ยกเลิก',       avatar:'red'    },
+        };
+        if (map[status]) return map[status];
+        const allOk   = (successCount||0) > 0 && (failCount||0) === 0;
+        const allFail = (successCount||0) === 0 && (failCount||0) > 0;
+        if (allOk)   return { bg:'#d1e7dd', color:'#0a3622', icon:'check',  text:'สำเร็จทั้งหมด', avatar:'green' };
+        if (allFail) return { bg:'#f8d7da', color:'#842029', icon:'xmark', text:'ล้มเหลว',        avatar:'red'   };
+        return { bg:'#fff3cd', color:'#856404', icon:'triangle-exclamation', text:`สำเร็จ ${successCount}/${total}`, avatar:'orange' };
+      }
+    %>
 
     <!-- ── PAGE POSTS TAB ── -->
     <div id="tabPage" style="display:flex;flex-direction:column;gap:1rem">
@@ -198,22 +229,22 @@
     <% posts.forEach(post => { %>
     <%
       const total   = (post.results || []).length;
-      const allOk   = (post.successCount||0) > 0 && (post.failCount||0) === 0;
-      const allFail = (post.successCount||0) === 0 && (post.failCount||0) > 0;
+      const pStatus = post.status || 'success';
+      const badge   = statusBadge(pStatus, post.successCount||0, post.failCount||0, total);
       const msg     = (post.message || '');
       const display = msg.includes('|||') ? (msg.slice(0, msg.indexOf('|||')).trim() || msg.slice(msg.indexOf('|||')+3).trim()) : msg;
       const imgs    = (post.images || []).filter(img => img && !img.startsWith('localpath::') && !/^[A-Za-z]:[\\\/]/.test(img));
     %>
-    <div class="card history-card ua-card-page" data-at="<%= post.lastAttemptAt || post.createdAt %>" data-msg="<%= (display||'').toLowerCase().replace(/"/g,'') %>" data-ok="<%= post.successCount||0 %>" data-fail="<%= post.failCount||0 %>" data-pages="<%= (post.results||[]).map(r=>r.pageId||r.pageName).join(',') %>">
+    <div class="card history-card ua-card-page" data-at="<%= post.lastAttemptAt || post.createdAt %>" data-msg="<%= (display||'').toLowerCase().replace(/"/g,'') %>" data-ok="<%= post.successCount||0 %>" data-fail="<%= post.failCount||0 %>" data-pages="<%= (post.results||[]).map(r=>r.pageId||r.pageName).join(',') %>" data-status="<%= pStatus %>">
       <div class="fb-post-header">
-        <div class="avatar avatar-<%= allOk ? 'green' : allFail ? 'red' : 'orange' %>">
+        <div class="avatar avatar-<%= badge.avatar %>">
           <i class="fa-brands fa-facebook"></i>
         </div>
         <div style="flex:1">
           <div class="fb-post-author">
             โพสลงเพจ
-            <span style="background:<%= allOk ? '#d1e7dd' : allFail ? '#f8d7da' : '#fff3cd' %>;color:<%= allOk ? '#0a3622' : allFail ? '#842029' : '#856404' %>;border-radius:999px;font-size:.7rem;padding:.1rem .5rem;font-weight:700;margin-left:.35rem">
-              <%= allOk ? 'สำเร็จทั้งหมด' : allFail ? 'ล้มเหลว' : `สำเร็จ ${post.successCount}/${total}` %>
+            <span style="background:<%= badge.bg %>;color:<%= badge.color %>;border-radius:999px;font-size:.7rem;padding:.1rem .5rem;font-weight:700;margin-left:.35rem">
+              <i class="fa-solid fa-<%= badge.icon %>" style="font-size:.65rem"></i> <%= badge.text %>
             </span>
           </div>
           <div class="fb-post-time">
@@ -374,21 +405,21 @@
     <% } else { %>
     <% jobs.forEach(job => { %>
     <%
-      const allOk   = job.successCount > 0 && job.failCount === 0;
-      const allFail = job.successCount === 0 && job.failCount > 0;
+      const jStatus  = job.status || 'success';
+      const jbadge   = statusBadge(jStatus, job.successCount, job.failCount, job.groupCount);
       const jmsg    = (job.message || '');
       const jdisplay = jmsg.includes('|||') ? (jmsg.slice(0, jmsg.indexOf('|||')).trim() || jmsg.slice(jmsg.indexOf('|||')+3).trim()) : jmsg;
     %>
-    <div class="card history-card ua-card-grp" data-at="<%= job.lastAttemptAt || job.createdAt %>" data-msg="<%= (jdisplay||'').toLowerCase().replace(/"/g,'') %>" data-ok="<%= job.successCount %>" data-fail="<%= job.failCount %>" data-groups="<%= (job.groups||[]).map(g=>g.groupId||g.groupName).join(',') %>" data-cats="<%= job.categories.join(',') %>">
+    <div class="card history-card ua-card-grp" data-at="<%= job.lastAttemptAt || job.createdAt %>" data-msg="<%= (jdisplay||'').toLowerCase().replace(/"/g,'') %>" data-ok="<%= job.successCount %>" data-fail="<%= job.failCount %>" data-groups="<%= (job.groups||[]).map(g=>g.groupId||g.groupName).join(',') %>" data-cats="<%= job.categories.join(',') %>" data-status="<%= jStatus %>">
       <div class="fb-post-header">
-        <div class="avatar avatar-<%= allOk ? 'green' : allFail ? 'red' : 'orange' %>">
+        <div class="avatar avatar-<%= jbadge.avatar %>">
           <i class="fa-solid fa-users"></i>
         </div>
         <div style="flex:1">
           <div class="fb-post-author">
             แชร์ลงกลุ่ม
-            <span style="background:<%= allOk ? '#d1e7dd' : allFail ? '#f8d7da' : '#fff3cd' %>;color:<%= allOk ? '#0a3622' : allFail ? '#842029' : '#856404' %>;border-radius:999px;font-size:.7rem;padding:.1rem .5rem;font-weight:700;margin-left:.35rem">
-              <%= allOk ? 'สำเร็จทั้งหมด' : allFail ? 'ล้มเหลว' : `สำเร็จ ${job.successCount}/${job.groupCount}` %>
+            <span style="background:<%= jbadge.bg %>;color:<%= jbadge.color %>;border-radius:999px;font-size:.7rem;padding:.1rem .5rem;font-weight:700;margin-left:.35rem">
+              <i class="fa-solid fa-<%= jbadge.icon %>" style="font-size:.65rem"></i> <%= jbadge.text %>
             </span>
           </div>
           <div class="fb-post-time">
@@ -469,6 +500,7 @@
     const q       = (document.getElementById('uaSearch')?.value || '').toLowerCase().trim();
     const fromVal = document.getElementById('uaFrom')?.value || '';
     const toVal   = document.getElementById('uaTo')?.value   || '';
+    const status  = document.getElementById('uaStatusSelect')?.value || '';
 
     const _drBad = fromVal && toVal && fromVal > toVal;
     document.getElementById('uaFrom').style.borderColor        = _drBad ? '#c62828' : '';
@@ -484,7 +516,8 @@
       const msg = el.dataset.msg || '';
       const ts  = new Date(el.dataset.at).getTime();
       const pageOk = !_pageFilter || (el.dataset.pages || '').split(',').includes(_pageFilter);
-      const ok  = (!q || msg.includes(q)) && ts >= fromMs && ts <= toMs && pageOk;
+      const statusOk = !status || el.dataset.status === status;
+      const ok  = (!q || msg.includes(q)) && ts >= fromMs && ts <= toMs && pageOk && statusOk;
       el.style.display = ok ? '' : 'none';
       if (ok) { pageShown++; pageSuccess += parseInt(el.dataset.ok||0); pageFail += parseInt(el.dataset.fail||0); }
     });
@@ -495,12 +528,13 @@
       const ts  = new Date(el.dataset.at).getTime();
       const catOk   = !_categoryFilter || (el.dataset.cats || '').split(',').includes(_categoryFilter);
       const groupOk = !_groupFilter || (el.dataset.groups || '').split(',').includes(_groupFilter);
-      const ok  = (!q || msg.includes(q)) && ts >= fromMs && ts <= toMs && catOk && groupOk;
+      const statusOk = !status || el.dataset.status === status;
+      const ok  = (!q || msg.includes(q)) && ts >= fromMs && ts <= toMs && catOk && groupOk && statusOk;
       el.style.display = ok ? '' : 'none';
       if (ok) { grpShown++; grpSuccess += parseInt(el.dataset.ok || 0); grpFail += parseInt(el.dataset.fail || 0); }
     });
 
-    const hasFilter = q || fromVal || toVal || _pageFilter || _categoryFilter || _groupFilter;
+    const hasFilter = q || fromVal || toVal || status || _pageFilter || _categoryFilter || _groupFilter;
 
     document.getElementById('cntPage').textContent = `(${pageShown})`;
     document.getElementById('cntGrp').textContent  = `(${grpShown})`;
@@ -522,6 +556,7 @@
     const s = document.getElementById('uaSearch'); if (s) s.value = '';
     const f = document.getElementById('uaFrom');   if (f) { f.value = ''; f.style.borderColor = ''; }
     const t = document.getElementById('uaTo');     if (t) { t.value = ''; t.style.borderColor = ''; }
+    const st = document.getElementById('uaStatusSelect'); if (st) st.value = '';
     document.getElementById('uaDateRangeErr').style.display = 'none';
 
     applyPageFilterValue('');

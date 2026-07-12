@@ -235,7 +235,7 @@ exports.showUserActivityDetail = async (req, res) => {
 
     const [allPosts, allJobs, allGroups] = await Promise.all([
         postStore.load(),
-        groupJobStore.listHistory(),
+        groupJobStore.listAll(),
         groupStore.list(),
     ]);
 
@@ -255,11 +255,14 @@ exports.showUserActivityDetail = async (req, res) => {
     const groupCatMap = {};
     allGroups.forEach(g => { groupCatMap[g.groupId] = (g.categories && g.categories.length) ? g.categories : ['ทั่วไป']; });
 
-    // Completed-only, matching showUserActivity's bucket-building and
-    // groupJobStore.listHistory()'s own completed-only semantics -- so this
-    // page's post count always agrees with the overview card's
-    // pagePostCount for the same person.
-    const posts = allPosts.filter(p => matches(p.staffId) && (p.status === STATUS.SUCCESS || p.status === STATUS.FAILED));
+    // Every status here, unlike showUserActivity's overview cards (which
+    // deliberately count completed work only, for fair ranking between
+    // people) -- this is a specific person's full record, so pending/running
+    // items should show too, not silently disappear until they finish. The
+    // dashboard's "แยกตามพนักงาน" widget already counts every status when
+    // summarizing a person, so this page needs to match what clicking into
+    // it promised.
+    const posts = allPosts.filter(p => matches(p.staffId));
     const jobs  = allJobs.filter(j => matches(j.staffId)).map(j => ({
         ...j,
         _id: String(j._id),
