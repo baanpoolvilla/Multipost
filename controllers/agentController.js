@@ -70,7 +70,7 @@ exports.showGroupOverview = async (req, res) => {
             d.setDate(d.getDate() - i);
             labels.push(d.toLocaleDateString('th-TH', { month:'short', day:'numeric' }));
             chartData.push(jobs.filter(j => {
-                const jd = new Date(new Date(j.createdAt).toLocaleString('en-US', { timeZone:'Asia/Bangkok' }));
+                const jd = new Date(new Date(j.lastAttemptAt || j.createdAt).toLocaleString('en-US', { timeZone:'Asia/Bangkok' }));
                 return jd.getFullYear()===d.getFullYear() && jd.getMonth()===d.getMonth() && jd.getDate()===d.getDate();
             }).length);
         }

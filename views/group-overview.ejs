@@ -285,7 +285,7 @@
           </div>
           <div style="font-size:.85rem;color:var(--text);line-height:1.4"><%= jdisplay.length>80?jdisplay.slice(0,80)+'…':jdisplay %></div>
           <div style="font-size:.75rem;color:var(--text3);margin-top:.2rem">
-            <i class="fa-regular fa-clock"></i> <%= new Date(job.createdAt).toLocaleString('th-TH',{timeZone:'Asia/Bangkok'}) %>
+            <i class="fa-regular fa-clock"></i> <%= new Date(job.lastAttemptAt || job.createdAt).toLocaleString('th-TH',{timeZone:'Asia/Bangkok'}) %>
             &nbsp;·&nbsp;<i class="fa-solid fa-users"></i> <%= job.groupCount %> กลุ่ม
           </div>
         </div>
