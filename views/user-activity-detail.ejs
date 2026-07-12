@@ -96,6 +96,10 @@
       </button>
     </div>
 
+    <!-- "วันนี้ทำอะไรไปบ้าง" summary -- shown only while the วันนี้ button's
+         exact date range is selected, updated live by applyUaFilter() -->
+    <div id="uaTodaySummary" style="display:none;background:#e7f0fd;border:1px solid #bcd7fb;border-radius:10px;padding:.6rem .9rem;font-size:.85rem;color:#1c1e21;margin-bottom:.5rem"></div>
+
     <!-- Filter bar -->
     <div class="card" style="padding:.6rem .85rem;display:flex;flex-wrap:wrap;align-items:center;gap:.45rem;margin-bottom:.1rem">
       <input id="uaSearch" type="text" placeholder="🔍 ค้นหาข้อความ..." oninput="applyUaFilter()"
@@ -218,8 +222,8 @@
       <div id="pageTblEmpty" class="empty-state" style="display:none;padding:1rem">ไม่มีเพจที่ตรงกับตัวกรอง</div>
       <% if (pageStats.length > 5) { %>
       <div id="pageTblMoreBtn" style="text-align:center;margin-top:.75rem">
-        <button onclick="_pageTblExpanded=true;filterPageTable(document.getElementById('pageTblSearch').value)" style="background:#e7f0fd;color:#1877f2;border:1.5px solid #1877f2;border-radius:8px;padding:.4rem 1.2rem;font-size:.82rem;cursor:pointer;font-family:inherit">
-          <i class="fa-solid fa-chevron-down"></i> ดูเพิ่มเติม (<%= pageStats.length - 5 %> เพจ)
+        <button onclick="_pageTblExpanded=true;renderPageStatsTable()" style="background:#e7f0fd;color:#1877f2;border:1.5px solid #1877f2;border-radius:8px;padding:.4rem 1.2rem;font-size:.82rem;cursor:pointer;font-family:inherit">
+          <i class="fa-solid fa-chevron-down"></i> ดูเพิ่มเติม (<span class="more-count"><%= pageStats.length - 5 %></span> เพจ)
         </button>
       </div>
       <% } %>
@@ -403,7 +407,7 @@
       <% if (groupStats.length > 5) { %>
       <div id="grpTblMoreBtn" style="text-align:center;margin-top:.75rem">
         <button onclick="grpTableExpand()" style="background:#f0fdf4;color:#2e7d32;border:1.5px solid #2e7d32;border-radius:8px;padding:.4rem 1.2rem;font-size:.82rem;cursor:pointer;font-family:inherit">
-          <i class="fa-solid fa-chevron-down"></i> ดูเพิ่มเติม (<%= groupStats.length - 5 %> กลุ่ม)
+          <i class="fa-solid fa-chevron-down"></i> ดูเพิ่มเติม (<span class="more-count"><%= groupStats.length - 5 %></span> กลุ่ม)
         </button>
       </div>
       <% } %>
@@ -489,6 +493,8 @@
   let _pageFilter = null;     // page-post tab: filter to posts that included this page
   let _categoryFilter = null; // group-share tab: filter to jobs with a group in this category
   let _groupFilter = null;    // group-share tab: filter to jobs that included this specific group
+  const _staffName = <%- JSON.stringify(staffInfo.displayName) %>;
+  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
   // Per-result data for the "สถิติแต่ละเพจ/กลุ่ม" breakdown tables + category
   // cards, so renderPageStatsTable()/renderGroupStats() below can recompute
@@ -602,6 +608,27 @@
     const stPP = document.getElementById('stPagePending'); if (stPP) stPP.textContent = pagePending;
     const stGP = document.getElementById('stGrpPending');  if (stGP) stGP.textContent  = grpPending;
 
+    // Plain-language "what did they do today" summary, shown only while the
+    // วันนี้ button's exact date range is active -- the numbers going quiet
+    // in the sidebar wasn't enough of an answer to "สรุปมาแบบนั้น", so this
+    // spells it out as one sentence right under the tabs.
+    const summaryEl = document.getElementById('uaTodaySummary');
+    if (summaryEl) {
+      if (isToday) {
+        const totalToday = pageShown + grpShown;
+        summaryEl.style.display = '';
+        summaryEl.innerHTML = totalToday === 0
+          ? `<i class="fa-solid fa-circle-info"></i> วันนี้ <strong>${esc(_staffName)}</strong> ยังไม่มีกิจกรรมเลย`
+          : `<i class="fa-solid fa-calendar-day"></i> วันนี้ <strong>${esc(_staffName)}</strong> ทำไป `
+            + `<strong>${pageShown}</strong> โพสต์เพจ · <strong>${grpShown}</strong> แชร์กลุ่ม `
+            + `— <span style="color:#2e7d32"><i class="fa-solid fa-circle-check"></i> ${pageSuccess + grpSuccess} สำเร็จ</span>`
+            + `&nbsp;<span style="color:#c62828"><i class="fa-solid fa-circle-xmark"></i> ${pageFail + grpFail} ล้มเหลว</span>`
+            + (pagePending + grpPending > 0 ? `&nbsp;<span style="color:#856404"><i class="fa-solid fa-clock"></i> ${pagePending + grpPending} รอ</span>` : '');
+      } else {
+        summaryEl.style.display = 'none';
+      }
+    }
+
     renderPageStatsTable();
     renderGroupStats();
   }
@@ -618,7 +645,6 @@
     const status  = document.getElementById('uaStatusSelect')?.value || '';
     const fromMs  = fromVal ? new Date(fromVal + 'T00:00:00+07:00').getTime() : 0;
     const toMs    = toVal   ? new Date(toVal   + 'T23:59:59+07:00').getTime() : Infinity;
-    const activeFilter = !!(q || fromVal || toVal || status);
     const tblQ = (document.getElementById('pageTblSearch')?.value || '').toLowerCase().trim();
 
     const counts = {};
@@ -631,6 +657,10 @@
       });
     });
 
+    // Stays capped at 5 rows + "ดูเพิ่มเติม" even while a date/status/search
+    // filter is active -- only searching this specific table's own search
+    // box bypasses the cap, same as it always did. A filter should narrow
+    // WHICH pages show up and their numbers, not dump the whole list.
     let shown = 0, totalMatching = 0;
     document.querySelectorAll('.page-tbl-row').forEach(row => {
       const c = counts[row.dataset.id];
@@ -638,7 +668,7 @@
       const nameOk = !tblQ || row.dataset.name.includes(tblQ);
       const passes = tot > 0 && nameOk;
       if (passes) totalMatching++;
-      const visible = passes && ((activeFilter || tblQ) ? true : (_pageTblExpanded || shown < 5));
+      const visible = passes && (tblQ ? true : (_pageTblExpanded || shown < 5));
       if (tot > 0) {
         const rate = Math.round(c.success / tot * 100);
         row.querySelector('.pg-tot').textContent      = tot;
@@ -652,7 +682,11 @@
     });
 
     const moreBtn = document.getElementById('pageTblMoreBtn');
-    if (moreBtn) moreBtn.style.display = (!activeFilter && !tblQ && !_pageTblExpanded && totalMatching > 5) ? '' : 'none';
+    if (moreBtn) {
+      moreBtn.style.display = (!tblQ && !_pageTblExpanded && totalMatching > 5) ? '' : 'none';
+      const label = moreBtn.querySelector('.more-count');
+      if (label) label.textContent = totalMatching - 5;
+    }
     const emptyEl = document.getElementById('pageTblEmpty');
     if (emptyEl) emptyEl.style.display = (shown === 0 && <%- pageStats.length %> > 0) ? '' : 'none';
   }
@@ -671,7 +705,6 @@
     const status  = document.getElementById('uaStatusSelect')?.value || '';
     const fromMs  = fromVal ? new Date(fromVal + 'T00:00:00+07:00').getTime() : 0;
     const toMs    = toVal   ? new Date(toVal   + 'T23:59:59+07:00').getTime() : Infinity;
-    const activeFilter = !!(q || fromVal || toVal || status);
     const tblQ = (document.getElementById('grpTblSearch')?.value || '').toLowerCase().trim();
 
     const baseMatch = j => {
@@ -714,6 +747,10 @@
         if (r.status === 'success') grpCounts[r.groupId].success++; else grpCounts[r.groupId].fail++;
       });
     });
+    // Stays capped at 5 rows + "ดูเพิ่มเติม" even while a date/status/search
+    // filter is active -- same reasoning as the page-stats table above.
+    // Selecting a category (_categoryFilter) still bypasses the cap, same
+    // as it always did, since that's a deliberate drill-down action.
     let shown = 0, totalMatching = 0;
     document.querySelectorAll('.grp-tbl-row').forEach(row => {
       const c = grpCounts[row.dataset.id];
@@ -721,7 +758,7 @@
       const nameOk = !tblQ || row.dataset.name.includes(tblQ);
       const passes = tot > 0 && nameOk;
       if (passes) totalMatching++;
-      const visible = passes && ((activeFilter || tblQ || _categoryFilter) ? true : (_grpTblExpanded || shown < 5));
+      const visible = passes && ((tblQ || _categoryFilter) ? true : (_grpTblExpanded || shown < 5));
       if (tot > 0) {
         const rate = Math.round(c.success / tot * 100);
         row.querySelector('.grp-tot').textContent      = tot;
@@ -735,7 +772,11 @@
     });
 
     const moreBtn = document.getElementById('grpTblMoreBtn');
-    if (moreBtn) moreBtn.style.display = (!activeFilter && !tblQ && !_categoryFilter && !_grpTblExpanded && totalMatching > 5) ? '' : 'none';
+    if (moreBtn) {
+      moreBtn.style.display = (!tblQ && !_categoryFilter && !_grpTblExpanded && totalMatching > 5) ? '' : 'none';
+      const label = moreBtn.querySelector('.more-count');
+      if (label) label.textContent = totalMatching - 5;
+    }
     const emptyEl = document.getElementById('grpTblEmpty');
     if (emptyEl) emptyEl.style.display = (shown === 0 && <%- groupStats.length %> > 0) ? '' : 'none';
   }
