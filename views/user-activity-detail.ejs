@@ -458,10 +458,16 @@
       <div class="stats-row"><span>โพสทั้งหมด</span><span id="stPageTotal"   class="stats-val blue"><%= posts.length %></span></div>
       <div class="stats-row"><span>สำเร็จ</span>    <span id="stPageSuccess" class="stats-val green"><%= pageSuccess %></span></div>
       <div class="stats-row"><span>ล้มเหลว</span>  <span id="stPageFail"    class="stats-val red"><%= pageFail %></span></div>
+      <% if (pagePending > 0) { %>
+      <div class="stats-row"><span>รอดำเนินการ</span><span id="stPagePending" class="stats-val" style="color:#856404"><%= pagePending %></span></div>
+      <% } %>
       <div style="font-size:.72rem;font-weight:700;color:#2e7d32;margin:.75rem 0 .25rem">แชร์ลงกลุ่ม</div>
       <div class="stats-row"><span>งาน (Job)</span>  <span id="stGrpTotal"   class="stats-val green"><%= jobs.length %></span></div>
       <div class="stats-row"><span>โพสสำเร็จ</span> <span id="stGrpSuccess" class="stats-val green"><%= grpSuccess %></span></div>
       <div class="stats-row"><span>ล้มเหลว</span>   <span id="stGrpFail"    class="stats-val red"><%= grpFail %></span></div>
+      <% if (grpPending > 0) { %>
+      <div class="stats-row"><span>รอดำเนินการ</span><span id="stGrpPending" class="stats-val" style="color:#856404"><%= grpPending %></span></div>
+      <% } %>
     </div>
   </aside>
 
@@ -511,7 +517,7 @@
     const fromMs  = fromVal ? new Date(fromVal + 'T00:00:00+07:00').getTime() : 0;
     const toMs    = toVal   ? new Date(toVal   + 'T23:59:59+07:00').getTime() : Infinity;
 
-    let pageShown = 0, pageSuccess = 0, pageFail = 0;
+    let pageShown = 0, pageSuccess = 0, pageFail = 0, pagePending = 0;
     document.querySelectorAll('.ua-card-page').forEach(el => {
       const msg = el.dataset.msg || '';
       const ts  = new Date(el.dataset.at).getTime();
@@ -519,10 +525,13 @@
       const statusOk = !status || el.dataset.status === status;
       const ok  = (!q || msg.includes(q)) && ts >= fromMs && ts <= toMs && pageOk && statusOk;
       el.style.display = ok ? '' : 'none';
-      if (ok) { pageShown++; pageSuccess += parseInt(el.dataset.ok||0); pageFail += parseInt(el.dataset.fail||0); }
+      if (ok) {
+        pageShown++; pageSuccess += parseInt(el.dataset.ok||0); pageFail += parseInt(el.dataset.fail||0);
+        if (el.dataset.status === 'pending' || el.dataset.status === 'running') pagePending++;
+      }
     });
 
-    let grpShown = 0, grpSuccess = 0, grpFail = 0;
+    let grpShown = 0, grpSuccess = 0, grpFail = 0, grpPending = 0;
     document.querySelectorAll('.ua-card-grp').forEach(el => {
       const msg = el.dataset.msg || '';
       const ts  = new Date(el.dataset.at).getTime();
@@ -531,7 +540,10 @@
       const statusOk = !status || el.dataset.status === status;
       const ok  = (!q || msg.includes(q)) && ts >= fromMs && ts <= toMs && catOk && groupOk && statusOk;
       el.style.display = ok ? '' : 'none';
-      if (ok) { grpShown++; grpSuccess += parseInt(el.dataset.ok || 0); grpFail += parseInt(el.dataset.fail || 0); }
+      if (ok) {
+        grpShown++; grpSuccess += parseInt(el.dataset.ok || 0); grpFail += parseInt(el.dataset.fail || 0);
+        if (el.dataset.status === 'pending' || el.dataset.status === 'running') grpPending++;
+      }
     });
 
     const hasFilter = q || fromVal || toVal || status || _pageFilter || _categoryFilter || _groupFilter;
@@ -550,6 +562,11 @@
     document.getElementById('stGrpTotal').textContent    = grpShown;
     document.getElementById('stGrpSuccess').textContent  = grpSuccess;
     document.getElementById('stGrpFail').textContent     = grpFail;
+    // These rows only exist in the DOM if there was pending work at page
+    // load -- filtering can only narrow that count, never create pending
+    // work that wasn't already there, so a missing element just means 0.
+    const stPP = document.getElementById('stPagePending'); if (stPP) stPP.textContent = pagePending;
+    const stGP = document.getElementById('stGrpPending');  if (stGP) stGP.textContent  = grpPending;
   }
 
   function clearUaFilter() {

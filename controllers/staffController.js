@@ -281,6 +281,8 @@ exports.showUserActivityDetail = async (req, res) => {
     const pageFail    = posts.reduce((s, p) => s + (p.failCount || 0), 0);
     const grpSuccess  = jobs.reduce((s, j) => s + j.successCount, 0);
     const grpFail     = jobs.reduce((s, j) => s + j.failCount, 0);
+    const pagePending = posts.filter(p => p.status === STATUS.PENDING || p.status === STATUS.RUNNING).length;
+    const grpPending  = jobs.filter(j => j.status === STATUS.PENDING || j.status === STATUS.RUNNING).length;
 
     // ── Per-page breakdown (which pages, how many, success/fail each) ──
     // Same aggregation shape as controllers/postController.js showPageSummary.
@@ -328,7 +330,7 @@ exports.showUserActivityDetail = async (req, res) => {
 
     res.render('user-activity-detail', {
         staffInfo, posts, jobs,
-        pageSuccess, pageFail, grpSuccess, grpFail,
+        pageSuccess, pageFail, grpSuccess, grpFail, pagePending, grpPending,
         pageStats, groupStats, categoryStats,
     });
 };
