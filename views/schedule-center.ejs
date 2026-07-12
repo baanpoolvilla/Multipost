@@ -489,13 +489,29 @@ function populateFilters() {
 }
 
 /* ── Filter ── */
+// Completed items key off when they actually ran (lastAttemptAt), not when
+// they were queued (createdAt) -- a job scheduled 10 days ago that posted
+// today belongs under "today", not wherever it happened to be created.
+// Every other status (pending/running/expired/cancelled) keeps using
+// createdAt, deliberately -- keying pending items off their future
+// scheduledAt would make a job scheduled weeks out pass "today"/"7 วัน"
+// range filters just because a future date is always >= a past cutoff.
+// Shared by every widget on this page (KPI cards, activity chart, staff
+// breakdown, group table) since they all read through
+// getFiltered() -> filterByRange() first.
+function actAt(i) {
+  return (i.status === 'success' || i.status === 'failed')
+    ? (i.lastAttemptAt || i.createdAt)
+    : i.createdAt;
+}
+
 function filterByRange(items) {
   if(_range==='all') return items;
   const now=Date.now();
   const cut=_range==='today'
     ?(()=>{const d=new Date();d.setHours(0,0,0,0);return d.getTime();})()
     :_range==='7d'?now-7*86400000:now-30*86400000;
-  return items.filter(i=>new Date(i.createdAt).getTime()>=cut);
+  return items.filter(i=>new Date(actAt(i)).getTime()>=cut);
 }
 
 function getFiltered() {
@@ -846,12 +862,7 @@ function _setChartSection(wrapperId, hasData) {
 }
 function renderActChart(all) {
   if (typeof Chart === 'undefined') return;
-  // Completed items bucket by when they actually ran (lastAttemptAt) so this
-  // chart agrees with the history/activity pages; still-pending items have
-  // no lastAttemptAt yet, so they bucket by their planned scheduledAt.
-  const actAt = i => (i.status === 'success' || i.status === 'failed')
-    ? (i.lastAttemptAt || i.scheduledAt || i.createdAt)
-    : (i.scheduledAt || i.createdAt);
+  // actAt() is the shared helper defined near filterByRange() above.
   const pi = all.filter(i => i.type === 'page'  && (i.scheduledAt || i.createdAt));
   const gi = all.filter(i => i.type === 'group' && (i.scheduledAt || i.createdAt));
   const pB = {}, gB = {};
