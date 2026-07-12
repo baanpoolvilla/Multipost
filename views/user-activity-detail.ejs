@@ -581,10 +581,19 @@
   // One click -> both date fields snap to today (Bangkok) and the whole
   // page instantly narrows to "what did this person do today", reusing the
   // exact same filter/stats pipeline as manually picking a date range.
+  // uaFrom/uaTo are enhanced by flatpickr (altInput) further down this file
+  // -- setting .value directly only updates the hidden original input, not
+  // the visible formatted text box, so the field would filter correctly but
+  // LOOK empty. Must go through the flatpickr instance's own setDate() so
+  // the visible field updates too, same pattern as _fpSetDate elsewhere
+  // (views/history.ejs, views/job-queue.ejs).
   function filterUaToday() {
     const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
-    document.getElementById('uaFrom').value = todayStr;
-    document.getElementById('uaTo').value   = todayStr;
+    [document.getElementById('uaFrom'), document.getElementById('uaTo')].forEach(el => {
+      if (!el) return;
+      if (el._flatpickr) el._flatpickr.setDate(todayStr, false);
+      else el.value = todayStr;
+    });
     applyUaFilter();
   }
 
