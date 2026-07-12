@@ -127,6 +127,9 @@
         <div class="staff-stat-row" style="margin-top:.5rem">
           <span class="staff-stat ok"><i class="fa-solid fa-circle-check"></i> <%= s.successCount %> สำเร็จ</span>
           <span class="staff-stat fail"><i class="fa-solid fa-circle-xmark"></i> <%= s.failCount %> ล้มเหลว</span>
+          <% if (s.pendingCount > 0) { %>
+          <span class="staff-stat" style="background:#fff3cd;color:#856404"><i class="fa-solid fa-clock"></i> <%= s.pendingCount %> รอ</span>
+          <% } %>
         </div>
       </a>
       <% }); %>

@@ -147,7 +147,7 @@ exports.changeStaffRole = async (req, res) => {
 function emptyBucket(id, displayName, username, isDeleted = false) {
     return {
         id, displayName, username, isDeleted,
-        pagePostCount: 0, groupJobCount: 0, successCount: 0, failCount: 0, lastActivityAt: null,
+        pagePostCount: 0, groupJobCount: 0, successCount: 0, failCount: 0, pendingCount: 0, lastActivityAt: null,
         pageSet: new Set(), groupSet: new Set(),
     };
 }
@@ -160,10 +160,10 @@ exports.showUserActivity = async (req, res) => {
     // includeDeleted: a soft-deleted account's historical posts/jobs should
     // still show under their real name here, not collapse into
     // "ไม่ระบุตัวตน" just because the account itself was removed.
-    const [staffList, posts, jobs] = await Promise.all([
+    const [staffList, posts, allJobs] = await Promise.all([
         staffStore.list({ includeDeleted: true }),
         postStore.load(),
-        groupJobStore.listHistory(),
+        groupJobStore.listAll(),
     ]);
 
     const buckets = new Map();
@@ -172,13 +172,15 @@ exports.showUserActivity = async (req, res) => {
 
     const bucketFor = (staffId) => buckets.get(staffId && buckets.has(String(staffId)) ? String(staffId) : 'unassigned');
 
-    // Only count posts that have actually happened (success/failed) — same
-    // completed-only semantics as groupJobStore.listHistory() already
-    // applies to jobs. postStore.load() returns every status including
-    // still-pending/future-scheduled posts; counting those here would
-    // inflate pagePostCount with work that hasn't occurred yet and skew the
-    // ranking against a colleague who has actually completed real jobs.
+    // Only count posts/jobs that have actually happened (success/failed) for
+    // pagePostCount/groupJobCount/successCount/failCount — counting
+    // still-pending/running work here would inflate those numbers with work
+    // that hasn't occurred yet and skew the ranking against a colleague who
+    // has actually completed real jobs. pendingCount is tracked separately,
+    // purely informational (matches the Dashboard widget's own "⏳ N รอ"),
+    // and never factors into the ranking sort below.
     const completedPosts = posts.filter(p => p.status === STATUS.SUCCESS || p.status === STATUS.FAILED);
+    const jobs            = allJobs.filter(j => j.status === STATUS.SUCCESS || j.status === STATUS.FAILED || j.status === 'done');
 
     completedPosts.forEach(p => {
         const b = bucketFor(p.staffId);
@@ -197,6 +199,9 @@ exports.showUserActivity = async (req, res) => {
         (j.results || []).forEach(r => { const key = r.groupId || r.groupName; if (key) b.groupSet.add(key); });
         touchBucket(b, j.createdAt);
     });
+
+    posts.forEach(p => { if (p.status === STATUS.PENDING || p.status === STATUS.RUNNING) bucketFor(p.staffId).pendingCount++; });
+    allJobs.forEach(j => { if (j.status === STATUS.PENDING || j.status === STATUS.RUNNING) bucketFor(j.staffId).pendingCount++; });
 
     const staffSummaries = [...buckets.values()]
         .map(b => ({ ...b, pageCount: b.pageSet.size, groupCount: b.groupSet.size }))
