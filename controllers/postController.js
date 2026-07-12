@@ -78,7 +78,7 @@ exports.sendPost = async (req, res) => {
 // the only place that actually calls sendToPages for a queued post.
 async function executePost(post) {
     try {
-        await postStore.updateOne(post.id, { status: STATUS.RUNNING });
+        await postStore.updateOne(post.id, { status: STATUS.RUNNING, lastAttemptAt: new Date().toISOString() });
         const pageIds  = post.selectedPageIds?.length ? post.selectedPageIds : null;
         const results  = await sendToPages(post.message, pageIds, post.images || []);
         const success  = results.filter(r => r.status === 'success').length;
@@ -218,6 +218,7 @@ async function buildScheduleCenterItems() {
             status: p.status || STATUS.SUCCESS,
             scheduledAt: p.scheduledAt || null,
             createdAt: p.createdAt,
+            lastAttemptAt: p.lastAttemptAt || null,
             expiredAt: p.expiredAt || null,
             targetPages: (p.selectedPageIds || []).map(id => pageNameMap[id] || id),
             targetGroups: [],
@@ -238,6 +239,7 @@ async function buildScheduleCenterItems() {
         status: j.status || STATUS.PENDING,
         scheduledAt: j.scheduledAt || null,
         createdAt: j.createdAt,
+        lastAttemptAt: j.lastAttemptAt || null,
         expiredAt: j.expiredAt || null,
         targetPages: j.postAsPage ? [j.postAsPage] : [],
         targetGroups: (j.groups || []).map(g => g.groupName),

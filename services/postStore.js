@@ -23,6 +23,13 @@ const schema = new mongoose.Schema({
     status:          { type: String, default: STATUS.SUCCESS },
     scheduledAt:     { type: String, default: null },
     expiredAt:       { type: String, default: null },
+    // Stamped the moment a scheduled post actually starts sending (see
+    // executePost in postController.js) — createdAt for a scheduled post is
+    // when it was queued, which can be days before it actually goes out;
+    // this is what history/activity views show instead so "when did this
+    // post" answers correctly. Immediate (non-scheduled) posts don't need
+    // it: their createdAt is already stamped right after sending completes.
+    lastAttemptAt:   { type: String, default: null },
     selectedPageIds: { type: [String], default: null },
     staffId:         { type: String, default: null },
 }, { versionKey: false });

@@ -84,7 +84,7 @@
       </div>
       <div class="summary-text">
         <h2><%= allOk ? 'โพสต์สำเร็จทุกเพจ! 🎉' : `สำเร็จ ${sc} จาก ${total} เพจ` %></h2>
-        <p><%= new Date(post.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) %></p>
+        <p><%= new Date(post.lastAttemptAt || post.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) %></p>
       </div>
       <div class="summary-pills">
         <span class="pill pill-success"><i class="fa-solid fa-check"></i> <%= sc %></span>
@@ -105,7 +105,7 @@
           </div>
           <div class="fb-post-time">
             <i class="fa-solid fa-earth-asia"></i>
-            <%= new Date(post.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) %>
+            <%= new Date(post.lastAttemptAt || post.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) %>
             <% if (post.location) { %>
               &nbsp;·&nbsp;<i class="fa-solid fa-location-dot" style="color:#f5533d"></i> <%= post.location %>
             <% } %>

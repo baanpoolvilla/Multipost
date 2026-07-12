@@ -124,7 +124,7 @@
       const display = msg.includes('|||') ? (msg.slice(0, msg.indexOf('|||')).trim() || msg.slice(msg.indexOf('|||')+3).trim()) : msg;
       const imgs    = (post.images || []).filter(img => img && !img.startsWith('localpath::') && !/^[A-Za-z]:[\\\/]/.test(img));
     %>
-    <div class="card history-card pa-card-page" data-at="<%= post.createdAt %>" data-msg="<%= (display||'').toLowerCase().replace(/"/g,'') %>" data-ok="<%= isOk ? 1 : 0 %>">
+    <div class="card history-card pa-card-page" data-at="<%= post.lastAttemptAt || post.createdAt %>" data-msg="<%= (display||'').toLowerCase().replace(/"/g,'') %>" data-ok="<%= isOk ? 1 : 0 %>">
       <div class="fb-post-header">
         <div class="avatar avatar-<%= isOk ? 'green' : 'red' %>">
           <i class="fa-solid fa-<%= isOk ? 'circle-check' : 'circle-xmark' %>"></i>
@@ -138,7 +138,7 @@
           </div>
           <div class="fb-post-time">
             <i class="fa-solid fa-clock"></i>
-            <%= new Date(post.createdAt).toLocaleString('th-TH', { timeZone:'Asia/Bangkok', dateStyle:'short', timeStyle:'short', hour12:false }) %>
+            <%= new Date(post.lastAttemptAt || post.createdAt).toLocaleString('th-TH', { timeZone:'Asia/Bangkok', dateStyle:'short', timeStyle:'short', hour12:false }) %>
             <% if (r.postUrl) { %>
             &nbsp;·&nbsp;<a href="<%= r.postUrl %>" target="_blank" rel="noopener" style="color:#1877f2;text-decoration:none;font-size:.78rem"><i class="fa-solid fa-arrow-up-right-from-square"></i> ดูโพสต์</a>
             <% } %>
@@ -207,7 +207,7 @@
       const jmsg    = (job.message || '');
       const jdisplay = jmsg.includes('|||') ? (jmsg.slice(0, jmsg.indexOf('|||')).trim() || jmsg.slice(jmsg.indexOf('|||')+3).trim()) : jmsg;
     %>
-    <div class="card history-card pa-card-grp" data-at="<%= job.createdAt %>" data-msg="<%= (jdisplay||'').toLowerCase().replace(/"/g,'') %>" data-ok="<%= job.successCount %>" data-fail="<%= job.failCount %>">
+    <div class="card history-card pa-card-grp" data-at="<%= job.lastAttemptAt || job.createdAt %>" data-msg="<%= (jdisplay||'').toLowerCase().replace(/"/g,'') %>" data-ok="<%= job.successCount %>" data-fail="<%= job.failCount %>">
       <div class="fb-post-header">
         <div class="avatar avatar-<%= allOk ? 'green' : allFail ? 'red' : 'orange' %>">
           <i class="fa-solid fa-users"></i>
@@ -221,7 +221,7 @@
           </div>
           <div class="fb-post-time">
             <i class="fa-solid fa-clock"></i>
-            <%= new Date(job.createdAt).toLocaleString('th-TH', { timeZone:'Asia/Bangkok', dateStyle:'short', timeStyle:'short', hour12:false }) %>
+            <%= new Date(job.lastAttemptAt || job.createdAt).toLocaleString('th-TH', { timeZone:'Asia/Bangkok', dateStyle:'short', timeStyle:'short', hour12:false }) %>
             &nbsp;·&nbsp;<i class="fa-solid fa-users" style="color:#1877f2"></i> <%= job.groupCount %> กลุ่ม
           </div>
         </div>

@@ -252,7 +252,7 @@
       <% recentPosts.forEach(post => { %>
       <%
         const isSchd = post.status === 'pending';
-        const refDt  = new Date(isSchd ? post.scheduledAt : post.createdAt);
+        const refDt  = new Date(isSchd ? post.scheduledAt : (post.lastAttemptAt || post.createdAt));
         const hm     = refDt.toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit', hour12:false, timeZone:'Asia/Bangkok'});
         const allOk  = post.failCount === 0;
         const total  = post.results.length;

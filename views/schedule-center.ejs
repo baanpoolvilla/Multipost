@@ -846,11 +846,17 @@ function _setChartSection(wrapperId, hasData) {
 }
 function renderActChart(all) {
   if (typeof Chart === 'undefined') return;
+  // Completed items bucket by when they actually ran (lastAttemptAt) so this
+  // chart agrees with the history/activity pages; still-pending items have
+  // no lastAttemptAt yet, so they bucket by their planned scheduledAt.
+  const actAt = i => (i.status === 'success' || i.status === 'failed')
+    ? (i.lastAttemptAt || i.scheduledAt || i.createdAt)
+    : (i.scheduledAt || i.createdAt);
   const pi = all.filter(i => i.type === 'page'  && (i.scheduledAt || i.createdAt));
   const gi = all.filter(i => i.type === 'group' && (i.scheduledAt || i.createdAt));
   const pB = {}, gB = {};
-  pi.forEach(i => { const k = bucketKey(i.scheduledAt||i.createdAt, _chartUnit); pB[k] = (pB[k]||0)+1; });
-  gi.forEach(i => { const k = bucketKey(i.scheduledAt||i.createdAt, _chartUnit); gB[k] = (gB[k]||0)+1; });
+  pi.forEach(i => { const k = bucketKey(actAt(i), _chartUnit); pB[k] = (pB[k]||0)+1; });
+  gi.forEach(i => { const k = bucketKey(actAt(i), _chartUnit); gB[k] = (gB[k]||0)+1; });
   const pKeys = Object.keys(pB).sort().slice(-30);
   const gKeys = Object.keys(gB).sort().slice(-30);
   _setChartSection('actWrapPage',  pKeys.length > 0);
