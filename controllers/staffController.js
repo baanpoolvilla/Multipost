@@ -331,7 +331,7 @@ exports.showUserActivityDetail = async (req, res) => {
     res.render('user-activity-detail', {
         staffInfo, posts, jobs,
         pageSuccess, pageFail, grpSuccess, grpFail, pagePending, grpPending,
-        pageStats, groupStats, categoryStats,
+        pageStats, groupStats, categoryStats, groupCatMap,
     });
 };
 

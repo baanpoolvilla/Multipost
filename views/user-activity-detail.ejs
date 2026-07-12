@@ -201,13 +201,13 @@
                   <span style="font-weight:600"><%= p.name %></span>
                 </div>
               </td>
-              <td class="num"><%= tot %></td>
-              <td class="num" style="color:#2e7d32"><%= p.success %></td>
-              <td class="num" style="color:#c62828"><%= p.fail %></td>
+              <td class="num pg-tot"><%= tot %></td>
+              <td class="num pg-succ" style="color:#2e7d32"><%= p.success %></td>
+              <td class="num pg-fail" style="color:#c62828"><%= p.fail %></td>
               <td>
                 <div class="rate-bar-wrap">
-                  <div class="rate-bar" style="width:<%= rate %>%;background:#1877f2"></div>
-                  <span class="rate-text"><%= rate %>%</span>
+                  <div class="rate-bar pg-rate-bar" style="width:<%= rate %>%;background:#1877f2"></div>
+                  <span class="rate-text pg-rate-text"><%= rate %>%</span>
                 </div>
               </td>
             </tr>
@@ -215,6 +215,7 @@
           </tbody>
         </table>
       </div>
+      <div id="pageTblEmpty" class="empty-state" style="display:none;padding:1rem">ไม่มีเพจที่ตรงกับตัวกรอง</div>
       <% if (pageStats.length > 5) { %>
       <div id="pageTblMoreBtn" style="text-align:center;margin-top:.75rem">
         <button onclick="_pageTblExpanded=true;filterPageTable(document.getElementById('pageTblSearch').value)" style="background:#e7f0fd;color:#1877f2;border:1.5px solid #1877f2;border-radius:8px;padding:.4rem 1.2rem;font-size:.82rem;cursor:pointer;font-family:inherit">
@@ -314,8 +315,12 @@
     <div id="tabGrp" style="display:none;flex-direction:column;gap:1rem">
 
     <!-- Category cards (same clickable-filter pattern as /group-summary's privacy cards) -->
+    <!-- Numbers are recomputed live from the active filters by renderGroupStats()
+         (see script below) -- server-rendered values here are just the unfiltered
+         starting state. Cards with zero matching results under the current
+         filter are hidden entirely rather than shown as an empty "0/0". -->
     <% if (categoryStats.length > 0) { %>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.6rem;margin-bottom:.75rem">
+    <div id="catCardsWrap" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.6rem;margin-bottom:.75rem">
       <% categoryStats.forEach(cat => {
            const tot = cat.success + cat.fail;
            const rate = tot > 0 ? Math.round(cat.success/tot*100) : 0;
@@ -324,19 +329,20 @@
         <div style="font-size:.78rem;font-weight:700;color:#2e7d32;margin-bottom:.4rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><%= cat.name %></div>
         <div style="display:flex;gap:.4rem;align-items:flex-end">
           <div>
-            <div style="font-size:1.15rem;font-weight:800;color:#2e7d32;line-height:1"><%= cat.success %></div>
+            <div class="cc-succ" style="font-size:1.15rem;font-weight:800;color:#2e7d32;line-height:1"><%= cat.success %></div>
             <div style="font-size:.65rem;color:#2e7d32">สำเร็จ</div>
           </div>
           <div style="font-size:.85rem;color:#ccc">/</div>
           <div>
-            <div style="font-size:1.15rem;font-weight:800;color:#c62828;line-height:1"><%= cat.fail %></div>
+            <div class="cc-fail" style="font-size:1.15rem;font-weight:800;color:#c62828;line-height:1"><%= cat.fail %></div>
             <div style="font-size:.65rem;color:#c62828">ล้มเหลว</div>
           </div>
-          <div style="margin-left:auto;font-size:.9rem;font-weight:800;color:#2e7d32"><%= rate %>%</div>
+          <div class="cc-rate" style="margin-left:auto;font-size:.9rem;font-weight:800;color:#2e7d32"><%= rate %>%</div>
         </div>
       </div>
       <% }); %>
     </div>
+    <div id="catCardsEmpty" class="card empty-state" style="display:none;padding:1rem">ไม่มีหมวดหมู่ที่ตรงกับตัวกรอง</div>
     <% } %>
 
     <!-- Per-group breakdown (same table style as /group-summary) -->
@@ -379,13 +385,13 @@
                 </div>
               </td>
               <td style="font-size:.78rem;color:#8a8d91"><%= g.categories.join(', ') %></td>
-              <td class="num"><%= tot %></td>
-              <td class="num" style="color:#2e7d32"><%= g.success %></td>
-              <td class="num" style="color:#c62828"><%= g.fail %></td>
+              <td class="num grp-tot"><%= tot %></td>
+              <td class="num grp-succ" style="color:#2e7d32"><%= g.success %></td>
+              <td class="num grp-fail" style="color:#c62828"><%= g.fail %></td>
               <td>
                 <div class="rate-bar-wrap">
-                  <div class="rate-bar" style="width:<%= rate %>%;background:#2e7d32"></div>
-                  <span class="rate-text"><%= rate %>%</span>
+                  <div class="rate-bar grp-rate-bar" style="width:<%= rate %>%;background:#2e7d32"></div>
+                  <span class="rate-text grp-rate-text"><%= rate %>%</span>
                 </div>
               </td>
             </tr>
@@ -393,6 +399,7 @@
           </tbody>
         </table>
       </div>
+      <div id="grpTblEmpty" class="empty-state" style="display:none;padding:1rem">ไม่มีกลุ่มที่ตรงกับตัวกรอง</div>
       <% if (groupStats.length > 5) { %>
       <div id="grpTblMoreBtn" style="text-align:center;margin-top:.75rem">
         <button onclick="grpTableExpand()" style="background:#f0fdf4;color:#2e7d32;border:1.5px solid #2e7d32;border-radius:8px;padding:.4rem 1.2rem;font-size:.82rem;cursor:pointer;font-family:inherit">
@@ -482,6 +489,24 @@
   let _pageFilter = null;     // page-post tab: filter to posts that included this page
   let _categoryFilter = null; // group-share tab: filter to jobs with a group in this category
   let _groupFilter = null;    // group-share tab: filter to jobs that included this specific group
+
+  // Per-result data for the "สถิติแต่ละเพจ/กลุ่ม" breakdown tables + category
+  // cards, so renderPageStatsTable()/renderGroupStats() below can recompute
+  // success/fail/rate per page/group/category from whatever subset of
+  // posts/jobs currently matches the search/date/status filters, instead of
+  // always showing the unfiltered all-time totals the server rendered.
+  const _uaPosts = <%- JSON.stringify(posts.map(p => ({
+    msg: (p.message || '').toLowerCase(), status: p.status || 'success',
+    at: p.lastAttemptAt || p.createdAt,
+    results: (p.results || []).map(r => ({ pageId: r.pageId || r.pageName, status: r.status })),
+  }))) %>;
+  const _uaJobs = <%- JSON.stringify(jobs.map(j => ({
+    msg: (j.message || '').toLowerCase(), status: j.status || 'success',
+    at: j.lastAttemptAt || j.createdAt,
+    results: (j.results || []).map(r => ({ groupId: r.groupId || r.groupName, status: r.status })),
+    categories: j.categories,
+  }))) %>;
+  const _groupCatMap = <%- JSON.stringify(groupCatMap) %>;
 
   function switchTab(t) {
     _curTab = t;
@@ -576,6 +601,143 @@
     // work that wasn't already there, so a missing element just means 0.
     const stPP = document.getElementById('stPagePending'); if (stPP) stPP.textContent = pagePending;
     const stGP = document.getElementById('stGrpPending');  if (stGP) stGP.textContent  = grpPending;
+
+    renderPageStatsTable();
+    renderGroupStats();
+  }
+
+  // ── "สถิติแต่ละเพจ" table: recomputed from _uaPosts on every filter
+  // change so it always agrees with the search/date/status filters above,
+  // instead of forever showing the unfiltered all-time totals. A page with
+  // zero matching results under the current filter is hidden outright
+  // rather than shown as an empty "0/0" row.
+  function renderPageStatsTable() {
+    const q       = (document.getElementById('uaSearch')?.value || '').toLowerCase().trim();
+    const fromVal = document.getElementById('uaFrom')?.value || '';
+    const toVal   = document.getElementById('uaTo')?.value   || '';
+    const status  = document.getElementById('uaStatusSelect')?.value || '';
+    const fromMs  = fromVal ? new Date(fromVal + 'T00:00:00+07:00').getTime() : 0;
+    const toMs    = toVal   ? new Date(toVal   + 'T23:59:59+07:00').getTime() : Infinity;
+    const activeFilter = !!(q || fromVal || toVal || status);
+    const tblQ = (document.getElementById('pageTblSearch')?.value || '').toLowerCase().trim();
+
+    const counts = {};
+    _uaPosts.forEach(p => {
+      const ts = new Date(p.at).getTime();
+      if (!((!q || p.msg.includes(q)) && ts >= fromMs && ts <= toMs && (!status || p.status === status))) return;
+      p.results.forEach(r => {
+        if (!counts[r.pageId]) counts[r.pageId] = { success: 0, fail: 0 };
+        if (r.status === 'success') counts[r.pageId].success++; else counts[r.pageId].fail++;
+      });
+    });
+
+    let shown = 0, totalMatching = 0;
+    document.querySelectorAll('.page-tbl-row').forEach(row => {
+      const c = counts[row.dataset.id];
+      const tot = c ? c.success + c.fail : 0;
+      const nameOk = !tblQ || row.dataset.name.includes(tblQ);
+      const passes = tot > 0 && nameOk;
+      if (passes) totalMatching++;
+      const visible = passes && ((activeFilter || tblQ) ? true : (_pageTblExpanded || shown < 5));
+      if (tot > 0) {
+        const rate = Math.round(c.success / tot * 100);
+        row.querySelector('.pg-tot').textContent      = tot;
+        row.querySelector('.pg-succ').textContent     = c.success;
+        row.querySelector('.pg-fail').textContent     = c.fail;
+        row.querySelector('.pg-rate-bar').style.width = rate + '%';
+        row.querySelector('.pg-rate-text').textContent = rate + '%';
+      }
+      row.style.display = visible ? '' : 'none';
+      if (visible) shown++;
+    });
+
+    const moreBtn = document.getElementById('pageTblMoreBtn');
+    if (moreBtn) moreBtn.style.display = (!activeFilter && !tblQ && !_pageTblExpanded && totalMatching > 5) ? '' : 'none';
+    const emptyEl = document.getElementById('pageTblEmpty');
+    if (emptyEl) emptyEl.style.display = (shown === 0 && <%- pageStats.length %> > 0) ? '' : 'none';
+  }
+
+  // ── Category cards + "สถิติแต่ละกลุ่ม" table: same idea as the page-stats
+  // table above, recomputed from _uaJobs on every filter change. Category
+  // cards respect _groupFilter (a specific group selected) but never
+  // _categoryFilter itself -- otherwise picking one category would zero out
+  // every other category card, making it impossible to switch categories
+  // without clearing the filter first. The group table mirrors this the
+  // other way around (respects _categoryFilter, not its own _groupFilter).
+  function renderGroupStats() {
+    const q       = (document.getElementById('uaSearch')?.value || '').toLowerCase().trim();
+    const fromVal = document.getElementById('uaFrom')?.value || '';
+    const toVal   = document.getElementById('uaTo')?.value   || '';
+    const status  = document.getElementById('uaStatusSelect')?.value || '';
+    const fromMs  = fromVal ? new Date(fromVal + 'T00:00:00+07:00').getTime() : 0;
+    const toMs    = toVal   ? new Date(toVal   + 'T23:59:59+07:00').getTime() : Infinity;
+    const activeFilter = !!(q || fromVal || toVal || status);
+    const tblQ = (document.getElementById('grpTblSearch')?.value || '').toLowerCase().trim();
+
+    const baseMatch = j => {
+      const ts = new Date(j.at).getTime();
+      return (!q || j.msg.includes(q)) && ts >= fromMs && ts <= toMs && (!status || j.status === status);
+    };
+    const baseJobs = _uaJobs.filter(baseMatch);
+
+    // Category cards
+    const catCounts = {};
+    baseJobs.filter(j => !_groupFilter || j.results.some(r => r.groupId === _groupFilter)).forEach(j => {
+      j.results.forEach(r => {
+        (_groupCatMap[r.groupId] || ['ทั่วไป']).forEach(cat => {
+          if (!catCounts[cat]) catCounts[cat] = { success: 0, fail: 0 };
+          if (r.status === 'success') catCounts[cat].success++; else catCounts[cat].fail++;
+        });
+      });
+    });
+    let catShown = 0;
+    document.querySelectorAll('[id^="catCard-"]').forEach(el => {
+      const c = catCounts[el.dataset.cat];
+      const tot = c ? c.success + c.fail : 0;
+      el.style.display = tot > 0 ? '' : 'none';
+      if (tot > 0) {
+        catShown++;
+        const rate = Math.round(c.success / tot * 100);
+        el.querySelector('.cc-succ').textContent = c.success;
+        el.querySelector('.cc-fail').textContent = c.fail;
+        el.querySelector('.cc-rate').textContent = rate + '%';
+      }
+    });
+    const catEmptyEl = document.getElementById('catCardsEmpty');
+    if (catEmptyEl) catEmptyEl.style.display = (catShown === 0 && <%- categoryStats.length %> > 0) ? '' : 'none';
+
+    // Group table
+    const grpCounts = {};
+    baseJobs.filter(j => !_categoryFilter || j.categories.includes(_categoryFilter)).forEach(j => {
+      j.results.forEach(r => {
+        if (!grpCounts[r.groupId]) grpCounts[r.groupId] = { success: 0, fail: 0 };
+        if (r.status === 'success') grpCounts[r.groupId].success++; else grpCounts[r.groupId].fail++;
+      });
+    });
+    let shown = 0, totalMatching = 0;
+    document.querySelectorAll('.grp-tbl-row').forEach(row => {
+      const c = grpCounts[row.dataset.id];
+      const tot = c ? c.success + c.fail : 0;
+      const nameOk = !tblQ || row.dataset.name.includes(tblQ);
+      const passes = tot > 0 && nameOk;
+      if (passes) totalMatching++;
+      const visible = passes && ((activeFilter || tblQ || _categoryFilter) ? true : (_grpTblExpanded || shown < 5));
+      if (tot > 0) {
+        const rate = Math.round(c.success / tot * 100);
+        row.querySelector('.grp-tot').textContent      = tot;
+        row.querySelector('.grp-succ').textContent     = c.success;
+        row.querySelector('.grp-fail').textContent     = c.fail;
+        row.querySelector('.grp-rate-bar').style.width = rate + '%';
+        row.querySelector('.grp-rate-text').textContent = rate + '%';
+      }
+      row.style.display = visible ? '' : 'none';
+      if (visible) shown++;
+    });
+
+    const moreBtn = document.getElementById('grpTblMoreBtn');
+    if (moreBtn) moreBtn.style.display = (!activeFilter && !tblQ && !_categoryFilter && !_grpTblExpanded && totalMatching > 5) ? '' : 'none';
+    const emptyEl = document.getElementById('grpTblEmpty');
+    if (emptyEl) emptyEl.style.display = (shown === 0 && <%- groupStats.length %> > 0) ? '' : 'none';
   }
 
   // One click -> both date fields snap to today (Bangkok) and the whole
@@ -611,15 +773,7 @@
 
   // ── Per-page breakdown table: search + click-a-row-to-filter ───
   let _pageTblExpanded = false;
-  function filterPageTable(q) {
-    q = q.toLowerCase();
-    const moreBtn = document.getElementById('pageTblMoreBtn');
-    document.querySelectorAll('.page-tbl-row').forEach((r, i) => {
-      const nameOk = !q || r.dataset.name.includes(q);
-      r.style.display = nameOk && (q || _pageTblExpanded || i < 5) ? '' : 'none';
-    });
-    if (moreBtn) moreBtn.style.display = (q || _pageTblExpanded) ? 'none' : '';
-  }
+  function filterPageTable() { renderPageStatsTable(); }
 
   function filterByPageEl(rowEl) { applyPageFilterValue(_pageFilter === rowEl.dataset.id ? '' : rowEl.dataset.id); }
 
@@ -648,20 +802,10 @@
   }
 
   // ── Per-group breakdown table: search + expand ──────────────────
-  function filterGrpTable(q) {
-    q = q.toLowerCase();
-    const moreBtn = document.getElementById('grpTblMoreBtn');
-    document.querySelectorAll('.grp-tbl-row').forEach((r, i) => {
-      const nameOk = !q || r.dataset.name.includes(q);
-      const catOk  = !_categoryFilter || (r.dataset.cats || '').split(',').includes(_categoryFilter);
-      const show   = nameOk && catOk && (q || _categoryFilter || _grpTblExpanded || i < 5);
-      r.style.display = show ? '' : 'none';
-    });
-    if (moreBtn) moreBtn.style.display = (q || _categoryFilter || _grpTblExpanded) ? 'none' : '';
-  }
+  function filterGrpTable() { renderGroupStats(); }
 
   let _grpTblExpanded = false;
-  function grpTableExpand() { _grpTblExpanded = true; filterGrpTable(document.getElementById('grpTblSearch')?.value || ''); }
+  function grpTableExpand() { _grpTblExpanded = true; renderGroupStats(); }
 
   function filterByGroupEl(rowEl) { applyGroupFilterValue(_groupFilter === rowEl.dataset.id ? '' : rowEl.dataset.id); }
 
@@ -697,8 +841,7 @@
            </span>`
         : '';
     }
-    filterGrpTable(document.getElementById('grpTblSearch')?.value || '');
-    applyUaFilter();
+    applyUaFilter(); // also re-runs renderGroupStats()
   }
 
   function viewImage(src) {
