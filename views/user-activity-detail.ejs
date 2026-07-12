@@ -105,6 +105,10 @@
       <span style="color:#bbb">—</span>
       <input id="uaTo" type="date" lang="en-GB" onchange="applyUaFilter()" title="ถึงวันที่"
         style="padding:.35rem .5rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;color:#333;outline:none;cursor:pointer">
+      <button onclick="filterUaToday()" id="uaTodayBtn"
+        style="padding:.35rem .6rem;background:#e7f0fd;color:#1877f2;border:none;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit">
+        <i class="fa-solid fa-calendar-day"></i> วันนี้
+      </button>
       <span id="uaDateRangeErr" style="display:none;font-size:.75rem;color:#c62828;font-weight:600">⚠️ วันที่เริ่มต้องไม่เกินวันที่สิ้นสุด</span>
       <select id="uaStatusSelect" onchange="applyUaFilter()"
         style="padding:.35rem .5rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.82rem;font-family:inherit;color:#333;outline:none;cursor:pointer">
@@ -514,6 +518,11 @@
     document.getElementById('uaDateRangeErr').style.display    = _drBad ? 'inline' : 'none';
     if (_drBad) return;
 
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
+    const isToday  = fromVal === todayStr && toVal === todayStr;
+    const todayBtn = document.getElementById('uaTodayBtn');
+    if (todayBtn) { todayBtn.style.background = isToday ? '#1877f2' : '#e7f0fd'; todayBtn.style.color = isToday ? '#fff' : '#1877f2'; }
+
     const fromMs  = fromVal ? new Date(fromVal + 'T00:00:00+07:00').getTime() : 0;
     const toMs    = toVal   ? new Date(toVal   + 'T23:59:59+07:00').getTime() : Infinity;
 
@@ -567,6 +576,16 @@
     // work that wasn't already there, so a missing element just means 0.
     const stPP = document.getElementById('stPagePending'); if (stPP) stPP.textContent = pagePending;
     const stGP = document.getElementById('stGrpPending');  if (stGP) stGP.textContent  = grpPending;
+  }
+
+  // One click -> both date fields snap to today (Bangkok) and the whole
+  // page instantly narrows to "what did this person do today", reusing the
+  // exact same filter/stats pipeline as manually picking a date range.
+  function filterUaToday() {
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
+    document.getElementById('uaFrom').value = todayStr;
+    document.getElementById('uaTo').value   = todayStr;
+    applyUaFilter();
   }
 
   function clearUaFilter() {
