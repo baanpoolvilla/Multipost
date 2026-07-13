@@ -116,6 +116,39 @@
       </div>
     </div>
 
+    <!-- Engagement totals (from posts shared "as Page") -->
+    <% if (hasAnalytics) { %>
+    <div class="overview-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="metric-card blue">
+        <div class="metric-icon"><i class="fa-solid fa-thumbs-up"></i></div>
+        <div class="metric-body">
+          <div class="metric-val"><%= totalLikes.toLocaleString() %></div>
+          <div class="metric-label">ไลค์ทั้งหมด</div>
+        </div>
+      </div>
+      <div class="metric-card green">
+        <div class="metric-icon"><i class="fa-solid fa-comment"></i></div>
+        <div class="metric-body">
+          <div class="metric-val"><%= totalComments.toLocaleString() %></div>
+          <div class="metric-label">ความคิดเห็น</div>
+        </div>
+      </div>
+      <div class="metric-card orange">
+        <div class="metric-icon"><i class="fa-solid fa-share"></i></div>
+        <div class="metric-body">
+          <div class="metric-val"><%= totalShares.toLocaleString() %></div>
+          <div class="metric-label">แชร์ต่อ</div>
+        </div>
+      </div>
+    </div>
+    <% } else { %>
+    <div class="card" style="padding:.7rem 1.1rem;display:flex;align-items:center;gap:.6rem;font-size:.82rem;color:#65676b;margin-bottom:.75rem">
+      <i class="fa-solid fa-circle-info" style="color:#8a8d91"></i>
+      ยังไม่มีข้อมูล engagement (ไลค์/คอมเมนต์/แชร์) — เข้าไปที่รายงานโพสแต่ละงานแล้วกด "รีเฟรช Engagement"
+      (ดึงได้เฉพาะกลุ่มที่แชร์ด้วย "โพสเป็นเพจ")
+    </div>
+    <% } %>
+
     <!-- Privacy breakdown -->
     <%
       const pvCards = [
@@ -193,6 +226,11 @@
               <th><i class="fa-solid fa-circle-check" style="color:#2e7d32"></i> สำเร็จ</th>
               <th><i class="fa-solid fa-circle-xmark" style="color:#c62828"></i> ล้มเหลว</th>
               <th>อัตราสำเร็จ</th>
+              <% if (hasAnalytics) { %>
+              <th><i class="fa-solid fa-thumbs-up" style="color:#1877f2"></i> ไลค์</th>
+              <th><i class="fa-solid fa-comment" style="color:#2e7d32"></i> คอมเมนต์</th>
+              <th><i class="fa-solid fa-share" style="color:#e65100"></i> แชร์ต่อ</th>
+              <% } %>
             </tr>
           </thead>
           <tbody id="grp-tbody">
@@ -214,6 +252,11 @@
                   <span class="rate-text"><%= totalAllRate %>%</span>
                 </div>
               </td>
+              <% if (hasAnalytics) { %>
+              <td class="num" style="color:#1877f2"><%= totalLikes.toLocaleString() %></td>
+              <td class="num" style="color:#2e7d32"><%= totalComments.toLocaleString() %></td>
+              <td class="num" style="color:#e65100"><%= totalShares.toLocaleString() %></td>
+              <% } %>
             </tr>
             <%
               const pvBadge = { public:'🌐', private:'🔒', paid:'💰' };
@@ -239,6 +282,11 @@
                   <span class="rate-text"><%= rate %>%</span>
                 </div>
               </td>
+              <% if (hasAnalytics) { %>
+              <td class="num" style="color:#1877f2"><%= (g.likes||0).toLocaleString() %></td>
+              <td class="num" style="color:#2e7d32"><%= (g.comments||0).toLocaleString() %></td>
+              <td class="num" style="color:#e65100"><%= (g.shares||0).toLocaleString() %></td>
+              <% } %>
             </tr>
             <% }); %>
           </tbody>
