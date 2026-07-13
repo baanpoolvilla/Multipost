@@ -19,7 +19,13 @@ async function _launchContext(accountId) {
     const ctx = await chromium.launchPersistentContext(dir, {
         headless: false,
         viewport: { width: 1280, height: 800 },
-        args: ['--disable-blink-features=AutomationControlled', '--foreground', '--no-first-run'],
+        // No --foreground: it makes Chrome request focus on essentially
+        // every action (new page, navigation), which is what un-minimizes
+        // this window on its own mid-job even when nobody touched it --
+        // Windows' foreground-lock inconsistently allows/blocks that
+        // request depending on machine state, which is why only some
+        // machines showed the popping-up behavior with the same code.
+        args: ['--disable-blink-features=AutomationControlled', '--no-first-run'],
     });
     _contexts[accountId] = ctx;
     return ctx;
