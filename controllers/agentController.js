@@ -532,11 +532,14 @@ exports.getCombinedStats = async (req, res) => {
 };
 
 // ── Refresh Group Analytics (pull likes/comments/shares from Graph API) ────
+// Pass { jobId } to refresh just one job (e.g. from the result page button);
+// omit it to sweep all history (e.g. from a cron job).
 exports.refreshGroupAnalytics = async (req, res) => {
     try {
         const pageStore = require('../services/pageStore');
+        const { jobId } = req.body || {};
         const [jobs, pages] = await Promise.all([
-            groupJobStore.listHistory(),
+            jobId ? groupJobStore.getById(jobId).then(j => j ? [j] : []) : groupJobStore.listHistory(),
             pageStore.load(),
         ]);
 
@@ -551,8 +554,9 @@ exports.refreshGroupAnalytics = async (req, res) => {
             for (let i = 0; i < results.length; i++) {
                 const r = results[i];
                 if (r.status !== 'success' || !r.postUrl) { skipped++; continue; }
-                // Skip if already has good analytics
-                if (r.analytics && (r.analytics.likes || r.analytics.comments || r.analytics.shares || r.analytics.reach)) { skipped++; continue; }
+                // Skip if already has good analytics — unless refreshing one job on
+                // demand (button click), where the user wants updated numbers.
+                if (!jobId && r.analytics && (r.analytics.likes || r.analytics.comments || r.analytics.shares || r.analytics.reach)) { skipped++; continue; }
 
                 // Extract post ID from URL
                 const m = r.postUrl.match(/\/posts\/(\d+)|story_fbid=(\d+)|\/permalink\/(\d+)/);

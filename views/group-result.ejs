@@ -160,9 +160,15 @@
     <div class="card">
       <div class="card-title" style="margin-bottom:1rem">
         <i class="fa-solid fa-users"></i> ผลลัพธ์แต่ละกลุ่ม
-        <span style="margin-left:auto;font-size:.8rem;font-weight:400;color:#65676b"><%= total %> กลุ่ม</span>
+        <span style="margin-left:auto;display:flex;align-items:center;gap:.75rem">
+          <button id="refreshEngagementBtn" class="show-more-btn" style="padding:.35rem .7rem" onclick="refreshEngagement()">
+            <i class="fa-solid fa-rotate"></i> รีเฟรช Engagement
+          </button>
+          <span style="font-size:.8rem;font-weight:400;color:#65676b"><%= total %> กลุ่ม</span>
+        </span>
       </div>
       <% (job.results || []).forEach((r, i) => { %>
+      <% const a = r.analytics || {}; const hasA = a.likes || a.comments || a.shares || a.reach; %>
       <div class="result-row<%= i >= SHOW ? ' result-row-hidden' : '' %>" style="<%= i >= SHOW ? 'display:none' : '' %>">
         <div class="avatar avatar-<%= colors[i % colors.length] %> avatar-sm"><%= (r.groupName||'?').slice(0,1) %></div>
         <div class="result-info">
@@ -174,6 +180,18 @@
             <% } %>
             <% if (r.error) { %>&nbsp;·&nbsp;<span style="color:#c62828;font-size:.78rem"><%= r.error %></span><% } %>
           </div>
+          <% if (r.status === 'success') { %>
+          <div class="result-engagement" style="margin-top:.3rem;font-size:.78rem;color:#65676b;display:flex;gap:.75rem">
+            <% if (hasA) { %>
+            <span><i class="fa-solid fa-thumbs-up" style="color:#1877f2"></i> <%= a.likes||0 %></span>
+            <span><i class="fa-solid fa-comment" style="color:#42b72a"></i> <%= a.comments||0 %></span>
+            <span><i class="fa-solid fa-share" style="color:#f5a623"></i> <%= a.shares||0 %></span>
+            <% if (a.reach) { %><span><i class="fa-solid fa-eye" style="color:#8a8d91"></i> <%= a.reach %></span><% } %>
+            <% } else { %>
+            <span style="color:#bbb">ยังไม่มีข้อมูล engagement — กด "รีเฟรช Engagement"</span>
+            <% } %>
+          </div>
+          <% } %>
         </div>
         <div style="display:flex;align-items:center;gap:.5rem">
           <span class="status-badge <%= r.status === 'success' ? 'success' : 'fail' %>">
@@ -235,6 +253,38 @@
     btn.innerHTML = isHidden
       ? '<i class="fa-solid fa-chevron-up"></i> ซ่อน'
       : `<i class="fa-solid fa-chevron-down"></i> ดูเพิ่มเติม ${hidden.length} กลุ่ม`;
+  }
+
+  async function refreshEngagement() {
+    const btn = document.getElementById('refreshEngagementBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังดึงข้อมูล...';
+    try {
+      const res  = await fetch('/api/agent/refresh-group-analytics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId: <%- JSON.stringify(job._id) %> }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        if (data.updated > 0) {
+          location.reload();
+        } else {
+          Swal.fire({
+            icon: 'info', title: 'ยังไม่มี engagement ใหม่',
+            text: 'ดึงได้เฉพาะกลุ่มที่แชร์ด้วย "โพสเป็นเพจ" และมี Access Token ของเพจนั้นในระบบ',
+            confirmButtonColor: '#1877f2',
+          });
+        }
+      } else {
+        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: data.error || '', confirmButtonColor: '#1877f2' });
+      }
+    } catch {
+      Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', confirmButtonColor: '#1877f2' });
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-rotate"></i> รีเฟรช Engagement';
+    }
   }
 
   async function repostJob() {
