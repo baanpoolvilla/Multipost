@@ -36,6 +36,35 @@
     <a href="/audit-log"    class="<%= _active==='audit' ? 'active sy' : '' %>"><i class="ti ti-history"></i> ประวัติการเปลี่ยนแปลง</a>
     <% } %>
     <a href="/guide" class="<%= _active==='guide' ? 'active sy' : '' %>"><i class="ti ti-help-circle"></i> คู่มือ / ช่วยเหลือ</a>
+
+    <%
+      // Kept from the old sidebar (partials/sidebar-pages.ejs): quick jump to
+      // each page's activity. res.locals.sidebarPages is set globally in
+      // server.js, so it is available on every page that renders this partial.
+      const _sp = locals.sidebarPages || [];
+    %>
+    <% if (_sp.length > 0) { %>
+    <div class="nav-label pg"><i class="ti ti-brand-facebook"></i> เพจของคุณ</div>
+    <% _sp.slice(0, 6).forEach(p => { %>
+    <a href="/page-activity/<%= encodeURIComponent(p.pageId) %>" class="sb-page">
+      <span class="sb-ava"><%= p.pageName.charAt(0).toUpperCase() %></span>
+      <span class="sb-nm"><%= p.pageName %></span>
+      <% if ((p.groups||[]).length > 0) { %><span class="sb-cnt"><%= p.groups.length %></span><% } %>
+    </a>
+    <% }); %>
+    <% if (_sp.length > 6) { %>
+    <details class="sb-more">
+      <summary>เพิ่มเติม <%= _sp.length - 6 %> เพจ</summary>
+      <% _sp.slice(6).forEach(p => { %>
+      <a href="/page-activity/<%= encodeURIComponent(p.pageId) %>" class="sb-page">
+        <span class="sb-ava"><%= p.pageName.charAt(0).toUpperCase() %></span>
+        <span class="sb-nm"><%= p.pageName %></span>
+        <% if ((p.groups||[]).length > 0) { %><span class="sb-cnt"><%= p.groups.length %></span><% } %>
+      </a>
+      <% }); %>
+    </details>
+    <% } %>
+    <% } %>
   </nav>
 
   <div class="side-foot">

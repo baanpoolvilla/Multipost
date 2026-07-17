@@ -5,68 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ประวัติการเปลี่ยนแปลงบัญชี - Multi Post System</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.11.0/dist/tabler-icons.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
   <script src="/js/auth-guard.js"></script>
   <script src="/js/navbar-user.js"></script>
 </head>
-<body>
+<body class="eb">
 
-<nav class="navbar">
-  <div class="navbar-inner">
-    <div class="navbar-brand">
-      <div class="fb-logo"><i class="fa-brands fa-facebook"></i></div>
-      <span>Multi Post System</span>
-    </div>
-    <div class="navbar-right">
-      <% if (locals.currentStaff) { %>
-      <div class="navbar-user">
-        <div class="avatar avatar-blue avatar-xs"><%= currentStaff.name.charAt(0).toUpperCase() %></div>
-        <span class="navbar-user-name"><%= currentStaff.name %></span>
-        <i class="fa-solid fa-chevron-down navbar-user-caret"></i>
-        <div class="navbar-user-menu">
-          <form method="POST" action="/logout">
-            <button type="submit" class="navbar-user-menu-item"><i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ</button>
-          </form>
-        </div>
-      </div>
-      <% } %>
-    </div>
-  </div>
-</nav>
+<div class="app">
 
-<div class="page-wrap">
+  <%- include('partials/sidebar', { active: 'audit' }) %>
 
-  <aside class="sidebar">
-    <a href="/schedule-center" class="sidebar-item"><i class="fa-solid fa-house"></i><span>Dashboard</span></a>
-    <div class="sidebar-divider"></div>
-        <div class="sidebar-label">โพสลงเพจ</div>
-    <a href="/" class="sidebar-item"><i class="fa-solid fa-pen-to-square"></i><span>โพสใหม่</span></a>
-    <a href="/pages" class="sidebar-item"><i class="fa-brands fa-facebook"></i><span>จัดการเพจ</span></a>
-    <a href="/post-queue" class="sidebar-item"><i class="fa-solid fa-list-check"></i><span>คิวโพส</span></a>
-    <a href="/overview" class="sidebar-item"><i class="fa-solid fa-chart-line"></i><span>ภาพรวม</span></a>
-    <a href="/history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพส</span></a>
-
-    <div class="sidebar-divider"></div>
-    <div class="sidebar-label">โพส&amp;แชร์ ลงกลุ่ม</div>
-    <a href="/agent" class="sidebar-item"><i class="fa-solid fa-robot"></i><span>ติดตั้ง Desktop Agent</span></a>
-    <a href="/groups" class="sidebar-item"><i class="fa-solid fa-users-rectangle"></i><span>จัดการกลุ่ม</span></a>
-    <a href="/job-queue" class="sidebar-item"><i class="fa-solid fa-list-check"></i><span>คิวโพสกลุ่ม</span></a>
-    <a href="/group-overview" class="sidebar-item"><i class="fa-solid fa-chart-line" style="color:#2e7d32"></i><span>ภาพรวม</span></a>
-    <a href="/group-history" class="sidebar-item"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติโพสกลุ่ม</span></a>
-    <a href="/guide" class="sidebar-item"><i class="fa-solid fa-book-open"></i><span>คู่มือการใช้งาน</span></a>
-
-    <div class="sidebar-divider"></div>
-    <div class="sidebar-label">ระบบ</div>
-    <a href="/user-activity" class="sidebar-item"><i class="fa-solid fa-user-clock"></i><span>กิจกรรมพนักงาน</span></a>
-    <% if (locals.currentStaff && currentStaff.canManageStaff) { %>
-    <a href="/manage-staff" class="sidebar-item"><i class="fa-solid fa-users-gear"></i><span>จัดการบัญชีผู้ใช้งาน</span></a>
-    <a href="/audit-log" class="sidebar-item active"><i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติการเปลี่ยนแปลง</span></a>
-    <% } %>
-    <%- include('partials/sidebar-pages') %>
-  </aside>
-
-  <main class="feed">
+  <div class="main">
 
     <div class="card" style="padding:.8rem 1.25rem">
       <div class="card-title" style="font-size:1.05rem">
@@ -126,7 +77,7 @@
     </div>
     <% } %>
 
-  </main>
+  </div>
 
 </div>
 </body>

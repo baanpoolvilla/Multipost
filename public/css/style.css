@@ -412,7 +412,11 @@ body.eb {
 .eb a{color:inherit;text-decoration:none}
 
 /* ── Shell ── */
-.eb .app{display:grid;grid-template-columns:238px 1fr;min-height:100vh}
+/* 3rd column only materialises on pages that still ship an .right-panel
+   aside; pages without one collapse it to zero automatically. */
+.eb .app{display:grid;grid-template-columns:238px minmax(0,1fr) auto;min-height:100vh}
+.eb .right-panel{width:296px;padding:22px 26px 22px 0;position:sticky;top:0;align-self:start}
+.eb .right-panel > .card{margin-bottom:14px}
 .eb .side{background:var(--bg);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:14px 12px;position:sticky;top:0;height:100vh;overflow:auto}
 .eb .logo{display:flex;align-items:center;gap:1px;font-weight:800;font-size:20px;padding:6px 8px 2px}
 .eb .logo .easy{color:var(--brand-green)} .eb .logo .boss{color:var(--brand-navy)}
@@ -429,6 +433,19 @@ body.eb {
 .eb .nav a.active.gr{background:var(--group-bg);color:var(--group-dk)}
 .eb .nav a.active.gr i{color:var(--group)}
 .eb .nav a.active.sy{background:#EEF1F6;color:var(--ink)}
+/* "เพจของคุณ" quick-jump list in the sidebar (carried over from the old
+   partials/sidebar-pages.ejs so the shortcut isn't lost in the restyle) */
+.eb .sb-page{display:flex;align-items:center;gap:8px;padding:6px 11px;border-radius:var(--radius);font-size:12.5px;color:var(--ink)}
+.eb .sb-page:hover{background:var(--bg-soft)}
+.eb .sb-ava{width:20px;height:20px;border-radius:50%;background:var(--brand-navy);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:700;flex-shrink:0}
+.eb .sb-nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.eb .sb-cnt{background:var(--group-bg);color:var(--group-dk);border-radius:999px;font-size:9.5px;font-weight:700;padding:1px 6px;flex-shrink:0}
+.eb .sb-more > summary{list-style:none;cursor:pointer;padding:6px 11px;font-size:12px;color:var(--ink-soft);border-radius:var(--radius)}
+.eb .sb-more > summary::-webkit-details-marker{display:none}
+.eb .sb-more > summary:hover{background:var(--bg-soft)}
+.eb .sb-more > summary::before{content:'▾ '}
+.eb .sb-more[open] > summary::before{content:'▴ '}
+
 .eb .side-foot{margin-top:auto;display:flex;align-items:center;gap:9px;padding:10px;border-top:1px solid var(--line)}
 .eb .side-foot .ava{width:30px;height:30px;border-radius:50%;background:var(--brand-navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
 .eb .side-foot small{color:var(--ink-soft);display:block;font-size:11px}
