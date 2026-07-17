@@ -1,0 +1,53 @@
+<%
+  // Shared EasyBoss sidebar. Each converted page includes it and passes an
+  // `active` key naming the current nav item. currentStaff / its
+  // canManageStaff flag come from res.locals (auth middleware) and are
+  // inherited into this partial automatically.
+  const _active = (typeof locals.active !== 'undefined') ? locals.active : '';
+  const _canManage = locals.currentStaff && locals.currentStaff.canManageStaff;
+  const _name = (locals.currentStaff && locals.currentStaff.name) || 'ผู้ใช้งาน';
+  const _initial = _name.charAt(0).toUpperCase();
+%>
+<aside class="side">
+  <div class="logo"><span class="easy">Easy</span><span class="boss">Boss</span></div>
+  <div class="mod-badge"><i class="ti ti-speakerphone"></i> Marketing · Multi-Post</div>
+
+  <nav class="nav">
+    <a href="/schedule-center" class="<%= _active==='dashboard' ? 'active sy' : '' %>"><i class="ti ti-layout-dashboard"></i> แดชบอร์ด</a>
+
+    <div class="nav-label pg"><i class="ti ti-brand-facebook"></i> โพสลงเพจ</div>
+    <a href="/"            class="<%= _active==='compose'   ? 'active pg' : '' %>"><i class="ti ti-pencil-plus"></i> โพสใหม่</a>
+    <a href="/post-queue"  class="<%= _active==='pqueue'    ? 'active pg' : '' %>"><i class="ti ti-calendar"></i> คิว &amp; ปฏิทิน</a>
+    <a href="/pages"       class="<%= _active==='pages'     ? 'active pg' : '' %>"><i class="ti ti-brand-facebook"></i> จัดการเพจ</a>
+    <a href="/overview"    class="<%= _active==='poverview' ? 'active pg' : '' %>"><i class="ti ti-chart-line"></i> ภาพรวม</a>
+    <a href="/history"     class="<%= _active==='phistory'  ? 'active pg' : '' %>"><i class="ti ti-clock-hour-4"></i> ประวัติ</a>
+
+    <div class="nav-label grp"><i class="ti ti-users-group"></i> โพส &amp; แชร์ ลงกลุ่ม</div>
+    <a href="/agent"          class="<%= _active==='agent'     ? 'active gr' : '' %>"><i class="ti ti-robot"></i> Desktop Agent</a>
+    <a href="/groups"         class="<%= _active==='groups'    ? 'active gr' : '' %>"><i class="ti ti-users-group"></i> จัดการกลุ่ม</a>
+    <a href="/job-queue"      class="<%= _active==='gqueue'    ? 'active gr' : '' %>"><i class="ti ti-calendar"></i> คิวโพสกลุ่ม</a>
+    <a href="/group-overview" class="<%= _active==='goverview' ? 'active gr' : '' %>"><i class="ti ti-chart-line"></i> ภาพรวมกลุ่ม</a>
+    <a href="/group-history"  class="<%= _active==='ghistory'  ? 'active gr' : '' %>"><i class="ti ti-clock-hour-4"></i> ประวัติกลุ่ม</a>
+
+    <div class="nav-label"><i class="ti ti-settings"></i> ระบบ</div>
+    <a href="/user-activity" class="<%= _active==='team' ? 'active sy' : '' %>"><i class="ti ti-users"></i> ทีมงาน</a>
+    <% if (_canManage) { %>
+    <a href="/manage-staff" class="<%= _active==='staff' ? 'active sy' : '' %>"><i class="ti ti-user-cog"></i> จัดการบัญชี</a>
+    <a href="/audit-log"    class="<%= _active==='audit' ? 'active sy' : '' %>"><i class="ti ti-history"></i> ประวัติการเปลี่ยนแปลง</a>
+    <% } %>
+    <a href="/guide" class="<%= _active==='guide' ? 'active sy' : '' %>"><i class="ti ti-help-circle"></i> คู่มือ / ช่วยเหลือ</a>
+  </nav>
+
+  <div class="side-foot">
+    <div class="ava"><%= _initial %></div>
+    <div class="who">
+      <div><%= _name %></div>
+      <small><%= _canManage ? 'ผู้ดูแลระบบ' : 'พนักงาน' %></small>
+    </div>
+    <% if (locals.currentStaff) { %>
+    <form method="POST" action="/logout">
+      <button type="submit" class="logout-btn" title="ออกจากระบบ"><i class="ti ti-logout"></i></button>
+    </form>
+    <% } %>
+  </div>
+</aside>
