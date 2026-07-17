@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EasyBoss · Multi-Post — Redesign Prototype (ครบทุกหน้า)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.11.0/dist/tabler-icons.min.css">
+<style>
+:root{
+  --bg:#FFFFFF; --bg-soft:#F7F9FC; --ink:#1B2537; --ink-soft:#64748B;
+  --line:#E5E9F0; --brand-green:#4CB93F; --brand-navy:#1B2537;
+  --mod-marketing:#F97316;
+  --module-color:#F97316; --module-color-bg:#FFF3EA; --module-color-dk:#C2570A;
+  --success:#16A34A; --success-bg:#EAF7EF; --warning:#D97706; --warning-bg:#FDF3E7;
+  --danger:#DC2626; --danger-bg:#FCECEC; --info:#3B82F6; --info-bg:#EAF1FE;
+  --radius:10px; --radius-lg:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter','Noto Sans Thai',-apple-system,Segoe UI,sans-serif;background:var(--bg-soft);color:var(--ink);font-size:14px;line-height:1.55}
+button{font-family:inherit;cursor:pointer}
+a{color:inherit}
+.app{display:grid;grid-template-columns:242px 1fr;min-height:100vh}
+.side{background:var(--bg);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:14px 12px;position:sticky;top:0;height:100vh;overflow:auto}
+.logo{display:flex;align-items:center;gap:1px;font-weight:800;font-size:20px;padding:6px 8px 2px}
+.logo .easy{color:var(--brand-green)} .logo .boss{color:var(--brand-navy)}
+.mod-badge{display:flex;align-items:center;gap:8px;margin:8px 6px 10px;padding:8px 10px;border-radius:var(--radius);background:var(--module-color-bg);color:var(--module-color-dk);font-size:12px;font-weight:600}
+.mod-badge i{font-size:16px}
+.nav-label{font-size:10.5px;font-weight:700;color:var(--ink-soft);letter-spacing:.04em;text-transform:uppercase;padding:11px 10px 5px}
+.nav button{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--radius);color:var(--ink);font-weight:500;font-size:13px;margin-bottom:1px;border:none;background:none;width:100%;text-align:left}
+.nav button i{font-size:17px;color:var(--ink-soft);width:19px;text-align:center}
+.nav button:hover{background:var(--bg-soft)}
+.nav button.active{background:var(--module-color-bg);color:var(--module-color-dk)}
+.nav button.active i{color:var(--module-color)}
+.side-foot{margin-top:12px;display:flex;align-items:center;gap:9px;padding:10px;border-top:1px solid var(--line)}
+.side-foot .ava{width:30px;height:30px;border-radius:50%;background:var(--brand-navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+.side-foot small{color:var(--ink-soft);display:block;font-size:11px}
+.main{padding:22px 26px;overflow:auto}
+.topbar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;gap:12px;flex-wrap:wrap}
+.topbar h1{font-size:20px;font-weight:700}
+.topbar .sub{color:var(--ink-soft);font-size:13px;margin-top:2px}
+.tb-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.src{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink-soft);background:var(--bg);border:1px dashed var(--line);padding:5px 10px;border-radius:999px}
+.src b{color:var(--module-color-dk);font-weight:600}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--radius);border:1px solid var(--line);background:var(--bg);color:var(--ink);font-weight:600;font-size:13px}
+.btn:hover{border-color:#cfd6e2}
+.btn.primary{background:var(--module-color);color:#fff;border-color:var(--module-color)}
+.btn.green{background:var(--brand-green);color:#fff;border-color:var(--brand-green)}
+.btn.sm{padding:6px 10px;font-size:12px}
+.card{background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-lg);padding:18px}
+.grid{display:grid;gap:16px}
+.metrics{grid-template-columns:repeat(4,1fr)}
+.metric{background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-lg);padding:16px}
+.metric .lbl{font-size:12.5px;color:var(--ink-soft);display:flex;align-items:center;gap:6px}
+.metric .val{font-size:26px;font-weight:700;margin-top:6px}
+.metric .trd{font-size:12px;margin-top:4px}
+.up{color:var(--success)} .dn{color:var(--danger)}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;font-size:12.5px;font-weight:600}
+.chip.on{background:var(--module-color-bg);color:var(--module-color-dk)}
+.chip.out{border:1px solid var(--line);color:var(--ink-soft);background:var(--bg)}
+.chip.dash{border:1px dashed #cbd3e0;color:var(--ink-soft);background:var(--bg)}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:600}
+.b-ok{background:var(--success-bg);color:var(--success)} .b-wait{background:var(--warning-bg);color:var(--warning)}
+.b-fail{background:var(--danger-bg);color:var(--danger)} .b-info{background:var(--info-bg);color:var(--info)}
+textarea,input,select{width:100%;font-family:inherit;font-size:14px;color:var(--ink);border:1px solid var(--line);border-radius:var(--radius);padding:10px 12px;background:var(--bg);outline:none}
+textarea:focus,input:focus,select:focus{border-color:var(--module-color);box-shadow:0 0 0 3px var(--module-color-bg)}
+.ico-btn{width:36px;height:36px;border-radius:var(--radius);border:1px solid var(--line);background:var(--bg);display:inline-flex;align-items:center;justify-content:center;font-size:17px;color:var(--ink-soft)}
+.ico-btn:hover{background:var(--bg-soft)}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;color:var(--ink-soft);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;padding:10px 12px;border-bottom:1px solid var(--line)}
+td{padding:11px 12px;border-bottom:1px solid var(--line)}
+tr:hover td{background:var(--bg-soft)}
+.ava-sm{width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);border:1px solid var(--line);border-radius:var(--radius-lg);overflow:hidden;background:var(--line);gap:1px}
+.cal .dow{background:var(--bg);padding:9px;text-align:center;font-size:11.5px;font-weight:700;color:var(--ink-soft)}
+.cal .day{background:var(--bg);min-height:88px;padding:7px}
+.cal .day .n{font-size:12px;color:var(--ink-soft)}
+.cal .day.off{background:var(--bg-soft)}
+.cal .ev{font-size:10.5px;padding:3px 6px;border-radius:6px;margin-top:4px;font-weight:600;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.ev.o{background:var(--module-color-bg);color:var(--module-color-dk)}
+.ev.g{background:var(--success-bg);color:var(--success)}
+.ev.w{background:var(--warning-bg);color:var(--warning)}
+.preview{border:1px solid var(--line);border-radius:var(--radius-lg);overflow:hidden;background:var(--bg-soft)}
+.preview .ph{background:var(--bg);padding:12px;border-bottom:1px solid var(--line);font-size:12px;color:var(--ink-soft);display:flex;align-items:center;gap:6px}
+.pv-card{margin:12px;background:var(--bg);border:1px solid var(--line);border-radius:var(--radius)}
+.pv-head{display:flex;align-items:center;gap:8px;padding:10px}
+.pv-img{height:130px;background:linear-gradient(135deg,#e8edf5,#dbe3ef);display:flex;align-items:center;justify-content:center;color:#aab4c6;font-size:26px}
+.pv-body{padding:10px;font-size:12.5px;line-height:1.5}
+.hidden{display:none}.two{grid-template-columns:1fr 320px}
+.mini{color:var(--ink-soft);font-size:12.5px}
+hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
+.pill-row{display:flex;flex-wrap:wrap;gap:7px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:none;background:var(--bg);padding:6px 12px;font-size:12px;color:var(--ink-soft);border-right:1px solid var(--line)}
+.seg button:last-child{border-right:none}
+.seg button.on{background:var(--module-color-bg);color:var(--module-color-dk);font-weight:600}
+.banner{border-radius:var(--radius-lg);padding:16px 20px;display:flex;align-items:center;gap:14px}
+.banner.ok{background:var(--success-bg);border:1px solid #b6e2c6}
+.banner.fail{background:var(--warning-bg);border:1px solid #f0d59a}
+.login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg-soft);grid-column:1/3}
+.login-card{width:380px;background:var(--bg);border:1px solid var(--line);border-radius:18px;padding:34px 30px;text-align:center}
+.statc{text-align:center;padding:18px 12px}
+.statc .ic{font-size:26px;margin-bottom:6px}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.acc{border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px}
+.acc .q{font-weight:600;display:flex;align-items:center;gap:8px}
+.acc .a{color:var(--ink-soft);font-size:13px;margin-top:6px}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="side">
+    <div class="logo"><span class="easy">Easy</span><span class="boss">Boss</span></div>
+    <div class="mod-badge"><i class="ti ti-speakerphone"></i> Marketing · Multi-Post</div>
+    <nav class="nav">
+      <button data-page="home"><i class="ti ti-layout-dashboard"></i> Dashboard</button>
+      <div class="nav-label">โพสลงเพจ</div>
+      <button data-page="compose"><i class="ti ti-pencil-plus"></i> โพสใหม่</button>
+      <button data-page="schedule"><i class="ti ti-calendar-plus"></i> โพสตั้งเวลา</button>
+      <button data-page="pages"><i class="ti ti-brand-facebook"></i> จัดการเพจ</button>
+      <button data-page="postqueue"><i class="ti ti-list-check"></i> คิวโพส</button>
+      <button data-page="overview"><i class="ti ti-chart-line"></i> ภาพรวม</button>
+      <button data-page="pagesummary"><i class="ti ti-report-analytics"></i> สรุปช่วงเวลา</button>
+      <button data-page="pageactivity"><i class="ti ti-activity"></i> กิจกรรมเพจ</button>
+      <button data-page="history"><i class="ti ti-clock-hour-4"></i> ประวัติโพส</button>
+      <button data-page="result"><i class="ti ti-file-report"></i> รายงานการโพส</button>
+      <div class="nav-label">โพส & แชร์ ลงกลุ่ม</div>
+      <button data-page="agent"><i class="ti ti-robot"></i> Desktop Agent</button>
+      <button data-page="groups"><i class="ti ti-users-group"></i> จัดการกลุ่ม</button>
+      <button data-page="jobqueue"><i class="ti ti-list-check"></i> คิวโพสกลุ่ม</button>
+      <button data-page="groupoverview"><i class="ti ti-chart-line"></i> ภาพรวมกลุ่ม</button>
+      <button data-page="grouphistory"><i class="ti ti-clock-hour-4"></i> ประวัติโพสกลุ่ม</button>
+      <button data-page="groupresult"><i class="ti ti-file-report"></i> รายงานโพสกลุ่ม</button>
+      <button data-page="groupsummary"><i class="ti ti-report-analytics"></i> สรุปช่วงเวลา</button>
+      <button data-page="guide"><i class="ti ti-book"></i> คู่มือการใช้งาน</button>
+      <div class="nav-label">ระบบ</div>
+      <button data-page="useractivity"><i class="ti ti-user-search"></i> กิจกรรมพนักงาน</button>
+      <button data-page="userdetail"><i class="ti ti-user-check"></i> รายละเอียดกิจกรรม</button>
+      <button data-page="staff"><i class="ti ti-users"></i> จัดการบัญชี</button>
+      <button data-page="audit"><i class="ti ti-shield-lock"></i> ประวัติการเปลี่ยนแปลง</button>
+      <button data-page="login"><i class="ti ti-login-2"></i> หน้า Login</button>
+    </nav>
+    <div class="side-foot">
+      <div class="ava">BP</div>
+      <div><div style="font-weight:600;font-size:13px">BaanPool</div><small>ผู้ดูแลระบบ</small></div>
+    </div>
+  </aside>
+  <div class="main" id="main"></div>
+</div>
+
+<script>
+const src=(who,what)=>'<span class="src"><i class="ti ti-bulb"></i> แบบจาก <b>'+who+'</b> · '+what+'</span>';
+function top(title,sub,right){return '<div class="topbar"><div><h1>'+title+'</h1><div class="sub">'+sub+'</div></div><div class="tb-actions">'+right+'</div></div>';}
+function metric(ic,lbl,val,trd,cls){return '<div class="metric"><div class="lbl"><i class="ti '+ic+'"></i> '+lbl+'</div><div class="val">'+val+'</div><div class="trd '+cls+'">'+trd+'</div></div>';}
+function bars(arr){return arr.map(h=>'<div style="flex:1;background:var(--module-color-bg);border-radius:5px 5px 0 0;height:'+h+'%;position:relative"><div style="position:absolute;bottom:0;left:0;right:0;height:'+Math.round(h*0.55)+'%;background:var(--module-color);border-radius:5px 5px 0 0"></div></div>').join('');}
+function rank(name,val){return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:11px"><div style="flex:1;font-size:13px">'+name+'</div><div style="width:90px;height:8px;background:var(--bg-soft);border-radius:99px;overflow:hidden"><div style="height:100%;width:'+val+'%;background:var(--module-color)"></div></div><div class="mini" style="width:26px;text-align:right">'+val+'</div></div>';}
+function seg(items,onIdx){return '<div class="seg">'+items.map((t,i)=>'<button class="'+(i===onIdx?'on':'')+'">'+t+'</button>').join('')+'</div>';}
+function periodSeg(){return seg(['วันนี้','7 วัน','15 วัน','1 เดือน','2 เดือน','3 เดือน','ทั้งหมด'],1);}
+
+const PAGES={};
+
+PAGES.home=top('Dashboard','สรุปภาพรวม EasyBoss · Multi-Post',src('Metricool','home dashboard'))+
+'<div class="grid metrics" style="margin-bottom:16px">'+
+metric('ti-send','โพสวันนี้','24','+6 ▲','up')+metric('ti-check','อัตราสำเร็จ','96.4%','+1.2% ▲','up')+
+metric('ti-clock','รอในคิว','8','','')+metric('ti-robot','Agent','ออนไลน์','','up')+'</div>'+
+'<div class="grid" style="grid-template-columns:1.5fr 1fr">'+
+'<div class="card"><div style="font-weight:700;margin-bottom:12px">ปฏิทินสัปดาห์นี้</div><div class="cal">'+
+'<div class="dow">จ</div><div class="dow">อ</div><div class="dow">พ</div><div class="dow">พฤ</div><div class="dow">ศ</div><div class="dow">ส</div><div class="dow">อา</div>'+
+'<div class="day"><div class="n">14</div><div class="ev g">เปิดจอง</div></div>'+
+'<div class="day"><div class="n">15</div><div class="ev o">พูลวิลล่า</div></div>'+
+'<div class="day"><div class="n">16</div></div>'+
+'<div class="day"><div class="n">17</div><div class="ev o">18:00 โพส</div></div>'+
+'<div class="day"><div class="n">18</div><div class="ev g">โปรสงกรานต์</div><div class="ev w">รีวิว</div></div>'+
+'<div class="day"><div class="n">19</div></div>'+
+'<div class="day off"><div class="n">20</div><div class="ev o">ห้องว่าง</div></div>'+
+'</div></div>'+
+'<div class="card"><div style="font-weight:700;margin-bottom:12px">กิจกรรมล่าสุด</div>'+
+logRow('แนน','โพสไป 6 เพจ','โปรสงกรานต์','09:30')+logRow('บอส','เพิ่มสมาชิก','กร','08:15')+logRow('มิ้น','สร้างงานกลุ่ม','40 กลุ่ม','เมื่อวาน')+'</div></div>';
+
+PAGES.compose=top('โพสใหม่','โพสต์เดียว ส่งได้หลายเพจพร้อมกัน',src('Buffer + Publer','composer + พรีวิว')+'<button class="btn">บันทึกร่าง</button><button class="btn primary"><i class="ti ti-send"></i> โพสทั้งหมด</button>')+
+'<div class="grid two"><div class="card">'+
+'<div class="mini" style="margin-bottom:8px">โพสต์ไปยัง <b style="color:var(--module-color-dk)">6 เพจ</b></div>'+
+'<div class="pill-row" style="margin-bottom:14px"><span class="chip on"><i class="ti ti-brand-facebook"></i> Baan Pool Villa <i class="ti ti-x"></i></span><span class="chip on">Phuket Rentals <i class="ti ti-x"></i></span><span class="chip on">Pool Villa TH <i class="ti ti-x"></i></span><span class="chip dash"><i class="ti ti-plus"></i> +3 เพจ</span></div>'+
+'<textarea rows="5">บ้านพักพูลวิลล่าภูเก็ต 3 ห้องนอน สระส่วนตัว 🏖️\nว่างช่วงสงกรานต์ จองด่วน!\n#พูลวิลล่า #ภูเก็ต #ที่พัก</textarea>'+
+'<div style="display:flex;align-items:center;gap:7px;margin-top:10px"><button class="ico-btn"><i class="ti ti-photo"></i></button><button class="ico-btn"><i class="ti ti-mood-smile"></i></button><button class="ico-btn"><i class="ti ti-template"></i></button><button class="ico-btn" style="border-color:var(--module-color);color:var(--module-color)"><i class="ti ti-sparkles"></i></button><span style="margin-left:auto" class="mini">142 ตัวอักษร</span></div>'+
+'<hr class="sep"><div style="display:flex;align-items:center;gap:10px"><span class="mini">กำหนดเวลา:</span><span class="chip on"><i class="ti ti-clock"></i> วันนี้ 18:00</span><span class="chip out">โพสทันที</span></div></div>'+
+'<div class="preview"><div class="ph"><i class="ti ti-eye"></i> พรีวิวก่อนโพส</div><div class="pv-card"><div class="pv-head"><div class="ava-sm" style="background:var(--brand-navy)">BP</div><div style="font-size:12.5px;font-weight:600">Baan Pool Villa</div></div><div class="pv-img"><i class="ti ti-photo"></i></div><div class="pv-body">บ้านพักพูลวิลล่าภูเก็ต 3 ห้องนอน สระส่วนตัว 🏖️ ว่างช่วงสงกรานต์ จองด่วน!</div></div></div></div>';
+
+PAGES.schedule=top('โพสตั้งเวลา','เลือกเพจ/โฟลเดอร์ แล้วตั้งเวลาโพส',src('Later','scheduler + folders')+'<button class="btn primary"><i class="ti ti-calendar-plus"></i> ตั้งเวลา</button>')+
+'<div class="grid two"><div class="card"><div style="font-weight:700;margin-bottom:10px">เลือกปลายทาง</div>'+
+'<div class="pill-row" style="margin-bottom:10px"><span class="chip on">📁 วิลล่าภูเก็ต (8)</span><span class="chip out">📁 กระบี่ (5)</span><span class="chip out">📁 สมุย (5)</span><span class="btn sm"><i class="ti ti-checkbox"></i> เลือกทั้งหมด</span></div>'+
+'<hr class="sep"><textarea rows="4">โปรสงกรานต์ ลดสูงสุด 20% จองก่อน 10 เม.ย. นี้</textarea>'+
+'<div style="display:flex;gap:10px;margin-top:12px"><div style="flex:1"><label class="mini">วันที่</label><input type="date" value="2026-04-08"></div><div style="flex:1"><label class="mini">เวลา</label><input type="time" value="09:30"></div></div>'+
+'<div style="margin-top:10px"><span class="chip out"><i class="ti ti-repeat"></i> โพสซ้ำทุกสัปดาห์</span></div></div>'+
+'<div class="preview"><div class="ph"><i class="ti ti-calendar"></i> จะโพส 8 เพจ · 8 เม.ย. 09:30</div><div style="padding:12px"><div class="mini">คิวที่จะสร้าง</div>'+scheduleMini('Baan Pool Villa')+scheduleMini('Phuket Rentals')+scheduleMini('Pool Villa TH')+'</div></div></div>';
+
+PAGES.pages=top('จัดการเพจ','เชื่อมต่อแล้ว 18 เพจ',src('Buffer','channel manager')+'<button class="btn green"><i class="ti ti-plus"></i> เชื่อมต่อเพจ</button>')+
+'<div class="grid" style="grid-template-columns:repeat(3,1fr)">'+pageCard('Baan Pool Villa','12.4K','ok')+pageCard('Phuket Rentals','8.1K','ok')+pageCard('Pool Villa TH','5.6K','ok')+pageCard('Krabi Stay','3.2K','wait')+pageCard('Samui Villas','2.8K','ok')+pageCard('Hua Hin Homes','1.9K','fail')+'</div>';
+
+PAGES.postqueue=top('คิวโพส','โพสตั้งเวลาที่รอส่ง · 8 รายการ',src('Buffer','Queue signature'))+
+'<div class="grid" style="gap:12px">'+queueItem('วันนี้','18:00','บ้านพักพูลวิลล่าภูเก็ต 3 ห้องนอน...','3 เพจ','wait','กำลังรอ')+queueItem('พรุ่งนี้','09:30','โปรสงกรานต์ ลด 20%...','6 เพจ','wait','กำลังรอ')+queueItem('พรุ่งนี้','19:00','รีวิวลูกค้า ⭐⭐⭐⭐⭐...','4 เพจ','wait','กำลังรอ')+queueItem('20 ก.ค.','12:00','ห้องว่างสุดสัปดาห์นี้...','2 เพจ','info','ร่าง')+'</div>';
+
+PAGES.overview=top('ภาพรวม (เพจ)','30 วันล่าสุด',src('Metricool + Hootsuite','analytics'))+
+'<div class="grid metrics" style="margin-bottom:16px">'+metric('ti-send','โพสทั้งหมด','342','+12% ▲','up')+metric('ti-check','สำเร็จ','96.4%','+1.2% ▲','up')+metric('ti-brand-facebook','เพจใช้งาน','18','—','')+metric('ti-users','สมาชิกทีม','6','+1 ▲','up')+'</div>'+
+'<div class="grid" style="grid-template-columns:1.6fr 1fr"><div class="card"><div style="font-weight:700;margin-bottom:14px">โพสต่อวัน</div><div style="display:flex;align-items:flex-end;gap:8px;height:150px">'+bars([40,65,52,80,72,95,60,88,70,100,84,76])+'</div></div><div class="card"><div style="font-weight:700;margin-bottom:12px">เพจที่โพสบ่อยสุด</div>'+rank('Baan Pool Villa','86')+rank('Phuket Rentals','72')+rank('Pool Villa TH','65')+rank('Krabi Stay','41')+'</div></div>';
+
+PAGES.pagesummary=top('สรุปช่วงเวลา (เพจ)','เลือกช่วงเวลาเพื่อดูสรุป',src('Metricool','period report')+periodSeg())+
+'<div class="grid metrics" style="margin-bottom:16px">'+metric('ti-brand-facebook','เพจ','18','','')+metric('ti-send','โพส','128','','')+metric('ti-check','อัตราสำเร็จ','97.1%','','up')+metric('ti-alert-triangle','ล้มเหลว','4','','dn')+'</div>'+
+'<div class="card" style="padding:0"><table><thead><tr><th>เพจ</th><th>โพส</th><th>สำเร็จ</th><th>ล้มเหลว</th><th>อัตรา</th></tr></thead><tbody>'+sumRow('Baan Pool Villa','42','42','0','100%')+sumRow('Phuket Rentals','36','35','1','97%')+sumRow('Pool Villa TH','28','27','1','96%')+sumRow('Krabi Stay','22','20','2','91%')+'</tbody></table></div>';
+
+PAGES.pageactivity=top('กิจกรรมเพจ','ไทม์ไลน์การเคลื่อนไหวของแต่ละเพจ',src('Vercel','activity feed'))+
+'<div class="card">'+actRow('ti-send','Baan Pool Villa','โพสสำเร็จ','โปรสงกรานต์ ลด 20%','วันนี้ 09:30','ok')+actRow('ti-alert-triangle','Krabi Stay','โพสล้มเหลว','โทเคนหมดอายุ','วันนี้ 09:30','fail')+actRow('ti-photo','Phuket Rentals','อัปโหลดรูป','3 รูป','เมื่อวาน 18:00','')+actRow('ti-link','Samui Villas','เชื่อมต่อเพจใหม่','','เมื่อวาน 16:40','ok')+'</div>';
+
+PAGES.history=top('ประวัติโพส','รวม 1,284 โพส',src('Mixpost + SocialPilot','status table')+'<input placeholder="ค้นหา..." style="width:170px"><select style="width:120px"><option>ทุกสถานะ</option></select>')+
+'<div class="card" style="padding:0"><table><thead><tr><th>โพส</th><th>เพจ</th><th>ผู้โพส</th><th>เวลา</th><th>สถานะ</th><th></th></tr></thead><tbody>'+histRow('โปรสงกรานต์ ลด 20%...','6 เพจ','แนน','วันนี้ 09:30','ok','สำเร็จ')+histRow('รีวิวลูกค้า 5 ดาว...','4 เพจ','บอส','เมื่อวาน 19:00','ok','สำเร็จ')+histRow('ห้องว่างสุดสัปดาห์...','5 เพจ','แนน','เมื่อวาน 12:00','fail','ล้มเหลว 1 เพจ')+histRow('พูลวิลล่า 3 ห้องนอน...','3 เพจ','บอส','15 ก.ค. 18:00','ok','สำเร็จ')+'</tbody></table></div>';
+
+PAGES.result=top('รายงานการโพส','ผลการโพสรอบล่าสุด · 15 ก.ค. 18:00',src('Buffer','result report'))+
+'<div class="banner fail" style="margin-bottom:16px"><div style="font-size:26px;color:var(--warning)"><i class="ti ti-alert-triangle"></i></div><div style="flex:1"><div style="font-weight:700">โพสสำเร็จ 5 จาก 6 เพจ</div><div class="mini">มี 1 เพจล้มเหลว — โทเคนหมดอายุ กดโพสซ้ำได้</div></div><span class="badge b-ok">5 สำเร็จ</span><span class="badge b-fail">1 ล้มเหลว</span></div>'+
+'<div class="card" style="padding:0"><table><thead><tr><th>เพจ</th><th>สถานะ</th><th>เวลา</th><th>ลิงก์</th><th></th></tr></thead><tbody>'+resRow('Baan Pool Villa','ok','สำเร็จ','18:00')+resRow('Phuket Rentals','ok','สำเร็จ','18:00')+resRow('Pool Villa TH','ok','สำเร็จ','18:01')+resRow('Krabi Stay','fail','ล้มเหลว','—')+'</tbody></table></div>';
+
+PAGES.agent=top('ติดตั้ง Desktop Agent','โปรแกรมสำหรับโพส Facebook กลุ่ม (Windows)',src('Vercel + Linear','install + status'))+
+'<div class="card" style="margin-bottom:14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap"><div style="width:46px;height:46px;border-radius:12px;background:var(--module-color-bg);color:var(--module-color);display:flex;align-items:center;justify-content:center;font-size:22px"><i class="ti ti-robot"></i></div><div style="flex:1;min-width:200px"><div style="font-weight:700">MultiPost Desktop Agent <span class="mini">v2.0.0</span></div><div class="mini">ติดตั้งบนเครื่อง Windows · ไม่ต้องลง Node.js แยก</div></div><button class="btn primary"><i class="ti ti-download"></i> ดาวน์โหลด Agent</button></div>'+
+'<div class="grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px">'+
+'<div class="card statc"><div class="ic"><span class="dot" style="background:var(--success)"></span></div><div style="font-weight:700">ออนไลน์</div><div class="mini">สถานะ Agent</div></div>'+
+'<div class="card statc"><div class="ic" style="color:var(--success)"><i class="ti ti-player-play"></i></div><div style="font-weight:700">กำลังทำงาน</div><div class="mini">Job Runner</div></div>'+
+'<div class="card statc"><div class="ic"><span class="dot" style="background:var(--success)"></span></div><div style="font-weight:700">Connected</div><div class="mini">Database</div></div></div>'+
+'<div class="card"><div style="font-weight:700;margin-bottom:10px"><i class="ti ti-info-circle"></i> วิธีใช้งาน (ครั้งแรก)</div><ol style="margin-left:18px;line-height:2;font-size:13.5px;color:var(--ink)"><li>แตกไฟล์ zip → ดับเบิลคลิก <code>install.bat</code> (ครั้งแรกครั้งเดียว)</li><li>ดับเบิลคลิก <code>start.bat</code> เพื่อเริ่มโปรแกรม</li><li>ไปแท็บ บัญชี Facebook → เข้าสู่ระบบ</li><li>กลับมาเว็บ → คิวโพสกลุ่ม → สร้างงาน → Agent รับงานอัตโนมัติ</li></ol></div>';
+
+PAGES.groups=top('จัดการกลุ่ม','จัดกลุ่มเป็นหมวด/โฟลเดอร์',src('Notion','category + color tags')+'<button class="btn">+ สร้างหมวด</button><button class="btn green"><i class="ti ti-plus"></i> เพิ่มกลุ่ม</button>')+
+'<div class="pill-row" style="margin-bottom:14px"><span class="chip on">ทั้งหมด (128)</span><span class="chip out">🌐 Public (74)</span><span class="chip out">🔒 Private (39)</span><span class="chip out">💰 เสียตัง (15)</span></div>'+
+'<div class="grid" style="grid-template-columns:repeat(2,1fr)">'+groupCat('อสังหาภูเก็ต','#F97316','42','Public')+groupCat('เช่าบ้านพักตากอากาศ','#3B82F6','31','Private')+groupCat('พูลวิลล่าไทยแลนด์','#8B5CF6','28','Public')+groupCat('กลุ่มพรีเมียม (เสียตัง)','#EC4899','15','เสียตัง')+'</div>';
+
+PAGES.jobqueue=top('คิวโพสกลุ่ม','งานที่ส่งให้ Desktop Agent · 12 งาน',src('Buffer + Linear','job queue + presets'))+
+'<div class="card" style="margin-bottom:14px;display:flex;align-items:center;gap:10px"><span class="mini">ตั้งเวลาเร็ว:</span><span class="chip out">วันนี้</span><span class="chip on">+1 ชม.</span><span class="chip out">+3 ชม.</span><span class="chip out">+1 วัน</span></div>'+
+'<div class="grid" style="gap:10px">'+jobRow('โปรสงกรานต์ ลด 20%','40 กลุ่ม','กำลังโพส 18/40','info','กำลังทำงาน')+jobRow('ห้องว่างสุดสัปดาห์','25 กลุ่ม','รอ Agent','wait','รอคิว')+jobRow('พูลวิลล่า 3 ห้องนอน','60 กลุ่ม','เสร็จ 60/60','ok','สำเร็จ')+jobRow('เปิดจองเดือนหน้า','15 กลุ่ม','ล้มเหลว 3','fail','เสร็จ (มีพลาด)')+'</div>';
+
+PAGES.groupoverview=top('ภาพรวมกลุ่ม','30 วันล่าสุด',src('Metricool','analytics'))+
+'<div class="grid metrics" style="margin-bottom:16px">'+metric('ti-users-group','กลุ่ม','128','','')+metric('ti-share','แชร์ทั้งหมด','1,842','+18% ▲','up')+metric('ti-check','อัตราสำเร็จ','93.2%','-0.6% ▼','dn')+metric('ti-robot','งานวันนี้','12','','')+'</div>'+
+'<div class="card"><div style="font-weight:700;margin-bottom:14px">แชร์กลุ่มต่อวัน</div><div style="display:flex;align-items:flex-end;gap:8px;height:150px">'+bars([55,70,60,85,78,90,66,94,72,88,80,96])+'</div></div>';
+
+PAGES.grouphistory=top('ประวัติโพสกลุ่ม','รวม 1,842 การแชร์',src('Mixpost','history + expand')+'<input placeholder="ค้นหากลุ่ม..." style="width:170px">')+
+'<div class="card" style="padding:0"><table><thead><tr><th>เนื้อหา</th><th>กลุ่ม</th><th>ผู้โพส</th><th>เวลา</th><th>สถานะ</th><th></th></tr></thead><tbody>'+histRow('โปรสงกรานต์ ลด 20%...','40 กลุ่ม','แนน','วันนี้ 10:00','ok','40/40')+histRow('ห้องว่างสุดสัปดาห์...','25 กลุ่ม','มิ้น','เมื่อวาน 20:00','fail','22/25')+histRow('พูลวิลล่า 3 ห้องนอน...','60 กลุ่ม','บอส','14 ก.ค. 09:00','ok','60/60')+'</tbody></table></div>';
+
+PAGES.groupresult=top('รายงานโพสกลุ่ม','ผลงานล่าสุด · 40 กลุ่ม',src('Buffer','result report'))+
+'<div class="banner ok" style="margin-bottom:16px"><div style="font-size:26px;color:var(--success)"><i class="ti ti-circle-check"></i></div><div style="flex:1"><div style="font-weight:700">แชร์สำเร็จ 40 จาก 40 กลุ่ม</div><div class="mini">ใช้เวลา 6 นาที 24 วินาที ผ่าน Desktop Agent</div></div><span class="badge b-ok">40 สำเร็จ</span></div>'+
+'<div class="card" style="padding:0"><table><thead><tr><th>กลุ่ม</th><th>ประเภท</th><th>สถานะ</th><th>เวลา</th></tr></thead><tbody>'+gresRow('อสังหาภูเก็ต','🌐 Public','ok','10:00')+gresRow('เช่าบ้านพักตากอากาศ','🔒 Private','ok','10:01')+gresRow('พูลวิลล่าไทยแลนด์','🌐 Public','ok','10:02')+gresRow('กลุ่มพรีเมียม','💰 เสียตัง','ok','10:03')+'</tbody></table></div>';
+
+PAGES.groupsummary=top('สรุปช่วงเวลา (กลุ่ม)','เลือกช่วงเวลาเพื่อดูสรุป',src('Metricool','period report')+periodSeg())+
+'<div class="grid metrics" style="margin-bottom:16px">'+metric('ti-users-group','กลุ่ม','128','','')+metric('ti-share','แชร์','642','','')+metric('ti-check','อัตราสำเร็จ','93.2%','','up')+metric('ti-alert-triangle','ล้มเหลว','44','','dn')+'</div>'+
+'<div class="card" style="padding:0"><table><thead><tr><th>หมวดกลุ่ม</th><th>กลุ่ม</th><th>แชร์</th><th>สำเร็จ</th><th>อัตรา</th></tr></thead><tbody>'+sumRow('อสังหาภูเก็ต','42','210','205','98%')+sumRow('เช่าบ้านพัก','31','168','160','95%')+sumRow('พูลวิลล่าไทย','28','154','142','92%')+sumRow('พรีเมียม','15','110','98','89%')+'</tbody></table></div>';
+
+PAGES.guide=top('คู่มือการใช้งาน','ขั้นตอนการใช้งานทั้งระบบ',src('Stripe Docs','guide layout'))+
+'<div class="acc"><div class="q"><i class="ti ti-number-1" style="color:var(--module-color)"></i> เริ่มต้น: เชื่อมต่อเพจ</div><div class="a">ไปที่ จัดการเพจ → กดเชื่อมต่อเพจ → ล็อกอิน Facebook แล้วเลือกเพจที่ต้องการ</div></div>'+
+'<div class="acc"><div class="q"><i class="ti ti-number-2" style="color:var(--module-color)"></i> โพสลงหลายเพจพร้อมกัน</div><div class="a">ไปที่ โพสใหม่ → เลือกเพจ → เขียนข้อความ + รูป → กดโพสหรือตั้งเวลา</div></div>'+
+'<div class="acc"><div class="q"><i class="ti ti-number-3" style="color:var(--module-color)"></i> โพสลงกลุ่ม (ต้องมี Desktop Agent)</div><div class="a">ติดตั้ง Desktop Agent บน Windows → เปิดโปรแกรม → สร้างงานที่ คิวโพสกลุ่ม → Agent โพสให้อัตโนมัติ</div></div>'+
+'<div class="acc"><div class="q"><i class="ti ti-number-4" style="color:var(--module-color)"></i> ดูรายงานและสรุปผล</div><div class="a">ดูผลรายรอบที่ รายงานการโพส หรือดูสรุปตามช่วงเวลาที่ สรุปช่วงเวลา</div></div>';
+
+PAGES.useractivity=top('กิจกรรมพนักงาน','ติดตามการทำงานของทีม',src('Linear','member activity')+'<input placeholder="ค้นหาพนักงาน..." style="width:180px">')+
+'<div class="grid" style="grid-template-columns:repeat(3,1fr)">'+userCard('แนน','ผู้จัดการ','var(--module-color)','128','98%')+userCard('มิ้น','ทีมโพส','#3B82F6','86','95%')+userCard('กร','ทีมโพส','#8B5CF6','64','97%')+'</div>';
+
+PAGES.userdetail=top('รายละเอียดกิจกรรม — แนน','ผู้จัดการ · 12 เพจที่ดูแล',src('Linear','profile + timeline'))+
+'<div class="grid metrics" style="margin-bottom:16px">'+metric('ti-send','โพสเดือนนี้','128','','')+metric('ti-check','สำเร็จ','98%','','up')+metric('ti-users-group','งานกลุ่ม','24','','')+metric('ti-clock','ใช้งานล่าสุด','5 นาที','','')+'</div>'+
+'<div class="card"><div style="font-weight:700;margin-bottom:10px">ไทม์ไลน์</div>'+logRow('แนน','โพสไป 6 เพจ','โปรสงกรานต์','09:30')+logRow('แนน','สร้างงานกลุ่ม','40 กลุ่ม','08:50')+logRow('แนน','แก้ไขร่าง','ห้องว่างสุดสัปดาห์','เมื่อวาน')+'</div>';
+
+PAGES.staff=top('จัดการบัญชีผู้ใช้งาน','6 สมาชิก · บทบาทและสิทธิ์',src('Mixpost + SocialPilot','roles + permissions')+'<button class="btn primary"><i class="ti ti-user-plus"></i> เพิ่มสมาชิก</button>')+
+'<div class="card" style="padding:0"><table><thead><tr><th>สมาชิก</th><th>อีเมล</th><th>บทบาท</th><th>สิทธิ์</th><th>สถานะ</th></tr></thead><tbody>'+staffRow('BP','บอส','boss@baanpool.com','ผู้ดูแลระบบ','ทั้งหมด','ok','ออนไลน์','var(--brand-navy)')+staffRow('แน','แนน','nan@baanpool.com','ผู้จัดการ','โพส+จัดการเพจ','ok','ออนไลน์','var(--module-color)')+staffRow('มิ','มิ้น','min@baanpool.com','ทีมโพส','โพสอย่างเดียว','wait','ออฟไลน์','#3B82F6')+staffRow('กร','กร','korn@baanpool.com','ทีมโพส','โพสอย่างเดียว','ok','ออนไลน์','#8B5CF6')+'</tbody></table></div>';
+
+PAGES.audit=top('ประวัติการเปลี่ยนแปลง','บันทึกการแก้ไขบัญชี/สิทธิ์ทั้งหมด',src('Linear + Vercel','audit timeline'))+
+'<div class="card">'+logRow('บอส','เพิ่มสมาชิกใหม่','กร (ทีมโพส)','วันนี้ 08:15')+logRow('บอส','แก้ไขสิทธิ์','มิ้น → ทีมโพส','เมื่อวาน 16:20')+logRow('แนน','รีเซ็ตรหัสผ่าน','บัญชี มิ้น','13 ก.ค. 11:00')+logRow('บอส','ปิดบัญชี','บัญชีเก่า (test)','12 ก.ค. 09:30')+'</div>';
+
+PAGES.login='<div class="login-wrap"><div class="login-card"><div class="logo" style="justify-content:center;font-size:26px"><span class="easy">Easy</span><span class="boss">Boss</span></div><div class="mini" style="margin:6px 0 22px">Marketing · Multi-Post System</div><div style="text-align:left;margin-bottom:12px"><label class="mini">อีเมล</label><input value="boss@baanpool.com" style="margin-top:5px"></div><div style="text-align:left;margin-bottom:18px"><label class="mini">รหัสผ่าน</label><input type="password" value="********" style="margin-top:5px"></div><button class="btn primary" style="width:100%;justify-content:center;padding:11px"><i class="ti ti-login-2"></i> เข้าสู่ระบบ</button><div class="mini" style="margin-top:16px">แบบจาก <b style="color:var(--module-color-dk)">Linear</b> · login มินิมอลกลางจอ</div></div></div>';
+
+function logRow(who,act,detail,time){return '<div style="display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--line)"><div class="ava-sm" style="background:var(--module-color)">'+who[0]+'</div><div style="flex:1;font-size:13px"><b style="font-weight:600">'+who+'</b> <span class="mini">'+act+'</span> · <span style="color:var(--module-color-dk)">'+detail+'</span></div><div class="mini">'+time+'</div></div>';}
+function scheduleMini(n){return '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)"><div class="ava-sm" style="width:22px;height:22px;background:var(--brand-navy)"><i class="ti ti-brand-facebook" style="font-size:12px"></i></div><span style="font-size:12.5px">'+n+'</span><span class="badge b-wait" style="margin-left:auto">รอ</span></div>';}
+function pageCard(name,fans,st){var b=st==='ok'?'b-ok':st==='wait'?'b-wait':'b-fail';var l=st==='ok'?'เชื่อมต่อ':st==='wait'?'รอต่ออายุ':'หลุด';return '<div class="card" style="display:flex;flex-direction:column;gap:10px"><div style="display:flex;align-items:center;gap:10px"><div class="ava-sm" style="width:38px;height:38px;background:var(--brand-navy)"><i class="ti ti-brand-facebook" style="font-size:18px"></i></div><div><div style="font-weight:600">'+name+'</div><div class="mini">'+fans+' ผู้ติดตาม</div></div></div><div style="display:flex;justify-content:space-between;align-items:center"><span class="badge '+b+'">'+l+'</span><button class="ico-btn" style="width:30px;height:30px"><i class="ti ti-settings"></i></button></div></div>';}
+function queueItem(day,time,txt,pages,st,lbl){var b=st==='wait'?'b-wait':st==='info'?'b-info':'b-ok';return '<div class="card" style="display:flex;align-items:center;gap:16px;padding:13px 18px"><div style="text-align:center;min-width:76px"><div style="font-weight:700;font-size:13px">'+day+'</div><div class="mini">'+time+'</div></div><div style="flex:1"><div style="font-weight:500">'+txt+'</div><div class="mini" style="margin-top:3px"><i class="ti ti-brand-facebook"></i> '+pages+'</div></div><span class="badge '+b+'">'+lbl+'</span><button class="ico-btn"><i class="ti ti-dots"></i></button></div>';}
+function jobRow(txt,groups,prog,st,lbl){var b=st==='wait'?'b-wait':st==='info'?'b-info':st==='fail'?'b-fail':'b-ok';return '<div class="card" style="display:flex;align-items:center;gap:16px;padding:13px 18px"><div style="width:38px;height:38px;border-radius:10px;background:var(--module-color-bg);color:var(--module-color);display:flex;align-items:center;justify-content:center"><i class="ti ti-users-group"></i></div><div style="flex:1"><div style="font-weight:500">'+txt+'</div><div class="mini" style="margin-top:3px">'+groups+' · '+prog+'</div></div><span class="badge '+b+'">'+lbl+'</span><button class="ico-btn"><i class="ti ti-dots"></i></button></div>';}
+function histRow(txt,pages,who,time,st,lbl){var b=st==='ok'?'b-ok':'b-fail';return '<tr><td style="font-weight:500">'+txt+'</td><td class="mini">'+pages+'</td><td>'+who+'</td><td class="mini">'+time+'</td><td><span class="badge '+b+'">'+lbl+'</span></td>'+(arguments.length>6?'':'<td><button class="ico-btn" style="width:30px;height:30px"><i class="ti ti-dots"></i></button></td>')+'</tr>';}
+function sumRow(n,a,b,c,d){return '<tr><td style="font-weight:500">'+n+'</td><td>'+a+'</td><td>'+b+'</td><td class="mini">'+c+'</td><td><span style="color:var(--success);font-weight:600">'+d+'</span></td></tr>';}
+function resRow(n,st,lbl,t){var b=st==='ok'?'b-ok':'b-fail';return '<tr><td style="font-weight:500">'+n+'</td><td><span class="badge '+b+'">'+lbl+'</span></td><td class="mini">'+t+'</td><td>'+(st==='ok'?'<a style="color:var(--info)">ดูโพส ↗</a>':'<span class="mini">—</span>')+'</td><td>'+(st==='fail'?'<button class="btn sm">โพสซ้ำ</button>':'')+'</td></tr>';}
+function gresRow(n,type,st,t){return '<tr><td style="font-weight:500">'+n+'</td><td class="mini">'+type+'</td><td><span class="badge b-ok">สำเร็จ</span></td><td class="mini">'+t+'</td></tr>';}
+function groupCat(n,c,count,type){return '<div class="card"><div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><span style="width:12px;height:12px;border-radius:4px;background:'+c+'"></span><div style="font-weight:600;flex:1">'+n+'</div><span class="chip out">'+type+'</span></div><div class="mini">'+count+' กลุ่ม</div><div style="margin-top:10px;display:flex;gap:6px"><button class="btn sm"><i class="ti ti-send"></i> โพสหมวดนี้</button><button class="ico-btn" style="width:32px;height:32px"><i class="ti ti-edit"></i></button></div></div>';}
+function actRow(ic,name,act,detail,time,st){var c=st==='ok'?'var(--success)':st==='fail'?'var(--danger)':'var(--ink-soft)';return '<div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)"><div style="width:32px;height:32px;border-radius:8px;background:var(--bg-soft);display:flex;align-items:center;justify-content:center;color:'+c+'"><i class="ti '+ic+'"></i></div><div style="flex:1"><b style="font-weight:600">'+name+'</b> <span class="mini">'+act+'</span>'+(detail?' · <span style="color:var(--module-color-dk)">'+detail+'</span>':'')+'</div><div class="mini">'+time+'</div></div>';}
+function userCard(n,role,c,posts,rate){return '<div class="card" style="text-align:center"><div class="ava-sm" style="width:48px;height:48px;margin:0 auto 8px;background:'+c+';font-size:16px">'+n[0]+'</div><div style="font-weight:600">'+n+'</div><span class="chip out" style="margin-top:4px">'+role+'</span><div style="display:flex;justify-content:center;gap:20px;margin-top:12px"><div><div style="font-weight:700">'+posts+'</div><div class="mini">โพส</div></div><div><div style="font-weight:700;color:var(--success)">'+rate+'</div><div class="mini">สำเร็จ</div></div></div></div>';}
+function staffRow(ini,name,mail,role,perm,st,stlbl,color){return '<tr><td><div style="display:flex;align-items:center;gap:9px"><div class="ava-sm" style="background:'+color+'">'+ini+'</div><b style="font-weight:600">'+name+'</b></div></td><td class="mini">'+mail+'</td><td><span class="chip out">'+role+'</span></td><td class="mini">'+perm+'</td><td><span class="badge b-'+st+'">'+stlbl+'</span></td></tr>';}
+
+function go(page){document.getElementById('main').innerHTML=PAGES[page];document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===page));var isLogin=page==='login';document.querySelector('.side').style.display=isLogin?'none':'';document.getElementById('app').style.gridTemplateColumns=isLogin?'1fr':'242px 1fr';document.getElementById('main').style.padding=isLogin?'0':'22px 26px';window.scrollTo(0,0);}
+document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>go(b.dataset.page)));
+go('home');
+</script>
+</body>
+</html>

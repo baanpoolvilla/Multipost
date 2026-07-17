@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EasyBoss · Multi-Post — v3 (แยก 2 ฝั่ง)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.11.0/dist/tabler-icons.min.css">
+<style>
+:root{
+  --bg:#FFFFFF; --bg-soft:#F7F9FC; --ink:#1B2537; --ink-soft:#64748B;
+  --line:#E5E9F0; --brand-green:#4CB93F; --brand-navy:#1B2537;
+  --module-color:#F97316; --module-color-bg:#FFF3EA; --module-color-dk:#C2570A;
+  --group:#0D9488; --group-bg:#E6F5F3; --group-dk:#0B6E66;
+  --success:#16A34A; --success-bg:#EAF7EF; --warning:#D97706; --warning-bg:#FDF3E7;
+  --danger:#DC2626; --danger-bg:#FCECEC; --info:#3B82F6; --info-bg:#EAF1FE;
+  --radius:10px; --radius-lg:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter','Noto Sans Thai',-apple-system,Segoe UI,sans-serif;background:var(--bg-soft);color:var(--ink);font-size:14px;line-height:1.55}
+button{font-family:inherit;cursor:pointer}
+.app{display:grid;grid-template-columns:238px 1fr;min-height:100vh}
+.side{background:var(--bg);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:14px 12px;position:sticky;top:0;height:100vh;overflow:auto}
+.logo{display:flex;align-items:center;gap:1px;font-weight:800;font-size:20px;padding:6px 8px 2px}
+.logo .easy{color:var(--brand-green)} .logo .boss{color:var(--brand-navy)}
+.mod-badge{display:flex;align-items:center;gap:8px;margin:9px 6px 6px;padding:8px 10px;border-radius:var(--radius);background:var(--module-color-bg);color:var(--module-color-dk);font-size:12px;font-weight:600}
+.mod-badge i{font-size:16px}
+.nav-label{font-size:10.5px;font-weight:700;color:var(--ink-soft);letter-spacing:.04em;text-transform:uppercase;padding:12px 10px 5px;display:flex;align-items:center;gap:6px}
+.nav-label.grp{color:var(--group-dk)} .nav-label.grp i{color:var(--group)}
+.nav-label.pg i{color:var(--module-color)}
+.nav button{display:flex;align-items:center;gap:11px;padding:8px 11px;border-radius:var(--radius);color:var(--ink);font-weight:500;font-size:13.5px;margin-bottom:1px;border:none;background:none;width:100%;text-align:left}
+.nav button i{font-size:18px;color:var(--ink-soft);width:20px;text-align:center}
+.nav button:hover{background:var(--bg-soft)}
+.nav button.active.pg{background:var(--module-color-bg);color:var(--module-color-dk)}
+.nav button.active.pg i{color:var(--module-color)}
+.nav button.active.gr{background:var(--group-bg);color:var(--group-dk)}
+.nav button.active.gr i{color:var(--group)}
+.nav button.active.sy{background:#EEF1F6;color:var(--ink)}
+.side-foot{margin-top:10px;display:flex;align-items:center;gap:9px;padding:10px;border-top:1px solid var(--line)}
+.side-foot .ava{width:30px;height:30px;border-radius:50%;background:var(--brand-navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+.side-foot small{color:var(--ink-soft);display:block;font-size:11px}
+.main{padding:22px 26px;overflow:auto}
+.topbar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;gap:12px;flex-wrap:wrap}
+.topbar h1{font-size:20px;font-weight:700;display:flex;align-items:center;gap:9px}
+.topbar h1 .tag{font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px}
+.tag.pg{background:var(--module-color-bg);color:var(--module-color-dk)} .tag.gr{background:var(--group-bg);color:var(--group-dk)}
+.topbar .sub{color:var(--ink-soft);font-size:13px;margin-top:4px}
+.tb-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.src{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink-soft);background:var(--bg);border:1px dashed var(--line);padding:5px 10px;border-radius:999px}
+.src b{color:var(--module-color-dk);font-weight:600}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--radius);border:1px solid var(--line);background:var(--bg);color:var(--ink);font-weight:600;font-size:13px}
+.btn:hover{border-color:#cfd6e2}
+.btn.primary{background:var(--module-color);color:#fff;border-color:var(--module-color)}
+.btn.teal{background:var(--group);color:#fff;border-color:var(--group)}
+.btn.green{background:var(--brand-green);color:#fff;border-color:var(--brand-green)}
+.btn.sm{padding:6px 10px;font-size:12px}
+.card{background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-lg);padding:18px}
+.grid{display:grid;gap:16px}
+.metrics{grid-template-columns:repeat(4,1fr)}
+.metric{background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-lg);padding:16px}
+.metric .lbl{font-size:12.5px;color:var(--ink-soft);display:flex;align-items:center;gap:6px}
+.metric .val{font-size:26px;font-weight:700;margin-top:6px}
+.metric .trd{font-size:12px;margin-top:4px}
+.up{color:var(--success)} .dn{color:var(--danger)}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;font-size:12.5px;font-weight:600}
+.chip.on{background:var(--module-color-bg);color:var(--module-color-dk)}
+.chip.ong{background:var(--group-bg);color:var(--group-dk)}
+.chip.out{border:1px solid var(--line);color:var(--ink-soft);background:var(--bg)}
+.chip.dash{border:1px dashed #cbd3e0;color:var(--ink-soft);background:var(--bg)}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:600}
+.b-ok{background:var(--success-bg);color:var(--success)} .b-wait{background:var(--warning-bg);color:var(--warning)}
+.b-fail{background:var(--danger-bg);color:var(--danger)} .b-info{background:var(--info-bg);color:var(--info)}
+textarea,input,select{width:100%;font-family:inherit;font-size:14px;color:var(--ink);border:1px solid var(--line);border-radius:var(--radius);padding:10px 12px;background:var(--bg);outline:none}
+textarea:focus,input:focus,select:focus{border-color:var(--module-color);box-shadow:0 0 0 3px var(--module-color-bg)}
+.ico-btn{width:36px;height:36px;border-radius:var(--radius);border:1px solid var(--line);background:var(--bg);display:inline-flex;align-items:center;justify-content:center;font-size:17px;color:var(--ink-soft)}
+.ico-btn:hover{background:var(--bg-soft)}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;color:var(--ink-soft);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;padding:10px 12px;border-bottom:1px solid var(--line)}
+td{padding:11px 12px;border-bottom:1px solid var(--line)}
+tbody tr{cursor:pointer} tr:hover td{background:var(--bg-soft)}
+.ava-sm{width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);border:1px solid var(--line);border-radius:var(--radius-lg);overflow:hidden;background:var(--line);gap:1px}
+.cal .dow{background:var(--bg);padding:9px;text-align:center;font-size:11.5px;font-weight:700;color:var(--ink-soft)}
+.cal .day{background:var(--bg);min-height:92px;padding:7px}
+.cal .day .n{font-size:12px;color:var(--ink-soft)}
+.cal .day.off{background:var(--bg-soft)}
+.cal .ev{font-size:10.5px;padding:3px 6px;border-radius:6px;margin-top:4px;font-weight:600;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.ev.o{background:var(--module-color-bg);color:var(--module-color-dk)} .ev.t{background:var(--group-bg);color:var(--group-dk)}
+.ev.g{background:var(--success-bg);color:var(--success)}
+.preview{border:1px solid var(--line);border-radius:var(--radius-lg);overflow:hidden;background:var(--bg-soft)}
+.preview .ph{background:var(--bg);padding:12px;border-bottom:1px solid var(--line);font-size:12px;color:var(--ink-soft);display:flex;align-items:center;gap:6px}
+.pv-card{margin:12px;background:var(--bg);border:1px solid var(--line);border-radius:var(--radius)}
+.pv-head{display:flex;align-items:center;gap:8px;padding:10px}
+.pv-img{height:130px;background:linear-gradient(135deg,#e8edf5,#dbe3ef);display:flex;align-items:center;justify-content:center;color:#aab4c6;font-size:26px}
+.pv-body{padding:10px;font-size:12.5px;line-height:1.5}
+.two{grid-template-columns:1fr 320px}
+.mini{color:var(--ink-soft);font-size:12.5px}
+hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
+.pill-row{display:flex;flex-wrap:wrap;gap:7px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:none;background:var(--bg);padding:7px 12px;font-size:12.5px;color:var(--ink-soft);border-right:1px solid var(--line)}
+.seg button:last-child{border-right:none}
+.seg button.on{background:var(--module-color-bg);color:var(--module-color-dk);font-weight:600}
+.banner{border-radius:var(--radius-lg);padding:16px 20px;display:flex;align-items:center;gap:14px}
+.banner.ok{background:var(--success-bg);border:1px solid #b6e2c6} .banner.fail{background:var(--warning-bg);border:1px solid #f0d59a}
+.statc{text-align:center;padding:18px 12px}.statc .ic{font-size:24px;margin-bottom:6px}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.acc{border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px}
+.acc .q{font-weight:600;display:flex;align-items:center;gap:8px}
+.acc .a{color:var(--ink-soft);font-size:13px;margin-top:6px}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:16px}
+.tabs button{border:none;background:none;padding:10px 14px;font-size:14px;font-weight:600;color:var(--ink-soft);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button.on{color:var(--module-color-dk);border-bottom-color:var(--module-color)}
+.detail{border:1px solid var(--module-color);border-radius:var(--radius-lg);margin-top:12px;overflow:hidden}
+.detail .dh{background:var(--module-color-bg);padding:12px 16px;display:flex;align-items:center;gap:10px;color:var(--module-color-dk);font-weight:600}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="side">
+    <div class="logo"><span class="easy">Easy</span><span class="boss">Boss</span></div>
+    <div class="mod-badge"><i class="ti ti-speakerphone"></i> Marketing · Multi-Post</div>
+    <nav class="nav" id="nav">
+      <div class="nav-label pg"><i class="ti ti-brand-facebook"></i> โพสลงเพจ</div>
+      <button data-page="pgCompose" data-sec="pg"><i class="ti ti-pencil-plus"></i> โพสใหม่</button>
+      <button data-page="pgQueue" data-sec="pg"><i class="ti ti-calendar"></i> คิว & ปฏิทิน</button>
+      <button data-page="pgPages" data-sec="pg"><i class="ti ti-brand-facebook"></i> จัดการเพจ</button>
+      <button data-page="pgOverview" data-sec="pg"><i class="ti ti-chart-line"></i> ภาพรวม</button>
+      <button data-page="pgHistory" data-sec="pg"><i class="ti ti-clock-hour-4"></i> ประวัติ</button>
+      <div class="nav-label grp"><i class="ti ti-users-group"></i> โพส & แชร์ ลงกลุ่ม</div>
+      <button data-page="grAgent" data-sec="gr"><i class="ti ti-robot"></i> Desktop Agent</button>
+      <button data-page="grCompose" data-sec="gr"><i class="ti ti-pencil-plus"></i> โพส/แชร์กลุ่ม</button>
+      <button data-page="grGroups" data-sec="gr"><i class="ti ti-users-group"></i> จัดการกลุ่ม</button>
+      <button data-page="grQueue" data-sec="gr"><i class="ti ti-calendar"></i> คิวโพสกลุ่ม</button>
+      <button data-page="grOverview" data-sec="gr"><i class="ti ti-chart-line"></i> ภาพรวมกลุ่ม</button>
+      <button data-page="grHistory" data-sec="gr"><i class="ti ti-clock-hour-4"></i> ประวัติกลุ่ม</button>
+      <div class="nav-label"><i class="ti ti-settings"></i> ระบบ</div>
+      <button data-page="team" data-sec="sy"><i class="ti ti-users"></i> ทีมงาน</button>
+      <button data-page="guide" data-sec="sy"><i class="ti ti-help-circle"></i> คู่มือ / ช่วยเหลือ</button>
+    </nav>
+    <div class="side-foot"><div class="ava">BP</div><div><div style="font-weight:600;font-size:13px">BaanPool</div><small>ผู้ดูแลระบบ</small></div></div>
+  </aside>
+  <div class="main" id="main"></div>
+</div>
+
+<script>
+const ui={page:'pgCompose',qv:'cal',gqv:'list',ovRange:1,govRange:1,hOpen:null,ghOpen:null,team:'members'};
+const on=(a,b)=>a===b?'on':'';
+const src=(w,x)=>'<span class="src"><i class="ti ti-bulb"></i> แบบจาก <b>'+w+'</b> · '+x+'</span>';
+function hdr(t,tag,s,r){var g=tag==='gr';return '<div class="topbar"><div><h1>'+t+' <span class="tag '+tag+'">'+(g?'กลุ่ม':'เพจ')+'</span></h1><div class="sub">'+s+'</div></div><div class="tb-actions">'+(r||'')+'</div></div>';}
+function metric(ic,l,v,t,c){return '<div class="metric"><div class="lbl"><i class="ti '+ic+'"></i> '+l+'</div><div class="val">'+v+'</div><div class="trd '+(c||'')+'">'+(t||'')+'</div></div>';}
+function bars(a,col){col=col||'var(--module-color)';var bg=col==='var(--group)'?'var(--group-bg)':'var(--module-color-bg)';return a.map(h=>'<div style="flex:1;background:'+bg+';border-radius:5px 5px 0 0;height:'+h+'%;position:relative"><div style="position:absolute;bottom:0;left:0;right:0;height:'+Math.round(h*0.55)+'%;background:'+col+';border-radius:5px 5px 0 0"></div></div>').join('');}
+function rank(n,v,col){col=col||'var(--module-color)';return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:11px"><div style="flex:1;font-size:13px">'+n+'</div><div style="width:90px;height:8px;background:var(--bg-soft);border-radius:99px;overflow:hidden"><div style="height:100%;width:'+v+'%;background:'+col+'"></div></div><div class="mini" style="width:26px;text-align:right">'+v+'</div></div>';}
+function rangeSeg(key){var R=['วันนี้','7 วัน','15 วัน','1 เดือน','3 เดือน','ทั้งหมด'];return '<div class="seg">'+R.map((t,i)=>'<button class="'+on(ui[key],i)+'" data-set="'+key+':'+i+'">'+t+'</button>').join('')+'</div>';}
+
+/* ===== PAGES SIDE ===== */
+function pgCompose(){
+  return hdr('โพสใหม่','pg','โพสต์เดียว ส่งได้หลายเพจพร้อมกัน',src('Buffer + Publer','composer + พรีวิว')+'<button class="btn">บันทึกร่าง</button><button class="btn primary"><i class="ti ti-send"></i> โพส</button>')+
+  '<div class="grid two"><div class="card"><div class="mini" style="margin-bottom:8px">โพสต์ไปยัง <b style="color:var(--module-color-dk)">6 เพจ</b></div>'+
+  '<div class="pill-row" style="margin-bottom:14px"><span class="chip on"><i class="ti ti-brand-facebook"></i> Baan Pool Villa <i class="ti ti-x"></i></span><span class="chip on">Phuket Rentals <i class="ti ti-x"></i></span><span class="chip on">Pool Villa TH <i class="ti ti-x"></i></span><span class="chip dash"><i class="ti ti-plus"></i> +3 เพจ</span></div>'+
+  '<textarea rows="5">บ้านพักพูลวิลล่าภูเก็ต 3 ห้องนอน สระส่วนตัว 🏖️\nว่างช่วงสงกรานต์ จองด่วน!\n#พูลวิลล่า #ภูเก็ต</textarea>'+
+  '<div style="display:flex;align-items:center;gap:7px;margin-top:10px"><button class="ico-btn"><i class="ti ti-photo"></i></button><button class="ico-btn"><i class="ti ti-mood-smile"></i></button><button class="ico-btn"><i class="ti ti-template"></i></button><button class="ico-btn" style="border-color:var(--module-color);color:var(--module-color)"><i class="ti ti-sparkles"></i></button><span style="margin-left:auto" class="mini">142 ตัวอักษร</span></div>'+
+  '<hr class="sep"><div style="display:flex;align-items:center;gap:10px"><span class="mini">เวลา:</span><span class="chip out">โพสทันที</span><span class="chip on"><i class="ti ti-clock"></i> ตั้งเวลา 18:00</span></div></div>'+
+  '<div class="preview"><div class="ph"><i class="ti ti-eye"></i> พรีวิว</div><div class="pv-card"><div class="pv-head"><div class="ava-sm" style="background:var(--brand-navy)">BP</div><div style="font-size:12.5px;font-weight:600">Baan Pool Villa</div></div><div class="pv-img"><i class="ti ti-photo"></i></div><div class="pv-body">บ้านพักพูลวิลล่าภูเก็ต 3 ห้องนอน สระส่วนตัว 🏖️ ว่างช่วงสงกรานต์!</div></div></div></div>';
+}
+function pgQueue(){
+  const right=src('Buffer + Later','queue + calendar')+'<div class="seg"><button class="'+on(ui.qv,'cal')+'" data-set="qv:cal"><i class="ti ti-calendar"></i> ปฏิทิน</button><button class="'+on(ui.qv,'list')+'" data-set="qv:list"><i class="ti ti-list"></i> รายการ</button></div>';
+  let body;
+  if(ui.qv==='cal'){body='<div class="cal"><div class="dow">จ</div><div class="dow">อ</div><div class="dow">พ</div><div class="dow">พฤ</div><div class="dow">ศ</div><div class="dow">ส</div><div class="dow">อา</div>'+
+    d('14','<div class="ev g">เปิดจอง</div>')+d('15','<div class="ev o">พูลวิลล่า</div>')+d('16','')+d('17','<div class="ev o">18:00 โพส</div>')+d('18','<div class="ev g">โปรสงกรานต์</div><div class="ev o">รีวิว</div>')+d('19','')+d('20','<div class="ev o">ห้องว่าง</div>','off')+'</div>';
+  }else{body='<div class="grid" style="gap:12px">'+q('วันนี้','18:00','บ้านพักพูลวิลล่า 3 ห้องนอน...','3 เพจ','wait','กำลังรอ')+q('พรุ่งนี้','09:30','โปรสงกรานต์ ลด 20%...','6 เพจ','wait','กำลังรอ')+q('พรุ่งนี้','19:00','รีวิวลูกค้า 5 ดาว...','4 เพจ','wait','กำลังรอ')+q('20 ก.ค.','12:00','ห้องว่างสุดสัปดาห์...','2 เพจ','info','ร่าง')+'</div>';}
+  return hdr('คิว & ปฏิทิน','pg','โพสเพจที่ตั้งเวลาไว้',right)+body;
+}
+function pgPages(){
+  return hdr('จัดการเพจ','pg','เชื่อมต่อแล้ว 18 เพจ',src('Buffer','channel manager')+'<button class="btn green"><i class="ti ti-plus"></i> เชื่อมต่อเพจ</button>')+
+  '<div class="grid" style="grid-template-columns:repeat(3,1fr)">'+pc('Baan Pool Villa','12.4K','ok')+pc('Phuket Rentals','8.1K','ok')+pc('Pool Villa TH','5.6K','ok')+pc('Krabi Stay','3.2K','wait')+pc('Samui Villas','2.8K','ok')+pc('Hua Hin Homes','1.9K','fail')+'</div>';
+}
+function pgOverview(){
+  return hdr('ภาพรวม','pg','รวมภาพรวม + สรุปช่วงเวลา + กิจกรรม',src('Metricool + Hootsuite','analytics + date range'))+
+  '<div style="display:flex;gap:10px;margin-bottom:16px;align-items:center;flex-wrap:wrap"><span class="mini">ช่วงเวลา:</span>'+rangeSeg('ovRange')+'</div>'+
+  '<div class="grid metrics" style="margin-bottom:16px">'+metric('ti-brand-facebook','เพจ','18')+metric('ti-send','โพส','342','+12% ▲','up')+metric('ti-check','สำเร็จ','96.4%','+1.2% ▲','up')+metric('ti-alert-triangle','ล้มเหลว','12','','dn')+'</div>'+
+  '<div class="grid" style="grid-template-columns:1.6fr 1fr"><div class="card"><div style="font-weight:700;margin-bottom:14px">โพสต่อวัน</div><div style="display:flex;align-items:flex-end;gap:8px;height:150px">'+bars([40,65,52,80,72,95,60,88,70,100,84,76])+'</div></div><div class="card"><div style="font-weight:700;margin-bottom:12px">เพจที่โพสบ่อยสุด</div>'+rank('Baan Pool Villa','86')+rank('Phuket Rentals','72')+rank('Pool Villa TH','65')+rank('Krabi Stay','41')+'</div></div>';
+}
+const PH=[{t:'โปรสงกรานต์ ลด 20%',dest:'6 เพจ',who:'แนน',time:'วันนี้ 09:30',st:'ok',lbl:'สำเร็จ',rows:[['Baan Pool Villa','ok'],['Phuket Rentals','ok'],['Pool Villa TH','ok'],['Krabi Stay','ok'],['Samui Villas','ok'],['Hua Hin Homes','ok']]},{t:'ห้องว่างสุดสัปดาห์',dest:'5 เพจ',who:'แนน',time:'เมื่อวาน 12:00',st:'fail',lbl:'ล้มเหลว 1',rows:[['Baan Pool Villa','ok'],['Phuket Rentals','ok'],['Pool Villa TH','ok'],['Krabi Stay','fail'],['Samui Villas','ok']]},{t:'พูลวิลล่า 3 ห้องนอน',dest:'3 เพจ',who:'บอส',time:'15 ก.ค. 18:00',st:'ok',lbl:'สำเร็จ',rows:[['Baan Pool Villa','ok'],['Phuket Rentals','ok'],['Pool Villa TH','ok']]}];
+function pgHistory(){return histTable('pg','ประวัติ','ประวัติ + รายงานผลรายเพจ (คลิกแถว)',PH,'hOpen',['โพส','เพจ']);}
+
+/* ===== GROUP SIDE ===== */
+function grAgent(){
+  return hdr('Desktop Agent','gr','โปรแกรมโพส Facebook กลุ่ม (Windows)',src('Vercel + Linear','install + live status'))+
+  '<div class="card" style="margin-bottom:14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap"><div style="width:46px;height:46px;border-radius:12px;background:var(--group-bg);color:var(--group);display:flex;align-items:center;justify-content:center;font-size:22px"><i class="ti ti-robot"></i></div><div style="flex:1;min-width:200px"><div style="font-weight:700">MultiPost Desktop Agent <span class="mini">v2.0.0</span></div><div class="mini">ติดตั้งบน Windows · ไม่ต้องลง Node.js แยก</div></div><button class="btn teal"><i class="ti ti-download"></i> ดาวน์โหลด Agent</button></div>'+
+  '<div class="grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px"><div class="card statc"><div class="ic"><span class="dot" style="background:var(--success)"></span></div><div style="font-weight:700">ออนไลน์</div><div class="mini">สถานะ Agent</div></div><div class="card statc"><div class="ic" style="color:var(--success)"><i class="ti ti-player-play"></i></div><div style="font-weight:700">กำลังทำงาน</div><div class="mini">Job Runner</div></div><div class="card statc"><div class="ic"><span class="dot" style="background:var(--success)"></span></div><div style="font-weight:700">Connected</div><div class="mini">Database</div></div></div>'+
+  '<div class="card"><div style="font-weight:700;margin-bottom:10px"><i class="ti ti-info-circle"></i> วิธีใช้งาน (ครั้งแรก)</div><ol style="margin-left:18px;line-height:2;font-size:13.5px"><li>แตกไฟล์ zip → ดับเบิลคลิก install.bat (ครั้งแรกครั้งเดียว)</li><li>ดับเบิลคลิก start.bat เพื่อเริ่มโปรแกรม</li><li>ไปแท็บ บัญชี Facebook → เข้าสู่ระบบ</li><li>กลับมาเว็บ → คิวโพสกลุ่ม → สร้างงาน → Agent รับงานอัตโนมัติ</li></ol></div>';
+}
+function grCompose(){
+  return hdr('โพส/แชร์กลุ่ม','gr','เลือกหมวดกลุ่ม แล้วส่งงานให้ Desktop Agent',src('Buffer + Publer','composer + พรีวิว')+'<button class="btn">บันทึกร่าง</button><button class="btn teal"><i class="ti ti-send"></i> ส่งงานโพส</button>')+
+  '<div class="grid two"><div class="card"><div class="mini" style="margin-bottom:8px">แชร์ไปยังหมวดกลุ่ม</div>'+
+  '<div class="pill-row" style="margin-bottom:8px"><span class="chip ong">📁 อสังหาภูเก็ต (42)</span><span class="chip ong">📁 พูลวิลล่าไทย (28)</span><span class="chip dash"><i class="ti ti-plus"></i> เพิ่มหมวด</span></div>'+
+  '<div class="mini" style="color:var(--warning);margin-bottom:12px"><i class="ti ti-robot"></i> จะโพสผ่าน Desktop Agent · รวม 70 กลุ่ม</div>'+
+  '<textarea rows="5">บ้านพักพูลวิลล่าภูเก็ต 3 ห้องนอน สระส่วนตัว 🏖️\nว่างช่วงสงกรานต์ จองด่วน!</textarea>'+
+  '<div style="display:flex;align-items:center;gap:7px;margin-top:10px"><button class="ico-btn"><i class="ti ti-photo"></i></button><button class="ico-btn"><i class="ti ti-mood-smile"></i></button><button class="ico-btn" style="border-color:var(--group);color:var(--group)"><i class="ti ti-sparkles"></i></button><span style="margin-left:auto" class="mini">ดีเลย์ 30 วิ/กลุ่ม (กันสแปม)</span></div>'+
+  '<hr class="sep"><div style="display:flex;align-items:center;gap:10px"><span class="mini">เวลา:</span><span class="chip out">ส่งทันที</span><span class="chip ong"><i class="ti ti-clock"></i> +1 ชม.</span></div></div>'+
+  '<div class="preview"><div class="ph"><i class="ti ti-eye"></i> พรีวิว (กลุ่ม)</div><div class="pv-card"><div class="pv-head"><div class="ava-sm" style="background:var(--group)">GR</div><div style="font-size:12.5px;font-weight:600">อสังหาภูเก็ต</div></div><div class="pv-img"><i class="ti ti-photo"></i></div><div class="pv-body">บ้านพักพูลวิลล่าภูเก็ต 3 ห้องนอน สระส่วนตัว 🏖️</div></div></div></div>';
+}
+function grGroups(){
+  return hdr('จัดการกลุ่ม','gr','จัดกลุ่มเป็นหมวด/โฟลเดอร์ · 128 กลุ่ม',src('Notion','category + color tags')+'<button class="btn">+ สร้างหมวด</button><button class="btn green"><i class="ti ti-plus"></i> เพิ่มกลุ่ม</button>')+
+  '<div class="pill-row" style="margin-bottom:14px"><span class="chip ong">ทั้งหมด (128)</span><span class="chip out">🌐 Public (74)</span><span class="chip out">🔒 Private (39)</span><span class="chip out">💰 เสียตัง (15)</span></div>'+
+  '<div class="grid" style="grid-template-columns:repeat(2,1fr)">'+gc('อสังหาภูเก็ต','#0D9488','42','Public')+gc('เช่าบ้านพักตากอากาศ','#3B82F6','31','Private')+gc('พูลวิลล่าไทยแลนด์','#8B5CF6','28','Public')+gc('กลุ่มพรีเมียม','#EC4899','15','เสียตัง')+'</div>';
+}
+function grQueue(){
+  const right=src('Buffer + Linear','job queue + presets')+'<div class="seg"><button class="'+on(ui.gqv,'list')+'" data-set="gqv:list"><i class="ti ti-list"></i> รายการ</button><button class="'+on(ui.gqv,'cal')+'" data-set="gqv:cal"><i class="ti ti-calendar"></i> ปฏิทิน</button></div>';
+  let body;
+  if(ui.gqv==='list'){body='<div class="card" style="margin-bottom:14px;display:flex;align-items:center;gap:10px"><span class="mini">ตั้งเวลาเร็ว:</span><span class="chip out">วันนี้</span><span class="chip ong">+1 ชม.</span><span class="chip out">+3 ชม.</span><span class="chip out">+1 วัน</span></div><div class="grid" style="gap:10px">'+j('โปรสงกรานต์ ลด 20%','40 กลุ่ม','กำลังโพส 18/40','info','กำลังทำงาน')+j('ห้องว่างสุดสัปดาห์','25 กลุ่ม','รอ Agent','wait','รอคิว')+j('พูลวิลล่า 3 ห้องนอน','60 กลุ่ม','เสร็จ 60/60','ok','สำเร็จ')+j('เปิดจองเดือนหน้า','15 กลุ่ม','ล้มเหลว 3','fail','เสร็จ (มีพลาด)')+'</div>';}
+  else{body='<div class="cal"><div class="dow">จ</div><div class="dow">อ</div><div class="dow">พ</div><div class="dow">พฤ</div><div class="dow">ศ</div><div class="dow">ส</div><div class="dow">อา</div>'+d('14','')+d('15','<div class="ev t">40 กลุ่ม</div>')+d('16','')+d('17','<div class="ev t">แชร์กลุ่ม</div>')+d('18','<div class="ev t">25 กลุ่ม</div>')+d('19','')+d('20','','off')+'</div>';}
+  return hdr('คิวโพสกลุ่ม','gr','งานที่ส่งให้ Desktop Agent',right)+body;
+}
+function grOverview(){
+  return hdr('ภาพรวมกลุ่ม','gr','รวมภาพรวม + สรุปช่วงเวลา',src('Metricool','analytics + date range'))+
+  '<div style="display:flex;gap:10px;margin-bottom:16px;align-items:center;flex-wrap:wrap"><span class="mini">ช่วงเวลา:</span>'+rangeSeg('govRange')+'</div>'+
+  '<div class="grid metrics" style="margin-bottom:16px">'+metric('ti-users-group','กลุ่ม','128')+metric('ti-share','แชร์','642','+18% ▲','up')+metric('ti-check','สำเร็จ','93.2%','-0.6% ▼','dn')+metric('ti-alert-triangle','ล้มเหลว','44','','dn')+'</div>'+
+  '<div class="grid" style="grid-template-columns:1.6fr 1fr"><div class="card"><div style="font-weight:700;margin-bottom:14px">แชร์กลุ่มต่อวัน</div><div style="display:flex;align-items:flex-end;gap:8px;height:150px">'+bars([55,70,60,85,78,90,66,94,72,88,80,96],'var(--group)')+'</div></div><div class="card"><div style="font-weight:700;margin-bottom:12px">หมวดยอดนิยม</div>'+rank('อสังหาภูเก็ต','92','var(--group)')+rank('เช่าบ้านพัก','78','var(--group)')+rank('พูลวิลล่าไทย','64','var(--group)')+rank('พรีเมียม','40','var(--group)')+'</div></div>';
+}
+const GH=[{t:'แชร์โปรสงกรานต์',dest:'40 กลุ่ม',who:'แนน',time:'วันนี้ 10:00',st:'ok',lbl:'40/40',rows:[['อสังหาภูเก็ต','ok'],['เช่าบ้านพัก','ok'],['พูลวิลล่าไทย','ok'],['กลุ่มพรีเมียม','ok']]},{t:'ห้องว่างสุดสัปดาห์',dest:'25 กลุ่ม',who:'มิ้น',time:'เมื่อวาน 20:00',st:'fail',lbl:'22/25',rows:[['อสังหาภูเก็ต','ok'],['เช่าบ้านพัก','ok'],['พูลวิลล่าไทย','fail'],['กลุ่มพรีเมียม','ok']]},{t:'พูลวิลล่า 3 ห้องนอน',dest:'60 กลุ่ม',who:'บอส',time:'14 ก.ค. 09:00',st:'ok',lbl:'60/60',rows:[['อสังหาภูเก็ต','ok'],['เช่าบ้านพัก','ok']]}];
+function grHistory(){return histTable('gr','ประวัติกลุ่ม','ประวัติ + รายงานผลรายกลุ่ม (คลิกแถว)',GH,'ghOpen',['เนื้อหา','กลุ่ม']);}
+
+/* ===== SYSTEM ===== */
+function team(){
+  const tabs='<div class="tabs"><button class="'+on(ui.team,'members')+'" data-set="team:members">สมาชิก</button><button class="'+on(ui.team,'activity')+'" data-set="team:activity">กิจกรรม</button><button class="'+on(ui.team,'audit')+'" data-set="team:audit">Audit log</button></div>';
+  let body,rt='';
+  if(ui.team==='members'){rt='<button class="btn primary"><i class="ti ti-user-plus"></i> เพิ่มสมาชิก</button>';body='<div class="card" style="padding:0"><table><thead><tr><th>สมาชิก</th><th>อีเมล</th><th>บทบาท</th><th>สิทธิ์</th><th>สถานะ</th></tr></thead><tbody>'+sr('BP','บอส','boss@baanpool.com','ผู้ดูแลระบบ','ทั้งหมด','ok','ออนไลน์','var(--brand-navy)')+sr('แน','แนน','nan@baanpool.com','ผู้จัดการ','โพส+จัดการเพจ','ok','ออนไลน์','var(--module-color)')+sr('มิ','มิ้น','min@baanpool.com','ทีมโพส','โพสอย่างเดียว','wait','ออฟไลน์','#3B82F6')+sr('กร','กร','korn@baanpool.com','ทีมโพส','โพสอย่างเดียว','ok','ออนไลน์','#8B5CF6')+'</tbody></table></div>';}
+  else if(ui.team==='activity'){body='<div class="grid" style="grid-template-columns:repeat(3,1fr)">'+uc('แนน','ผู้จัดการ','var(--module-color)','128','98%')+uc('มิ้น','ทีมโพส','#3B82F6','86','95%')+uc('กร','ทีมโพส','#8B5CF6','64','97%')+'</div>';}
+  else{body='<div class="card">'+lg('บอส','เพิ่มสมาชิกใหม่','กร (ทีมโพส)','วันนี้ 08:15')+lg('บอส','แก้ไขสิทธิ์','มิ้น → ทีมโพส','เมื่อวาน 16:20')+lg('แนน','รีเซ็ตรหัสผ่าน','บัญชี มิ้น','13 ก.ค. 11:00')+'</div>';}
+  return '<div class="topbar"><div><h1>ทีมงาน</h1><div class="sub">สมาชิก + กิจกรรม + Audit log</div></div><div class="tb-actions">'+src('Mixpost + Linear','roles + activity')+rt+'</div></div>'+tabs+body;
+}
+function guide(){
+  return '<div class="topbar"><div><h1>คู่มือ / ช่วยเหลือ</h1><div class="sub">ขั้นตอนการใช้งานทั้งระบบ</div></div><div class="tb-actions">'+src('Stripe Docs','help layout')+'</div></div>'+
+  '<div class="acc"><div class="q"><i class="ti ti-brand-facebook" style="color:var(--module-color)"></i> ฝั่งเพจ: โพสลงหลายเพจ</div><div class="a">ไปที่ โพสใหม่ → เลือกเพจ → เขียน → โพสหรือตั้งเวลา · ดูผลที่ ประวัติ (คลิกแถว)</div></div>'+
+  '<div class="acc"><div class="q"><i class="ti ti-users-group" style="color:var(--group)"></i> ฝั่งกลุ่ม: ต้องมี Desktop Agent</div><div class="a">ติดตั้ง Agent บน Windows → เปิดค้าง → ไป โพส/แชร์กลุ่ม → เลือกหมวด → ส่งงาน Agent โพสให้อัตโนมัติ</div></div>'+
+  '<div class="acc"><div class="q"><i class="ti ti-chart-line" style="color:var(--ink-soft)"></i> ดูสรุปผล</div><div class="a">ภาพรวม (แต่ละฝั่ง) เลือกช่วงเวลาได้ · ประวัติ คลิกแถวเพื่อดูผลรายเพจ/รายกลุ่ม</div></div>';
+}
+
+/* ===== shared components ===== */
+function histTable(sec,title,sub,DATA,okey,cols){
+  let rows='';
+  DATA.forEach((h,i)=>{rows+='<tr data-open="'+i+'"><td style="font-weight:500">'+h.t+'</td><td class="mini">'+h.dest+'</td><td>'+h.who+'</td><td class="mini">'+h.time+'</td><td><span class="badge b-'+h.st+'">'+h.lbl+'</span></td><td><i class="ti ti-chevron-'+(ui[okey]===i?'up':'down')+'" style="color:var(--ink-soft)"></i></td></tr>';if(ui[okey]===i){rows+='<tr><td colspan="6" style="padding:0;background:var(--bg-soft)">'+det(h)+'</td></tr>';}});
+  return hdr(title,sec,sub,src('Mixpost + Buffer','history + drill-down')+'<input placeholder="ค้นหา..." style="width:160px">')+
+  '<div class="card" style="padding:0"><table><thead><tr><th>'+cols[0]+'</th><th>'+cols[1]+'</th><th>ผู้โพส</th><th>เวลา</th><th>สถานะ</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+}
+function det(h){const ok=h.rows.filter(r=>r[1]==='ok').length,fail=h.rows.length-ok;let l=h.rows.map(r=>'<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line)"><i class="ti '+(r[1]==='ok'?'ti-circle-check" style="color:var(--success)':'ti-circle-x" style="color:var(--danger)')+'"></i><span style="flex:1;font-size:13px">'+r[0]+'</span><span class="badge b-'+r[1]+'">'+(r[1]==='ok'?'สำเร็จ':'ล้มเหลว')+'</span>'+(r[1]==='fail'?'<button class="btn sm">โพสซ้ำ</button>':'')+'</div>').join('');return '<div class="detail"><div class="dh"><i class="ti ti-file-report"></i> รายงานผล: '+h.t+' <span style="margin-left:auto;font-weight:400" class="mini">สำเร็จ '+ok+' · ล้มเหลว '+fail+'</span></div><div style="padding:6px 16px 14px">'+l+'</div></div>';}
+function d(n,e,cls){return '<div class="day '+(cls==='off'?'off':'')+'"><div class="n">'+n+'</div>'+(e||'')+'</div>';}
+function q(dy,t,txt,dest,st,lbl){return '<div class="card" style="display:flex;align-items:center;gap:16px;padding:13px 18px"><div style="text-align:center;min-width:76px"><div style="font-weight:700;font-size:13px">'+dy+'</div><div class="mini">'+t+'</div></div><div style="flex:1"><div style="font-weight:500">'+txt+'</div><div class="mini" style="margin-top:3px"><i class="ti ti-brand-facebook"></i> '+dest+'</div></div><span class="badge b-'+st+'">'+lbl+'</span><button class="ico-btn"><i class="ti ti-dots"></i></button></div>';}
+function j(txt,groups,prog,st,lbl){return '<div class="card" style="display:flex;align-items:center;gap:16px;padding:13px 18px"><div style="width:38px;height:38px;border-radius:10px;background:var(--group-bg);color:var(--group);display:flex;align-items:center;justify-content:center"><i class="ti ti-users-group"></i></div><div style="flex:1"><div style="font-weight:500">'+txt+'</div><div class="mini" style="margin-top:3px">'+groups+' · '+prog+'</div></div><span class="badge b-'+st+'">'+lbl+'</span><button class="ico-btn"><i class="ti ti-dots"></i></button></div>';}
+function pc(n,f,st){var b=st==='ok'?'b-ok':st==='wait'?'b-wait':'b-fail';var l=st==='ok'?'เชื่อมต่อ':st==='wait'?'รอต่ออายุ':'หลุด';return '<div class="card" style="display:flex;flex-direction:column;gap:10px"><div style="display:flex;align-items:center;gap:10px"><div class="ava-sm" style="width:38px;height:38px;background:var(--brand-navy)"><i class="ti ti-brand-facebook" style="font-size:18px"></i></div><div><div style="font-weight:600">'+n+'</div><div class="mini">'+f+' ผู้ติดตาม</div></div></div><div style="display:flex;justify-content:space-between;align-items:center"><span class="badge '+b+'">'+l+'</span><button class="ico-btn" style="width:30px;height:30px"><i class="ti ti-settings"></i></button></div></div>';}
+function gc(n,c,cnt,type){return '<div class="card"><div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><span style="width:12px;height:12px;border-radius:4px;background:'+c+'"></span><div style="font-weight:600;flex:1">'+n+'</div><span class="chip out">'+type+'</span></div><div class="mini">'+cnt+' กลุ่ม</div><div style="margin-top:10px;display:flex;gap:6px"><button class="btn sm"><i class="ti ti-send"></i> โพสหมวดนี้</button><button class="ico-btn" style="width:32px;height:32px"><i class="ti ti-edit"></i></button></div></div>';}
+function sr(i,n,m,r,p,st,l,c){return '<tr><td><div style="display:flex;align-items:center;gap:9px"><div class="ava-sm" style="background:'+c+'">'+i+'</div><b style="font-weight:600">'+n+'</b></div></td><td class="mini">'+m+'</td><td><span class="chip out">'+r+'</span></td><td class="mini">'+p+'</td><td><span class="badge b-'+st+'">'+l+'</span></td></tr>';}
+function uc(n,r,c,p,rt){return '<div class="card" style="text-align:center"><div class="ava-sm" style="width:48px;height:48px;margin:0 auto 8px;background:'+c+';font-size:16px">'+n[0]+'</div><div style="font-weight:600">'+n+'</div><span class="chip out" style="margin-top:4px">'+r+'</span><div style="display:flex;justify-content:center;gap:20px;margin-top:12px"><div><div style="font-weight:700">'+p+'</div><div class="mini">โพส</div></div><div><div style="font-weight:700;color:var(--success)">'+rt+'</div><div class="mini">สำเร็จ</div></div></div></div>';}
+function lg(w,a,dd,t){return '<div style="display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--line)"><div class="ava-sm" style="background:var(--module-color)">'+w[0]+'</div><div style="flex:1;font-size:13px"><b style="font-weight:600">'+w+'</b> <span class="mini">'+a+'</span> · <span style="color:var(--module-color-dk)">'+dd+'</span></div><div class="mini">'+t+'</div></div>';}
+
+const R={pgCompose,pgQueue,pgPages,pgOverview,pgHistory,grAgent,grCompose,grGroups,grQueue,grOverview,grHistory,team,guide};
+function render(){
+  document.getElementById('main').innerHTML=R[ui.page]();
+  document.querySelectorAll('#nav button').forEach(b=>{b.className='';if(b.dataset.page===ui.page)b.className='active '+b.dataset.sec;});
+  window.scrollTo(0,0);
+}
+document.getElementById('nav').addEventListener('click',e=>{const b=e.target.closest('button[data-page]');if(b){ui.page=b.dataset.page;render();}});
+document.getElementById('main').addEventListener('click',e=>{
+  const s=e.target.closest('[data-set]');if(s){const[k,v]=s.dataset.set.split(':');ui[k]=(k==='ovRange'||k==='govRange')?parseInt(v):v;render();return;}
+  const o=e.target.closest('[data-open]');if(o){const i=parseInt(o.dataset.open);const key=ui.page==='grHistory'?'ghOpen':'hOpen';ui[key]=ui[key]===i?null:i;render();}
+});
+render();
+</script>
+</body>
+</html>
