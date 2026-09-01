@@ -190,6 +190,13 @@ async function getAccountPages(accountId) {
             const menuWords = ['การตั้งค่า','ความเป็นส่วนตัว','ความช่วยเหลือ','รายงาน','การแสดงผล',
                                'ออกจากระบบ','เพิ่มเติม','Settings','Privacy','Help','Support',
                                'Report','Display','Log out','Logout','More','Accessibility'];
+            // Chat/notification popups on facebook.com match the same dialog/list/menu
+            // selectors as the profile switcher, so anything reading like a notification
+            // ("X sent you a message: ...", "X started following you") must be excluded —
+            // otherwise it gets scraped as a "page" name (seen with unread-message toasts).
+            const notifMarkers = ['ยังไม่ได้อ่าน','ส่งข้อความถึงคุณ','ติดตามคุณ','แสดงความคิดเห็น',
+                               'ถูกใจ','ได้เชิญคุณ','กำลังรอการตอบกลับ','เข้าร่วมกลุ่ม',
+                               'sent you a message','started following you','commented on','liked your'];
             const viewAllLabels = ['ดูโปรไฟล์ทั้งหมด','View all profiles','View all','ดูทั้งหมด','See all profiles'];
 
             // Try clicking "View all profiles" to get the full list
@@ -208,8 +215,9 @@ async function getAccountPages(accountId) {
             if (clickedViewAll) {
                 await fb.waitForTimeout(2500);
                 // Scan the full profile selector modal/dialog
-                const fromViewAll = await fb.evaluate((mw) => {
+                const fromViewAll = await fb.evaluate(({ mw, nm }) => {
                     const res = []; const seen = new Set();
+                    const isNotif = (name) => name.includes(':') || nm.some(w => name.includes(w));
                     // Target the specific "เลือกโปรไฟล์" / "Select profile" modal first
                     let targetContainer = [...document.querySelectorAll('[role="dialog"],[role="listbox"]')]
                         .find(el => el.textContent?.includes('เลือกโปรไฟล์') || el.textContent?.includes('Select profile') || el.textContent?.includes('Choose a profile'));
@@ -225,6 +233,7 @@ async function getAccountPages(accountId) {
                                 .find(t => t && t.length >= 2 && t.length <= 100 && !/^\d+$/.test(t));
                             if (!name || seen.has(name)) continue;
                             if (mw.some(w => name.toLowerCase().includes(w.toLowerCase()))) continue;
+                            if (isNotif(name)) continue;
                             // Detect active/personal account by blue checkmark SVG fill color
                             const isPersonal = [...item.querySelectorAll('svg circle,svg path')]
                                 .some(el => { const f = el.getAttribute('fill') || ''; return /^#(0866[Ff][Ff]|1877[Ff]2)$/i.test(f); });
@@ -232,7 +241,7 @@ async function getAccountPages(accountId) {
                         }
                     }
                     return res;
-                }, menuWords);
+                }, { mw: menuWords, nm: notifMarkers });
                 // Fallback: if blue-checkmark detection missed, treat first item as personal
                 if (fromViewAll.length && !fromViewAll.some(p => p.isPersonal)) fromViewAll[0].isPersonal = true;
                 await fb.keyboard.press('Escape');
@@ -240,8 +249,9 @@ async function getAccountPages(accountId) {
             }
 
             // Fallback: scan the partial dropdown (no "View all" button found)
-            const fromSwitcher = await fb.evaluate((mw) => {
+            const fromSwitcher = await fb.evaluate(({ mw, nm }) => {
                 const res = []; const seen = new Set();
+                const isNotif = (name) => name.includes(':') || nm.some(w => name.includes(w));
                 const W = window.innerWidth;
                 const containers = [...document.querySelectorAll('[role="menu"],[role="dialog"],[role="list"],[role="listbox"]')]
                     .filter(c => {
@@ -257,11 +267,12 @@ async function getAccountPages(accountId) {
                             .find(t => t && t.length >= 2 && t.length <= 100);
                         if (!name || seen.has(name)) continue;
                         if (mw.some(w => name.toLowerCase().includes(w.toLowerCase()))) continue;
+                        if (isNotif(name)) continue;
                         seen.add(name); res.push({ name });
                     }
                 }
                 return res;
-            }, menuWords);
+            }, { mw: menuWords, nm: notifMarkers });
             await fb.keyboard.press('Escape');
             if (fromSwitcher.length) {
                 fromSwitcher[0].isPersonal = true; // first item in switcher dropdown is the personal account

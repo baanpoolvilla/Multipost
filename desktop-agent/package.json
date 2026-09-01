@@ -1,6 +1,6 @@
 {
   "name": "multipost-desktop-agent",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "Desktop Agent for Facebook Group Posting",
   "main": "main.js",
   "scripts": {
