@@ -319,8 +319,12 @@ exports.createJob = async (req, res) => {
 };
 
 exports.deleteJob = async (req, res) => {
-    const job = await groupJobStore.remove(req.params.id);
-    res.json({ success: !!job });
+    try {
+        const job = await groupJobStore.remove(req.params.id, { id: req.staffId, name: req.staffName });
+        res.json({ success: !!job });
+    } catch (e) {
+        res.status(409).json({ success: false, error: e.message });
+    }
 };
 
 exports.rescheduleJob = async (req, res) => {
@@ -466,8 +470,12 @@ exports.showGroupHistory = async (req, res) => {
 };
 
 exports.deleteGroupHistoryJob = async (req, res) => {
-    const job = await groupJobStore.deleteHistory(req.params.id);
-    res.json({ success: !!job });
+    try {
+        const job = await groupJobStore.deleteHistory(req.params.id, { id: req.staffId, name: req.staffName });
+        res.json({ success: !!job });
+    } catch (e) {
+        res.status(409).json({ success: false, error: e.message });
+    }
 };
 
 // ── Combined stats API (page posts + group posts by date range) ─

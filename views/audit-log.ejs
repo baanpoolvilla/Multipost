@@ -46,7 +46,7 @@
             </tr>
           </thead>
           <tbody>
-            <% const actionColor = { create:'#2e7d32', soft_delete:'#c62828', restore:'#2e7d32', role_change:'#e65100', password_reset:'#1877f2', profile_edit:'#7b2ff7' }; %>
+            <% const actionColor = { create:'#2e7d32', soft_delete:'#c62828', restore:'#2e7d32', role_change:'#e65100', password_reset:'#1877f2', profile_edit:'#7b2ff7', job_delete:'#c62828', fb_delete:'#c62828' }; %>
             <% rows.forEach(r => { %>
             <tr>
               <td style="white-space:nowrap;font-size:.82rem;color:#65676b">
@@ -65,6 +65,12 @@
                   <% if (r.details.username && r.details.username.from !== r.details.username.to) { %> username: <%= r.details.username.from %> → <%= r.details.username.to %><% } %>
                 <% } else if (r.action === 'create' && r.details) { %>
                   @<%= r.details.username %> (<%= r.details.role === 'admin' ? 'แอดมิน' : 'พนักงาน' %>)
+                <% } else if (r.action === 'job_delete' && r.details) { %>
+                  <% if (r.details.wasRunning) { %><strong style="color:#c62828">ลบตอนกำลังโพสอยู่</strong> · <% } %>
+                  เจ้าของงาน: <%= r.details.ownerName || '(ไม่ระบุ)' %> · <%= r.details.groups %> กลุ่ม (สำเร็จ <%= r.details.success %>) · ผ่าน<%= r.details.via === 'agent' ? ' Agent' : 'เว็บ' %>
+                  <% if (r.details.fbPosts) { %> · สั่งลบโพสบน Facebook <%= r.details.fbPosts %> โพสต์<% } %>
+                <% } else if (r.action === 'fb_delete' && r.details) { %>
+                  ลบแล้ว <%= r.details.deleted %> · ข้าม <%= r.details.skipped %> · ไม่สำเร็จ <%= r.details.failed %> จาก <%= r.details.total %> โพสต์
                 <% } else if (r.details) { %>
                   <%= JSON.stringify(r.details) %>
                 <% } %>

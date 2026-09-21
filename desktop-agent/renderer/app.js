@@ -27,6 +27,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     _statusInterval = setInterval(() => { refreshStatus().catch(()=>{}); }, 5000);
     checkScheduledNotifications();
     checkExpiredJobsBanner();
+    checkDbUsage();
 
     let _jobRefreshing = false;
     setInterval(async () => {
@@ -47,6 +48,9 @@ window.addEventListener('DOMContentLoaded', async () => {
             const before = _jobs.length;
             _jobs = _jobs.filter(j => TERMINAL.includes(j.status) || freshIds.has(j._id));
             if (_jobs.length !== before) changed = true;
+            const prevLock = _queue.lock?.agentId || null;
+            await refreshQueueSnapshot();
+            if ((_queue.lock?.agentId || null) !== prevLock) changed = true;
             if (changed) renderJobs();
         } catch {} finally { _jobRefreshing = false; }
     }, 8000);
@@ -80,6 +84,7 @@ function setupPushEvents() {
         const i = _jobs.findIndex(j=>j._id===job._id);
         if (i!==-1) _jobs[i]=job; else _jobs.unshift(job);
         renderJobs();
+        refreshQueueSnapshot().then(renderJobs);
     });
     agent.on('jobs:progress', ()  => {});
 }
@@ -539,8 +544,114 @@ function pickPost(i) {
 // ── Jobs ──────────────────────────────────────────────────────
 async function loadJobs() {
     _jobs = await agent.listJobs();
+    await refreshQueueSnapshot();
     _jobsVisible = 20;
     renderJobs();
+}
+
+// ── Database storage warning ──────────────────────────────────
+const DB_WARN_PCT = 90; // warn when only 10% is left
+const DB_CHECK_MS = 30 * 60 * 1000, DB_REPEAT_MS = 2 * 60 * 60 * 1000;
+let _dbWarnActive = false, _dbWarnShownAt = 0;
+
+async function checkDbUsage() {
+    try {
+        const u = await agent.getDbUsage();
+        if (u) {
+            const low = u.percent >= DB_WARN_PCT;
+            if (low && (!_dbWarnActive || Date.now() - _dbWarnShownAt > DB_REPEAT_MS)) showDbWarning(u);
+            _dbWarnActive = low;
+        }
+    } catch {}
+    setTimeout(checkDbUsage, DB_CHECK_MS);
+}
+
+function showDbWarning(u) {
+    _dbWarnShownAt = Date.now();
+    const pct = Math.min(100, Math.round(u.percent));
+    document.getElementById('dbWarnTitle').textContent = `🚨 พื้นที่ฐานข้อมูลเหลือแค่ ${100 - pct}% — ใกล้เต็มแล้ว`;
+    const fill = document.getElementById('dbWarnFill');
+    fill.style.width = pct + '%';
+    document.getElementById('dbWarnNumbers').textContent = `ใช้ไปแล้ว ${Math.round(u.usedMB)} MB จาก ${u.limitMB} MB (${pct}%)`;
+    document.getElementById('dbWarnImages').textContent = u.imagesMB != null
+        ? `รูปภาพใช้พื้นที่ไป ${Math.round(u.imagesMB)} MB (${Math.round(u.imagesMB / u.usedMB * 100)}% ของที่ใช้อยู่)` : '';
+    document.getElementById('dbWarnModal').style.display = 'flex';
+}
+
+function closeDbWarning() {
+    document.getElementById('dbWarnModal').style.display = 'none';
+}
+
+// ── Queue view: whose job, who is posting now, who is waiting ─
+let _queue = { myAgentId: null, lock: null, agentNames: {}, staffNames: {} };
+
+async function refreshQueueSnapshot() {
+    try { _queue = await agent.getQueueSnapshot(); } catch {}
+}
+
+function _jobOwner(j)  { return (j.staffId && _queue.staffNames[j.staffId]) || null; }
+function _jobRunner(j) { return (j.claimedBy && _queue.agentNames[j.claimedBy]) || null; }
+
+// A running job is only "posting" while its machine holds the global lock;
+// running without the lock means it's queued behind whoever does.
+function _isPostingNow(j) {
+    return j.status === 'running' && !!_queue.lock && !!j.claimedBy && j.claimedBy === _queue.lock.agentId;
+}
+
+function _queueModel() {
+    const now = Date.now();
+    const running   = _jobs.filter(j => j.status === 'running');
+    const posting   = running.filter(_isPostingNow);
+    const others    = running.filter(j => !_isPostingNow(j));
+    const waiting   = _queue.lock ? others : [];
+    const preparing = _queue.lock ? [] : others;
+    const due = _jobs
+        .filter(j => j.status === 'pending' && (!j.scheduledAt || new Date(j.scheduledAt).getTime() <= now))
+        .sort((a, b) => new Date(a.scheduledAt || a.createdAt) - new Date(b.scheduledAt || b.createdAt));
+    return { posting, waiting, preparing, due };
+}
+
+function _jobStatusPill(j, dueRank) {
+    if (j.status === 'running') {
+        const label = _isPostingNow(j) ? 'กำลังโพส' : (_queue.lock ? 'รอคิว' : 'กำลังเตรียม');
+        return `<span class="job-status running">${label}</span>`;
+    }
+    if (j.status === 'pending' && dueRank.has(j._id)) {
+        return `<span class="job-status pending">คิวที่ ${dueRank.get(j._id)}</span>`;
+    }
+    return `<span class="job-status ${j.status}">${statusJobTH(j.status)}</span>`;
+}
+
+function renderQueuePanel() {
+    const el = document.getElementById('queuePanel');
+    if (!el) return;
+    const { posting, waiting, preparing, due } = _queueModel();
+    if (!posting.length && !waiting.length && !preparing.length && !due.length) {
+        el.innerHTML = '<div class="q-idle">✅ คิวว่าง — ไม่มีงานรอโพส</div>';
+        return;
+    }
+    const row = (cls, badge, j, extra) => {
+        const owner = _jobOwner(j) || 'ไม่ระบุผู้สั่ง';
+        const { display } = _parseJobMsg(j.message);
+        const short = display.length > 42 ? display.slice(0, 42) + '…' : display;
+        return `<div class="q-row">
+          <span class="q-badge ${cls}">${badge}</span>
+          <span class="q-owner">👤 ${esc(owner)}</span>
+          <span class="q-msg">${esc(short)}</span>
+          <span class="q-meta">${j.groups?.length || 0} กลุ่ม${extra || ''}</span>
+        </div>`;
+    };
+    const holder = _queue.lock ? (_queue.lock.staffName || 'เครื่องอื่น') : null;
+    let html = '<div class="q-title">🚦 ลำดับคิวโพส <span class="q-note">ทุกเครื่องโพสทีละงาน</span></div>';
+    posting.forEach(j => {
+        const runner = _jobRunner(j);
+        const extra = runner && runner !== _jobOwner(j) ? ` · รันบนเครื่องของ ${esc(runner)}` : '';
+        html += row('q-go', '🟢 กำลังโพส', j, extra);
+    });
+    preparing.forEach(j => { html += row('q-prep', '🔵 กำลังเตรียม', j, ''); });
+    waiting.forEach(j => { html += row('q-wait', '🟡 รอคิว', j, ` · รอ ${esc(holder)} โพสเสร็จ`); });
+    due.forEach((j, i) => { html += row('q-next', `⏳ คิวที่ ${i + 1}`, j, ''); });
+    el.innerHTML = html;
 }
 
 function filterJobs(btn, filter) {
@@ -554,6 +665,7 @@ function filterJobs(btn, filter) {
 
 function renderJobs() {
     _jobs.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+    renderQueuePanel();
     const el = document.getElementById('jobsList');
     const filtered = _jobFilter==='all' ? _jobs
         : _jobFilter==='scheduled' ? _jobs.filter(j=>j.status==='pending' && j.scheduledAt)
@@ -568,12 +680,14 @@ function renderJobs() {
 
     if (!filtered.length) { el.innerHTML='<div class="empty-state">ยังไม่มีรายการโพส</div>'; return; }
     const icons = { pending:'⏳', running:'🔄', success:'✅', failed:'❌', expired:'⏰', cancelled:'🚫' };
+    const dueRank = new Map(_queueModel().due.map((j, i) => [j._id, i + 1]));
     const shown = filtered.slice(0, _jobsVisible);
     let html = shown.map(j=>{
         const ok  = (j.results||[]).filter(r=>r.status==='success').length;
         const tot = j.groups?.length||0;
         const pageTag = j.postAsPage ? ` · 🏢 ${esc(j.postAsPage)}` : '';
-        const meta = (j.status==='success'||j.status==='failed') ? `${ok}/${tot} กลุ่ม${pageTag}` : `${tot} กลุ่ม · ${j.delaySeconds}s${pageTag}`;
+        const ownerTag = ` · 👤 ${esc(_jobOwner(j) || 'ไม่ระบุผู้สั่ง')}`;
+        const meta = ((j.status==='success'||j.status==='failed') ? `${ok}/${tot} กลุ่ม${pageTag}` : `${tot} กลุ่ม · ${j.delaySeconds}s${pageTag}`) + ownerTag;
         const { display, modeTag } = _parseJobMsg(j.message);
         const imgBadge = (j.images||[]).length > 0 ? `<span style="font-size:10px;background:#e7f3ff;color:#1877f2;border-radius:4px;padding:.05rem .4rem;margin-left:.3rem">📸 ${j.images.length}</span>` : '';
         const now = new Date();
@@ -596,7 +710,7 @@ function renderJobs() {
             <div class="job-msg">${modeTag ? `<span class="job-mode-tag">${modeTag}</span> ` : ''}${esc(display)}${imgBadge}${schedBadge}</div>
             <div class="job-meta">${meta} · ${fmtDate(j.createdAt)}</div>
           </div>
-          <span class="job-status ${j.status}">${statusJobTH(j.status)}</span>
+          ${_jobStatusPill(j, dueRank)}
           ${repostBtn}
           ${reschedBtn}
           ${retryBtn}
@@ -866,7 +980,18 @@ async function createJob() {
 }
 
 async function deleteJob(id) {
-    await agent.deleteJob(id);
+    const job = _jobs.find(x => x._id === id);
+    const fbPosts = (job?.results || []).filter(r => r.status === 'success' && r.postUrl).length;
+    const question = fbPosts > 0
+        ? `ลบงานนี้?\n\nระบบจะลบโพสบน Facebook จริง ${fbPosts} โพสต์ ด้วย และย้อนกลับไม่ได้\n(Agent จะทยอยลบทีละโพสต์ในเบื้องหลัง ข้ามโพสที่ข้อความไม่ตรง)`
+        : 'ลบงานนี้ออกจากคิว?';
+    if (!confirm(question)) return;
+    try {
+        await agent.deleteJob(id, { fbDelete: fbPosts > 0 });
+    } catch (e) {
+        alert('งานนี้กำลังโพสอยู่ ลบไม่ได้\nรอให้โพสเสร็จก่อน หรือกด "หยุด" ที่ Agent ของเครื่องที่รันงานอยู่');
+        return;
+    }
     _jobs = _jobs.filter(j=>j._id!==id);
     renderJobs();
 }

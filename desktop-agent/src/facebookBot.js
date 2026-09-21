@@ -830,6 +830,79 @@ async function postToGroup(accountId, groupId, groupName, message, postAsPage, o
     } catch(e) { return { ok: false, error: e.message }; }
 }
 
+// ── Delete a post we made ─────────────────────────────────────
+// Letters/digits only, so emoji/spacing/line-break differences between the
+// job's message and what Facebook renders don't break the comparison.
+function _normText(s) { return String(s || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ''); }
+
+const _UNAVAILABLE_RE = /เนื้อหานี้ไม่พร้อมใช้งาน|ไม่พบเนื้อหา|This content isn't available|content isn't available|Page Not Found|ไม่พบหน้านี้/i;
+
+// Deletes the post at postUrl ONLY IF its text matches expectMessage — the
+// stored postUrl is a best-effort guess (see postToGroup) and can point at
+// someone else's post, which a group admin account would be allowed to
+// delete. Returns { ok, status: 'deleted'|'gone'|'skipped'|'failed', error }.
+async function deletePostByUrl(accountId, postUrl, expectMessage, onLog) {
+    const log = m => onLog?.(m);
+    let page = null;
+    try {
+        const key = _normText(expectMessage).slice(0, 30);
+        if (key.length < 8) return { ok: false, status: 'skipped', error: 'ข้อความสั้นเกินไปที่จะยืนยันว่าเป็นโพสของเรา — ข้ามเพื่อความปลอดภัย' };
+
+        const ctx = await _getContext(accountId);
+        page = await ctx.newPage();
+        await page.goto(postUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        if (page.url().includes('/login')) return { ok: false, status: 'failed', error: 'Session หมดอายุ — Login ใหม่' };
+        await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+        await page.waitForTimeout(2500);
+
+        const article = page.locator('[role="article"]').first();
+        if (!(await article.count())) {
+            const body = await page.evaluate(() => document.body.innerText).catch(() => '');
+            if (_UNAVAILABLE_RE.test(body)) return { ok: true, status: 'gone' };
+            return { ok: false, status: 'failed', error: 'ไม่พบโพสต์ในหน้านี้' };
+        }
+
+        const artText = await article.innerText().catch(() => '');
+        if (!_normText(artText).includes(key)) {
+            return { ok: false, status: 'skipped', error: 'ข้อความในโพสไม่ตรงกับงานนี้ — ข้ามเพื่อไม่ให้ลบโพสผิดอัน' };
+        }
+
+        log('   🔎 ยืนยันแล้วว่าเป็นโพสของงานนี้ — เปิดเมนูลบ...');
+        const menuBtn = article.locator('[aria-label="การดำเนินการสำหรับโพสต์นี้"], [aria-label="Actions for this post"], [aria-label="แสดงตัวเลือกเพิ่มเติม"], [aria-label="More options"]').first();
+        if (!(await menuBtn.count())) return { ok: false, status: 'failed', error: 'ไม่พบปุ่มเมนู "..." ของโพสต์' };
+        await menuBtn.click();
+        await page.waitForTimeout(900);
+
+        const delItem = page.getByRole('menuitem', { name: /^(ลบโพสต์|Delete post|ย้ายไปที่ถังขยะ|ย้ายไปยังถังขยะ|Move to trash|Move to Recycle bin)/i }).first();
+        if (!(await delItem.count())) {
+            await page.keyboard.press('Escape').catch(() => {});
+            return { ok: false, status: 'failed', error: 'ไม่มีเมนูลบโพสต์ (บัญชีนี้ไม่ใช่เจ้าของโพสหรือไม่มีสิทธิ์)' };
+        }
+        await delItem.click();
+        await page.waitForTimeout(1200);
+
+        const confirmBtn = page.locator('[role="dialog"]').last()
+            .getByRole('button', { name: /^(ลบ|Delete|ย้าย|Move)/i }).last();
+        if (!(await confirmBtn.count())) return { ok: false, status: 'failed', error: 'ไม่พบปุ่มยืนยันการลบ' };
+        await confirmBtn.click();
+        await page.waitForTimeout(3500);
+
+        await page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
+        await page.waitForTimeout(2500);
+        const still = page.locator('[role="article"]');
+        const n = await still.count();
+        for (let i = 0; i < n; i++) {
+            const t = await still.nth(i).innerText().catch(() => '');
+            if (_normText(t).includes(key)) return { ok: false, status: 'failed', error: 'กดลบแล้วแต่โพสยังอยู่บน Facebook' };
+        }
+        return { ok: true, status: 'deleted' };
+    } catch (e) {
+        return { ok: false, status: 'failed', error: e.message };
+    } finally {
+        if (page) { try { await page.close(); } catch {} }
+    }
+}
+
 async function closeContext(accountId) {
     const ctx = _contexts[accountId];
     if (ctx) { try { await ctx.close(); } catch {} delete _contexts[accountId]; }
@@ -839,4 +912,4 @@ async function closeAll() {
     for (const id of Object.keys(_contexts)) await closeContext(id);
 }
 
-module.exports = { init, loginAccount, postToGroup, getAccountPages, openSwitchedPage, switchBackOnPage, closeContext, closeAll };
+module.exports = { init, loginAccount, postToGroup, deletePostByUrl, getAccountPages, openSwitchedPage, switchBackOnPage, closeContext, closeAll };

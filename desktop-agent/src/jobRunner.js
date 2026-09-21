@@ -74,8 +74,71 @@ async function poll() {
         }
         const job = await _store.claimNextJob();
         if (job) await processJob(job);
+        else if (_accounts.getActive()) {
+            const del = await _store.claimNextFbDeletion?.();
+            if (del) await processFbDeletion(del);
+        }
     } catch(e) { log(`❌ Runner error: ${e.message}`); }
     scheduleNext();
+}
+
+// Deletes the real Facebook posts of a job the user deleted from history.
+// Goes through the same global posting lock as posting (one Facebook action
+// at a time across all machines) and pauses between posts.
+async function processFbDeletion(req) {
+    const targets = req.targets || [];
+    log(`🗑 ลบโพสบน Facebook: "${(req.message || '').slice(0, 40)}..." (${targets.filter(t => t.status === 'pending').length} โพสต์) · สั่งโดย ${req.requestedByName || 'ไม่ทราบ'}`);
+
+    const acc = (req.accountId && _accounts.get(req.accountId)) || _accounts.getActive();
+    if (!acc) {
+        await _store.finishFbDeletion(req, targets, true);
+        return;
+    }
+
+    log('🔒 รอคิว (global lock)...');
+    while (!(await postingLock.acquire(_agentId))) {
+        if (!_running) { await _store.finishFbDeletion(req, targets, true); return; }
+        await sleep(LOCK_RETRY_MS);
+    }
+    log('🔓 ได้คิวแล้ว เริ่มลบโพสต์');
+    const lockRenewTimer = setInterval(() => { postingLock.renew(_agentId).catch(() => {}); }, LOCK_RENEW_INTERVAL_MS);
+
+    let interrupted = false;
+    try {
+        for (let i = 0; i < targets.length; i++) {
+            const t = targets[i];
+            if (t.status !== 'pending') continue;
+            if (!_running) { interrupted = true; break; }
+            log(`➡️ [${i + 1}/${targets.length}] ${t.groupName}`);
+            const res = await _bot.deletePostByUrl(acc.id, t.postUrl, req.message, (m) => log(`   ${m}`));
+            t.status = res.status;
+            t.error  = res.error || null;
+            if (res.status === 'deleted')      log('   ✅ ลบแล้ว');
+            else if (res.status === 'gone')    log('   ✅ โพสนี้ไม่อยู่แล้ว');
+            else                               log(`   ${res.status === 'skipped' ? '⏭️ ข้าม' : '❌'} ${res.error}`);
+            await _store.updateFbDeletion(req._id, { targets });
+
+            // Session expired: every remaining post would fail the same way.
+            if (res.error && res.error.startsWith('Session หมดอายุ')) {
+                targets.forEach(x => { if (x.status === 'pending') { x.status = 'failed'; x.error = res.error; } });
+                break;
+            }
+            if (_running && targets.slice(i + 1).some(x => x.status === 'pending')) {
+                const s = 6 + Math.floor(Math.random() * 7);
+                log(`   ⏳ รอ ${s}s...`);
+                await sleep(s * 1000);
+            }
+        }
+    } finally {
+        clearInterval(lockRenewTimer);
+        await postingLock.release(_agentId).catch(() => {});
+    }
+
+    await _store.finishFbDeletion(req, targets, interrupted);
+    const c = s => targets.filter(t => t.status === s).length;
+    if (interrupted) log(`⏸ หยุดกลางคัน — ลบไปแล้ว ${c('deleted') + c('gone')}/${targets.length} จะทำต่อเมื่อเปิด Agent อีกครั้ง`);
+    else log(`✅ ลบโพสบน Facebook เสร็จ: ลบแล้ว ${c('deleted') + c('gone')} · ข้าม ${c('skipped')} · ไม่สำเร็จ ${c('failed')} จาก ${targets.length}`);
+    log('─────────────────────────────');
 }
 
 async function processJob(job) {
@@ -213,7 +276,12 @@ async function processJob(job) {
     // on a full retry, since there's no per-group resume — a human decides.)
     const status = interrupted ? STATUS.FAILED : (ok>0 ? STATUS.SUCCESS : STATUS.FAILED);
     const pageData = sharedPageId ? { pageId: sharedPageId, pageName: job.postAsPage || null } : {};
-    await _store.updateJob(id, { status, results, ...pageData });
+    const saved = await _store.updateJob(id, { status, results, ...pageData });
+    if (!saved) {
+        log('⚠️ งานนี้ถูกลบออกจากคิวระหว่างที่กำลังโพส — กู้คืนเข้าประวัติให้อัตโนมัติ');
+        await _store.restoreDeletedJob(job, { status, results, ...pageData })
+            .catch(e => log(`❌ กู้คืนประวัติไม่สำเร็จ: ${e.message}`));
+    }
     _emit?.('jobs:updated', { ...job, _id:id, status, results, ...pageData });
     if (interrupted) log(`⏸ ถูกหยุดกลางคัน: โพสไปแล้ว ${results.length}/${job.groups.length} กลุ่ม (สำเร็จ ${ok}) — เหลือ ${job.groups.length - results.length} กลุ่มที่ยังไม่ได้ทำ`);
     else log(`✅ เสร็จ: ${ok}/${job.groups.length} สำเร็จ`);

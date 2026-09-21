@@ -101,8 +101,106 @@ function createSchedulerService(Model, opts = {}) {
         return serialize(updated);
     }
 
-    async function DeleteJob(id) {
-        return Model.findByIdAndDelete(id).lean();
+    // Every deletion leaves a trace: a full copy of the job in `deletedjobs`
+    // (so it can be inspected/restored) plus an `auditlogs` entry saying who
+    // deleted what. Best-effort — never blocks the delete itself.
+    // actor: { id, name, via: 'web' | 'agent' }
+    // fbPosts: how many Facebook posts a follow-up deletion was queued for.
+    async function RecordDeletion(doc, actor = {}, fbPosts = 0) {
+        try {
+            const db = Model.db;
+            const now = new Date();
+            const results = doc.results || [];
+            const owner = doc.staffId ? await db.collection('staffmembers')
+                .findOne({ _id: new Model.base.Types.ObjectId(String(doc.staffId)) }, { projection: { displayName: 1 } }).catch(() => null) : null;
+            await db.collection('deletedjobs').insertOne({ job: doc, deletedAt: now, deletedById: actor.id || null, deletedByName: actor.name || null, via: actor.via || sourceType });
+            await db.collection('auditlogs').insertOne({
+                action: 'job_delete',
+                actorId: actor.id || null,
+                actorName: actor.name || null,
+                targetId: String(doc._id),
+                targetName: String(doc.message || '').slice(0, 60),
+                details: {
+                    status: normalizeStatus(doc.status),
+                    wasRunning: normalizeStatus(doc.status) === STATUS.RUNNING,
+                    groups: (doc.groups || []).length,
+                    success: results.filter(r => r.status === 'success').length,
+                    ownerName: owner?.displayName || null,
+                    fbPosts,
+                    via: actor.via || sourceType,
+                },
+                createdAt: now,
+            });
+        } catch (e) {
+            console.error('[scheduler] failed to record job deletion:', e.message);
+        }
+    }
+
+    // "Live" = running AND the machine that claimed it is still online. A
+    // running job whose machine is gone (crash, closed Agent) is stuck, not
+    // live, so it stays deletable. If the presence check itself fails we
+    // assume live (block) rather than risk deleting an active post.
+    async function IsLiveRunning(doc) {
+        if (normalizeStatus(doc.status) !== STATUS.RUNNING || !doc.claimedBy) return false;
+        const online = await agentPresence.listOnlineAgentIds().catch(() => null);
+        return !online || online.includes(doc.claimedBy);
+    }
+
+    // Deleting a running job would NOT stop it (the runner keeps posting) —
+    // it only makes the post vanish from history — so it is refused.
+    // Queues the deletion of this job's real Facebook posts. The Agent that
+    // owns the browser session picks it up (jobRunner.processFbDeletion).
+    // Only groups that succeeded AND have a stored postUrl can be targeted.
+    async function RequestFbDeletion(doc, actor = {}) {
+        const targets = (doc.results || [])
+            .filter(r => r.status === 'success' && r.postUrl)
+            .map(r => ({ groupId: r.groupId, groupName: r.groupName, postUrl: r.postUrl, status: 'pending', error: null }));
+        if (!targets.length) return 0;
+        await Model.db.collection('fbdeletions').insertOne({
+            jobId: String(doc._id),
+            message: doc.message,
+            postAsPage: doc.postAsPage || null,
+            accountId: doc.accountId || null,
+            agentId: doc.claimedBy || doc.agentId || null,
+            targets,
+            status: 'pending',
+            requestedById: actor.id || null,
+            requestedByName: actor.name || null,
+            requestedAt: new Date(),
+        });
+        return targets.length;
+    }
+
+    // opts.fbDelete: also delete the job's posts on Facebook (irreversible).
+    async function DeleteJob(id, actor = {}, opts = {}) {
+        const current = await Model.findById(id).lean();
+        if (!current) return null;
+        if (await IsLiveRunning(current)) {
+            const err = new Error('งานนี้กำลังโพสอยู่ ลบไม่ได้ — รอให้โพสเสร็จก่อน (หรือกด "หยุด" ที่ Agent ของเครื่องที่รันงานอยู่)');
+            err.code = 'JOB_RUNNING';
+            throw err;
+        }
+        const doc = await Model.findByIdAndDelete(id).lean();
+        if (doc) {
+            let fbPosts = 0;
+            if (opts.fbDelete) {
+                try { fbPosts = await RequestFbDeletion(doc, actor); }
+                catch (e) { console.error('[scheduler] failed to queue Facebook deletion:', e.message); }
+            }
+            await RecordDeletion(doc, actor, fbPosts);
+        }
+        return doc;
+    }
+
+    // A job deleted WHILE it was running keeps posting (the runner never
+    // learns of the deletion), and its final status write then finds no row.
+    // Re-insert it with the real outcome so a post that really happened is
+    // never missing from history.
+    async function RestoreDeletedJob(job, final = {}) {
+        const _id = new Model.base.Types.ObjectId(String(job._id));
+        const doc = { ...job, ...final, _id, restoredAfterDelete: true, updatedAt: new Date().toISOString() };
+        await Model.collection.insertOne(doc);
+        return serialize(doc);
     }
 
     // executor: async (job) => ({ status: 'success'|'failed', results, ...extra })
@@ -255,7 +353,7 @@ function createSchedulerService(Model, opts = {}) {
         }
         const claimed = await Model.findOneAndUpdate(
             filter,
-            { $set: { status: STATUS.RUNNING, lastAttemptAt: now, updatedAt: now } },
+            { $set: { status: STATUS.RUNNING, lastAttemptAt: now, updatedAt: now, claimedBy: agentId || null } },
             { new: true, sort: { scheduledAt: 1, createdAt: 1 } },
         ).lean();
         return claimed ? serialize(claimed) : null;
@@ -274,7 +372,7 @@ function createSchedulerService(Model, opts = {}) {
     }
 
     return {
-        ValidateJob, CreateJob, UpdateJob, DeleteJob, ExecuteJob, ExpireJob, RetryJob, CancelJob,
+        ValidateJob, CreateJob, UpdateJob, DeleteJob, IsLiveRunning, RecordDeletion, RequestFbDeletion, RestoreDeletedJob, ExecuteJob, ExpireJob, RetryJob, CancelJob,
         expireOverdueJobs, getDueJobs, claimNextDueJob, listExpired, migrateLegacyStatuses,
     };
 }
