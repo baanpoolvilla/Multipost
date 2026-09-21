@@ -269,7 +269,8 @@
              title="ดูรายงาน">
             <i class="fa-solid fa-chart-bar"></i> รายงาน
           </a>
-          <button class="icon-btn danger" title="ลบ" onclick="deleteJob('<%= job._id %>', this)">
+          <% const fbPostCount = (job.results || []).filter(r => r.status === 'success' && r.postUrl).length; %>
+          <button class="icon-btn danger" title="ลบ (รวมโพสบน Facebook)" onclick="deleteJob('<%= job._id %>', this, <%= fbPostCount %>)">
             <i class="fa-solid fa-trash"></i>
           </button>
         </div>
@@ -598,10 +599,12 @@
     f.style.display = f.style.display === 'none' ? '' : 'none';
   }
 
-  async function deleteJob(id, btn) {
+  async function deleteJob(id, btn, fbPosts) {
     const result = await Swal.fire({
       title: 'ลบรายการนี้?',
-      text: 'ประวัติโพสนี้จะถูกลบถาวร',
+      html: fbPosts > 0
+        ? `ระบบจะลบ<b>โพสบน Facebook จริง ${fbPosts} โพสต์</b> ด้วย และ<b>ย้อนกลับไม่ได้</b><br><span style="font-size:.85em;color:#65676b">Agent จะทยอยลบทีละโพสต์ในเบื้องหลัง (ข้ามโพสที่ข้อความไม่ตรง)</span>`
+        : 'ประวัติโพสนี้จะถูกลบถาวร (ไม่มีลิงก์โพสให้ลบบน Facebook)',
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#c62828',
@@ -621,6 +624,8 @@
         card.style.transform = 'translateX(30px)';
         setTimeout(() => { card.remove(); updateCount(); }, 320);
         Swal.fire({ icon: 'success', title: 'ลบแล้ว', timer: 1200, showConfirmButton: false });
+      } else {
+        Swal.fire({ icon: 'error', title: 'ลบไม่สำเร็จ', text: data.error || '', confirmButtonColor: '#1877f2' });
       }
     } catch {
       Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', confirmButtonColor: '#1877f2' });

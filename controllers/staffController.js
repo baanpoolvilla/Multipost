@@ -343,6 +343,8 @@ const ACTION_LABEL_TH = {
     role_change:     'เปลี่ยนสิทธิ์',
     password_reset:  'เปลี่ยนรหัสผ่าน',
     profile_edit:    'แก้ไขข้อมูล',
+    job_delete:      'ลบงานโพส',
+    fb_delete:       'ลบโพสบน Facebook',
 };
 
 exports.showAuditLog = async (req, res) => {

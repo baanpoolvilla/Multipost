@@ -60,4 +60,13 @@ async function renew(agentId) {
     await Model.findOneAndUpdate({ _id: LOCK_ID, heldBy: agentId }, { $set: { lockedAt: new Date() } });
 }
 
-module.exports = { acquire, release, renew, LOCK_STALE_MS };
+// Read-only view for the queue panel: who holds the lock right now, or null
+// if free (a stale lock counts as free, same rule acquire() applies).
+async function current() {
+    const doc = await getModel().findOne({ _id: LOCK_ID }).lean();
+    if (!doc || !doc.heldBy) return null;
+    if (doc.lockedAt && Date.now() - new Date(doc.lockedAt).getTime() > LOCK_STALE_MS) return null;
+    return { agentId: doc.heldBy, lockedAt: doc.lockedAt };
+}
+
+module.exports = { acquire, release, renew, current, LOCK_STALE_MS };

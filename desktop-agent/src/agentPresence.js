@@ -59,4 +59,12 @@ async function listOnlineAgentIds(thresholdMs = REASSIGN_THRESHOLD_MS) {
     return docs.map(d => d.agentId);
 }
 
-module.exports = { heartbeat, findOnlineAgentForStaff, listOnlineAgentIds, ONLINE_THRESHOLD_MS, REASSIGN_THRESHOLD_MS };
+// agentId → the staff name signed in on that machine (for the queue panel).
+async function staffNameByAgentId() {
+    const docs = await getModel().find({}).select('agentId staffName').lean();
+    const map = {};
+    docs.forEach(d => { map[d.agentId] = d.staffName || null; });
+    return map;
+}
+
+module.exports = { heartbeat, findOnlineAgentForStaff, listOnlineAgentIds, staffNameByAgentId, ONLINE_THRESHOLD_MS, REASSIGN_THRESHOLD_MS };

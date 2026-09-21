@@ -3,6 +3,8 @@ const path     = require('path');
 const fs       = require('fs');
 const { createSchedulerService } = require('./scheduler/schedulerService');
 const { STATUS } = require('./scheduler/statuses');
+const postingLock   = require('./postingLock');
+const agentPresence = require('./agentPresence');
 
 let _conn = null;
 let _dbOk = false;
@@ -57,6 +59,7 @@ const jobSchema = new mongoose.Schema({
     lastAttemptAt:  { type: String, default: null },
     sourceType:     { type: String, default: 'agent' }, // 'web' | 'agent'
     agentId:        { type: String, default: null },
+    claimedBy:      { type: String, default: null }, // agentId of the machine actually running it (set on claim)
     staffId:        { type: String, default: null },
     images:       { type: [String], default: [] },
     results:      [resultSchema],
@@ -229,14 +232,102 @@ async function updateJob(id, data) {
     }
 }
 
-async function deleteJob(id) {
-    try { await connect(); await scheduler().DeleteJob(id); }
-    catch { const jobs=fLoad(); const i=jobs.findIndex(x=>x._id===id); if(i!==-1){ jobs.splice(i,1); fSave(jobs); } }
+// Who is deleting: the staff member signed in on this Agent install.
+async function _actor() {
+    let name = null;
+    if (_staffId) {
+        try { name = (await Staff.findById(_staffId).select('displayName').lean())?.displayName || null; } catch {}
+    }
+    return { id: _staffId, name, via: 'agent' };
 }
 
+// opts.fbDelete: also delete the job's posts on Facebook.
+async function deleteJob(id, opts = {}) {
+    try { await connect(); await scheduler().DeleteJob(id, await _actor(), opts); }
+    catch (e) {
+        if (e.code === 'JOB_RUNNING') throw e;
+        const jobs=fLoad(); const i=jobs.findIndex(x=>x._id===id); if(i!==-1){ jobs.splice(i,1); fSave(jobs); }
+    }
+}
+
+// Jobs that are actively posting are skipped, never deleted.
 async function deleteAllJobs() {
-    try { await connect(); await Job.deleteMany({}); }
+    try {
+        await connect();
+        const actor = await _actor();
+        const all = await Job.find().lean();
+        for (const doc of all) {
+            if (await scheduler().IsLiveRunning(doc)) continue;
+            await scheduler().RecordDeletion(doc, actor);
+            await Job.deleteOne({ _id: doc._id });
+        }
+    }
     catch { fSave([]); }
+}
+
+// ── Facebook post deletion requests (queued by scheduler.DeleteJob) ──
+const STALE_FB_DELETION_MS = 10 * 60 * 1000; // a 'running' request with no heartbeat this long was abandoned
+
+// Same routing as claimNextDueJob: this machine's own requests, unpinned ones,
+// or ones pinned to a machine that is no longer online.
+async function claimNextFbDeletion() {
+    try {
+        await connect();
+        const col = Job.db.collection('fbdeletions');
+        const online = await agentPresence.listOnlineAgentIds().catch(() => null);
+        const routing = [{ agentId: null }, { agentId: _agentId }];
+        if (online) routing.push({ agentId: { $nin: online } });
+        const now = new Date();
+        const r = await col.findOneAndUpdate(
+            {
+                $and: [
+                    { $or: [{ status: 'pending' }, { status: 'running', heartbeatAt: { $lte: new Date(now.getTime() - STALE_FB_DELETION_MS) } }] },
+                    { $or: routing },
+                ],
+            },
+            { $set: { status: 'running', runningBy: _agentId, startedAt: now, heartbeatAt: now } },
+            { sort: { requestedAt: 1 }, returnDocument: 'after' },
+        );
+        return (r && r.value !== undefined) ? r.value : r;
+    } catch { return null; }
+}
+
+async function updateFbDeletion(id, patch) {
+    try {
+        await connect();
+        await Job.db.collection('fbdeletions').updateOne({ _id: id }, { $set: { ...patch, heartbeatAt: new Date() } });
+    } catch {}
+}
+
+// interrupted → back to 'pending' so it resumes later (only targets still
+// 'pending' are retried). Otherwise 'done', plus one audit entry with totals.
+async function finishFbDeletion(req, targets, interrupted) {
+    try {
+        await connect();
+        const col = Job.db.collection('fbdeletions');
+        if (interrupted) {
+            await col.updateOne({ _id: req._id }, { $set: { status: 'pending', targets, runningBy: null } });
+            return;
+        }
+        const count = s => targets.filter(t => t.status === s).length;
+        const summary = { total: targets.length, deleted: count('deleted') + count('gone'), skipped: count('skipped'), failed: count('failed') };
+        await col.updateOne({ _id: req._id }, { $set: { status: 'done', targets, finishedAt: new Date(), summary } });
+        await Job.db.collection('auditlogs').insertOne({
+            action: 'fb_delete',
+            actorId: req.requestedById || null,
+            actorName: req.requestedByName || null,
+            targetId: String(req.jobId),
+            targetName: String(req.message || '').slice(0, 60),
+            details: summary,
+            createdAt: new Date(),
+        });
+    } catch {}
+}
+
+// See RestoreDeletedJob in scheduler/schedulerService.js.
+async function restoreDeletedJob(job, final) {
+    await connect();
+    return scheduler().RestoreDeletedJob(job, final);
 }
 
 async function getCompletedJobs() {
@@ -265,11 +356,48 @@ async function listExpiredJobs() {
     catch { return []; }
 }
 
+// Atlas free tier (M0) allows 512 MB; override with DB_LIMIT_MB if the plan
+// changes. Returns null when the size can't be read (never throws).
+async function getDbUsage() {
+    try {
+        await connect();
+        const MB = 1048576;
+        const s = await mongoose.connection.db.command({ dbStats: 1 });
+        const imgs = await mongoose.connection.db.command({ collStats: 'images' }).catch(() => null);
+        const usedMB  = (s.storageSize + s.indexSize) / MB;
+        const limitMB = parseInt(process.env.DB_LIMIT_MB, 10) || 512;
+        return { usedMB, limitMB, percent: (usedMB / limitMB) * 100, imagesMB: imgs ? imgs.storageSize / MB : null };
+    } catch { return null; }
+}
+
+// Everything the queue panel needs beyond the job rows themselves: who holds
+// the global posting lock right now, and id → name lookups so each job can
+// show its owner and which machine/person is actually running it.
+async function getQueueSnapshot() {
+    const empty = { myAgentId: _agentId, lock: null, agentNames: {}, staffNames: {} };
+    try {
+        await connect();
+        const [lock, agentNames, staff] = await Promise.all([
+            postingLock.current().catch(() => null),
+            agentPresence.staffNameByAgentId().catch(() => ({})),
+            Staff.find({}).select('displayName').lean().catch(() => []),
+        ]);
+        const staffNames = {};
+        staff.forEach(s => { staffNames[String(s._id)] = s.displayName; });
+        return {
+            myAgentId: _agentId,
+            lock: lock ? { agentId: lock.agentId, staffName: agentNames[lock.agentId] || null, lockedAt: lock.lockedAt } : null,
+            agentNames,
+            staffNames,
+        };
+    } catch { return empty; }
+}
+
 function _s(j) { return j ? { ...j, _id: j._id?.toString?.()??j._id } : j; }
 
 module.exports = {
     connect, isDbConnected, setDataPath, setAgentId, setStaffId, listStaff, getAllGroups, getRecentPosts,
-    createJob, getJobs, getPendingJobs, claimNextJob, updateJob, deleteJob, deleteAllJobs,
-    getCompletedJobs, rescheduleJob, expireOverdueJobs, migrateLegacyStatuses,
+    createJob, getJobs, getPendingJobs, claimNextJob, updateJob, deleteJob, deleteAllJobs, restoreDeletedJob, claimNextFbDeletion, updateFbDeletion, finishFbDeletion,
+    getCompletedJobs, getQueueSnapshot, getDbUsage, rescheduleJob, expireOverdueJobs, migrateLegacyStatuses,
     retryJob, cancelJob, listExpiredJobs,
 };

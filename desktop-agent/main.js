@@ -182,11 +182,13 @@ ipcMain.handle('accounts:logout', (_, id) => {
 // ── IPC: Jobs ──────────────────────────────────────────────────
 ipcMain.handle('jobs:list',         ()            => jobStore.getJobs());
 ipcMain.handle('jobs:create',       (_, data)     => jobStore.createJob(data));
-ipcMain.handle('jobs:delete',       (_, id)       => jobStore.deleteJob(id));
+ipcMain.handle('jobs:delete',       (_, id, opts) => jobStore.deleteJob(id, { fbDelete: !!opts?.fbDelete }));
 ipcMain.handle('jobs:delete-all',   ()            => jobStore.deleteAllJobs());
 ipcMain.handle('jobs:groups',       ()            => jobStore.getAllGroups());
 ipcMain.handle('jobs:recent-posts', ()            => jobStore.getRecentPosts());
 ipcMain.handle('jobs:history',      ()            => jobStore.getCompletedJobs());
+ipcMain.handle('jobs:queue',        ()            => jobStore.getQueueSnapshot());
+ipcMain.handle('db:usage',          ()            => jobStore.getDbUsage());
 ipcMain.handle('jobs:reschedule',   (_, id, at)   => jobStore.rescheduleJob(id, at));
 ipcMain.handle('jobs:expired',      ()            => jobStore.listExpiredJobs());
 ipcMain.handle('jobs:retry',        (_, id)       => jobStore.retryJob(id));

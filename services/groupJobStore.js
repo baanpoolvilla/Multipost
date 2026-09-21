@@ -64,11 +64,14 @@ async function create(data) {
     return scheduler().CreateJob(data);
 }
 
-async function remove(id) {
+async function remove(id, actor) {
     try {
         await connect();
-        return scheduler().DeleteJob(id);
-    } catch { return null; }
+        return await scheduler().DeleteJob(id, { ...actor, via: 'web' });
+    } catch (e) {
+        if (e.code === 'JOB_RUNNING') throw e;
+        return null;
+    }
 }
 
 async function getById(id) {
@@ -102,11 +105,15 @@ async function listAll() {
     } catch(e) { return []; }
 }
 
-async function deleteHistory(id) {
+// Deleting from history also queues deletion of the real Facebook posts.
+async function deleteHistory(id, actor) {
     try {
         await connect();
-        return GroupJob.findByIdAndDelete(id).lean();
-    } catch { return null; }
+        return await scheduler().DeleteJob(id, { ...actor, via: 'web' }, { fbDelete: true });
+    } catch (e) {
+        if (e.code === 'JOB_RUNNING') throw e;
+        return null;
+    }
 }
 
 async function statsByDateRange(fromDate, toDate) {

@@ -52,7 +52,7 @@ app.delete('/api/jobs/:id', async (req, res) => {
     try {
         await _store.deleteJob(req.params.id);
         res.json({ ok: true });
-    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+    } catch (e) { res.status(e.code === 'JOB_RUNNING' ? 409 : 500).json({ ok: false, error: e.message }); }
 });
 
 // ── Start / stop ──────────────────────────────────────────────
