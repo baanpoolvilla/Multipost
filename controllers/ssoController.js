@@ -73,6 +73,20 @@ exports.start = async (req, res) => {
     }
     if (staff) return finish(req, res, staff, sb);
 
+    // แอดมินกรอก "อีเมล SmartBoss" ให้บัญชีนี้ไว้แล้ว — ผูกให้เลย
+    try {
+        const tagged = await staffStore.findUnlinkedBySmartbossEmail(sb.email);
+        if (tagged && await staffStore.linkSmartboss(tagged._id, sb.sub)) {
+            await auditLogStore.log({
+                action: auditLogStore.ACTIONS.SSO_LINK,
+                actorId: String(tagged._id), actorName: tagged.displayName,
+                targetId: String(tagged._id), targetName: tagged.displayName,
+                details: { smartbossUserId: sb.sub, smartbossName: sb.name, smartbossEmail: sb.email, mode: 'email' },
+            });
+            return finish(req, res, tagged, sb);
+        }
+    } catch {}
+
     const pending = jwt.sign({ sub: sb.sub, name: sb.name, email: sb.email, isAdmin: sb.isAdmin }, JWT_SECRET, { expiresIn: '15m', audience: 'sso-pending' });
     res.cookie(PENDING_COOKIE, pending, PENDING_COOKIE_OPTIONS);
     res.redirect('/sso/link');

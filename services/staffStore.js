@@ -19,6 +19,9 @@ const staffSchema = new mongoose.Schema({
     // SmartBoss user id this account is linked to (single sign-on from
     // SmartBoss — see controllers/ssoController.js). Absent = not linked yet.
     smartbossUserId: { type: String },
+    // อีเมลบัญชี SmartBoss ของคนนี้ (แอดมินกรอกในหน้าจัดการบัญชี) — กดเข้าจาก
+    // SmartBoss ครั้งแรกด้วยอีเมลนี้ = ผูกบัญชีให้อัตโนมัติ ไม่ต้องล็อกอินเดิมก่อน
+    smartbossEmail:  { type: String, default: null },
 }, { versionKey: false });
 
 // One SmartBoss user ↔ one staff account. Partial (not sparse) so accounts
@@ -117,6 +120,17 @@ async function findBySmartbossId(smartbossUserId) {
     return Staff.findOne({ smartbossUserId, deletedAt: null }).select('-passwordHash').lean();
 }
 
+// Active, not-yet-linked account an admin tagged with this SmartBoss email.
+async function findUnlinkedBySmartbossEmail(email) {
+    if (!email) return null;
+    await connect();
+    return Staff.findOne({
+        smartbossEmail: String(email).trim().toLowerCase(),
+        deletedAt: null,
+        $or: [{ smartbossUserId: { $exists: false } }, { smartbossUserId: null }],
+    }).select('-passwordHash').lean();
+}
+
 // Link only if the account isn't already linked to a *different* SmartBoss
 // user — otherwise someone who knows an old password could take over an
 // account another person already claimed.
@@ -161,12 +175,22 @@ async function setRole(id, role) {
     } catch { return null; }
 }
 
-async function updateProfile(id, { username, displayName }) {
+// smartbossEmail: undefined = leave as is, '' = clear.
+async function updateProfile(id, { username, displayName, smartbossEmail }) {
     try {
         await connect();
         const existing = await Staff.findOne({ username, _id: { $ne: id } });
         if (existing) return { error: 'มีชื่อผู้ใช้นี้อยู่แล้ว' };
-        const staff = await Staff.findByIdAndUpdate(id, { username, displayName }, { new: true }).select('-passwordHash').lean();
+        const patch = { username, displayName };
+        if (smartbossEmail !== undefined) {
+            const email = String(smartbossEmail).trim().toLowerCase() || null;
+            if (email && !/^[^\s@]+@[^\s@]+$/.test(email)) return { error: 'อีเมล SmartBoss ไม่ถูกต้อง' };
+            if (email && await Staff.findOne({ smartbossEmail: email, deletedAt: null, _id: { $ne: id } })) {
+                return { error: 'อีเมล SmartBoss นี้ใช้กับบัญชีอื่นอยู่แล้ว' };
+            }
+            patch.smartbossEmail = email;
+        }
+        const staff = await Staff.findByIdAndUpdate(id, patch, { new: true }).select('-passwordHash').lean();
         return staff ? { ok: true, staff } : { error: 'ไม่พบผู้ใช้งาน' };
     } catch (e) {
         if (isDuplicateKeyError(e)) return { error: 'มีชื่อผู้ใช้นี้อยู่แล้ว' };
@@ -198,6 +222,6 @@ async function restore(id) {
 
 module.exports = {
     list, count, countAdmins, findByUsername, findById, findByIdStrict,
-    findBySmartbossId, linkSmartboss,
+    findBySmartbossId, findUnlinkedBySmartbossEmail, linkSmartboss,
     create, verifyPassword, softDelete, restore, setPassword, setRole, updateProfile,
 };

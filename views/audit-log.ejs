@@ -112,6 +112,7 @@
                 <% } else if (r.action === 'profile_edit' && r.details) { %>
                   <% if (r.details.displayName && r.details.displayName.from !== r.details.displayName.to) { %>ชื่อ: <%= r.details.displayName.from %> → <%= r.details.displayName.to %><% } %>
                   <% if (r.details.username && r.details.username.from !== r.details.username.to) { %> username: <%= r.details.username.from %> → <%= r.details.username.to %><% } %>
+                  <% if (r.details.smartbossEmail && r.details.smartbossEmail.from !== r.details.smartbossEmail.to) { %> อีเมล SmartBoss: <%= r.details.smartbossEmail.from || '-' %> → <%= r.details.smartbossEmail.to || '-' %><% } %>
                 <% } else if (r.action === 'create' && r.details) { %>
                   @<%= r.details.username %> (<%= r.details.role === 'admin' ? 'แอดมิน' : 'พนักงาน' %>)
                 <% } else if (r.action === 'job_delete' && r.details) { %>
@@ -119,7 +120,7 @@
                   เจ้าของงาน: <%= r.details.ownerName || '(ไม่ระบุ)' %> · <%= r.details.groups %> กลุ่ม (สำเร็จ <%= r.details.success %>) · ผ่าน<%= r.details.via === 'agent' ? ' Agent' : 'เว็บ' %>
                   <% if (r.details.fbPosts) { %> · สั่งลบโพสบน Facebook <%= r.details.fbPosts %> โพสต์<% } %>
                 <% } else if (r.action === 'sso_link' && r.details) { %>
-                  SmartBoss: <%= r.details.smartbossName || '' %><% if (r.details.smartbossEmail) { %> (<%= r.details.smartbossEmail %>)<% } %> · <%= r.details.mode === 'created' ? 'สร้างบัญชีใหม่' : 'ผูกบัญชีเดิม' %>
+                  SmartBoss: <%= r.details.smartbossName || '' %><% if (r.details.smartbossEmail) { %> (<%= r.details.smartbossEmail %>)<% } %> · <%= r.details.mode === 'created' ? 'สร้างบัญชีใหม่' : r.details.mode === 'email' ? 'ผูกอัตโนมัติด้วยอีเมล' : 'ผูกบัญชีเดิม' %>
                 <% } else if (r.action === 'fb_delete' && r.details) { %>
                   ลบแล้ว <%= r.details.deleted %> · ข้าม <%= r.details.skipped %> · ไม่สำเร็จ <%= r.details.failed %> จาก <%= r.details.total %> โพสต์
                 <% } else if (r.details) { %>

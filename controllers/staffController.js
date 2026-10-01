@@ -86,12 +86,16 @@ exports.restoreStaffAccount = async (req, res) => {
 };
 
 exports.editStaffAccount = async (req, res) => {
-    const { username, displayName } = req.body;
+    const { username, displayName, smartbossEmail } = req.body;
     if (!username?.trim() || !displayName?.trim())
         return res.status(400).json({ error: 'กรุณากรอกข้อมูลให้ครบ' });
 
     const before = await staffStore.findById(req.params.id);
-    const result = await staffStore.updateProfile(req.params.id, { username: username.trim(), displayName: displayName.trim() });
+    const result = await staffStore.updateProfile(req.params.id, {
+        username: username.trim(),
+        displayName: displayName.trim(),
+        smartbossEmail: typeof smartbossEmail === 'string' ? smartbossEmail : undefined,
+    });
     if (result.error) return res.status(400).json({ error: result.error });
 
     await auditLogStore.log({
@@ -101,6 +105,7 @@ exports.editStaffAccount = async (req, res) => {
         details: {
             username: { from: before?.username ?? null, to: result.staff.username },
             displayName: { from: before?.displayName ?? null, to: result.staff.displayName },
+            smartbossEmail: { from: before?.smartbossEmail ?? null, to: result.staff.smartbossEmail ?? null },
         },
     });
     res.json({ ok: true, staff: result.staff });

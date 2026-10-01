@@ -120,7 +120,7 @@
         <div class="avatar avatar-<%= colors[i%5] %>" style="width:38px;height:38px"><%= s.displayName.charAt(0).toUpperCase() %></div>
         <div style="flex:1;min-width:0">
           <div class="staff-row-name"><%= s.displayName %></div>
-          <div class="staff-row-role">@<%= s.username %></div>
+          <div class="staff-row-role">@<%= s.username %><% if (s.smartbossUserId) { %> · <span style="color:#2e7d32"><i class="fa-solid fa-link"></i> ผูก SmartBoss แล้ว</span><% } else if (s.smartbossEmail) { %> · SmartBoss: <%= s.smartbossEmail %><% } %></div>
         </div>
         <select class="role-select" data-id="<%= s._id %>" data-name="<%= s.displayName %>" title="สิทธิ์การใช้งาน">
           <option value="staff" <%= s.role === 'admin' ? '' : 'selected' %>>พนักงาน</option>
@@ -128,7 +128,7 @@
         </select>
         <div class="staff-row-actions">
           <a href="/user-activity/<%= s._id %>" class="btn-view-activity"><i class="fa-solid fa-chart-bar"></i> ดูกิจกรรม</a>
-          <button class="btn-edit-staff icon-btn" data-id="<%= s._id %>" data-name="<%= s.displayName %>" data-username="<%= s.username %>" title="แก้ไขชื่อ/username">
+          <button class="btn-edit-staff icon-btn" data-id="<%= s._id %>" data-name="<%= s.displayName %>" data-username="<%= s.username %>" data-sb-email="<%= s.smartbossEmail || '' %>" title="แก้ไขชื่อ/username">
             <i class="fa-solid fa-pen"></i>
           </button>
           <button class="btn-change-password icon-btn" data-id="<%= s._id %>" data-name="<%= s.displayName %>" title="เปลี่ยนรหัสผ่าน">
@@ -230,6 +230,10 @@
     <div style="margin-bottom:1rem">
       <label style="font-size:.78rem;color:#65676b;display:block;margin-bottom:.25rem">ชื่อผู้ใช้ (username)</label>
       <input id="editStaffUsername" type="text" placeholder="username" style="width:100%;padding:.5rem .7rem;border:1.5px solid #dbe0e6;border-radius:8px;font-family:inherit;font-size:.86rem;outline:none;box-sizing:border-box">
+    </div>
+    <div style="margin-bottom:1rem">
+      <label style="font-size:.78rem;color:#65676b;display:block;margin-bottom:.25rem">อีเมล SmartBoss <span style="font-weight:400">(ไม่บังคับ — กดเข้าจาก SmartBoss ด้วยอีเมลนี้แล้วผูกบัญชีให้อัตโนมัติ)</span></label>
+      <input id="editStaffSbEmail" type="email" placeholder="name@baanpoolvilla.com" style="width:100%;padding:.5rem .7rem;border:1.5px solid #dbe0e6;border-radius:8px;font-family:inherit;font-size:.86rem;outline:none;box-sizing:border-box">
     </div>
     <div style="display:flex;gap:.5rem;justify-content:flex-end">
       <button onclick="closeEditStaff()" style="background:#f0f2f5;border:none;border-radius:8px;padding:.5rem 1rem;font-size:.84rem;cursor:pointer;font-family:inherit">ยกเลิก</button>
@@ -353,10 +357,11 @@
   }
 
   let _editStaffId = null;
-  function openEditStaff(id, name, username) {
+  function openEditStaff(id, name, username, sbEmail) {
     _editStaffId = id;
     document.getElementById('editStaffDisplayName').value = name;
     document.getElementById('editStaffUsername').value = username;
+    document.getElementById('editStaffSbEmail').value = sbEmail || '';
     document.getElementById('editStaffModal').style.display = 'flex';
   }
   function closeEditStaff() { document.getElementById('editStaffModal').style.display = 'none'; }
@@ -364,6 +369,7 @@
   async function submitEditStaff() {
     const displayName = document.getElementById('editStaffDisplayName').value.trim();
     const username    = document.getElementById('editStaffUsername').value.trim();
+    const smartbossEmail = document.getElementById('editStaffSbEmail').value.trim();
     if (!displayName || !username) {
       Swal.fire({ icon:'warning', title:'กรุณากรอกข้อมูลให้ครบ', confirmButtonColor:'#1877f2' });
       return;
@@ -372,7 +378,7 @@
       const r = await fetch(`/api/staff/${_editStaffId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ displayName, username }),
+        body: JSON.stringify({ displayName, username, smartbossEmail }),
       });
       const d = await r.json();
       if (!d.ok) throw new Error(d.error || 'เกิดข้อผิดพลาด');
@@ -423,7 +429,7 @@
     btn.addEventListener('click', () => openChangePassword(btn.dataset.id, btn.dataset.name));
   });
   document.querySelectorAll('.btn-edit-staff').forEach(btn => {
-    btn.addEventListener('click', () => openEditStaff(btn.dataset.id, btn.dataset.name, btn.dataset.username));
+    btn.addEventListener('click', () => openEditStaff(btn.dataset.id, btn.dataset.name, btn.dataset.username, btn.dataset.sbEmail));
   });
   document.querySelectorAll('.role-select').forEach(sel => {
     sel.addEventListener('change', () => changeRole(sel.dataset.id, sel.dataset.name, sel.value, sel));
