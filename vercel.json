@@ -1,5 +1,6 @@
 {
   "version": 2,
+  "regions": ["sin1"],
   "crons": [
     {
       "path": "/api/cron/run-scheduled",
@@ -10,9 +11,17 @@
     {
       "src": "server.js",
       "use": "@vercel/node"
+    },
+    {
+      "src": "public/{css,js,downloads}/**",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
+    {
+      "src": "/(css|js|downloads)/(.*)",
+      "dest": "/public/$1/$2"
+    },
     {
       "src": "/(.*)",
       "dest": "server.js"

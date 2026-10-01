@@ -21,9 +21,16 @@ app.use(express.json());
 app.use(require('cookie-parser')());
 app.use(require('./middleware/auth'));
 
-// Inject sidebar pages into every view via res.locals
+// Inject sidebar pages into every view via res.locals — page renders only.
+// API calls, uploads and static files never render the sidebar, and running
+// a Mongo query for each of them made every request slower.
 const pageStore = require('./services/pageStore');
+const NO_SIDEBAR_PREFIXES = ['/api/', '/uploads/', '/css/', '/js/', '/downloads/'];
 app.use(async (req, res, next) => {
+    if (req.method !== 'GET' || NO_SIDEBAR_PREFIXES.some(p => req.path.startsWith(p))) {
+        res.locals.sidebarPages = [];
+        return next();
+    }
     try {
         const all = await pageStore.load();
         res.locals.sidebarPages = all.filter(p => p.enabled !== false);
