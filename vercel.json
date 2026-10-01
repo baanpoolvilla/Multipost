@@ -12,10 +12,9 @@
       "src": "server.js",
       "use": "@vercel/node"
     },
-    {
-      "src": "public/{css,js,downloads}/**",
-      "use": "@vercel/static"
-    }
+    { "src": "public/css/**", "use": "@vercel/static" },
+    { "src": "public/js/**", "use": "@vercel/static" },
+    { "src": "public/downloads/**", "use": "@vercel/static" }
   ],
   "routes": [
     {
