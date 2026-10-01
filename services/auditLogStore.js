@@ -12,6 +12,7 @@ const ACTIONS = Object.freeze({
     ROLE_CHANGE:    'role_change',
     PASSWORD_RESET: 'password_reset',
     PROFILE_EDIT:   'profile_edit',
+    SSO_LINK:       'sso_link',
 });
 
 const auditLogSchema = new mongoose.Schema({

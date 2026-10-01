@@ -345,6 +345,7 @@ const ACTION_LABEL_TH = {
     profile_edit:    'แก้ไขข้อมูล',
     job_delete:      'ลบงานโพส',
     fb_delete:       'ลบโพสบน Facebook',
+    sso_link:        'ผูกบัญชี SmartBoss',
 };
 
 exports.showAuditLog = async (req, res) => {

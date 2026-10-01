@@ -22,6 +22,11 @@ const PUBLIC_PATHS = [
     '/download/agent',
     '/api/agent-version',
     '/api/agent/source',
+    // SmartBoss single sign-on — verified by its own signed token, see
+    // controllers/ssoController.js
+    '/sso',
+    '/sso/link',
+    '/sso/create',
 ];
 const PUBLIC_PREFIXES = ['/uploads/', '/css/', '/js/', '/downloads/'];
 

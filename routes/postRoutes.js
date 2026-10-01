@@ -8,6 +8,7 @@ const ctrl       = require('../controllers/postController');
 const agentCtrl  = require('../controllers/agentController');
 const authCtrl   = require('../controllers/authController');
 const staffCtrl  = require('../controllers/staffController');
+const ssoCtrl    = require('../controllers/ssoController');
 const imageStore = require('../services/imageStore');
 
 // Use memory storage — files are saved to MongoDB (and local disk) by saveUploadedFiles
@@ -83,6 +84,12 @@ router.post('/login',  authCtrl.login);
 router.post('/logout', authCtrl.logout);
 
 // Staff (ผู้ดำเนินการ) management + "ใครทำอะไร" activity reports
+// SmartBoss single sign-on (public paths — see middleware/auth.js)
+router.get('/sso',          ssoCtrl.start);
+router.get('/sso/link',     ssoCtrl.showLink);
+router.post('/sso/link',    ssoCtrl.link);
+router.post('/sso/create',  ssoCtrl.create);
+
 router.get('/manage-staff',                staffCtrl.requireAdmin, staffCtrl.showManageStaff);
 router.post('/api/staff',                  staffCtrl.requireAdmin, staffCtrl.createStaffAccount);
 router.delete('/api/staff/:id',            staffCtrl.requireAdmin, staffCtrl.deleteStaffAccount);

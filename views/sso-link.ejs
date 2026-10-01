@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>เชื่อมบัญชี SmartBoss - Multi Post System</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    body { display:flex; align-items:center; justify-content:center; min-height:100vh; background:#f0f2f5; font-family:'Noto Sans Thai',sans-serif; }
+    .login-box { background:#fff; border-radius:14px; padding:2rem 2.2rem; width:360px; max-width:92vw; box-shadow:0 8px 32px rgba(0,0,0,.12); }
+    .login-logo { display:flex; align-items:center; gap:.6rem; margin-bottom:1.4rem; }
+    .login-logo .fb-logo { width:38px; height:38px; border-radius:10px; background:#1877f2; color:#fff; display:flex; align-items:center; justify-content:center; font-size:1.1rem; }
+    .login-logo span { font-weight:700; font-size:1.05rem; color:#1c1e21; }
+    .login-title { font-size:.95rem; font-weight:700; color:#1c1e21; margin-bottom:.3rem; }
+    .login-sub { font-size:.8rem; color:#65676b; margin-bottom:1.1rem; line-height:1.6; }
+    .login-field { margin-bottom:.8rem; }
+    .login-field label { display:block; font-size:.78rem; font-weight:600; color:#444; margin-bottom:.3rem; }
+    .login-field input { width:100%; padding:.55rem .75rem; border:1.5px solid #dbe0e6; border-radius:8px; font-size:.88rem; font-family:inherit; outline:none; box-sizing:border-box; }
+    .login-field input:focus { border-color:#1877f2; }
+    .login-error { background:#fdecea; color:#c62828; border-radius:8px; padding:.55rem .75rem; font-size:.8rem; margin-bottom:.9rem; }
+    .login-btn { width:100%; background:#1877f2; color:#fff; border:none; border-radius:9px; padding:.65rem; font-size:.9rem; font-weight:700; cursor:pointer; font-family:inherit; margin-top:.3rem; }
+    .login-btn:hover { background:#166fe0; }
+    .sso-who { background:#f0f6ff; border-radius:9px; padding:.6rem .8rem; font-size:.82rem; color:#1c1e21; margin-bottom:1rem; }
+    .sso-sep { display:flex; align-items:center; gap:.6rem; color:#8a8d91; font-size:.75rem; margin:1.1rem 0; }
+    .sso-sep::before, .sso-sep::after { content:''; flex:1; height:1px; background:#e4e6eb; }
+    .login-btn.secondary { background:#fff; color:#1877f2; border:1.5px solid #1877f2; }
+    .login-btn.secondary:hover { background:#f0f6ff; }
+  </style>
+</head>
+<body>
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="fb-logo"><i class="fa-brands fa-facebook"></i></div>
+      <span>Multi Post System</span>
+    </div>
+
+    <div class="login-title">เข้าใช้งานจาก SmartBoss ครั้งแรก</div>
+    <div class="sso-who"><i class="fa-solid fa-user-check"></i> <strong><%= sb.name %></strong><% if (sb.email) { %> · <%= sb.email %><% } %></div>
+
+    <% if (error) { %>
+      <div class="login-error"><i class="fa-solid fa-circle-exclamation"></i> <%= error %></div>
+    <% } %>
+
+    <div class="login-sub">เคยมีบัญชี Multi Post อยู่แล้ว? ล็อกอินครั้งเดียวเพื่อผูกบัญชี — ประวัติโพสต์เดิมจะอยู่ครบ ครั้งต่อไปกดจาก SmartBoss เข้าได้เลย</div>
+    <form method="POST" action="/sso/link">
+      <div class="login-field">
+        <label>ชื่อผู้ใช้ Multi Post เดิม</label>
+        <input type="text" name="username" placeholder="username" required autofocus autocomplete="username">
+      </div>
+      <div class="login-field">
+        <label>รหัสผ่าน</label>
+        <input type="password" name="password" placeholder="••••••••" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="login-btn"><i class="fa-solid fa-link"></i> ผูกบัญชีเดิม</button>
+    </form>
+
+    <div class="sso-sep">หรือ</div>
+
+    <form method="POST" action="/sso/create">
+      <button type="submit" class="login-btn secondary"><i class="fa-solid fa-user-plus"></i> ยังไม่เคยมีบัญชี — สร้างบัญชีใหม่</button>
+    </form>
+  </div>
+</body>
+</html>

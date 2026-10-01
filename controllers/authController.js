@@ -18,6 +18,13 @@ async function getIsBootstrap() {
     catch { return null; }
 }
 
+// Shared by password login and SmartBoss SSO (controllers/ssoController.js).
+function issueSession(res, staff) {
+    const token = jwt.sign({ id: String(staff._id), name: staff.displayName, role: staff.role || 'staff' }, JWT_SECRET, { expiresIn: '30d' });
+    res.cookie('token', token, COOKIE_OPTIONS);
+}
+exports.issueSession = issueSession;
+
 exports.showLogin = async (req, res) => {
     const isBootstrap = await getIsBootstrap();
     if (isBootstrap === null) {
@@ -50,8 +57,7 @@ exports.login = async (req, res) => {
         if (!staff) return res.render('login', { isBootstrap: false, error: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' });
     }
 
-    const token = jwt.sign({ id: String(staff._id), name: staff.displayName, role: staff.role || 'staff' }, JWT_SECRET, { expiresIn: '30d' });
-    res.cookie('token', token, COOKIE_OPTIONS);
+    issueSession(res, staff);
     res.redirect('/');
 };
 

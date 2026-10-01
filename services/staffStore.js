@@ -16,7 +16,17 @@ const staffSchema = new mongoose.Schema({
     // displayName in กิจกรรมพนักงาน instead of collapsing to "ไม่ระบุตัวตน"
     // just because the account record is gone.
     deletedAt:    { type: Date, default: null },
+    // SmartBoss user id this account is linked to (single sign-on from
+    // SmartBoss — see controllers/ssoController.js). Absent = not linked yet.
+    smartbossUserId: { type: String },
 }, { versionKey: false });
+
+// One SmartBoss user ↔ one staff account. Partial (not sparse) so accounts
+// without a link don't collide on a shared null.
+staffSchema.index(
+    { smartbossUserId: 1 },
+    { unique: true, partialFilterExpression: { smartbossUserId: { $type: 'string' } } },
+);
 
 const Staff = mongoose.models.Staff || mongoose.model('Staff', staffSchema, 'staffmembers');
 
@@ -100,6 +110,25 @@ async function findByIdStrict(id) {
     return Staff.findOne({ _id: id, deletedAt: null }).select('-passwordHash').lean();
 }
 
+// Active only, same as findByUsername — a soft-deleted account must not be
+// reachable through SSO either.
+async function findBySmartbossId(smartbossUserId) {
+    await connect();
+    return Staff.findOne({ smartbossUserId, deletedAt: null }).select('-passwordHash').lean();
+}
+
+// Link only if the account isn't already linked to a *different* SmartBoss
+// user — otherwise someone who knows an old password could take over an
+// account another person already claimed.
+async function linkSmartboss(id, smartbossUserId) {
+    await connect();
+    const r = await Staff.updateOne(
+        { _id: id, deletedAt: null, $or: [{ smartbossUserId: { $exists: false } }, { smartbossUserId: null }, { smartbossUserId }] },
+        { $set: { smartbossUserId } },
+    );
+    return r.matchedCount === 1;
+}
+
 async function create({ username, password, displayName, role }) {
     try {
         await connect();
@@ -169,5 +198,6 @@ async function restore(id) {
 
 module.exports = {
     list, count, countAdmins, findByUsername, findById, findByIdStrict,
+    findBySmartbossId, linkSmartboss,
     create, verifyPassword, softDelete, restore, setPassword, setRole, updateProfile,
 };
