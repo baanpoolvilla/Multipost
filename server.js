@@ -19,6 +19,7 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(require('cookie-parser')());
+app.use(require('./middleware/embedGuard'));
 app.use(require('./middleware/auth'));
 
 // Inject sidebar pages into every view via res.locals — page renders only.

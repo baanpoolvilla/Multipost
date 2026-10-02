@@ -62,7 +62,7 @@ module.exports = async function auth(req, res, next) {
     try {
         payload = jwt.verify(token, JWT_SECRET);
     } catch {
-        res.clearCookie('token');
+        require('../services/sessionCookie').clear(res, 'token');
         return unauthorized(req, res);
     }
 
@@ -88,7 +88,7 @@ module.exports = async function auth(req, res, next) {
     }
 
     if (!dbUnavailable && !staff) {
-        res.clearCookie('token');
+        require('../services/sessionCookie').clear(res, 'token');
         return unauthorized(req, res);
     }
 

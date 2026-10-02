@@ -2,12 +2,8 @@ const jwt = require('jsonwebtoken');
 const staffStore = require('../services/staffStore');
 const { JWT_SECRET } = require('../middleware/auth');
 
-const COOKIE_OPTIONS = {
-    httpOnly: true,
-    maxAge: 30 * 24 * 60 * 60 * 1000,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-};
+const sessionCookie = require('../services/sessionCookie');
+const SESSION_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
 
 // A DB error must never be treated as "collection is empty" — that would
 // silently reopen anonymous bootstrap registration on the public /login
@@ -19,9 +15,10 @@ async function getIsBootstrap() {
 }
 
 // Shared by password login and SmartBoss SSO (controllers/ssoController.js).
-function issueSession(res, staff) {
+// embed: signed in from inside SmartBoss (see services/sessionCookie.js).
+function issueSession(res, staff, { embed = false } = {}) {
     const token = jwt.sign({ id: String(staff._id), name: staff.displayName, role: staff.role || 'staff' }, JWT_SECRET, { expiresIn: '30d' });
-    res.cookie('token', token, COOKIE_OPTIONS);
+    res.cookie('token', token, sessionCookie.options(embed, SESSION_MAX_AGE));
 }
 exports.issueSession = issueSession;
 
@@ -62,6 +59,6 @@ exports.login = async (req, res) => {
 };
 
 exports.logout = (req, res) => {
-    res.clearCookie('token');
+    sessionCookie.clear(res, 'token');
     res.redirect('/login');
 };

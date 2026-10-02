@@ -20,12 +20,8 @@ const { issueSession } = require('./authController');
 
 const SSO_SECRET = process.env.SSO_SECRET || null;
 const PENDING_COOKIE = 'sso_pending';
-const PENDING_COOKIE_OPTIONS = {
-    httpOnly: true,
-    maxAge: 15 * 60 * 1000,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-};
+const sessionCookie = require('../services/sessionCookie');
+const PENDING_MAX_AGE = 15 * 60 * 1000;
 
 function verifySsoToken(token) {
     if (!SSO_SECRET || !token) return null;
@@ -43,7 +39,7 @@ function readPending(req) {
     if (!t) return null;
     try {
         const p = jwt.verify(t, JWT_SECRET, { algorithms: ['HS256'], audience: 'sso-pending' });
-        return { sub: p.sub, name: p.name, email: p.email, isAdmin: p.isAdmin === true };
+        return { sub: p.sub, name: p.name, email: p.email, isAdmin: p.isAdmin === true, embed: p.embed === true, next: p.next };
     } catch { return null; }
 }
 
@@ -51,9 +47,9 @@ async function finish(req, res, staff, sb) {
     if (sb.isAdmin && staff.role !== 'admin') {
         staff = (await staffStore.setRole(staff._id, 'admin')) || staff;
     }
-    res.clearCookie(PENDING_COOKIE);
-    issueSession(res, staff);
-    res.redirect('/');
+    sessionCookie.clear(res, PENDING_COOKIE);
+    issueSession(res, staff, { embed: sb.embed === true });
+    res.redirect(sessionCookie.safeNext(sb.next));
 }
 
 function renderLink(res, sb, error, status = 200) {
@@ -63,6 +59,8 @@ function renderLink(res, sb, error, status = 200) {
 exports.start = async (req, res) => {
     if (!SSO_SECRET) return res.redirect('/login');
     const sb = verifySsoToken(req.query.token);
+    // Opened inside SmartBoss (iframe) — session cookie must be the embedded kind.
+    if (sb) { sb.embed = req.query.embed === '1'; sb.next = sessionCookie.safeNext(req.query.next); }
     if (!sb) {
         return res.status(401).render('login', { isBootstrap: false, error: 'ลิงก์จาก SmartBoss หมดอายุหรือไม่ถูกต้อง — กลับไปกดเปิดจาก SmartBoss อีกครั้ง' });
     }
@@ -87,8 +85,8 @@ exports.start = async (req, res) => {
         }
     } catch {}
 
-    const pending = jwt.sign({ sub: sb.sub, name: sb.name, email: sb.email, isAdmin: sb.isAdmin }, JWT_SECRET, { expiresIn: '15m', audience: 'sso-pending' });
-    res.cookie(PENDING_COOKIE, pending, PENDING_COOKIE_OPTIONS);
+    const pending = jwt.sign({ sub: sb.sub, name: sb.name, email: sb.email, isAdmin: sb.isAdmin, embed: sb.embed, next: sb.next }, JWT_SECRET, { expiresIn: '15m', audience: 'sso-pending' });
+    res.cookie(PENDING_COOKIE, pending, sessionCookie.options(sb.embed, PENDING_MAX_AGE));
     res.redirect('/sso/link');
 };
 

@@ -217,7 +217,13 @@
         }
         panel.appendChild(head);
 
-        if ('Notification' in window && Notification.permission === 'default') {
+        var framed = false;
+        try { framed = window.top !== window.self; } catch (e) { framed = true; }
+        if (framed) {
+            // Inside SmartBoss: browsers don't allow desktop notifications from a
+            // framed site, and SmartBoss already rings for your own jobs.
+            panel.appendChild(el('div', 'mp-bell-note', 'งานของคุณ (เริ่มโพส / โพสเสร็จ / โพสไม่ได้) แจ้งในกระดิ่งของ SmartBoss ด้วย'));
+        } else if ('Notification' in window && Notification.permission === 'default') {
             var ask = el('button', 'mp-bell-ask'); ask.type = 'button';
             ask.appendChild(el('i', 'fa-solid fa-desktop'));
             ask.appendChild(document.createTextNode(' เปิดแจ้งเตือนบนเครื่อง (เด้งแม้เปิดแท็บอื่นอยู่)'));

@@ -64,5 +64,17 @@
       </button>
     </form>
   </div>
+<script>
+// Inside SmartBoss the sign-in happens automatically; if we still land here
+// (session expired, or this browser blocks the cookie), say how to recover.
+(function () {
+  var framed = false; try { framed = window.top !== window.self; } catch (e) { framed = true; }
+  if (!framed) return;
+  var box = document.createElement('div');
+  box.style.cssText = 'max-width:420px;margin:12px auto;padding:12px 14px;border-radius:10px;background:#fff8e1;border:1px solid #f0c36d;color:#6b5005;font-size:14px;line-height:1.6;font-family:inherit';
+  box.textContent = 'กำลังเปิดจาก SmartBoss — ถ้าหน้านี้ขึ้นค้าง ให้กดเมนู Multi Post ใน SmartBoss อีกครั้ง หรือกด "เปิดในหน้าต่างใหม่" ด้านบน';
+  document.body.insertBefore(box, document.body.firstChild);
+})();
+</script>
 </body>
 </html>
