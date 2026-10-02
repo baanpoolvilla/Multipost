@@ -48,8 +48,20 @@ let _agentId      = null;
 // agentPresence.ONLINE_THRESHOLD_MS so a closed/crashed Agent is correctly
 // seen as offline soon after it stops.
 const HEARTBEAT_INTERVAL_MS = 20 * 1000;
+let _authWaiting = false;
 function heartbeat() {
-    agentPresence.heartbeat(_agentId, _currentStaff?.id, _currentStaff?.displayName, jobStore.isPosterAgent()).catch(() => {});
+    agentPresence.heartbeat(_agentId, _currentStaff?.id, _currentStaff?.displayName, jobStore.isPosterAgent(), {
+        fbReady: !!accountStore.getActive(),
+        authWaiting: _authWaiting,
+        running: jobRunner.isRunning(),
+    }).catch(() => {});
+}
+
+// The web's "post as Page" picker lists the main posting machine's Pages.
+async function publishPages(accountId) {
+    if (!jobStore.isPosterAgent()) return;
+    const pages = await facebookBot.getAccountPages(accountId).catch(() => []);
+    if (pages.length) await agentPresence.savePages(_agentId, pages).catch(() => {});
 }
 
 // ── Window ─────────────────────────────────────────────────────
@@ -76,8 +88,10 @@ app.whenReady().then(async () => {
     // Init stores
     accountStore.init(userDataDir);
     facebookBot.init(userDataDir);
-    facebookBot.onAuthNeeded(() => {
-        if (Notification.isSupported()) new Notification({
+    facebookBot.onAuthNeeded((waiting) => {
+        _authWaiting = !!waiting;
+        heartbeat();
+        if (waiting && Notification.isSupported()) new Notification({
             title: 'Facebook ขอยืนยันตัวตน',
             body: 'กรุณากดอนุมัติการเข้าสู่ระบบบนมือถือ — การโพสหยุดรออยู่ (สูงสุด 10 นาที)',
         }).show();
@@ -129,6 +143,7 @@ app.whenReady().then(async () => {
         if (app.isPackaged) app.setLoginItemSettings({ openAtLogin: true });
         else app.setLoginItemSettings({ openAtLogin: true, path: process.execPath, args: [app.getAppPath()] });
         jobRunner.start();
+        heartbeat();
     }
 });
 
@@ -172,7 +187,11 @@ ipcMain.handle('accounts:list',   ()          => accountStore.list());
 ipcMain.handle('accounts:add',    (_, e, p)   => accountStore.add(e, p));
 ipcMain.handle('accounts:remove', (_, id)     => accountStore.remove(id));
 
-ipcMain.handle('accounts:pages', async (_, id) => facebookBot.getAccountPages(id));
+ipcMain.handle('accounts:pages', async (_, id) => {
+    const pages = await facebookBot.getAccountPages(id);
+    if (jobStore.isPosterAgent() && pages.length) agentPresence.savePages(_agentId, pages).catch(() => {});
+    return pages;
+});
 
 ipcMain.handle('accounts:login', async (_, id) => {
     const acc = accountStore.get(id);
@@ -183,6 +202,8 @@ ipcMain.handle('accounts:login', async (_, id) => {
     });
     accountStore.updateStatus(id, result.ok ? 'logged_in' : 'error');
     if (win && !win.isDestroyed()) win.webContents.send('accounts:updated');
+    heartbeat();
+    if (result.ok) publishPages(id);
     return result;
 });
 
@@ -190,6 +211,7 @@ ipcMain.handle('accounts:logout', (_, id) => {
     accountStore.updateStatus(id, 'logged_out');
     facebookBot.closeContext(id);
     if (win && !win.isDestroyed()) win.webContents.send('accounts:updated');
+    heartbeat();
     return { ok: true };
 });
 
@@ -228,8 +250,8 @@ ipcMain.handle('image:get-local', async (_, filePath) => {
 });
 
 // ── IPC: Runner ────────────────────────────────────────────────
-ipcMain.handle('runner:start', () => { jobRunner.start(); return { ok: true }; });
-ipcMain.handle('runner:stop',  () => { jobRunner.stop();  return { ok: true }; });
+ipcMain.handle('runner:start', () => { jobRunner.start(); heartbeat(); return { ok: true }; });
+ipcMain.handle('runner:stop',  () => { jobRunner.stop();  heartbeat(); return { ok: true }; });
 
 // ── IPC: Templates ─────────────────────────────────────────────
 ipcMain.handle('templates:list',        ()              => jobTemplateStore.list());

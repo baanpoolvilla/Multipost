@@ -259,6 +259,7 @@
           groups:       <%- JSON.stringify(job.groups || []) %>,
           delaySeconds: <%= job.delaySeconds || 5 %>,
           images:       <%- JSON.stringify(job.images || []) %>,
+          postAsPage:   <%- JSON.stringify(job.postAsPage || null) %>,
         }),
       });
       const data = await res.json();

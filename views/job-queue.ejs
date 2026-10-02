@@ -77,6 +77,11 @@
       <div class="card-title" style="font-size:1.05rem">
         <i class="fa-solid fa-list-check"></i> คิวโพสลงกลุ่ม
         <span style="background:#e4e6ea;padding:.15rem .55rem;border-radius:999px;font-size:.8rem;margin-left:.4rem" id="jobCount"><%= jobs.length %></span>
+        <% if (groups.length) { %>
+        <button class="btn-post" style="margin-left:auto;font-size:.85rem;padding:.4rem .9rem" onclick="toggleForm()">
+          <i class="fa-solid fa-plus"></i> สร้างงานโพส
+        </button>
+        <% } %>
       </div>
     </div>
 
@@ -116,14 +121,30 @@
     <% } else { %>
 
     <!-- Create Job Form -->
-    <div class="card" id="createForm" style="display:none">
-      <div class="card-title"><i class="fa-solid fa-plus"></i> สร้าง Job โพสต์กลุ่ม</div>
+    <div class="card" id="createForm">
+      <div class="card-title"><i class="fa-solid fa-plus"></i> สร้างงานโพสลงกลุ่ม
+        <button type="button" class="btn-link-sm" style="margin-left:auto" onclick="openTemplatePicker()"><i class="fa-solid fa-file-lines"></i> ใช้เทมเพลต</button>
+      </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:.75rem">
-        <!-- Left: message -->
+      <div class="jq-form-grid">
+        <!-- Left: message + media + page -->
         <div>
-          <label class="form-label">ข้อความ <span style="color:#fa5252">*</span></label>
+          <label class="form-label" for="fMsg">ข้อความ <span style="color:#fa5252">*</span></label>
           <textarea id="fMsg" rows="6" placeholder="พิมพ์ข้อความที่ต้องการโพสต์..." style="width:100%"></textarea>
+
+          <label class="form-label" style="margin-top:.6rem">รูปภาพ / วิดีโอ (ไม่บังคับ)</label>
+          <div id="fMediaRow" class="jq-media-row">
+            <label class="jq-media-add" title="เพิ่มรูปหรือวิดีโอ">
+              <i class="fa-solid fa-photo-film"></i><span>เพิ่มไฟล์</span>
+              <input type="file" id="fFiles" accept="image/*,video/mp4,video/quicktime,video/webm" multiple style="display:none" onchange="onPickFiles(this.files); this.value=''">
+            </label>
+          </div>
+
+          <label class="form-label" style="margin-top:.6rem" for="fPage">โพสในนาม</label>
+          <select id="fPage" style="width:100%">
+            <option value="">บัญชี Facebook ส่วนตัว (ค่าเริ่มต้น)</option>
+          </select>
+          <div id="fPageHint" style="font-size:.75rem;color:var(--text-secondary);margin-top:.25rem"></div>
         </div>
         <!-- Right: groups by category with master checkbox -->
         <div>
@@ -175,8 +196,8 @@
 
       <div style="display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:.75rem">
         <div>
-          <label class="form-label">Delay ระหว่างกลุ่ม (วินาที)</label>
-          <input type="number" id="fDelay" value="5" min="1" max="120" style="width:90px">
+          <label class="form-label" for="fDelay">เว้นระหว่างกลุ่ม (วินาที)</label>
+          <input type="number" id="fDelay" value="30" min="10" max="120" style="width:90px">
         </div>
         <div>
           <label class="form-label">ตั้งเวลาโพส (ไม่บังคับ)</label>
@@ -261,7 +282,10 @@
             <% if(modeTag){ %><span style="font-size:.7rem;font-weight:700;background:#e7f3ff;color:#1877f2;border-radius:4px;padding:.05rem .4rem;margin-right:.3rem"><%= modeTag %></span><% } %><%= dispMsg %>
           </div>
           <div style="font-size:.78rem;color:var(--text-secondary);margin-top:.2rem">
-            <%= (j.groups||[]).length %> กลุ่ม · delay <%= j.delaySeconds %>s ·
+            <i class="fa-solid fa-user" style="font-size:.68rem"></i> <strong><%= (j.staffId && staffNameMap[String(j.staffId)]) || 'ไม่ระบุผู้สั่ง' %></strong> ·
+            <% if (j.postAsPage) { %><i class="fa-solid fa-flag" style="font-size:.68rem"></i> <%= j.postAsPage %> · <% } %>
+            <% if ((j.images||[]).length) { %><i class="fa-solid fa-image" style="font-size:.68rem"></i> <%= j.images.length %> · <% } %>
+            <%= (j.groups||[]).length %> กลุ่ม · เว้น <%= j.delaySeconds %>s ·
             <%= new Date(j.createdAt).toLocaleString('th-TH',{timeZone:'Asia/Bangkok',hour12:false,dateStyle:'short',timeStyle:'short'}) %>
             <% if (j.scheduledAt) { %>
             · <span style="color:#856404;font-weight:600"><i class="fa-solid fa-clock" style="font-size:.7rem"></i> โพส <%= new Date(j.scheduledAt).toLocaleString('th-TH',{timeZone:'Asia/Bangkok',hour12:false,dateStyle:'short',timeStyle:'short'}) %></span>
@@ -310,6 +334,21 @@
 .badge-blue   { background:#cfe2ff; color:#084298 }
 .badge-green  { background:#d1e7dd; color:#0a3622 }
 .badge-red    { background:#f8d7da; color:#842029 }
+
+/* Create-job form */
+.jq-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:.75rem }
+@media (max-width: 760px) { .jq-form-grid { grid-template-columns:1fr } }
+.jq-media-row { display:flex; flex-wrap:wrap; gap:.45rem }
+.jq-media-add { width:84px; height:84px; border:1.5px dashed var(--border-color); border-radius:10px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.25rem; cursor:pointer; color:#1877f2; font-size:.75rem; font-weight:600 }
+.jq-media-add:hover { background:#f0f6ff }
+.jq-media-add i { font-size:1.2rem }
+.jq-thumb { position:relative; width:84px; height:84px; border-radius:10px; overflow:hidden; background:#f0f2f5; border:1px solid var(--border-color) }
+.jq-thumb img, .jq-thumb video { width:100%; height:100%; object-fit:cover; display:block }
+.jq-thumb .jq-thumb-x { position:absolute; top:3px; right:3px; width:22px; height:22px; border:none; border-radius:50%; background:rgba(0,0,0,.6); color:#fff; cursor:pointer; font-size:.75rem; line-height:22px; padding:0 }
+.jq-thumb .jq-thumb-state { position:absolute; inset:auto 0 0 0; background:rgba(0,0,0,.55); color:#fff; font-size:.68rem; text-align:center; padding:.1rem 0 }
+.jq-thumb.err { border-color:#fa5252 }
+.jq-tpl-item { display:block; width:100%; text-align:left; background:#fff; border:1px solid var(--border-color); border-radius:8px; padding:.5rem .65rem; margin-bottom:.4rem; cursor:pointer; font-family:inherit }
+.jq-tpl-item:hover { background:#f0f6ff; border-color:#b3d4f9 }
 
 /* Job Queue - group picker */
 .jq-cat-hd {
@@ -627,19 +666,187 @@ function toggleJqCat(ci) {
   updateSelCount();
 })();
 
+/* ── Media: uploaded straight to storage from the browser ──
+   Each item: { id, kind:'image'|'video', preview, url|null, state:'uploading'|'ok'|'err' } */
+let _media = [];
+let _mediaSeq = 0;
+const MAX_IMAGE_MB = 4, MAX_VIDEO_MB = 1024;
+
+async function _uploadToStorage(file) {
+  const ext = (file.name.match(/\.[^.]+$/) || [''])[0].toLowerCase();
+  const signRes = await fetch(`/api/sign-upload?ext=${encodeURIComponent(ext)}`);
+  if (!signRes.ok) throw new Error('สร้างลิงก์อัปโหลดไม่ได้');
+  const { signedUrl, publicUrl } = await signRes.json();
+  const up = await fetch(signedUrl, { method:'PUT', headers:{ 'Content-Type': file.type || 'application/octet-stream' }, body:file });
+  if (!up.ok) throw new Error(`อัปโหลดไม่สำเร็จ (${up.status})`);
+  return publicUrl;
+}
+
+function onPickFiles(files) {
+  for (const file of files) {
+    const isVideo = file.type.startsWith('video/');
+    const limit = isVideo ? MAX_VIDEO_MB : MAX_IMAGE_MB;
+    if (file.size > limit * 1024 * 1024) {
+      Swal.fire({ icon:'warning', title:'ไฟล์ใหญ่เกินไป', text:`${file.name} — ${isVideo ? 'วิดีโอ' : 'รูปภาพ'}รับได้สูงสุด ${limit} MB`, confirmButtonColor:'#1877f2' });
+      continue;
+    }
+    const item = { id: ++_mediaSeq, kind: isVideo ? 'video' : 'image', preview: URL.createObjectURL(file), url: null, state: 'uploading' };
+    _media.push(item);
+    _uploadToStorage(file)
+      .then(url => { item.url = url; item.state = 'ok'; })
+      .catch(() => { item.state = 'err'; })
+      .finally(renderMedia);
+  }
+  renderMedia();
+}
+
+// Template images are stored names/URLs, not local files — add them as already uploaded.
+function addExistingMedia(urlOrName) {
+  const src = urlOrName.startsWith('http') ? urlOrName : `/uploads/${encodeURIComponent(urlOrName)}`;
+  const isVideo = /\.(mp4|mov|webm|avi)(\?|$)/i.test(urlOrName);
+  _media.push({ id: ++_mediaSeq, kind: isVideo ? 'video' : 'image', preview: src, url: urlOrName, state: 'ok' });
+}
+
+function removeMedia(id) {
+  _media = _media.filter(m => m.id !== id);
+  renderMedia();
+}
+
+function renderMedia() {
+  const row = document.getElementById('fMediaRow');
+  if (!row) return;
+  row.querySelectorAll('.jq-thumb').forEach(el => el.remove());
+  const add = row.querySelector('.jq-media-add');
+  _media.forEach(m => {
+    const box = document.createElement('div');
+    box.className = 'jq-thumb' + (m.state === 'err' ? ' err' : '');
+    const el = document.createElement(m.kind === 'video' ? 'video' : 'img');
+    el.src = m.preview;
+    if (m.kind === 'video') el.muted = true;
+    box.appendChild(el);
+    if (m.state !== 'ok') {
+      const s = document.createElement('div');
+      s.className = 'jq-thumb-state';
+      s.textContent = m.state === 'uploading' ? 'กำลังอัปโหลด…' : 'อัปโหลดไม่สำเร็จ';
+      box.appendChild(s);
+    }
+    const x = document.createElement('button');
+    x.type = 'button'; x.className = 'jq-thumb-x'; x.textContent = '✕'; x.title = 'เอาออก';
+    x.addEventListener('click', () => removeMedia(m.id));
+    box.appendChild(x);
+    row.insertBefore(box, add);
+  });
+}
+
+/* ── Templates ── */
+async function openTemplatePicker() {
+  let list = [];
+  try { list = await (await fetch('/api/templates')).json(); } catch {}
+  if (!Array.isArray(list) || !list.length) {
+    Swal.fire({ icon:'info', title:'ยังไม่มีเทมเพลต', confirmButtonColor:'#1877f2' });
+    return;
+  }
+  const esc = s => String(s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+  const html = `<div style="max-height:55vh;overflow-y:auto;text-align:left">${list.map((t, i) => `
+    <button type="button" class="jq-tpl-item" data-i="${i}">
+      <div style="font-weight:700;font-size:.86rem">${esc(t.name || 'ไม่มีชื่อ')}${(t.images||[]).length ? ` <span style="color:#1877f2;font-size:.75rem">· ${t.images.length} ไฟล์</span>` : ''}</div>
+      <div style="font-size:.78rem;color:#65676b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc((t.message || '').slice(0, 90))}</div>
+    </button>`).join('')}</div>`;
+  let picked = null;
+  await Swal.fire({
+    title:'เลือกเทมเพลต', html, showConfirmButton:false, showCloseButton:true, width:560,
+    didOpen: (popup) => popup.querySelectorAll('.jq-tpl-item').forEach(b => b.addEventListener('click', () => { picked = list[+b.dataset.i]; Swal.close(); })),
+  });
+  if (!picked) return;
+  document.getElementById('fMsg').value = picked.message || '';
+  _media = [];
+  (picked.images || []).forEach(addExistingMedia);
+  renderMedia();
+}
+
+/* ── Main posting machine status + its Pages ── */
+let _poster = null;
+async function refreshPosterStatus() {
+  const banner = document.getElementById('agentBanner');
+  let d = null;
+  try { d = await (await fetch('/api/agent/poster-status')).json(); } catch {}
+  _poster = d && d.poster;
+  fillPageOptions();
+  if (!banner) return;
+  banner.style.display = 'block';
+  const q = d && d.queue ? d.queue : { waiting: 0, running: 0 };
+  const queueText = `กำลังโพส ${q.running} งาน · รอคิว ${q.waiting} งาน`;
+  let tone, icon, title, body;
+  if (!d || !d.ok) {
+    tone = ['#fff8e1', '#f0c36d', '#856404']; icon = 'fa-circle-question'; title = 'ตรวจสอบสถานะเครื่องโพสไม่ได้'; body = 'ลองรีเฟรชหน้าอีกครั้ง';
+  } else if (!_poster) {
+    tone = ['#fff8e1', '#f0c36d', '#856404']; icon = 'fa-triangle-exclamation'; title = 'ยังไม่ได้ตั้งเครื่องโพสหลัก'; body = 'งานจะรอจนกว่าจะมี Agent เครื่องใดเครื่องหนึ่งเปิดอยู่';
+  } else if (!_poster.online) {
+    tone = ['#fde8e8', '#f5b5b5', '#842029']; icon = 'fa-power-off'; title = 'เครื่องโพสหลักออฟไลน์';
+    body = `ติดต่อล่าสุด ${new Date(_poster.lastSeenAt).toLocaleString('th-TH',{timeZone:'Asia/Bangkok',dateStyle:'short',timeStyle:'short'})} — สั่งงานได้ งานจะรอในคิว กรุณาแจ้งผู้ดูแลระบบ`;
+  } else if (_poster.authWaiting) {
+    tone = ['#fde8e8', '#f5b5b5', '#842029']; icon = 'fa-mobile-screen'; title = 'Facebook ขอยืนยันตัวตน — การโพสหยุดรออยู่';
+    body = 'กรุณาแจ้งผู้ดูแลให้กดอนุมัติการเข้าสู่ระบบบนมือถือ';
+  } else if (!_poster.fbReady) {
+    tone = ['#fde8e8', '#f5b5b5', '#842029']; icon = 'fa-user-lock'; title = 'เครื่องโพสหลักยังไม่ได้เข้าสู่ระบบ Facebook';
+    body = 'สั่งงานได้ งานจะรอในคิว กรุณาแจ้งผู้ดูแลระบบ';
+  } else if (!_poster.running) {
+    tone = ['#fff8e1', '#f0c36d', '#856404']; icon = 'fa-pause'; title = 'เครื่องโพสหลักหยุดโพสอัตโนมัติอยู่';
+    body = 'งานจะรอในคิวจนกว่าจะเปิดโพสอัตโนมัติ กรุณาแจ้งผู้ดูแลระบบ';
+  } else {
+    tone = ['#d1e7dd', '#a3cfbb', '#0a3622']; icon = 'fa-circle-check'; title = 'เครื่องโพสหลักพร้อมทำงาน';
+    body = 'สั่งงานแล้วระบบจะโพสตามลำดับคิวให้อัตโนมัติ ไม่ต้องเปิด Agent';
+  }
+  banner.innerHTML = `<div class="card" style="background:${tone[0]};border-color:${tone[1]};color:${tone[2]};padding:.75rem 1.1rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
+    <i class="fa-solid ${icon}" style="font-size:1.1rem"></i>
+    <div style="flex:1;min-width:200px"><div style="font-weight:700;font-size:.9rem">${title}</div><div style="font-size:.8rem;opacity:.9">${body}</div></div>
+    <div style="font-size:.8rem;font-weight:600;white-space:nowrap">${queueText}</div>
+  </div>`;
+}
+
+function fillPageOptions() {
+  const sel = document.getElementById('fPage');
+  const hint = document.getElementById('fPageHint');
+  if (!sel) return;
+  const current = sel.value;
+  const pages = (_poster && _poster.pages) || [];
+  sel.querySelectorAll('option[data-page]').forEach(o => o.remove());
+  pages.forEach(name => {
+    const o = document.createElement('option');
+    o.value = name; o.textContent = name; o.dataset.page = '1';
+    sel.appendChild(o);
+  });
+  if (current && pages.includes(current)) sel.value = current;
+  if (hint) hint.textContent = pages.length ? '' : 'ยังไม่มีรายชื่อเพจ — ผู้ดูแลกด 🔄 ดึงเพจใน Agent ของเครื่องโพสหลักเพื่อให้เพจขึ้นที่นี่';
+}
+
 async function submitJob() {
   const msg     = document.getElementById('fMsg').value.trim();
-  const delay   = parseInt(document.getElementById('fDelay').value) || 5;
+  const delay   = parseInt(document.getElementById('fDelay').value) || 30;
   const schedAt = dt24Get('fScheduledAt');
   const sel     = _groups.filter((_,i)=>document.getElementById(`gc_${i}`)?.checked);
+  const postAsPage = document.getElementById('fPage')?.value || '';
 
   if (!msg)       { Swal.fire({ icon:'warning', title:'กรุณากรอกข้อความ', confirmButtonColor:'#1877f2' }); return; }
   if (!sel.length){ Swal.fire({ icon:'warning', title:'กรุณาเลือกกลุ่ม', confirmButtonColor:'#1877f2' }); return; }
+  if (_media.some(m => m.state === 'uploading')) { Swal.fire({ icon:'info', title:'รอให้อัปโหลดไฟล์เสร็จก่อน', confirmButtonColor:'#1877f2' }); return; }
+  if (_media.some(m => m.state === 'err')) { Swal.fire({ icon:'warning', title:'มีไฟล์ที่อัปโหลดไม่สำเร็จ', text:'กด ✕ เอาไฟล์นั้นออก แล้วเพิ่มใหม่', confirmButtonColor:'#1877f2' }); return; }
+  if (delay < 10 || delay > 120) { Swal.fire({ icon:'warning', title:'เว้นระหว่างกลุ่มต้องอยู่ระหว่าง 10–120 วินาที', confirmButtonColor:'#1877f2' }); return; }
 
-  if (schedAt && new Date(schedAt) <= new Date()) {
+  if (schedAt && new Date(schedAt.slice(0,16) + ':00+07:00') <= new Date()) {
     Swal.fire({ icon:'warning', title:'กรุณาเลือกเวลาในอนาคต', confirmButtonColor:'#1877f2' });
     return;
   }
+
+  const whenText = schedAt
+    ? `โพสเวลา ${new Date(schedAt.slice(0,16) + ':00+07:00').toLocaleString('th-TH',{timeZone:'Asia/Bangkok',dateStyle:'short',timeStyle:'short'})}`
+    : 'โพสทันทีตามลำดับคิว';
+  const ok = await Swal.fire({
+    icon:'question', title:'ยืนยันสร้างงานโพส?',
+    html:`${sel.length} กลุ่ม · ${postAsPage ? 'ในนามเพจ <b>' + postAsPage.replace(/[<>&]/g,'') + '</b>' : 'บัญชีส่วนตัว'}${_media.length ? ' · ' + _media.length + ' ไฟล์' : ''}<br>${whenText}`,
+    showCancelButton:true, confirmButtonText:'สร้างงาน', cancelButtonText:'ยกเลิก', confirmButtonColor:'#1877f2',
+  });
+  if (!ok.isConfirmed) return;
 
   const btn = document.getElementById('btnSubmitJob');
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังเพิ่ม...'; }
@@ -648,14 +855,15 @@ async function submitJob() {
     const r = await fetch('/api/agent/jobs', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ message:msg, groups:sel, delaySeconds:delay, scheduledAt: schedAt ? new Date(schedAt.slice(0,16) + ':00+07:00').toISOString() : null }),
+      body: JSON.stringify({
+        message:msg, groups:sel, delaySeconds:delay, postAsPage: postAsPage || null,
+        images: _media.map(m => m.url),
+        scheduledAt: schedAt ? new Date(schedAt.slice(0,16) + ':00+07:00').toISOString() : null,
+      }),
     });
     const d = await r.json();
     if (!d.ok) throw new Error(d.error||'เกิดข้อผิดพลาด');
-    const schedMsg = schedAt
-      ? `ตั้งเวลาไว้ที่ ${new Date(schedAt).toLocaleString('th-TH',{timeZone:'Asia/Bangkok',dateStyle:'short',timeStyle:'short'})}`
-      : 'Job จะเริ่มทันทีที่ Agent ออนไลน์';
-    await Swal.fire({ icon:'success', title:'เพิ่ม Job สำเร็จ', text: schedMsg, timer:2000, showConfirmButton:false });
+    await Swal.fire({ icon:'success', title:'สร้างงานแล้ว', text: schedAt ? whenText : 'งานเข้าคิวแล้ว เครื่องโพสหลักจะโพสให้ตามลำดับ', timer:2200, showConfirmButton:false });
     location.reload();
   } catch(e) {
     if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> เพิ่มลงคิว'; }
@@ -725,41 +933,8 @@ async function deleteJob(id) {
   }
 }
 
-async function checkAgent() {
-  const banner = document.getElementById('agentBanner');
-  if (!banner) return;
-  try {
-    const r = await fetch('http://localhost:3001/api/status', { signal: AbortSignal.timeout(3000) });
-    const d = await r.json();
-    banner.style.display = 'block';
-    banner.innerHTML = `<div class="card" style="background:#d1e7dd;border-color:#a3cfbb;font-size:.85rem;color:#0a3622;padding:.7rem 1.1rem;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
-      <i class="fa-solid fa-robot"></i>
-      <strong>Desktop Agent ออนไลน์</strong>
-      <span style="opacity:.7">·</span>
-      <span>Runner: ${d.running ? '<strong>กำลังโพส ▶</strong>' : 'หยุด ⏹'}</span>
-      <a href="/agent" style="color:#0a3622;margin-left:auto;font-size:.8rem">ดูรายละเอียด →</a>
-    </div>`;
-  } catch {
-    banner.style.display = 'block';
-    banner.innerHTML = `<div class="card" style="background:#fff8e1;border-color:#f0c36d;padding:.85rem 1.25rem">
-      <div style="display:flex;align-items:center;gap:.9rem;flex-wrap:wrap">
-        <div style="flex:1;min-width:180px">
-          <div style="font-weight:700;color:#856404;margin-bottom:.3rem;font-size:.9rem">
-            <i class="fa-solid fa-triangle-exclamation"></i> Desktop Agent ยังไม่ได้เปิด
-          </div>
-          <div style="font-size:.82rem;color:#6b5005;line-height:1.7">
-            Job ที่สร้างไว้จะรอจนกว่า Agent จะออนไลน์<br>
-            ดาวน์โหลดและติดตั้ง Agent แล้วเปิดไว้เพื่อให้ระบบทำงานได้
-          </div>
-        </div>
-        <a href="/agent" style="display:inline-flex;align-items:center;gap:.45rem;background:#f7b928;color:#1c1e21;padding:.48rem 1rem;border-radius:8px;font-weight:700;font-size:.83rem;text-decoration:none;flex-shrink:0;white-space:nowrap">
-          <i class="fa-solid fa-download"></i> ดาวน์โหลด / เปิด Agent
-        </a>
-      </div>
-    </div>`;
-  }
-}
-checkAgent();
+refreshPosterStatus();
+setInterval(refreshPosterStatus, 20000);
 </script>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">

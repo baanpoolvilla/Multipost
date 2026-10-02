@@ -57,11 +57,18 @@ function createSchedulerService(Model, opts = {}) {
         return d > new Date() ? d.toISOString() : null;
     }
 
+    // dueAt = when the job becomes postable (its schedule, or creation time).
+    // Stored as a real Date so the queue orders correctly even though Web
+    // and Agent write createdAt with different types (Date vs ISO string).
+    function _dueAt(scheduledAt) { return scheduledAt ? new Date(scheduledAt) : new Date(); }
+
     async function CreateJob(data) {
         ValidateJob(data);
+        const scheduledAt = _normalizeScheduledAt(data.scheduledAt);
         const doc = await Model.create({
             ...data,
-            scheduledAt: _normalizeScheduledAt(data.scheduledAt),
+            dueAt: _dueAt(scheduledAt),
+            scheduledAt,
             status: STATUS.PENDING,
             results: data.results || [],
             sourceType,
@@ -97,6 +104,7 @@ function createSchedulerService(Model, opts = {}) {
         } else if ('scheduledAt' in patch) {
             next.scheduledAt = _normalizeScheduledAt(patch.scheduledAt);
         }
+        if ('scheduledAt' in next) next.dueAt = _dueAt(next.scheduledAt);
 
         const updated = await Model.findByIdAndUpdate(id, { $set: next }, { new: true }).lean();
         return serialize(updated);
@@ -247,7 +255,7 @@ function createSchedulerService(Model, opts = {}) {
             throw new Error('ลองใหม่ได้เฉพาะงานที่ล้มเหลวเท่านั้น');
         }
         const updated = await Model.findByIdAndUpdate(id, {
-            $set: { status: STATUS.PENDING, scheduledAt: null, expiredAt: null, updatedAt: new Date().toISOString() },
+            $set: { status: STATUS.PENDING, scheduledAt: null, expiredAt: null, dueAt: new Date(), updatedAt: new Date().toISOString() },
         }, { new: true }).lean();
         return serialize(updated);
     }
@@ -273,7 +281,15 @@ function createSchedulerService(Model, opts = {}) {
     // which side (Web/Agent) wrote the row, so we check both types.
     const STALE_IMMEDIATE_MS = parseInt(process.env.STALE_IMMEDIATE_MS, 10) || 60 * 60 * 1000;
 
+    // While the always-on main posting machine is online, a job still waiting
+    // is just queued behind others (one post at a time), not missed — so the
+    // routine sweep must not expire it. graceMs === 0 is the startup catch-up
+    // for jobs that really were missed while offline, so that still runs.
     async function expireOverdueJobs(graceMs = DEFAULT_GRACE_MS) {
+        if (graceMs !== 0) {
+            const poster = await agentPresence.findOnlinePosterAgentId().catch(() => null);
+            if (poster) return 0;
+        }
         const now    = new Date().toISOString();
         const cutoff = new Date(Date.now() - graceMs).toISOString();
 
@@ -361,7 +377,7 @@ function createSchedulerService(Model, opts = {}) {
         const claimed = await Model.findOneAndUpdate(
             filter,
             { $set: { status: STATUS.RUNNING, lastAttemptAt: now, updatedAt: now, claimedBy: agentId || null } },
-            { new: true, sort: { scheduledAt: 1, createdAt: 1 } },
+            { new: true, sort: { dueAt: 1, _id: 1 } },
         ).lean();
         return claimed ? serialize(claimed) : null;
     }

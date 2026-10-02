@@ -60,6 +60,7 @@ const jobSchema = new mongoose.Schema({
     sourceType:     { type: String, default: 'agent' }, // 'web' | 'agent'
     agentId:        { type: String, default: null },
     claimedBy:      { type: String, default: null }, // agentId of the machine actually running it (set on claim)
+    dueAt:          { type: Date, default: null },   // queue order — see scheduler CreateJob
     staffId:        { type: String, default: null },
     images:       { type: [String], default: [] },
     results:      [resultSchema],
@@ -184,7 +185,7 @@ async function createJob(data) {
 async function getJobs() {
     try {
         await connect();
-        return (await Job.find().sort({ createdAt:-1 }).limit(100).lean()).map(_s);
+        return (await Job.find().sort({ _id:-1 }).limit(100).lean()).map(_s);
     } catch { return fLoad().reverse().slice(0,100); }
 }
 
@@ -341,7 +342,7 @@ async function restoreDeletedJob(job, final) {
 async function getCompletedJobs() {
     try {
         await connect();
-        return (await Job.find({ status: { $in: [STATUS.SUCCESS, STATUS.FAILED, 'done'] } }).sort({ createdAt: -1 }).limit(200).lean()).map(_s);
+        return (await Job.find({ status: { $in: [STATUS.SUCCESS, STATUS.FAILED, 'done'] } }).sort({ _id: -1 }).limit(200).lean()).map(_s);
     } catch { return []; }
 }
 

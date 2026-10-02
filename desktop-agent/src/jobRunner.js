@@ -11,6 +11,7 @@ let _agentId = null;
 let _running = false;
 let _timer   = null;
 let _lastExpireSweep = 0;
+let _warnedNoAccount = false;
 const EXPIRE_SWEEP_INTERVAL_MS = 30 * 1000; // don't hit the DB on every 3s poll tick
 const LOCK_RETRY_MS = 2000;
 const LOCK_RENEW_INTERVAL_MS = 60 * 1000; // well under postingLock's LOCK_STALE_MS (5 min)
@@ -38,6 +39,8 @@ async function start() {
     // sequential jobs survive while a previous job is being processed.
     try {
         await _store.migrateLegacyStatuses?.();
+        // grace 0 = jobs missed while this machine was off are expired, not
+        // posted late. Jobs still inside the normal grace window are kept.
         const expired = await _store.expireOverdueJobs(0);
         if (expired) log(`⏱ พบงานหมดเวลา ${expired} รายการ — ย้ายไปสถานะ "หมดเวลา" (ไม่โพสอัตโนมัติ)`);
         _lastExpireSweep = Date.now();
@@ -72,9 +75,17 @@ async function poll() {
             const expired = await _store.expireOverdueJobs();
             if (expired) log(`⏱ พบงานหมดเวลา ${expired} รายการ — ย้ายไปสถานะ "หมดเวลา" (ไม่โพสอัตโนมัติ)`);
         }
+        // Without a signed-in Facebook account every job would just fail, so
+        // leave them queued (for this machine once signed in, or another one).
+        if (!_accounts.getActive()) {
+            if (!_warnedNoAccount) { log('⏸ ยังไม่มีบัญชี Facebook ที่เข้าสู่ระบบ — งานจะรอในคิวจนกว่าจะเข้าสู่ระบบ'); _warnedNoAccount = true; }
+            scheduleNext();
+            return;
+        }
+        _warnedNoAccount = false;
         const job = await _store.claimNextJob();
         if (job) await processJob(job);
-        else if (_accounts.getActive()) {
+        else {
             const del = await _store.claimNextFbDeletion?.();
             if (del) await processFbDeletion(del);
         }
@@ -149,10 +160,10 @@ async function processJob(job) {
     // Job was already atomically claimed as RUNNING via claimNextJob()
     _emit?.('jobs:updated', { ...job, _id:id, status: STATUS.RUNNING });
 
-    // Determine which account to use
-    const acc = job.accountId
-        ? _accounts.get(job.accountId)
-        : _accounts.getActive();
+    // The job's own account if it exists on THIS machine — a job created on
+    // another machine (or the web) carries an id this machine doesn't have,
+    // so fall back to whoever is signed in here.
+    const acc = (job.accountId && _accounts.get(job.accountId)) || _accounts.getActive();
 
     if (!acc) {
         log('❌ ไม่มี account ที่ login อยู่ — หยุด Job');
@@ -229,13 +240,24 @@ async function processJob(job) {
     try {
         // Open ONE page and switch identity on it — reuse same page for all groups
         log(`ℹ️ postAsPage: ${job.postAsPage || '(ไม่ได้เลือก — โพสเป็น user)'}`);
+        let switchFailed = false;
         if (job.postAsPage) {
             const result = await _bot.openSwitchedPage(acc.id, job.postAsPage, (m) => log(`   ${m}`));
-            sharedPage   = result?.page   || null;
-            sharedPageId = result?.pageId || null;
+            if (result?.switched) {
+                sharedPage   = result.page;
+                sharedPageId = result.pageId || null;
+            } else {
+                // Never fall through and post as the personal profile when the
+                // job asked for a Page — fail it so the owner can retry.
+                switchFailed = true;
+                await result?.page?.close().catch(() => {});
+                const err = `สลับเป็นเพจ "${job.postAsPage}" ไม่ได้ — ไม่ได้โพส (เพื่อไม่ให้โพสผิดตัวตน)`;
+                log(`⛔ ${err}`);
+                for (const g of job.groups) results.push({ groupId:g.groupId, groupName:g.groupName, status:'failed', error:err, timestamp:new Date().toISOString(), postUrl:null });
+            }
         }
 
-        for (let i=0; i<job.groups.length; i++) {
+        for (let i=0; i<job.groups.length && !switchFailed; i++) {
             if (!_running) { interrupted = true; break; }
             const g = job.groups[i];
             log(`➡️ [${i+1}/${job.groups.length}] ${g.groupName}`);
@@ -254,6 +276,11 @@ async function processJob(job) {
                     results.push({ groupId:rest.groupId, groupName:rest.groupName, status:'failed', error:res.error, timestamp:new Date().toISOString(), postUrl:null });
                 }
                 log(`⛔ หยุดงาน: ${res.error}`);
+                // Session gone: stop claiming more jobs until someone signs in again.
+                if (res.error.startsWith('Session หมดอายุ')) {
+                    _accounts.updateStatus(acc.id, 'error');
+                    _emit?.('accounts:updated');
+                }
                 break;
             }
 

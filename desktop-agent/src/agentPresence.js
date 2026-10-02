@@ -12,6 +12,13 @@ const presenceSchema = new mongoose.Schema({
     agentId:    { type: String, required: true, unique: true },
     staffId:    { type: String, default: null },
     staffName:  { type: String, default: null },
+    isPoster:   { type: Boolean, default: false },
+    // Posting-machine health, shown on the web so staff know whether their
+    // jobs can go out (see main.js heartbeat / getPosterStatus below).
+    fbReady:     { type: Boolean, default: false }, // a Facebook account is signed in
+    authWaiting: { type: Boolean, default: false }, // Facebook is asking to approve a login
+    running:     { type: Boolean, default: false }, // auto-posting is switched on
+    pages:       { type: [String], default: [] },   // Pages this account can post as
     lastSeenAt: { type: Date, default: Date.now },
 }, { versionKey: false });
 
@@ -21,13 +28,33 @@ function getModel() {
 
 const ONLINE_THRESHOLD_MS = 60 * 1000; // heartbeat runs well under this — see main.js
 
-async function heartbeat(agentId, staffId, staffName, isPoster = false) {
+// health: { fbReady, authWaiting, running } — optional, merged when given.
+async function heartbeat(agentId, staffId, staffName, isPoster = false, health = {}) {
     const Model = getModel();
-    await Model.findOneAndUpdate(
-        { agentId },
-        { $set: { staffId: staffId || null, staffName: staffName || null, isPoster: !!isPoster, lastSeenAt: new Date() } },
-        { upsert: true, strict: false },
-    );
+    const set = { staffId: staffId || null, staffName: staffName || null, isPoster: !!isPoster, lastSeenAt: new Date() };
+    for (const k of ['fbReady', 'authWaiting', 'running']) if (k in health) set[k] = !!health[k];
+    await Model.findOneAndUpdate({ agentId }, { $set: set }, { upsert: true });
+}
+
+async function savePages(agentId, pages) {
+    const names = (pages || []).filter(p => p && p.name && !p.isPersonal).map(p => String(p.name));
+    await getModel().findOneAndUpdate({ agentId }, { $set: { pages: names } }, { upsert: true });
+}
+
+// What the web shows about the main posting machine. null = none configured.
+async function getPosterStatus() {
+    const doc = await getModel().findOne({ isPoster: true }).sort({ lastSeenAt: -1 }).lean();
+    if (!doc) return null;
+    const online = Date.now() - new Date(doc.lastSeenAt).getTime() < ONLINE_THRESHOLD_MS;
+    return {
+        online,
+        lastSeenAt: doc.lastSeenAt,
+        staffName: doc.staffName || null,
+        fbReady: !!doc.fbReady,
+        authWaiting: online && !!doc.authWaiting,
+        running: online && !!doc.running,
+        pages: doc.pages || [],
+    };
 }
 
 // The always-on "main posting machine" (POSTING_AGENT=true in its .env), if
@@ -35,10 +62,8 @@ async function heartbeat(agentId, staffId, staffName, isPoster = false) {
 // stand by; if it goes offline they fall back to posting as before.
 async function findOnlinePosterAgentId() {
     const cutoff = new Date(Date.now() - ONLINE_THRESHOLD_MS);
-    const doc = await getModel().collection.findOne(
-        { isPoster: true, lastSeenAt: { $gte: cutoff } },
-        { sort: { lastSeenAt: -1 }, projection: { agentId: 1 } },
-    );
+    const doc = await getModel().findOne({ isPoster: true, lastSeenAt: { $gte: cutoff } })
+        .sort({ lastSeenAt: -1 }).select('agentId').lean();
     return doc ? doc.agentId : null;
 }
 
@@ -79,4 +104,4 @@ async function staffNameByAgentId() {
     return map;
 }
 
-module.exports = { heartbeat, findOnlinePosterAgentId, findOnlineAgentForStaff, listOnlineAgentIds, staffNameByAgentId, ONLINE_THRESHOLD_MS, REASSIGN_THRESHOLD_MS };
+module.exports = { heartbeat, savePages, getPosterStatus, findOnlinePosterAgentId, findOnlineAgentForStaff, listOnlineAgentIds, staffNameByAgentId, ONLINE_THRESHOLD_MS, REASSIGN_THRESHOLD_MS };

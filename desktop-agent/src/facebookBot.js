@@ -511,7 +511,7 @@ async function openSwitchedPage(accountId, pageName, onLog) {
         }
 
         log(`✅ สลับเป็น: ${pageName}${pageId ? ` (id:${pageId})` : ''}`);
-        return { page, pageId };
+        return { page, pageId, switched: true };
     } catch(e) {
         log(`❌ openSwitchedPage: ${e.message}`);
         return { page: null, pageId: null };
@@ -627,8 +627,9 @@ async function _ensureAuthed(page, retryUrl, log) {
     if (url.includes('/login')) return 'Session หมดอายุ — Login ใหม่';
     if (!_is2FA(url)) return null;
 
-    _onAuthNeeded?.();
+    _onAuthNeeded?.(true);
     const ok = await _wait2FA(page, log);
+    _onAuthNeeded?.(false);
     if (!ok) return `${AUTH_REQUIRED_PREFIX} — ไม่ได้อนุมัติภายใน 10 นาที กรุณาอนุมัติบนมือถือแล้วสั่งโพสใหม่`;
     if (page.url().includes('/login')) return 'Session หมดอายุ — Login ใหม่';
 

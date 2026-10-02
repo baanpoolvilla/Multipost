@@ -5,6 +5,7 @@ const postStore      = require('../services/postStore');
 const { refreshPostAnalytics } = require('../services/facebookService');
 const { STATUS }     = require('../desktop-agent/src/scheduler/statuses');
 const agentPresence  = require('../desktop-agent/src/agentPresence');
+const imageStore     = require('../services/imageStore');
 
 // ── Group Overview Dashboard ───────────────────────────────────
 exports.showGroupOverview = async (req, res) => {
@@ -273,10 +274,32 @@ exports.bulkRenameCategory = async (req, res) => {
 // ── Job Queue page ─────────────────────────────────────────────
 exports.showJobQueue = async (req, res) => {
     await groupJobStore.expireOverdueJobs().catch(() => {});
-    const [groups, jobs, dbCategories] = await Promise.all([groupStore.list(), groupJobStore.list(), categoryStore.list()]);
+    const staffStore = require('../services/staffStore');
+    const [groups, jobs, dbCategories, staffList] = await Promise.all([
+        groupStore.list(), groupJobStore.list(), categoryStore.list(),
+        staffStore.list({ includeDeleted: true }).catch(() => []),
+    ]);
     const catColorMap = { 'ทั่วไป': '#868e96' };
     dbCategories.forEach(c => { catColorMap[c.name] = c.color || '#1877f2'; });
-    res.render('job-queue', { jobs, groups, catColorMap });
+    const staffNameMap = {};
+    staffList.forEach(s => { staffNameMap[String(s._id)] = s.displayName; });
+    res.render('job-queue', { jobs, groups, catColorMap, staffNameMap });
+};
+
+// Main posting machine health + its Pages, plus how many jobs are ahead.
+exports.posterStatus = async (req, res) => {
+    try {
+        const [poster, jobs] = await Promise.all([
+            agentPresence.getPosterStatus().catch(() => null),
+            groupJobStore.list(),
+        ]);
+        const now = Date.now();
+        const waiting = jobs.filter(j => j.status === STATUS.PENDING && (!j.scheduledAt || new Date(j.scheduledAt).getTime() <= now)).length;
+        const running = jobs.filter(j => j.status === STATUS.RUNNING).length;
+        res.json({ ok: true, poster, queue: { waiting, running } });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
 };
 
 // ── Job API ────────────────────────────────────────────────────
@@ -286,29 +309,40 @@ exports.listJobs = async (req, res) => {
     res.json(jobs);
 };
 
+// Same bounds as the Agent's composer: too short a gap between groups is
+// what gets an account flagged, too long ties up the single posting queue.
+const MIN_DELAY_S = 10, MAX_DELAY_S = 120, DEFAULT_DELAY_S = 30;
+
 exports.createJob = async (req, res) => {
-    const { message, groups, delaySeconds, accountId, scheduledAt, images, pageId, pageName } = req.body;
+    const { message, groups, delaySeconds, accountId, scheduledAt, images, pageId, pageName, postAsPage } = req.body;
     if (!message?.trim()) return res.status(400).json({ error: 'กรุณากรอกข้อความ' });
     if (!Array.isArray(groups) || !groups.length) return res.status(400).json({ error: 'กรุณาเลือกกลุ่ม' });
     try {
         const schedDate = scheduledAt ? new Date(scheduledAt) : null;
         const staffId = req.staffId || null;
-        // If the staff member who's creating this has their own Desktop
-        // Agent machine online right now, pin the job there (same agentId
-        // mechanism that already safely prevents a different machine from
-        // grabbing it — see desktop-agent/src/scheduler/schedulerService.js).
-        // If they don't have one online, leave agentId null: any running
-        // agent may claim it, same as before.
-        const pinnedAgentId = await agentPresence.findOnlineAgentForStaff(staffId).catch(() => null);
+        // With the always-on main posting machine online it posts everything,
+        // so leave the job unpinned. Otherwise pin it to the creator's own
+        // online Agent if they have one (old behavior), else any agent.
+        const poster = await agentPresence.findOnlinePosterAgentId().catch(() => null);
+        const pinnedAgentId = poster ? null : await agentPresence.findOnlineAgentForStaff(staffId).catch(() => null);
+        // Template images are stored as bare filenames; the posting machine
+        // needs a URL it can download, and has no storage credentials itself.
+        const imageUrls = [];
+        for (const img of (Array.isArray(images) ? images : [])) {
+            if (!img) continue;
+            imageUrls.push((await imageStore.getPublicUrl(img).catch(() => null)) || img);
+        }
+        const delay = Math.min(MAX_DELAY_S, Math.max(MIN_DELAY_S, parseInt(delaySeconds, 10) || DEFAULT_DELAY_S));
         const job = await groupJobStore.create({
             message: message.trim(),
-            groups,
+            groups: groups.map(g => ({ groupId: String(g.groupId), groupName: String(g.groupName || ''), pageId: g.pageId || undefined, pageName: g.pageName || undefined })),
             pageId:   pageId   || null,
             pageName: pageName || null,
-            delaySeconds: delaySeconds || 5,
+            postAsPage: (postAsPage && String(postAsPage).trim()) || null,
+            delaySeconds: delay,
             accountId: accountId || null,
             scheduledAt: (schedDate && schedDate > new Date()) ? schedDate.toISOString() : null,
-            images: Array.isArray(images) ? images : [],
+            images: imageUrls,
             staffId,
             agentId: pinnedAgentId,
         });

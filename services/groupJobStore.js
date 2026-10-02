@@ -24,6 +24,9 @@ const groupJobSchema = new mongoose.Schema({
     lastAttemptAt:  { type: String, default: null },
     sourceType:     { type: String, default: 'web' }, // 'web' | 'agent'
     agentId:        { type: String, default: null },
+    claimedBy:      { type: String, default: null },
+    postAsPage:     { type: String, default: null }, // post as this Facebook Page (name), null = personal profile
+    dueAt:          { type: Date, default: null },
     staffId:        { type: String, default: null },
     images:       { type: [String], default: [] },
     results:      [{
@@ -55,7 +58,7 @@ function scheduler() {
 async function list() {
     try {
         await connect();
-        return GroupJob.find().sort({ createdAt: -1 }).limit(100).lean();
+        return GroupJob.find().sort({ _id: -1 }).limit(100).lean();
     } catch(e) { return []; }
 }
 
@@ -88,7 +91,7 @@ async function listHistory() {
         // 'done' kept defensively in case migrateLegacyStatuses() hasn't
         // touched every row yet — new writes only ever use 'success'.
         return GroupJob.find({ status: { $in: [STATUS.SUCCESS, STATUS.FAILED, 'done'] } })
-            .sort({ createdAt: -1 }).limit(300).lean();
+            .sort({ _id: -1 }).limit(300).lean();
     } catch(e) { return []; }
 }
 
@@ -101,7 +104,7 @@ async function listHistory() {
 async function listAll() {
     try {
         await connect();
-        return GroupJob.find().sort({ createdAt: -1 }).limit(2000).lean();
+        return GroupJob.find().sort({ _id: -1 }).limit(2000).lean();
     } catch(e) { return []; }
 }
 
