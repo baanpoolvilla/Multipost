@@ -65,6 +65,9 @@ async function publishPages(accountId) {
     return jobRunner.runWhenIdle(async () => {
         const pages = await facebookBot.getAccountPages(accountId).catch(() => []);
         if (pages.length) await agentPresence.savePages(_agentId, pages).catch(() => {});
+        // Answer the request either way, so the web never shows "waiting"
+        // forever when Facebook returned nothing this time.
+        else await agentPresence.clearPagesRefresh(_agentId).catch(() => {});
     });
 }
 

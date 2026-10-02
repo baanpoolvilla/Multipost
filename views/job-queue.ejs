@@ -72,19 +72,6 @@
     <!-- Agent status banner (top) -->
     <div id="agentBanner" style="display:none"></div>
 
-    <!-- Header -->
-    <div class="card" style="padding:.85rem 1.25rem">
-      <div class="card-title" style="font-size:1.05rem">
-        <i class="fa-solid fa-list-check"></i> คิวโพสลงกลุ่ม
-        <span style="background:#e4e6ea;padding:.15rem .55rem;border-radius:999px;font-size:.8rem;margin-left:.4rem" id="jobCount"><%= jobs.length %></span>
-        <% if (groups.length) { %>
-        <button class="btn-post" style="margin-left:auto;font-size:.85rem;padding:.4rem .9rem" onclick="toggleForm()">
-          <i class="fa-solid fa-plus"></i> สร้างงานโพส
-        </button>
-        <% } %>
-      </div>
-    </div>
-
     <%
     // Each group appears under its primary (first non-ทั่วไป) category, or ทั่วไป
     const jqCatMap = {};
@@ -123,9 +110,13 @@
     <!-- Create Job Form -->
     <div class="card jq-compose" id="createForm">
       <div class="jq-compose-head">
-        <div class="jq-compose-title"><i class="fa-solid fa-pen-to-square"></i> สร้างโพสลงกลุ่ม</div>
-        <div class="jq-compose-sub">สั่งที่นี่ เครื่องโพสหลักจะโพสให้ตามลำดับคิว ไม่ต้องเปิด Agent</div>
+        <div class="jq-compose-title"><i class="fa-solid fa-pen-to-square"></i> สร้างโพสลงกลุ่ม
+          <span class="jq-compose-sub">สั่งที่นี่ เครื่องโพสหลักจะโพสให้ตามลำดับคิว</span>
+        </div>
       </div>
+
+      <div class="jq-cols">
+      <div class="jq-col">
 
       <!-- 1. Post as -->
       <section class="jq-sec">
@@ -160,7 +151,8 @@
         </div>
 
         <div class="jq-toolbar">
-          <button type="button" onclick="openTemplatePicker()"><i class="fa-solid fa-file-lines"></i> เทมเพลต</button>
+          <button type="button" onclick="openTemplatePicker()"><i class="fa-solid fa-folder-open"></i> ใช้เทมเพลต</button>
+          <button type="button" onclick="saveAsTemplate()"><i class="fa-solid fa-floppy-disk"></i> บันทึกเป็นเทมเพลต</button>
           <button type="button" onclick="openRecentPosts()"><i class="fa-solid fa-clock-rotate-left"></i> โพสก่อนหน้า</button>
           <button type="button" id="btnHowTo" onclick="togglePanel('howToPanel', this)"><i class="fa-regular fa-circle-question"></i> วิธีใช้งาน</button>
           <button type="button" id="btnTips" onclick="togglePanel('tipsPanel', this)"><i class="fa-regular fa-lightbulb"></i> เคล็ดลับ</button>
@@ -208,8 +200,10 @@
         </div>
       </section>
 
+      </div>
+      <div class="jq-col jq-col-right">
       <!-- 3. Groups -->
-      <section class="jq-sec">
+      <section class="jq-sec jq-sec-groups">
         <div class="jq-sec-hd">
           <span class="jq-step">3</span> เลือกกลุ่ม <span class="jq-req">*</span>
           <span id="selCount" class="jq-count-pill">ยังไม่ได้เลือก</span>
@@ -285,12 +279,14 @@
           <i class="fa-solid fa-paper-plane"></i> เพิ่มลงคิว
         </button>
       </div>
+      </div>
+      </div>
     </div>
 
     <!-- Jobs list -->
     <div class="card">
       <div class="card-title">
-        <i class="fa-solid fa-clock-rotate-left"></i> รายการ Jobs
+        <i class="fa-solid fa-clock-rotate-left"></i> รายการ Jobs <span class="jq-jobcount" id="jobCount"><%= jobs.length %></span>
         <% const schedCount = jobs.filter(j => j.status==='pending' && j.scheduledAt).length; %>
         <button id="btnSchedFilter" onclick="toggleSchedFilter()"
           style="margin-left:.6rem;background:#fff3cd;border:1px solid #ffe08a;border-radius:7px;padding:.18rem .55rem;font-size:.78rem;font-weight:600;color:#856404;cursor:pointer;font-family:inherit">
@@ -514,9 +510,50 @@
 .jq-submit:disabled { opacity:.6; cursor:default }
 .jq-tpl-item { display:block; width:100%; text-align:left; background:#fff; border:1px solid var(--border-color); border-radius:8px; padding:.5rem .65rem; margin-bottom:.4rem; cursor:pointer; font-family:inherit }
 .jq-tpl-item:hover { background:#f0f6ff; border-color:#b3d4f9 }
+.jq-tpl-row { display:flex; gap:.4rem; align-items:stretch; margin-bottom:.4rem }
+.jq-tpl-row .jq-tpl-item { margin-bottom:0; flex:1; min-width:0 }
+.jq-tpl-del { border:1px solid var(--border-color); background:#fff; border-radius:8px; color:#c5c8d0; cursor:pointer; padding:0 .7rem; flex-shrink:0 }
+.jq-tpl-del:hover { color:#c62828; border-color:#f5b5b5; background:#fff5f5 }
+.jq-tpl-tab { border:1px solid var(--border-color); background:#fff; border-radius:999px; padding:.2rem .65rem; font-size:.76rem; font-family:inherit; cursor:pointer; color:#444 }
+.jq-tpl-tab.on { background:#1877f2; border-color:#1877f2; color:#fff; font-weight:600 }
 @media (max-width: 640px) {
   .jq-sec, .jq-compose-head, .jq-submit-bar { padding-left:.85rem; padding-right:.85rem }
   .jq-submit { width:100% }
+}
+
+/* One-screen layout: wide page, composer in two columns (what to post |
+   where and when), so posting needs no scrolling on a desktop screen. */
+.jq-jobcount { background:#e4e6ea; padding:.1rem .5rem; border-radius:999px; font-size:.76rem; margin-left:.3rem }
+.jq-compose-head { padding:.6rem 1.1rem }
+.jq-compose-title { flex-wrap:wrap }
+.jq-compose-sub { font-weight:400; margin:0 0 0 .35rem }
+.jq-sec { padding:.7rem 1.1rem }
+.jq-sec-hd { margin-bottom:.45rem }
+.jq-chips { gap:.35rem }
+.jq-chip { padding:.24rem .7rem .24rem .3rem; font-size:.78rem }
+.jq-chip-av { width:20px; height:20px; font-size:.66rem }
+.jq-hint { margin-top:.3rem }
+.jq-modes { margin-bottom:.45rem; gap:.4rem }
+.jq-mode { padding:.45rem .6rem; border-radius:10px }
+.jq-mode small { font-size:.7rem }
+.jq-toolbar { margin-bottom:.45rem; gap:.3rem }
+.jq-toolbar button { padding:.24rem .65rem }
+.jq-editor textarea { min-height:96px; padding:.6rem .8rem }
+.jq-media-add, .jq-thumb { width:66px; height:66px }
+.jq-media-add { font-size:.68rem }
+.jq-media-add i { font-size:1.05rem }
+.jq-when { gap:.5rem }
+.jq-submit-bar { position:static; box-shadow:none; padding:.7rem 1.1rem }
+@media (min-width: 1101px) {
+  .page-wrap { max-width:1560px; grid-template-columns:230px minmax(0,1fr) }
+  .jq-cols { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) }
+  .jq-col { min-width:0 }
+  .jq-col:first-child .jq-sec:last-child { border-bottom:none }
+  .jq-col-right { display:flex; flex-direction:column; border-left:1px solid var(--border-color) }
+  /* The group list takes whatever height the left column leaves (height:0 +
+     flex-grow keeps it from stretching the form). */
+  .jq-sec-groups { flex:1; display:flex; flex-direction:column; min-height:0 }
+  .jq-sec-groups .jq-group-box { flex:1 1 auto; height:0; min-height:170px; max-height:none }
 }
 
 /* Job Queue - group picker */
@@ -1092,31 +1129,162 @@ function renderMedia() {
   updateSummary();
 }
 
-/* ── Templates ── */
+/* ── Templates — the same set the Desktop Agent uses (message, files,
+   groups, "post as", spacing, folder) ── */
+const _escT = s => String(s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+
+// Cloud URLs and stored image names work anywhere; "localpath::" files exist
+// only on the Agent machine that saved them.
+const _usableMedia = u => typeof u === 'string' && !!u && !u.includes('::');
+
+async function _fetchTemplates() {
+  try {
+    const d = await (await fetch('/api/agent/group-templates')).json();
+    return d.ok ? d.templates : [];
+  } catch { return []; }
+}
+
 async function openTemplatePicker() {
-  let list = [];
-  try { list = await (await fetch('/api/templates')).json(); } catch {}
-  if (!Array.isArray(list) || !list.length) {
-    Swal.fire({ icon:'info', title:'ยังไม่มีเทมเพลต', confirmButtonColor:'#1877f2' });
+  let list = await _fetchTemplates();
+  if (!list.length) {
+    Swal.fire({ icon:'info', title:'ยังไม่มีเทมเพลต', text:'ใส่ข้อความ เลือกกลุ่ม แล้วกด "บันทึกเป็นเทมเพลต" เพื่อสร้างอันแรก', confirmButtonColor:'#1877f2' });
     return;
   }
-  const esc = s => String(s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
-  const html = `<div style="max-height:55vh;overflow-y:auto;text-align:left">${list.map((t, i) => `
-    <button type="button" class="jq-tpl-item" data-i="${i}">
-      <div style="font-weight:700;font-size:.86rem">${esc(t.name || 'ไม่มีชื่อ')}${(t.images||[]).length ? ` <span style="color:#1877f2;font-size:.75rem">· ${t.images.length} ไฟล์</span>` : ''}</div>
-      <div style="font-size:.78rem;color:#65676b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc((t.message || '').slice(0, 90))}</div>
-    </button>`).join('')}</div>`;
+  let folder = '';
   let picked = null;
+  const render = (popup) => {
+    const folders = [...new Set(list.map(t => t.folder).filter(Boolean))].sort();
+    const shown = folder ? list.filter(t => t.folder === folder) : list;
+    const tabs = folders.length ? `<div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.6rem">
+      <button type="button" class="jq-tpl-tab${folder === '' ? ' on' : ''}" data-f="">ทั้งหมด (${list.length})</button>
+      ${folders.map(f => `<button type="button" class="jq-tpl-tab${folder === f ? ' on' : ''}" data-f="${_escT(f)}"><i class="fa-solid fa-folder"></i> ${_escT(f)}</button>`).join('')}
+    </div>` : '';
+    const rows = shown.map(t => {
+      const m = t.message || '';
+      const i = m.indexOf('|||');
+      const text = i === -1 ? m : (m.slice(0, i).trim() || m.slice(i + 3).trim());
+      const files = (t.images || []).filter(_usableMedia).length;
+      const localOnly = (t.images || []).length - files;
+      const meta = [
+        t.postAsPage ? `<i class="fa-solid fa-flag"></i> ${_escT(t.postAsPage)}` : '',
+        `${(t.groups || []).length} กลุ่ม`,
+        files ? `${files} ไฟล์` : '',
+        localOnly ? `<span style="color:#b26a00">${localOnly} ไฟล์อยู่ในเครื่อง Agent ใช้บนเว็บไม่ได้</span>` : '',
+        `เว้น ${t.delaySeconds || 30}s`,
+      ].filter(Boolean).join(' · ');
+      return `<div class="jq-tpl-row">
+        <button type="button" class="jq-tpl-item" data-id="${_escT(t.id)}">
+          <div style="font-weight:700;font-size:.86rem">${_escT(t.name || 'ไม่มีชื่อ')}</div>
+          <div style="font-size:.74rem;color:#65676b">${meta}</div>
+          <div style="font-size:.8rem;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escT((text || '').slice(0, 100))}</div>
+        </button>
+        <button type="button" class="jq-tpl-del" data-id="${_escT(t.id)}" title="ลบเทมเพลต" aria-label="ลบเทมเพลต ${_escT(t.name)}"><i class="fa-solid fa-trash"></i></button>
+      </div>`;
+    }).join('') || '<div style="color:#65676b;padding:1rem;text-align:center">ไม่มีเทมเพลตในโฟลเดอร์นี้</div>';
+    popup.querySelector('#jqTplBody').innerHTML = tabs + rows;
+    popup.querySelectorAll('.jq-tpl-tab').forEach(b => b.addEventListener('click', () => { folder = b.dataset.f; render(popup); }));
+    popup.querySelectorAll('.jq-tpl-item').forEach(b => b.addEventListener('click', () => { picked = list.find(t => t.id === b.dataset.id); Swal.close(); }));
+    popup.querySelectorAll('.jq-tpl-del').forEach(b => b.addEventListener('click', async () => {
+      const t = list.find(x => x.id === b.dataset.id);
+      if (!t || !confirm(`ลบเทมเพลต "${t.name}" ?\n(จะหายจาก Agent ด้วย เพราะใช้ชุดเดียวกัน)`)) return;
+      await fetch(`/api/agent/group-templates/${encodeURIComponent(t.id)}`, { method:'DELETE' }).catch(() => {});
+      list = list.filter(x => x.id !== t.id);
+      if (!list.length) { Swal.close(); return; }
+      render(popup);
+    }));
+  };
   await Swal.fire({
-    title:'เลือกเทมเพลต', html, showConfirmButton:false, showCloseButton:true, width:560,
-    didOpen: (popup) => popup.querySelectorAll('.jq-tpl-item').forEach(b => b.addEventListener('click', () => { picked = list[+b.dataset.i]; Swal.close(); })),
+    title:'เลือกเทมเพลต',
+    html:'<div id="jqTplBody" style="max-height:60vh;overflow-y:auto;text-align:left"></div>',
+    showConfirmButton:false, showCloseButton:true, width:640, didOpen: render,
   });
   if (!picked) return;
   if (!(await _confirmReplace(picked.message || ''))) return;
+  applyTemplate(picked);
+}
+
+function applyTemplate(t) {
   _media = [];
-  (picked.images || []).forEach(addExistingMedia);
-  _loadMessage(picked.message || '');
+  (t.images || []).filter(_usableMedia).forEach(addExistingMedia);
+  _loadMessage(t.message || '');
   renderMedia();
+  const delay = document.getElementById('fDelay');
+  if (delay) delay.value = Math.min(120, Math.max(10, t.delaySeconds || 30));
+
+  // Groups: tick the template's groups that still exist here.
+  const want = new Set((t.groups || []).map(g => String(g.groupId)));
+  let hit = 0;
+  _groups.forEach((g, i) => {
+    const cb = document.getElementById(`gc_${i}`);
+    if (!cb) return;
+    cb.checked = want.has(String(g.groupId));
+    if (cb.checked) hit++;
+  });
+  Object.keys(_catIdxMap).forEach(ci => syncCatCb(parseInt(ci)));
+
+  // "Post as": only if that Page is still in the posting machine's list.
+  const input = document.getElementById('fPage');
+  const names = [...new Set([_poster && _poster.identity, ...((_poster && _poster.pages) || [])].filter(Boolean))];
+  let pageNote = '';
+  if (t.postAsPage && names.includes(t.postAsPage)) input.value = t.postAsPage;
+  else { input.value = ''; pageNote = t.postAsPage ? ` · ไม่พบเพจ "${t.postAsPage}" กรุณาเลือกเพจเอง` : ' · กรุณาเลือกเพจ'; }
+  _pageNamesKey = '';
+  fillPageOptions();
+  updateSelCount();
+
+  const missing = want.size - hit;
+  Swal.fire({ toast:true, position:'top-end', icon: (missing || pageNote) ? 'warning' : 'success', showConfirmButton:false, timer:4000,
+    title:`ใช้เทมเพลต "${t.name}" แล้ว — ${hit} กลุ่ม${missing ? ` (ไม่พบ ${missing} กลุ่ม)` : ''}${pageNote}` });
+}
+
+async function saveAsTemplate() {
+  const message = _composedMessage() || document.getElementById('fMsg').value.trim();
+  const groups = _groups.filter((_, i) => document.getElementById(`gc_${i}`)?.checked).map(g => ({ groupId: g.groupId, groupName: g.groupName }));
+  if (!message && !groups.length) {
+    Swal.fire({ icon:'warning', title:'ยังไม่มีอะไรให้บันทึก', text:'ใส่ข้อความ หรือเลือกกลุ่มก่อน', confirmButtonColor:'#1877f2' });
+    return;
+  }
+  if (_media.some(m => m.state !== 'ok')) {
+    Swal.fire({ icon:'info', title:'รอให้อัปโหลดไฟล์เสร็จก่อน', confirmButtonColor:'#1877f2' });
+    return;
+  }
+  const folders = [...new Set((await _fetchTemplates()).map(t => t.folder).filter(Boolean))].sort();
+  const page = document.getElementById('fPage').value;
+  const { value, isConfirmed } = await Swal.fire({
+    title:'บันทึกเป็นเทมเพลต',
+    html:`<div style="text-align:left;font-size:.86rem">
+      <label for="swTplName" style="font-weight:600;display:block;margin-bottom:.25rem">ชื่อเทมเพลต</label>
+      <input id="swTplName" class="swal2-input" style="margin:0 0 .7rem;width:100%;box-sizing:border-box" placeholder="เช่น โปรวันธรรมดา Madaguscar">
+      <label for="swTplFolder" style="font-weight:600;display:block;margin-bottom:.25rem">โฟลเดอร์ (ไม่บังคับ)</label>
+      <input id="swTplFolder" class="swal2-input" style="margin:0 0 .7rem;width:100%;box-sizing:border-box" list="swTplFolders" placeholder="พิมพ์ชื่อใหม่ หรือเลือกที่มีอยู่">
+      <datalist id="swTplFolders">${folders.map(f => `<option value="${_escT(f)}"></option>`).join('')}</datalist>
+      <div style="color:#65676b;font-size:.8rem;line-height:1.6">จะบันทึก: ${message ? 'ข้อความ' : 'ไม่มีข้อความ'}${(_postMode === 'text' && _media.length) ? ` · ${_media.length} ไฟล์` : ''} · ${groups.length} กลุ่ม · ${page ? 'ในนาม ' + _escT(page) : 'ไม่ระบุเพจ'} · เว้น ${parseInt(document.getElementById('fDelay').value) || 30}s<br>ใช้ได้ทั้งบนเว็บและใน Agent</div>
+    </div>`,
+    showCancelButton:true, confirmButtonText:'บันทึก', cancelButtonText:'ยกเลิก', confirmButtonColor:'#1877f2', focusConfirm:false,
+    didOpen: () => document.getElementById('swTplName').focus(),
+    preConfirm: () => {
+      const name = document.getElementById('swTplName').value.trim();
+      if (!name) { Swal.showValidationMessage('กรุณาตั้งชื่อเทมเพลต'); return false; }
+      return { name, folder: document.getElementById('swTplFolder').value.trim() };
+    },
+  });
+  if (!isConfirmed) return;
+  try {
+    const r = await fetch('/api/agent/group-templates', {
+      method:'POST', headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({
+        name: value.name, folder: value.folder || null, message, groups,
+        delaySeconds: parseInt(document.getElementById('fDelay').value) || 30,
+        postAsPage: page || null,
+        images: _postMode === 'text' ? _media.map(m => m.url).filter(_usableMedia) : [],
+      }),
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'บันทึกไม่สำเร็จ');
+    Swal.fire({ toast:true, position:'top-end', icon:'success', title:`บันทึกเทมเพลต "${value.name}" แล้ว`, showConfirmButton:false, timer:2500 });
+  } catch (e) {
+    Swal.fire({ icon:'error', title:'บันทึกเทมเพลตไม่สำเร็จ', text:e.message, confirmButtonColor:'#1877f2' });
+  }
 }
 
 /* ── Main posting machine status + its Pages ── */

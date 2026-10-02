@@ -48,6 +48,10 @@ async function savePages(agentId, pages) {
     await getModel().findOneAndUpdate({ agentId }, { $set: { pages: names, identity, pagesUpdatedAt: new Date() } }, { upsert: true });
 }
 
+async function clearPagesRefresh(agentId) {
+    await getModel().findOneAndUpdate({ agentId }, { $set: { pagesRefreshRequestedAt: null } });
+}
+
 async function requestPagesRefresh() {
     const r = await getModel().findOneAndUpdate({ isPoster: true }, { $set: { pagesRefreshRequestedAt: new Date() } }, { sort: { lastSeenAt: -1 } });
     return !!r;
@@ -126,4 +130,4 @@ async function staffNameByAgentId() {
     return map;
 }
 
-module.exports = { heartbeat, savePages, requestPagesRefresh, pagesRefreshPending, getPosterStatus, findOnlinePosterAgentId, findOnlineAgentForStaff, listOnlineAgentIds, staffNameByAgentId, ONLINE_THRESHOLD_MS, REASSIGN_THRESHOLD_MS };
+module.exports = { heartbeat, savePages, clearPagesRefresh, requestPagesRefresh, pagesRefreshPending, getPosterStatus, findOnlinePosterAgentId, findOnlineAgentForStaff, listOnlineAgentIds, staffNameByAgentId, ONLINE_THRESHOLD_MS, REASSIGN_THRESHOLD_MS };

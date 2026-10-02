@@ -312,6 +312,29 @@ exports.posterStatus = async (req, res) => {
     }
 };
 
+// ── Group-post templates (shared with the Desktop Agent) ───────
+const agentTemplateStore = require('../services/agentTemplateStore');
+
+exports.listGroupTemplates = async (req, res) => {
+    try { res.json({ ok: true, templates: await agentTemplateStore.list() }); }
+    catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+};
+
+exports.saveGroupTemplate = async (req, res) => {
+    const { name, message, groups } = req.body || {};
+    if (!String(name || '').trim()) return res.status(400).json({ ok: false, error: 'กรุณาตั้งชื่อเทมเพลต' });
+    if (!String(message || '').trim() && !(Array.isArray(groups) && groups.length)) {
+        return res.status(400).json({ ok: false, error: 'ต้องมีข้อความหรือกลุ่มอย่างน้อยหนึ่งอย่าง' });
+    }
+    try { res.json({ ok: true, id: await agentTemplateStore.save(req.body) }); }
+    catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+};
+
+exports.deleteGroupTemplate = async (req, res) => {
+    try { res.json({ ok: !!(await agentTemplateStore.remove(req.params.id)) }); }
+    catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+};
+
 // Asks the main posting machine to re-read its Page list (picked up on its
 // next heartbeat, as soon as it isn't posting).
 exports.requestPagesRefresh = async (req, res) => {
