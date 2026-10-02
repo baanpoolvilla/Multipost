@@ -667,6 +667,26 @@ async function _ensureAuthed(page, retryUrl, log) {
 let _onAuthNeeded = null;
 function onAuthNeeded(cb) { _onAuthNeeded = cb; }
 
+// Groups are saved as a numeric id, a vanity name ("pattayapoolvilla"), or —
+// for some — a full link (".../share/g/…", ".../groups/…"). Pasting a link
+// after /groups/ produced a broken address, so use links as they are and
+// encode anything else.
+function groupUrlFor(groupId, pageId) {
+    const raw = String(groupId || '').trim();
+    let url;
+    if (/^https?:\/\//i.test(raw)) url = new URL(raw);
+    else url = new URL(`https://www.facebook.com/groups/${encodeURIComponent(raw)}`);
+    if (pageId) url.searchParams.set('profile_id', pageId);
+    return url.toString();
+}
+
+// Group ids can be links ("https://…/share/g/…"); "/" and ":" in a file name
+// made the debug screenshot itself fail and hide the real error.
+function _fileSafe(s) { return String(s || '').replace(/[^\w.-]+/g, '_').slice(-80) || 'group'; }
+
+// The browser page/window went away mid-job (closed by hand, crashed).
+function isClosedError(msg) { return /Target page, context or browser has been closed|Target closed|browser has disconnected|Browser closed/i.test(String(msg || '')); }
+
 // ── Post to group ─────────────────────────────────────────────
 // sharedPage: if provided, use this already-switched page (don't open a new one, don't close it)
 // pageId: if provided, append ?profile_id=PAGE_ID to group URL to force Page context
@@ -678,9 +698,7 @@ async function postToGroup(accountId, groupId, groupName, message, postAsPage, o
         const page = sharedPage || await ctx.newPage();
         const ownPage = !sharedPage;
 
-        const groupUrl = pageId
-            ? `https://www.facebook.com/groups/${groupId}?profile_id=${pageId}`
-            : `https://www.facebook.com/groups/${groupId}`;
+        const groupUrl = groupUrlFor(groupId, pageId);
         log(`🌐 เปิดกลุ่ม ${groupName}...${pageId ? ` [as Page ${pageId}]` : ''}`);
         await page.goto(groupUrl, {
             waitUntil: 'domcontentloaded', timeout: 30000,
@@ -745,9 +763,9 @@ async function postToGroup(accountId, groupId, groupName, message, postAsPage, o
 
         log(`   composer: ${clickResult||'ไม่เจอ'}`);
         if (!clickResult) {
-            await page.screenshot({ path: path.join(_userDataBase, `debug-${groupId}.png`), fullPage: false });
+            await page.screenshot({ path: path.join(_userDataBase, `debug-${_fileSafe(groupId)}.png`), fullPage: false }).catch(() => {});
             if (ownPage) await page.close();
-            return { ok: false, error: `หาช่องโพสต์ไม่เจอ (debug-${groupId}.png บันทึกแล้ว)` };
+            return { ok: false, error: `หาช่องโพสต์ไม่เจอ (debug-${_fileSafe(groupId)}.png บันทึกแล้ว)` };
         }
 
         await page.waitForTimeout(2000);
@@ -841,7 +859,7 @@ async function postToGroup(accountId, groupId, groupName, message, postAsPage, o
             const who = await _dialogIdentityText(page);
             if (!_normText(who).includes(_normText(postAsPage))) {
                 log(`   ⛔ ผู้โพสในหน้าต่างไม่ใช่ "${postAsPage}" — ไม่กดโพส`);
-                await page.screenshot({ path: path.join(_userDataBase, `debug-identity-${groupId}.png`) }).catch(() => {});
+                await page.screenshot({ path: path.join(_userDataBase, `debug-identity-${_fileSafe(groupId)}.png`) }).catch(() => {});
                 await page.keyboard.press('Escape').catch(() => {});
                 if (ownPage) await page.close().catch(() => {});
                 return { ok: false, error: `ตัวตนที่จะโพสไม่ใช่ "${postAsPage}" — ยกเลิก ไม่ได้โพส (กันโพสผิดเพจ)` };
@@ -989,4 +1007,4 @@ async function closeAll() {
     for (const id of Object.keys(_contexts)) await closeContext(id);
 }
 
-module.exports = { init, onAuthNeeded, loginAccount, postToGroup, deletePostByUrl, getAccountPages, openSwitchedPage, switchBackOnPage, closeContext, closeAll };
+module.exports = { init, onAuthNeeded, isClosedError, groupUrlFor, loginAccount, postToGroup, deletePostByUrl, getAccountPages, openSwitchedPage, switchBackOnPage, closeContext, closeAll };

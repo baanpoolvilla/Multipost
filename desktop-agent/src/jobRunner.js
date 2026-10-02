@@ -289,6 +289,13 @@ async function processJob(job) {
             }
         }
 
+        // The browser window can disappear mid-job (closed by hand on the
+        // posting machine, or crashed). Reopen it and retry that group instead
+        // of failing every remaining group — a few times at most per job.
+        let reopened = 0;
+        const MAX_REOPEN = 2;
+        let retryingGroup = -1;
+
         for (let i=0; i<job.groups.length && !switchFailed; i++) {
             if (!_running) { interrupted = true; break; }
             const g = job.groups[i];
@@ -296,6 +303,38 @@ async function processJob(job) {
             _emit?.('jobs:progress', { groupName:g.groupName, status:'posting', current:i+1, total:job.groups.length });
 
             const res = await _bot.postToGroup(acc.id, g.groupId, g.groupName, job.message, job.postAsPage||null, (m)=>log(`   ${m}`), sharedPage, sharedPageId, tempImagePaths);
+
+            if (!res.ok && _bot.isClosedError?.(res.error) && retryingGroup !== i) {
+                if (reopened >= MAX_REOPEN) {
+                    const err = 'หน้าต่างโพสถูกปิดซ้ำหลายครั้ง — หยุดงาน (อย่าปิดหน้าต่าง Chromium บนเครื่องโพสหลักระหว่างโพส)';
+                    log(`⛔ ${err}`);
+                    for (const rest of job.groups.slice(i)) results.push({ groupId:rest.groupId, groupName:rest.groupName, status:'failed', error:err, timestamp:new Date().toISOString(), postUrl:null });
+                    await _store.saveProgress?.(id, results);
+                    break;
+                }
+                reopened++;
+                log(`   ⚠️ หน้าต่างโพสถูกปิด — เปิดใหม่แล้วลองกลุ่มนี้อีกครั้ง (${reopened}/${MAX_REOPEN})`);
+                if (job.postAsPage) {
+                    await sharedPage?.close().catch(() => {});
+                    const again = await _bot.openSwitchedPage(acc.id, job.postAsPage, (m) => log(`   ${m}`));
+                    if (!again?.switched) {
+                        await again?.page?.close().catch(() => {});
+                        sharedPage = null;
+                        const err = `เปิดหน้าต่างใหม่แล้วสลับเป็นเพจ "${job.postAsPage}" ไม่ได้ — หยุดงาน (เพื่อไม่ให้โพสผิดตัวตน)`;
+                        log(`⛔ ${err}`);
+                        for (const rest of job.groups.slice(i)) results.push({ groupId:rest.groupId, groupName:rest.groupName, status:'failed', error:err, timestamp:new Date().toISOString(), postUrl:null });
+                        await _store.saveProgress?.(id, results);
+                        break;
+                    }
+                    sharedPage   = again.page;
+                    sharedPageId = again.pageId || null;
+                }
+                retryingGroup = i;
+                i--;
+                continue;
+            }
+            retryingGroup = -1;
+
             results.push({ groupId:g.groupId, groupName:g.groupName, status:res.ok?'success':'failed', error:res.error||null, timestamp:new Date().toISOString(), postUrl:res.postUrl||null });
             await _store.saveProgress?.(id, results);
 
