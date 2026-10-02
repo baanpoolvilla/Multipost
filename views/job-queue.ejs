@@ -1310,12 +1310,35 @@ let _poster = null;
 let _lastStatusAt = 0;
 const _escB = s => String(s || '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
 
+let _statusInFlight = false;  // never stack requests if one is slow
+let _queueBusy = true;        // something posting / waiting → poll fast (true until the first answer)
+let _statusFails = 0;
 async function refreshPosterStatus() {
+  if (_statusInFlight) return;
+  _statusInFlight = true;
+  try { await _refreshPosterStatus(); } finally { _statusInFlight = false; }
+}
+async function _refreshPosterStatus() {
   const banner = document.getElementById('agentBanner');
   let d = null;
-  try { d = await (await fetch('/api/agent/poster-status', { cache: 'no-store' })).json(); } catch {}
-  _poster = d && d.poster;
-  fillPageOptions();
+  try {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 10000);
+    try { d = await (await fetch('/api/agent/poster-status', { cache: 'no-store', signal: ctl.signal })).json(); }
+    finally { clearTimeout(timer); }
+  } catch {}
+  // A missed update (network blip, slow response) must not wipe what is on
+  // screen — above all the chosen Page. Keep the last good state and let the
+  // "อัปเดต N วินาทีที่แล้ว" stamp show that it is getting stale.
+  if (!d || !d.ok) {
+    _statusFails++;
+    if (_lastStatusAt && _statusFails < 6) return;
+  } else {
+    _statusFails = 0;
+    _poster = d.poster;
+    _queueBusy = !!((d.current || []).length || (d.queue && d.queue.waiting) || (d.poster && (d.poster.pagesRefreshPending || d.poster.authWaiting)));
+    fillPageOptions();
+  }
   if (d && d.ok) { _lastStatusAt = Date.now(); applyJobStatuses(d.jobs || []); }
   if (!banner) return;
   banner.style.display = 'block';
@@ -1637,8 +1660,15 @@ function applyJobStatuses(jobs) {
 
 if (typeof initComposer === 'function' && document.getElementById('createForm')) initComposer();
 refreshPosterStatus();
-// Live: every 5s while the tab is visible, and immediately on return to it.
-setInterval(() => { if (!document.hidden) refreshPosterStatus(); }, 5000);
+// Live, but only as often as it is useful: every 5s while something is
+// posting or waiting, every 20s when the queue is idle, and not at all while
+// the tab is in the background (it refreshes at once on return).
+(function pollLoop() {
+  setTimeout(async () => {
+    if (!document.hidden) await refreshPosterStatus();
+    pollLoop();
+  }, _queueBusy ? 5000 : 20000);
+})();
 setInterval(tickLiveStamp, 1000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshPosterStatus(); });
 </script>
