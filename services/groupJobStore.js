@@ -62,6 +62,15 @@ async function list() {
     } catch(e) { return []; }
 }
 
+// Same 100 jobs, only the fields the live status banner needs — it is polled
+// every few seconds, so it must not ship full result rows and attachments.
+async function statusFeed() {
+    await connect();
+    return GroupJob.find().sort({ _id: -1 }).limit(100)
+        .select('status message staffId postAsPage scheduledAt dueAt updatedAt lastAttemptAt createdAt groups.groupId results.status results.error results.groupName')
+        .lean();
+}
+
 async function create(data) {
     await connect();
     return scheduler().CreateJob(data);
@@ -189,7 +198,7 @@ async function updateResultAnalytics(jobId, resultIndex, analytics) {
 }
 
 module.exports = {
-    list, create, remove, listHistory, listAll, deleteHistory, getById, statsByDateRange,
+    list, statusFeed, create, remove, listHistory, listAll, deleteHistory, getById, statsByDateRange,
     updateOne, listScheduled, updateResultAnalytics, listExpired, expireOverdueJobs,
     migrateLegacyStatuses, retryJob, cancelJob,
 };

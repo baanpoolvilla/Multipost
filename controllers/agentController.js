@@ -286,27 +286,75 @@ exports.showJobQueue = async (req, res) => {
     res.render('job-queue', { jobs, groups, catColorMap, staffNameMap });
 };
 
-// Main posting machine health + its Pages, plus how many jobs are ahead.
+// Staff names change rarely; the banner polls every few seconds.
+let _staffNames = { at: 0, map: {} };
+async function staffNameMap() {
+    if (Date.now() - _staffNames.at < 60 * 1000) return _staffNames.map;
+    const staffStore = require('../services/staffStore');
+    const list = await staffStore.list({ includeDeleted: true }).catch(() => []);
+    const map = {};
+    list.forEach(s => { map[String(s._id)] = s.displayName; });
+    _staffNames = { at: Date.now(), map };
+    return map;
+}
+
+function jobLabel(message) {
+    const m = String(message || '');
+    const i = m.indexOf('|||');
+    const text = i === -1 ? m : (m.slice(0, i).trim() || m.slice(i + 3).trim());
+    return text.replace(/\s+/g, ' ').slice(0, 60);
+}
+
+// Main posting machine health, what it is posting right now (whose job, how
+// far along), who is next, and recent failures — one cheap call for the banner.
 exports.posterStatus = async (req, res) => {
     try {
-        const [poster, jobs] = await Promise.all([
+        const [poster, jobs, names] = await Promise.all([
             agentPresence.getPosterStatus().catch(() => null),
-            groupJobStore.list(),
+            groupJobStore.statusFeed(),
+            staffNameMap(),
         ]);
         const now = Date.now();
-        const waiting = jobs.filter(j => j.status === STATUS.PENDING && (!j.scheduledAt || new Date(j.scheduledAt).getTime() <= now)).length;
-        const running = jobs.filter(j => j.status === STATUS.RUNNING).length;
-        // Failed jobs in the last 24h, so a problem shows up on the web
-        // without anyone having to look at the posting machine.
+        const owner = j => (j.staffId && names[String(j.staffId)]) || 'ไม่ระบุผู้สั่ง';
+        const brief = j => ({
+            id: String(j._id), owner: owner(j), label: jobLabel(j.message), postAsPage: j.postAsPage || null,
+            total: (j.groups || []).length,
+        });
+
+        const current = jobs.filter(j => j.status === STATUS.RUNNING).map(j => {
+            const results = j.results || [];
+            const last = results[results.length - 1];
+            return {
+                ...brief(j),
+                done: results.length,
+                ok: results.filter(r => r.status === 'success').length,
+                failed: results.filter(r => r.status === 'failed').length,
+                lastGroup: last ? last.groupName : null,
+                startedAt: j.lastAttemptAt || null,
+            };
+        });
+        const dueTime = j => new Date(j.dueAt || j.scheduledAt || j.createdAt).getTime();
+        const due = jobs.filter(j => j.status === STATUS.PENDING && (!j.scheduledAt || new Date(j.scheduledAt).getTime() <= now))
+            .sort((a, b) => dueTime(a) - dueTime(b));
+        const scheduled = jobs.filter(j => j.status === STATUS.PENDING && j.scheduledAt && new Date(j.scheduledAt).getTime() > now).length;
+
+        // Failed groups in the last 24h. A job that posted to some groups but
+        // skipped others (e.g. wrong Page shown) is still "success" overall.
         const dayAgo = now - 24 * 3600 * 1000;
-        // Any job with a failed group counts — a job that posted to some groups
-        // but skipped others (e.g. wrong Page shown) is still "success" overall.
         const recent = jobs.filter(j => new Date(j.updatedAt || j.lastAttemptAt || j.createdAt).getTime() >= dayAgo);
         const failedGroups = recent.flatMap(j => (j.results || []).filter(r => r.status === 'failed'));
         const jobsWithFailures = recent.filter(j => j.status === STATUS.FAILED || (j.results || []).some(r => r.status === 'failed'));
         const wrongPage = failedGroups.filter(r => /ตัวตนที่จะโพสไม่ใช่|สลับเป็นเพจ/.test(r.error || '')).length;
         const lastError = jobsWithFailures.length ? ((jobsWithFailures[0].results || []).find(r => r.error)?.error || null) : null;
-        res.json({ ok: true, poster, queue: { waiting, running }, failures: { count: jobsWithFailures.length, groups: failedGroups.length, wrongPage, lastError } });
+
+        res.json({
+            ok: true, poster, serverTime: new Date().toISOString(),
+            queue: { waiting: due.length, running: current.length, scheduled },
+            current,
+            next: due.slice(0, 5).map(brief),
+            jobs: jobs.map(j => ({ id: String(j._id), status: j.status, done: (j.results || []).length, ok: (j.results || []).filter(r => r.status === 'success').length, total: (j.groups || []).length })),
+            failures: { count: jobsWithFailures.length, groups: failedGroups.length, wrongPage, lastError },
+        });
     } catch (e) {
         res.status(500).json({ ok: false, error: e.message });
     }

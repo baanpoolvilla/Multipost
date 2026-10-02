@@ -296,7 +296,8 @@
           style="margin-left:.4rem;background:#fff3cd;border:1px solid #ffe08a;border-radius:7px;padding:.18rem .55rem;font-size:.78rem;font-weight:600;color:#856404;cursor:pointer;font-family:inherit">
           <i class="fa-solid fa-calendar-days"></i> ปฏิทิน
         </button>
-        <button class="btn-link-sm" style="margin-left:auto" onclick="location.reload()"><i class="fa-solid fa-rotate-right"></i> รีเฟรช</button>
+        <button id="jqNewJobs" class="btn-link-sm" style="display:none;margin-left:auto;font-weight:700" onclick="location.reload()"><i class="fa-solid fa-circle-plus"></i> มีงานใหม่ในคิว กดเพื่อแสดง</button>
+        <button class="btn-link-sm" style="margin-left:.5rem" onclick="location.reload()"><i class="fa-solid fa-rotate-right"></i> รีเฟรช</button>
       </div>
 
       <!-- Bulk reschedule bar — shown only while "ตั้งเวลาไว้" filter is active and rows selected -->
@@ -354,6 +355,7 @@
             <% if (j.status==='success'||j.status==='failed') { %>
             · <strong><%= (j.results||[]).filter(r=>r.status==='success').length %>/<%= (j.groups||[]).length %></strong> สำเร็จ
             <% } %>
+            <span class="jq-row-prog"></span>
           </div>
         </div>
         <span class="badge <%= statusCls[j.status]||'' %>" style="flex-shrink:0"><%= statusTH[j.status]||j.status %></span>
@@ -399,6 +401,22 @@
 /* The site stylesheet never defines these, so every var() below (and the
    older rules on this page) resolved to nothing — no borders, default text. */
 :root { --border-color:#dddfe2; --text-primary:#1c1e21; --text-secondary:#65676b }
+
+/* Live status banner */
+.jq-live { padding:.7rem 1.1rem; display:flex; flex-direction:column; gap:.5rem }
+.jq-live-top { display:flex; align-items:center; gap:.75rem; flex-wrap:wrap }
+.jq-live-counts { font-size:.8rem; font-weight:600; white-space:nowrap; font-variant-numeric:tabular-nums }
+.jq-live-stamp { font-weight:400; opacity:.8 }
+.jq-live-job { background:rgba(255,255,255,.65); border-radius:10px; padding:.5rem .7rem }
+.jq-live-line { display:flex; justify-content:space-between; gap:.6rem; flex-wrap:wrap; font-size:.84rem }
+.jq-live-num { font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap }
+.jq-live-bar { height:8px; background:rgba(11,61,145,.15); border-radius:999px; overflow:hidden; margin:.35rem 0 }
+.jq-live-bar > div { height:100%; background:#1877f2; border-radius:999px; transition:width .6s ease }
+.jq-live-sub { font-size:.76rem; opacity:.85; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.jq-live-next { font-size:.8rem; display:flex; align-items:center; gap:.35rem; flex-wrap:wrap }
+.jq-live-chip { background:rgba(255,255,255,.7); border-radius:999px; padding:.1rem .6rem; font-size:.76rem }
+.jq-live-more { font-size:.76rem; opacity:.8 }
+@media (prefers-reduced-motion: reduce) { .jq-live-bar > div { transition:none } .fa-spin { animation:none } }
 
 /* Create-job composer */
 .jq-compose { padding:0; overflow:hidden }
@@ -1287,21 +1305,27 @@ async function saveAsTemplate() {
   }
 }
 
-/* ── Main posting machine status + its Pages ── */
+/* ── Live status: posting machine health, what is posting now, who is next ── */
 let _poster = null;
+let _lastStatusAt = 0;
+const _escB = s => String(s || '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+
 async function refreshPosterStatus() {
   const banner = document.getElementById('agentBanner');
   let d = null;
-  try { d = await (await fetch('/api/agent/poster-status')).json(); } catch {}
+  try { d = await (await fetch('/api/agent/poster-status', { cache: 'no-store' })).json(); } catch {}
   _poster = d && d.poster;
   fillPageOptions();
+  if (d && d.ok) { _lastStatusAt = Date.now(); applyJobStatuses(d.jobs || []); }
   if (!banner) return;
   banner.style.display = 'block';
-  const q = d && d.queue ? d.queue : { waiting: 0, running: 0 };
-  const queueText = `กำลังโพส ${q.running} งาน · รอคิว ${q.waiting} งาน`;
+
+  const q = d && d.queue ? d.queue : { waiting: 0, running: 0, scheduled: 0 };
+  const current = (d && d.current) || [];
+  const next = (d && d.next) || [];
   let tone, icon, title, body;
   if (!d || !d.ok) {
-    tone = ['#fff8e1', '#f0c36d', '#856404']; icon = 'fa-circle-question'; title = 'ตรวจสอบสถานะเครื่องโพสไม่ได้'; body = 'ลองรีเฟรชหน้าอีกครั้ง';
+    tone = ['#fff8e1', '#f0c36d', '#856404']; icon = 'fa-circle-question'; title = 'ตรวจสอบสถานะเครื่องโพสไม่ได้'; body = 'กำลังลองใหม่อัตโนมัติ…';
   } else if (!_poster) {
     tone = ['#fff8e1', '#f0c36d', '#856404']; icon = 'fa-triangle-exclamation'; title = 'ยังไม่ได้ตั้งเครื่องโพสหลัก'; body = 'งานจะรอจนกว่าจะมี Agent เครื่องใดเครื่องหนึ่งเปิดอยู่';
   } else if (!_poster.online) {
@@ -1316,25 +1340,58 @@ async function refreshPosterStatus() {
   } else if (!_poster.running) {
     tone = ['#fff8e1', '#f0c36d', '#856404']; icon = 'fa-pause'; title = 'เครื่องโพสหลักหยุดโพสอัตโนมัติอยู่';
     body = 'งานจะรอในคิวจนกว่าจะเปิดโพสอัตโนมัติ กรุณาแจ้งผู้ดูแลระบบ';
+  } else if (current.length) {
+    tone = ['#e7f0fd', '#b3d4f9', '#0b3d91']; icon = 'fa-spinner fa-spin'; title = 'กำลังโพสอยู่';
+    body = 'งานใหม่ที่สั่งจะต่อคิวและโพสให้อัตโนมัติ';
   } else {
-    tone = ['#d1e7dd', '#a3cfbb', '#0a3622']; icon = 'fa-circle-check'; title = 'เครื่องโพสหลักพร้อมทำงาน';
-    body = 'สั่งงานแล้วระบบจะโพสตามลำดับคิวให้อัตโนมัติ ไม่ต้องเปิด Agent';
+    tone = ['#d1e7dd', '#a3cfbb', '#0a3622']; icon = 'fa-circle-check'; title = 'เครื่องโพสหลักว่าง พร้อมโพส';
+    body = q.waiting ? 'กำลังจะเริ่มงานถัดไปในคิว…' : 'สั่งงานแล้วจะเริ่มโพสทันที ไม่ต้องเปิด Agent';
   }
+
+  const curHtml = current.map(c => {
+    const pct = c.total ? Math.round(c.done / c.total * 100) : 0;
+    return `<div class="jq-live-job">
+      <div class="jq-live-line">
+        <span><i class="fa-solid fa-user"></i> <b>${_escB(c.owner)}</b>${c.postAsPage ? ` · <i class="fa-solid fa-flag"></i> ${_escB(c.postAsPage)}` : ''}</span>
+        <span class="jq-live-num">${c.done}/${c.total} กลุ่ม${c.failed ? ` · <span style="color:#c62828">ไม่สำเร็จ ${c.failed}</span>` : ''}</span>
+      </div>
+      <div class="jq-live-bar" role="progressbar" aria-valuemin="0" aria-valuemax="${c.total}" aria-valuenow="${c.done}"><div style="width:${pct}%"></div></div>
+      <div class="jq-live-sub">${_escB(c.label)}${c.lastGroup ? ` — ล่าสุด: ${_escB(c.lastGroup)}` : ' — กำลังเริ่ม…'}</div>
+    </div>`;
+  }).join('');
+  const nextHtml = next.length ? `<div class="jq-live-next"><b>คิวถัดไป:</b> ${next.map((n, i) => `<span class="jq-live-chip">${i + 1}. ${_escB(n.owner)} · ${n.total} กลุ่ม</span>`).join('')}${q.waiting > next.length ? ` <span class="jq-live-more">+${q.waiting - next.length} งาน</span>` : ''}</div>` : '';
+  const counts = [`กำลังโพส ${q.running}`, `รอคิว ${q.waiting}`, q.scheduled ? `ตั้งเวลาไว้ ${q.scheduled}` : ''].filter(Boolean).join(' · ');
+
   const f = d && d.failures;
-  const esc = s => String(s || '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
   const wrongPageHtml = f && f.wrongPage ? `<div class="card" style="background:#fde8e8;border-color:#f5b5b5;color:#842029;padding:.6rem 1.1rem;font-size:.82rem;margin-top:.5rem">
       <i class="fa-solid fa-flag"></i> <b>ไม่ได้โพส ${f.wrongPage} กลุ่ม เพราะเลือกเพจไม่ได้ / ผู้โพสไม่ตรงกับเพจที่เลือก</b>
       — ระบบยกเลิกเพื่อกันโพสผิดเพจ กรุณาตรวจใน <a href="/group-history" style="color:#842029;font-weight:600">ประวัติโพสกลุ่ม</a> แล้วสั่งใหม่ หรือแจ้งผู้ดูแล
     </div>` : '';
   const failHtml = f && f.count ? `<div class="card" style="background:#fff4e5;border-color:#ffd8a8;color:#7a3e00;padding:.6rem 1.1rem;font-size:.82rem;margin-top:.5rem">
-      <i class="fa-solid fa-circle-exclamation"></i> <b>มี ${f.count} งานที่โพสไม่สำเร็จบางกลุ่มหรือทั้งหมด (${f.groups} กลุ่ม) ใน 24 ชม.</b>${f.lastError ? ` — สาเหตุล่าสุด: ${esc(f.lastError).slice(0, 140)}` : ''}
+      <i class="fa-solid fa-circle-exclamation"></i> <b>มี ${f.count} งานที่โพสไม่สำเร็จบางกลุ่มหรือทั้งหมด (${f.groups} กลุ่ม) ใน 24 ชม.</b>${f.lastError ? ` — สาเหตุล่าสุด: ${_escB(f.lastError).slice(0, 140)}` : ''}
       · ดูรายละเอียดที่ <a href="/group-history" style="color:#7a3e00;font-weight:600">ประวัติโพสกลุ่ม</a>
     </div>${wrongPageHtml}` : '';
-  banner.innerHTML = `<div class="card" style="background:${tone[0]};border-color:${tone[1]};color:${tone[2]};padding:.75rem 1.1rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
-    <i class="fa-solid ${icon}" style="font-size:1.1rem"></i>
-    <div style="flex:1;min-width:200px"><div style="font-weight:700;font-size:.9rem">${title}</div><div style="font-size:.8rem;opacity:.9">${body}</div></div>
-    <div style="font-size:.8rem;font-weight:600;white-space:nowrap">${queueText}</div>
+
+  banner.innerHTML = `<div class="card jq-live" style="background:${tone[0]};border-color:${tone[1]};color:${tone[2]}">
+    <div class="jq-live-top">
+      <i class="fa-solid ${icon}" style="font-size:1.05rem"></i>
+      <div style="flex:1;min-width:180px"><div style="font-weight:700;font-size:.9rem">${title}</div><div style="font-size:.78rem;opacity:.9">${body}</div></div>
+      <div class="jq-live-counts">${counts}<span class="jq-live-stamp" id="jqLiveStamp"></span></div>
+    </div>
+    ${curHtml}${nextHtml}
   </div>${failHtml}`;
+  tickLiveStamp();
+}
+
+// "อัปเดตเมื่อ N วินาทีที่แล้ว" — makes it obvious the banner is live, and
+// turns into a warning if updates stop arriving.
+function tickLiveStamp() {
+  const el = document.getElementById('jqLiveStamp');
+  if (!el) return;
+  if (!_lastStatusAt) { el.textContent = ''; return; }
+  const s = Math.round((Date.now() - _lastStatusAt) / 1000);
+  el.textContent = s <= 1 ? ' · อัปเดตเมื่อสักครู่' : ` · อัปเดต ${s} วินาทีที่แล้ว`;
+  el.style.color = s > 30 ? '#c62828' : '';
 }
 
 // Every identity is an explicit choice (sent as postAsPage): the account's
@@ -1554,24 +1611,36 @@ async function deleteJob(id) {
 const _JOB_ICON = { pending:'⏳', running:'🔄', success:'✅', failed:'❌', expired:'⏰', cancelled:'🚫' };
 const _JOB_TH   = { pending:'รอ', running:'กำลังโพส', success:'เสร็จ', failed:'ล้มเหลว', expired:'หมดเวลา', cancelled:'ยกเลิก' };
 const _JOB_CLS  = { pending:'badge-yellow', running:'badge-blue', success:'badge-green', failed:'badge-red', expired:'badge-red', cancelled:'badge-red' };
-async function refreshJobStatuses() {
-  let jobs;
-  try { jobs = await (await fetch('/api/agent/jobs')).json(); } catch { return; }
-  if (!Array.isArray(jobs)) return;
+// Rows are updated from the same status call as the banner (no extra request).
+// A row that is new since the page loaded can't be patched in — offer a reload.
+function applyJobStatuses(jobs) {
+  let unseen = 0;
   jobs.forEach(j => {
-    const row = document.getElementById(`job_${j._id}`);
-    if (!row || row.dataset.status === j.status) return;
+    const row = document.getElementById(`job_${j.id}`);
+    if (!row) { if (j.status === 'pending' || j.status === 'running') unseen++; return; }
+    const prog = row.querySelector('.jq-row-prog');
+    if (prog) prog.textContent = j.status === 'running' ? ` · กำลังโพส ${j.done}/${j.total} กลุ่ม` : '';
+    if (row.dataset.status === j.status) return;
     row.dataset.status = j.status;
     const icon = row.querySelector('span');
     if (icon) icon.textContent = _JOB_ICON[j.status] || '❓';
     const badge = row.querySelector('.badge');
     if (badge) { badge.className = 'badge ' + (_JOB_CLS[j.status] || ''); badge.textContent = _JOB_TH[j.status] || j.status; badge.style.flexShrink = '0'; }
+    if (j.status === 'success' || j.status === 'failed') {
+      const p2 = row.querySelector('.jq-row-prog');
+      if (p2) p2.textContent = ` · ${j.ok}/${j.total} สำเร็จ`;
+    }
   });
+  const note = document.getElementById('jqNewJobs');
+  if (note) note.style.display = unseen ? '' : 'none';
 }
 
 if (typeof initComposer === 'function' && document.getElementById('createForm')) initComposer();
 refreshPosterStatus();
-setInterval(() => { refreshPosterStatus(); refreshJobStatuses(); }, 20000);
+// Live: every 5s while the tab is visible, and immediately on return to it.
+setInterval(() => { if (!document.hidden) refreshPosterStatus(); }, 5000);
+setInterval(tickLiveStamp, 1000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshPosterStatus(); });
 </script>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
