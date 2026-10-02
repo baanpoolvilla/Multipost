@@ -299,9 +299,14 @@ exports.posterStatus = async (req, res) => {
         // Failed jobs in the last 24h, so a problem shows up on the web
         // without anyone having to look at the posting machine.
         const dayAgo = now - 24 * 3600 * 1000;
-        const failed = jobs.filter(j => j.status === STATUS.FAILED && new Date(j.updatedAt || j.lastAttemptAt || j.createdAt).getTime() >= dayAgo);
-        const lastError = failed.length ? ((failed[0].results || []).find(r => r.error)?.error || null) : null;
-        res.json({ ok: true, poster, queue: { waiting, running }, failures: { count: failed.length, lastError } });
+        // Any job with a failed group counts — a job that posted to some groups
+        // but skipped others (e.g. wrong Page shown) is still "success" overall.
+        const recent = jobs.filter(j => new Date(j.updatedAt || j.lastAttemptAt || j.createdAt).getTime() >= dayAgo);
+        const failedGroups = recent.flatMap(j => (j.results || []).filter(r => r.status === 'failed'));
+        const jobsWithFailures = recent.filter(j => j.status === STATUS.FAILED || (j.results || []).some(r => r.status === 'failed'));
+        const wrongPage = failedGroups.filter(r => /ตัวตนที่จะโพสไม่ใช่|สลับเป็นเพจ/.test(r.error || '')).length;
+        const lastError = jobsWithFailures.length ? ((jobsWithFailures[0].results || []).find(r => r.error)?.error || null) : null;
+        res.json({ ok: true, poster, queue: { waiting, running }, failures: { count: jobsWithFailures.length, groups: failedGroups.length, wrongPage, lastError } });
     } catch (e) {
         res.status(500).json({ ok: false, error: e.message });
     }

@@ -804,10 +804,14 @@ async function refreshPosterStatus() {
   }
   const f = d && d.failures;
   const esc = s => String(s || '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
-  const failHtml = f && f.count ? `<div class="card" style="background:#fff4e5;border-color:#ffd8a8;color:#7a3e00;padding:.6rem 1.1rem;font-size:.82rem;margin-top:.5rem">
-      <i class="fa-solid fa-circle-exclamation"></i> <b>มีงานล้มเหลว ${f.count} งานใน 24 ชม.</b>${f.lastError ? ` — สาเหตุล่าสุด: ${esc(f.lastError).slice(0, 140)}` : ''}
-      · ดูรายละเอียดที่ <a href="/group-history" style="color:#7a3e00;font-weight:600">ประวัติโพสกลุ่ม</a>
+  const wrongPageHtml = f && f.wrongPage ? `<div class="card" style="background:#fde8e8;border-color:#f5b5b5;color:#842029;padding:.6rem 1.1rem;font-size:.82rem;margin-top:.5rem">
+      <i class="fa-solid fa-flag"></i> <b>ไม่ได้โพส ${f.wrongPage} กลุ่ม เพราะเลือกเพจไม่ได้ / ผู้โพสไม่ตรงกับเพจที่เลือก</b>
+      — ระบบยกเลิกเพื่อกันโพสผิดเพจ กรุณาตรวจใน <a href="/group-history" style="color:#842029;font-weight:600">ประวัติโพสกลุ่ม</a> แล้วสั่งใหม่ หรือแจ้งผู้ดูแล
     </div>` : '';
+  const failHtml = f && f.count ? `<div class="card" style="background:#fff4e5;border-color:#ffd8a8;color:#7a3e00;padding:.6rem 1.1rem;font-size:.82rem;margin-top:.5rem">
+      <i class="fa-solid fa-circle-exclamation"></i> <b>มี ${f.count} งานที่โพสไม่สำเร็จบางกลุ่มหรือทั้งหมด (${f.groups} กลุ่ม) ใน 24 ชม.</b>${f.lastError ? ` — สาเหตุล่าสุด: ${esc(f.lastError).slice(0, 140)}` : ''}
+      · ดูรายละเอียดที่ <a href="/group-history" style="color:#7a3e00;font-weight:600">ประวัติโพสกลุ่ม</a>
+    </div>${wrongPageHtml}` : '';
   banner.innerHTML = `<div class="card" style="background:${tone[0]};border-color:${tone[1]};color:${tone[2]};padding:.75rem 1.1rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
     <i class="fa-solid ${icon}" style="font-size:1.1rem"></i>
     <div style="flex:1;min-width:200px"><div style="font-weight:700;font-size:.9rem">${title}</div><div style="font-size:.8rem;opacity:.9">${body}</div></div>
