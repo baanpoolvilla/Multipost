@@ -52,4 +52,23 @@ async function remove(urlOrName) {
     await supa.storage.from(BUCKET).remove([name]).catch(() => {});
 }
 
-module.exports = { upload, publicUrl, createSignedUploadUrl, remove, BUCKET };
+// Every object name at the bucket root (where uploads go), page by page.
+async function listNames() {
+    const supa = _getClient();
+    const names = [];
+    for (let offset = 0; ; offset += 1000) {
+        const { data, error } = await supa.storage.from(BUCKET).list('', { limit: 1000, offset });
+        if (error) throw new Error(`Supabase list failed: ${error.message}`);
+        (data || []).forEach(o => { if (o && o.name && o.id) names.push(o.name); });
+        if (!data || data.length < 1000) break;
+    }
+    return names;
+}
+
+async function removeMany(names) {
+    if (!names.length) return;
+    const { error } = await _getClient().storage.from(BUCKET).remove(names);
+    if (error) throw new Error(`Supabase remove failed: ${error.message}`);
+}
+
+module.exports = { upload, publicUrl, createSignedUploadUrl, remove, listNames, removeMany, BUCKET };

@@ -235,6 +235,20 @@ async function processJob(job) {
         log(`   ✅ พร้อมแนบ ${tempImagePaths.length} รูป`);
     }
 
+    // A missing file (deleted after 30 days, or never stored) must not turn
+    // into a post without the picture — fail the job so it gets re-sent.
+    const wanted = rawImages.filter(Boolean).length;
+    if (tempImagePaths.length < wanted) {
+        const err = `โหลดรูป/วิดีโอได้ไม่ครบ (${tempImagePaths.length}/${wanted}) — ไฟล์อาจถูกลบเพราะเกิน 30 วัน กรุณาแนบใหม่แล้วสั่งอีกครั้ง · ไม่ได้โพส`;
+        log(`⛔ ${err}`);
+        for (const p of tempImagePaths) { try { if (p.startsWith(require('os').tmpdir())) fs.unlinkSync(p); } catch {} }
+        const results = job.groups.map(g => ({ groupId:g.groupId, groupName:g.groupName, status:'failed', error:err, timestamp:new Date().toISOString(), postUrl:null }));
+        await _store.updateJob(id, { status: STATUS.FAILED, results });
+        _emit?.('jobs:updated', { ...job, _id:id, status: STATUS.FAILED, results });
+        _store.notifyWeb?.(id, 'finished');
+        return;
+    }
+
     // Global posting lock — every Agent machine shares the same Facebook
     // session, so even though this job was already safely claimed by this
     // machine alone (claimNextJob), we still wait our turn here before any

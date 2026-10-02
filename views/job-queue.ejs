@@ -948,9 +948,19 @@ async function openRecentPosts() {
   if (!picked) return;
   if (!(await _confirmReplace(picked.message))) return;
   _media = [];
-  (picked.images || []).forEach(addExistingMedia);
+  // Files older than 30 days are deleted by the daily cleanup — don't reuse them.
+  const files = (picked.images || []).filter(Boolean);
+  const fresh = files.filter(f => !_mediaExpired(f));
+  fresh.forEach(addExistingMedia);
   _loadMessage(picked.message);
   renderMedia();
+  if (fresh.length < files.length) {
+    Swal.fire({ icon:'info', title:`รูป/วิดีโอ ${files.length - fresh.length} ไฟล์ของโพสนี้ถูกลบแล้ว`, text:'ไฟล์ที่เกิน 30 วันจะถูกลบอัตโนมัติ กรุณาแนบใหม่ถ้าต้องการ', confirmButtonColor:'#1877f2' });
+  }
+}
+function _mediaExpired(ref) {
+  const m = String(ref || '').split('?')[0].split('/').pop().match(/^(\d{13})-/);
+  return !!m && Date.now() - Number(m[1]) > 30 * 24 * 60 * 60 * 1000;
 }
 async function _confirmReplace(newMessage) {
   const current = _composedMessage() || document.getElementById('fMsg').value.trim();

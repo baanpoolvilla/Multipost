@@ -112,6 +112,20 @@ router.post('/api/templates/reorder',     ctrl.reorderTemplates);
 
 // Cron / Scheduler
 router.post('/api/cron/run-scheduled', ctrl.runAllScheduled);
+// Daily: delete photos/videos older than 30 days that nothing still uses
+// (services/mediaRetention.js). Vercel Cron calls it with GET and, when
+// CRON_SECRET is set on the project, "Authorization: Bearer <CRON_SECRET>".
+router.get('/api/cron/cleanup-media', async (req, res) => {
+    const secret = process.env.CRON_SECRET;
+    if (secret && req.headers.authorization !== `Bearer ${secret}`) return res.status(401).json({ ok: false });
+    try {
+        const summary = await require('../services/mediaRetention').run({ dryRun: req.query.dry === '1' });
+        console.log('[cleanup-media]', JSON.stringify(summary));
+        res.json({ ok: true, ...summary });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
 
 // Posts
 router.get('/',               ctrl.showDashboard);

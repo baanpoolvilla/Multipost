@@ -19,6 +19,7 @@ const PUBLIC_PATHS = [
     '/login',
     '/logout',
     '/api/cron/run-scheduled',
+    '/api/cron/cleanup-media',
     '/download/agent',
     '/api/agent-version',
     '/api/agent/source',
