@@ -138,13 +138,59 @@
         <div id="fPageHint" class="jq-hint"></div>
       </section>
 
-      <!-- 2. Message + media -->
+      <!-- 2. What to post -->
       <section class="jq-sec">
         <div class="jq-sec-hd">
-          <span class="jq-step">2</span> ข้อความ <span class="jq-req">*</span>
-          <button type="button" class="jq-link" onclick="openTemplatePicker()"><i class="fa-solid fa-file-lines"></i> ใช้เทมเพลต</button>
+          <span class="jq-step">2</span> โพสอะไร <span class="jq-req">*</span>
         </div>
-        <div class="jq-editor">
+
+        <div class="jq-modes" role="radiogroup" aria-label="รูปแบบโพส">
+          <button type="button" class="jq-mode active" data-mode="text" onclick="setPostMode('text')">
+            <i class="fa-solid fa-align-left"></i>
+            <span><b>ข้อความ</b><small>ข้อความอย่างเดียว แนบรูป/วิดีโอได้</small></span>
+          </button>
+          <button type="button" class="jq-mode" data-mode="link" onclick="setPostMode('link')">
+            <i class="fa-solid fa-link"></i>
+            <span><b>ข้อความ + ลิงก์</b><small>ข้อความ พร้อมการ์ดลิงก์ด้านล่าง</small></span>
+          </button>
+          <button type="button" class="jq-mode" data-mode="share" onclick="setPostMode('share')">
+            <i class="fa-solid fa-share"></i>
+            <span><b>แชร์ลิงก์</b><small>แชร์โพส/ลิงก์ ไม่มีข้อความ</small></span>
+          </button>
+        </div>
+
+        <div class="jq-toolbar">
+          <button type="button" onclick="openTemplatePicker()"><i class="fa-solid fa-file-lines"></i> เทมเพลต</button>
+          <button type="button" onclick="openRecentPosts()"><i class="fa-solid fa-clock-rotate-left"></i> โพสก่อนหน้า</button>
+          <button type="button" id="btnHowTo" onclick="togglePanel('howToPanel', this)"><i class="fa-regular fa-circle-question"></i> วิธีใช้งาน</button>
+          <button type="button" id="btnTips" onclick="togglePanel('tipsPanel', this)"><i class="fa-regular fa-lightbulb"></i> เคล็ดลับ</button>
+        </div>
+
+        <div id="howToPanel" class="jq-panel" style="display:none">
+          <div class="jq-panel-title">วิธีใช้งาน — เลือกรูปแบบให้ตรงกับที่อยากให้ขึ้นบน Facebook</div>
+          <div class="jq-howto">
+            <div><b><i class="fa-solid fa-align-left"></i> ข้อความ</b><span>พิมพ์ข้อความ แนบรูปหรือวิดีโอได้ (ไม่บังคับ) ถ้าในข้อความมีลิงก์ จะเป็นแค่ตัวอักษรลิงก์ ไม่มีการ์ดตัวอย่าง</span></div>
+            <div><b><i class="fa-solid fa-link"></i> ข้อความ + ลิงก์</b><span>พิมพ์ข้อความ แล้ววางลิงก์ในช่องลิงก์ โพสจะแสดงข้อความ และการ์ดตัวอย่างลิงก์ (รูป+หัวข้อ) ด้านล่าง ตัวลิงก์ไม่ขึ้นในข้อความ · แนบรูปไม่ได้ เพราะ Facebook จะไม่แสดงการ์ดลิงก์</span></div>
+            <div><b><i class="fa-solid fa-share"></i> แชร์ลิงก์</b><span>วางลิงก์โพส Facebook (เช่นโพสของเพจ) หรือเว็บไซต์ จะขึ้นเป็นการ์ดลิงก์อย่างเดียว ไม่มีข้อความ</span></div>
+            <div><b><i class="fa-solid fa-flag"></i> โพสในนาม</b><span>เลือกเพจทุกครั้ง ถ้าระบบเลือกเพจนั้นไม่ได้ หรือชื่อผู้โพสไม่ตรง จะไม่โพส และแจ้งเตือนด้านบน</span></div>
+            <div><b><i class="fa-solid fa-list-ol"></i> หลังกดเพิ่มลงคิว</b><span>งานเข้าคิว เครื่องโพสหลักโพสให้ทีละงาน ดูผลที่ "รายการ Jobs" ด้านล่าง หรือหน้า ประวัติโพสกลุ่ม</span></div>
+          </div>
+        </div>
+
+        <div id="tipsPanel" class="jq-panel" style="display:none">
+          <div class="jq-panel-title">เคล็ดลับโพสให้ปลอดภัย ไม่โดน Facebook จำกัด</div>
+          <div class="jq-tips">
+            <div><span class="jq-tag ok">เว้นระหว่างกลุ่ม</span>30–60 วินาที · บัญชีใหม่ 60–90 วินาที</div>
+            <div><span class="jq-tag info">ต่อรอบ</span>ไม่เกิน 30–50 กลุ่ม</div>
+            <div><span class="jq-tag info">ต่อวัน</span>ไม่เกิน 60 กลุ่ม แบ่งรอบ เช้า · บ่าย · เย็น</div>
+            <div><span class="jq-tag warn">กลุ่มเดิม</span>เว้น 1–2 วันก่อนโพสซ้ำ</div>
+            <div><span class="jq-tag warn">เนื้อหา</span>สลับรูป / คลิป / ข้อความ ไม่โพสข้อความเดิมซ้ำทุกกลุ่มทุกวัน</div>
+            <div><span class="jq-tag bad">ห้าม</span>โพสทุกกลุ่มในครั้งเดียว · เว้นต่ำกว่า 15 วินาที</div>
+          </div>
+          <div class="jq-hint">ทุกคนโพสผ่านบัญชี Facebook เดียวกัน ยอดรวมทั้งทีมนับรวมกัน</div>
+        </div>
+
+        <div class="jq-editor" id="fTextBox">
           <textarea id="fMsg" rows="6" placeholder="พิมพ์ข้อความที่ต้องการโพส..." oninput="updateSummary()"></textarea>
           <div id="fMediaRow" class="jq-media-row">
             <label class="jq-media-add" title="เพิ่มรูปหรือวิดีโอ">
@@ -153,6 +199,12 @@
             </label>
           </div>
           <div class="jq-editor-foot"><span id="fMsgCount">0</span> ตัวอักษร</div>
+        </div>
+
+        <div id="fLinkBox" class="jq-linkbox" style="display:none">
+          <label for="fLink"><i class="fa-solid fa-link"></i> ลิงก์ <span class="jq-req">*</span></label>
+          <input type="url" id="fLink" placeholder="https://www.facebook.com/... หรือลิงก์เว็บไซต์" oninput="updateSummary()" autocomplete="off">
+          <div class="jq-hint" id="fLinkHint"></div>
         </div>
       </section>
 
@@ -376,6 +428,43 @@
 .jq-chip.active { background:#1877f2; border-color:#1877f2; color:#fff; font-weight:600 }
 .jq-chip.active .jq-chip-av { background:rgba(255,255,255,.25); color:#fff }
 .jq-chip-empty { font-size:.82rem; color:var(--text-secondary); padding:.3rem 0 }
+.jq-modes { display:grid; grid-template-columns:repeat(3,1fr); gap:.5rem; margin-bottom:.6rem }
+.jq-mode { display:flex; align-items:flex-start; gap:.55rem; text-align:left; border:1.5px solid var(--border-color); background:#fff; border-radius:12px; padding:.6rem .7rem; cursor:pointer; font-family:inherit; color:var(--text-primary); transition:border-color .12s,background .12s }
+.jq-mode:hover { border-color:#9ec5fb; background:#f5f9ff }
+.jq-mode i { color:#8a8d91; font-size:.95rem; margin-top:.15rem; width:1.1rem; text-align:center; flex-shrink:0 }
+.jq-mode b { display:block; font-size:.86rem }
+.jq-mode small { display:block; font-size:.72rem; color:var(--text-secondary); line-height:1.35; margin-top:.1rem }
+.jq-mode.active { border-color:#1877f2; background:#eef5ff }
+.jq-mode.active i { color:#1877f2 }
+.jq-mode:focus-visible, .jq-toolbar button:focus-visible { outline:2px solid #1877f2; outline-offset:2px }
+.jq-toolbar { display:flex; flex-wrap:wrap; gap:.4rem; margin-bottom:.6rem }
+.jq-toolbar button { border:1px solid var(--border-color); background:#fff; border-radius:999px; padding:.3rem .8rem; font-size:.78rem; font-family:inherit; cursor:pointer; color:#333; display:inline-flex; align-items:center; gap:.35rem }
+.jq-toolbar button:hover { background:#f0f2f5 }
+.jq-toolbar button.active { background:#e7f0fd; border-color:#9ec5fb; color:#1877f2; font-weight:600 }
+.jq-panel { border:1px solid var(--border-color); background:#fafbfc; border-radius:12px; padding:.75rem .9rem; margin-bottom:.6rem; font-size:.82rem; line-height:1.6 }
+.jq-panel-title { font-weight:700; margin-bottom:.45rem; color:var(--text-primary) }
+.jq-howto > div { display:grid; grid-template-columns:150px 1fr; gap:.6rem; padding:.3rem 0; border-top:1px solid #eceef1 }
+.jq-howto > div:first-child { border-top:none }
+.jq-howto b { font-size:.8rem; color:var(--text-primary) }
+.jq-howto b i { color:#1877f2; width:1.1rem }
+.jq-howto span { color:var(--text-secondary) }
+.jq-tips { display:grid; grid-template-columns:1fr 1fr; gap:.3rem .9rem; color:var(--text-secondary) }
+.jq-tag { display:inline-block; font-size:.7rem; font-weight:700; border-radius:5px; padding:0 .4rem; margin-right:.35rem }
+.jq-tag.ok { background:#d1e7dd; color:#0a3622 } .jq-tag.info { background:#e7f0fd; color:#084298 }
+.jq-tag.warn { background:#fff3cd; color:#856404 } .jq-tag.bad { background:#f8d7da; color:#842029 }
+.jq-linkbox { margin-top:.6rem }
+.jq-linkbox label { display:block; font-size:.82rem; font-weight:700; margin-bottom:.3rem; color:var(--text-primary) }
+.jq-linkbox label i { color:#1877f2 }
+.jq-linkbox input { width:100%; box-sizing:border-box; padding:.55rem .8rem; border:1.5px solid var(--border-color); border-radius:10px; font-family:inherit; font-size:.9rem; outline:none }
+.jq-linkbox input:focus { border-color:#1877f2 }
+.jq-linkbox input.bad { border-color:#fa5252 }
+.jq-recent-item { display:block; width:100%; text-align:left; background:#fff; border:1px solid var(--border-color); border-radius:8px; padding:.5rem .65rem; margin-bottom:.4rem; cursor:pointer; font-family:inherit }
+.jq-recent-item:hover { background:#f0f6ff; border-color:#b3d4f9 }
+@media (max-width: 640px) {
+  .jq-modes { grid-template-columns:1fr }
+  .jq-howto > div { grid-template-columns:1fr; gap:.1rem }
+  .jq-tips { grid-template-columns:1fr }
+}
 .jq-editor { border:1.5px solid var(--border-color); border-radius:12px; overflow:hidden; transition:border-color .12s }
 .jq-editor:focus-within { border-color:#1877f2 }
 .jq-editor textarea { width:100%; border:none; outline:none; resize:vertical; min-height:130px; padding:.8rem .9rem; font-size:.95rem; line-height:1.6; font-family:inherit; display:block; box-sizing:border-box }
@@ -725,6 +814,95 @@ function filterGroups(q) {
   if (empty) empty.style.display = anyShown ? 'none' : '';
 }
 
+/* ── What to post: text / text + link card / share a link ──
+   The posting machine reads "text|||url" (text with a link card) and
+   "|||url" (link card only); the form builds that so nobody types it. */
+let _postMode = 'text';
+function setPostMode(mode, silent) {
+  if (mode !== 'text' && _media.length && !silent) {
+    Swal.fire({ icon:'info', title:'โพสแบบลิงก์แนบรูปไม่ได้', text:'Facebook จะไม่แสดงการ์ดลิงก์ถ้ามีรูป กรุณาเอารูป/วิดีโอออกก่อน หรือใช้รูปแบบ "ข้อความ"', confirmButtonColor:'#1877f2' });
+    return;
+  }
+  _postMode = mode;
+  document.querySelectorAll('.jq-mode').forEach(b => {
+    const on = b.dataset.mode === mode;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-checked', on ? 'true' : 'false');
+  });
+  document.getElementById('fTextBox').style.display = mode === 'share' ? 'none' : '';
+  document.getElementById('fMediaRow').style.display = mode === 'text' ? '' : 'none';
+  document.getElementById('fLinkBox').style.display = mode === 'text' ? 'none' : '';
+  document.getElementById('fMsg').placeholder = mode === 'link' ? 'พิมพ์ข้อความที่จะแสดงเหนือการ์ดลิงก์...' : 'พิมพ์ข้อความที่ต้องการโพส...';
+  updateSummary();
+}
+function _validLink(v) { return /^https?:\/\/[^\s]+\.[^\s]+$/i.test((v || '').trim()); }
+// The message exactly as the posting machine expects it, or null if incomplete.
+function _composedMessage() {
+  const text = document.getElementById('fMsg').value.trim();
+  const link = document.getElementById('fLink').value.trim();
+  if (_postMode === 'text')  return text || null;
+  if (!_validLink(link)) return null;
+  if (_postMode === 'share') return '|||' + link;
+  return text ? `${text}|||${link}` : null;
+}
+// Fills the form from a stored message (template / previous post).
+function _loadMessage(stored) {
+  const s = String(stored || '');
+  const i = s.indexOf('|||');
+  if (i === -1) { document.getElementById('fMsg').value = s; document.getElementById('fLink').value = ''; setPostMode('text', true); return; }
+  const text = s.slice(0, i).trim(), url = s.slice(i + 3).trim();
+  document.getElementById('fMsg').value = text;
+  document.getElementById('fLink').value = url;
+  setPostMode(text ? 'link' : 'share', true);
+}
+
+function togglePanel(id, btn) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const open = el.style.display === 'none';
+  ['howToPanel', 'tipsPanel'].forEach(p => { const x = document.getElementById(p); if (x) x.style.display = 'none'; });
+  ['btnHowTo', 'btnTips'].forEach(b => document.getElementById(b)?.classList.remove('active'));
+  if (open) { el.style.display = ''; btn?.classList.add('active'); }
+}
+
+/* ── Previous posts: reuse a message that was posted before ── */
+async function openRecentPosts() {
+  let jobs = [];
+  try { jobs = await (await fetch('/api/agent/jobs')).json(); } catch {}
+  const seen = new Set();
+  const list = (Array.isArray(jobs) ? jobs : []).filter(j => {
+    if (!j.message || seen.has(j.message)) return false;
+    seen.add(j.message); return true;
+  }).slice(0, 30);
+  if (!list.length) { Swal.fire({ icon:'info', title:'ยังไม่มีโพสก่อนหน้า', confirmButtonColor:'#1877f2' }); return; }
+  const esc = s => String(s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+  const label = m => { const i = m.indexOf('|||'); return i === -1 ? ['ข้อความ', m] : (m.slice(0, i).trim() ? ['ข้อความ + ลิงก์', m.slice(0, i).trim()] : ['แชร์ลิงก์', m.slice(i + 3).trim()]); };
+  const html = `<div style="max-height:55vh;overflow-y:auto;text-align:left">${list.map((j, i) => {
+    const [kind, text] = label(j.message);
+    const when = new Date(j.lastAttemptAt || j.createdAt).toLocaleString('th-TH',{timeZone:'Asia/Bangkok',dateStyle:'short',timeStyle:'short'});
+    return `<button type="button" class="jq-recent-item" data-i="${i}">
+      <div style="font-size:.72rem;color:#1877f2;font-weight:700">${kind}${(j.images||[]).length ? ' · ' + j.images.length + ' ไฟล์' : ''}${j.postAsPage ? ' · ' + esc(j.postAsPage) : ''} <span style="color:#8a8d91;font-weight:400">· ${when}</span></div>
+      <div style="font-size:.84rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(text.slice(0, 110))}</div>
+    </button>`; }).join('')}</div>`;
+  let picked = null;
+  await Swal.fire({
+    title:'โพสก่อนหน้า', html, showConfirmButton:false, showCloseButton:true, width:600,
+    didOpen: (popup) => popup.querySelectorAll('.jq-recent-item').forEach(b => b.addEventListener('click', () => { picked = list[+b.dataset.i]; Swal.close(); })),
+  });
+  if (!picked) return;
+  if (!(await _confirmReplace(picked.message))) return;
+  _media = [];
+  (picked.images || []).forEach(addExistingMedia);
+  _loadMessage(picked.message);
+  renderMedia();
+}
+async function _confirmReplace(newMessage) {
+  const current = _composedMessage() || document.getElementById('fMsg').value.trim();
+  if (!current || current === newMessage) return true;
+  const r = await Swal.fire({ icon:'question', title:'แทนที่ข้อความเดิม?', text:'ข้อความ ลิงก์ และไฟล์ที่ใส่ไว้จะถูกแทนที่', showCancelButton:true, confirmButtonText:'แทนที่', cancelButtonText:'ยกเลิก', confirmButtonColor:'#1877f2' });
+  return r.isConfirmed;
+}
+
 /* ── When to post ── */
 let _whenMode = 'now';
 function setWhen(mode) {
@@ -758,13 +936,22 @@ function updateSummary() {
   const page = document.getElementById('fPage')?.value || '';
   const groups = document.querySelectorAll('[id^="gc_"]:checked').length;
   const hasMsg = !!(msgEl && msgEl.value.trim());
+  const linkEl = document.getElementById('fLink');
+  const linkVal = linkEl ? linkEl.value.trim() : '';
+  const linkOk = _validLink(linkVal);
+  if (linkEl) linkEl.classList.toggle('bad', _postMode !== 'text' && !!linkVal && !linkOk);
+  const linkHint = document.getElementById('fLinkHint');
+  if (linkHint) linkHint.textContent = (_postMode !== 'text' && linkVal && !linkOk) ? 'ลิงก์ต้องขึ้นต้นด้วย http:// หรือ https://' : (_postMode === 'share' ? 'โพสจะขึ้นเป็นการ์ดลิงก์อย่างเดียว ไม่มีข้อความ' : 'ลิงก์จะไม่ขึ้นในข้อความ แต่ขึ้นเป็นการ์ดตัวอย่างใต้ข้อความ');
   const sched = _scheduledIso();
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+  const modeName = { text:'ข้อความ', link:'ข้อความ + ลิงก์', share:'แชร์ลิงก์' }[_postMode];
   const parts = [
     page ? `ในนาม <b>${esc(page)}</b>` : '<span class="warn">ยังไม่ได้เลือกเพจ</span>',
+    `แบบ <b>${modeName}</b>`,
+    (_postMode !== 'share' && !hasMsg) ? '<span class="warn">ยังไม่มีข้อความ</span>' : '',
+    (_postMode !== 'text' && !linkOk) ? '<span class="warn">ยังไม่มีลิงก์</span>' : '',
     groups ? `<b>${groups}</b> กลุ่ม` : '<span class="warn">ยังไม่ได้เลือกกลุ่ม</span>',
-    hasMsg ? '' : '<span class="warn">ยังไม่มีข้อความ</span>',
-    _media.length ? `${_media.length} ไฟล์` : '',
+    (_postMode === 'text' && _media.length) ? `${_media.length} ไฟล์` : '',
     _whenMode === 'later'
       ? (sched ? `โพส <b>${new Date(sched).toLocaleString('th-TH',{timeZone:'Asia/Bangkok',dateStyle:'medium',timeStyle:'short'})}</b>` : '<span class="warn">ยังไม่ได้ตั้งเวลา</span>')
       : 'โพสทันทีตามลำดับคิว',
@@ -925,14 +1112,10 @@ async function openTemplatePicker() {
     didOpen: (popup) => popup.querySelectorAll('.jq-tpl-item').forEach(b => b.addEventListener('click', () => { picked = list[+b.dataset.i]; Swal.close(); })),
   });
   if (!picked) return;
-  const msgEl = document.getElementById('fMsg');
-  if (msgEl.value.trim() && msgEl.value !== picked.message) {
-    const r = await Swal.fire({ icon:'question', title:'แทนที่ข้อความเดิม?', text:'ข้อความและไฟล์ที่ใส่ไว้จะถูกแทนด้วยเทมเพลตนี้', showCancelButton:true, confirmButtonText:'แทนที่', cancelButtonText:'ยกเลิก', confirmButtonColor:'#1877f2' });
-    if (!r.isConfirmed) return;
-  }
-  msgEl.value = picked.message || '';
+  if (!(await _confirmReplace(picked.message || ''))) return;
   _media = [];
   (picked.images || []).forEach(addExistingMedia);
+  _loadMessage(picked.message || '');
   renderMedia();
 }
 
@@ -1038,29 +1221,59 @@ function fillPageOptions() {
   else hint.textContent = '';
 }
 
+// Ask the posting machine for a fresh Page list, then watch for it to land
+// (every 3s) so the user sees the result right away instead of a stale
+// "waiting" note until the next 20s status refresh.
 async function refreshPages() {
   const btn = document.getElementById('btnRefreshPages');
-  if (btn) btn.disabled = true;
+  const hint = document.getElementById('fPageHint');
+  const before = _poster && _poster.pagesUpdatedAt;
+  const setBtn = (busy) => {
+    if (!btn) return;
+    btn.disabled = busy;
+    btn.innerHTML = busy ? '<i class="fa-solid fa-spinner fa-spin"></i> กำลังดึงรายชื่อ…' : '<i class="fa-solid fa-rotate"></i> อัปเดตรายชื่อ';
+  };
+  setBtn(true);
   try {
     const r = await fetch('/api/agent/poster/refresh-pages', { method:'POST' });
     const d = await r.json();
     if (!d.ok) throw new Error(d.error || 'ส่งคำขอไม่สำเร็จ');
-    await refreshPosterStatus();
+    if (_poster && !_poster.online) throw new Error('เครื่องโพสหลักออฟไลน์ — จะอัปเดตให้เมื่อกลับมาออนไลน์');
+    const deadline = Date.now() + 120000;
+    while (Date.now() < deadline) {
+      await new Promise(res => setTimeout(res, 3000));
+      await refreshPosterStatus();
+      if (_poster && _poster.pagesUpdatedAt && _poster.pagesUpdatedAt !== before && !_poster.pagesRefreshPending) {
+        const n = new Set([_poster.identity, ...(_poster.pages || [])].filter(Boolean)).size;
+        Swal.fire({ toast:true, position:'top-end', icon:'success', title:`อัปเดตรายชื่อแล้ว (${n} รายการ)`, showConfirmButton:false, timer:2500 });
+        return;
+      }
+      if (hint) hint.textContent = (_poster && _poster.running && !_poster.pagesRefreshPending)
+        ? '⏳ กำลังดึงรายชื่อจาก Facebook…'
+        : '⏳ เครื่องโพสหลักกำลังโพสอยู่ — จะดึงรายชื่อให้ทันทีที่โพสงานนี้เสร็จ';
+    }
+    if (hint) hint.textContent = '⏳ เครื่องโพสหลักยังไม่ว่าง (กำลังโพสงานอยู่) — รายชื่อจะอัปเดตเองเมื่อโพสเสร็จ';
   } catch (e) {
     Swal.fire({ icon:'error', title:'อัปเดตรายชื่อไม่สำเร็จ', text:e.message, confirmButtonColor:'#1877f2' });
   } finally {
-    if (btn) btn.disabled = false;
+    setBtn(false);
   }
 }
 
 async function submitJob() {
-  const msg     = document.getElementById('fMsg').value.trim();
+  const msg     = _composedMessage();
   const delay   = parseInt(document.getElementById('fDelay').value) || 30;
   const sel     = _groups.filter((_,i)=>document.getElementById(`gc_${i}`)?.checked);
   const postAsPage = document.getElementById('fPage')?.value || '';
 
   if (!postAsPage){ Swal.fire({ icon:'warning', title:'กรุณาเลือกว่าจะโพสในนามใคร', confirmButtonColor:'#1877f2' }); return; }
-  if (!msg)       { Swal.fire({ icon:'warning', title:'กรุณากรอกข้อความ', confirmButtonColor:'#1877f2' }); return; }
+  if (!msg) {
+    const need = _postMode === 'text' ? 'กรุณากรอกข้อความ'
+      : !_validLink(document.getElementById('fLink').value) ? 'กรุณาใส่ลิงก์ให้ถูกต้อง (ขึ้นต้นด้วย http:// หรือ https://)'
+      : 'กรุณากรอกข้อความที่จะแสดงเหนือการ์ดลิงก์';
+    Swal.fire({ icon:'warning', title: need, confirmButtonColor:'#1877f2' });
+    return;
+  }
   if (!sel.length){ Swal.fire({ icon:'warning', title:'กรุณาเลือกกลุ่ม', confirmButtonColor:'#1877f2' }); return; }
   if (_whenMode === 'later' && !dt24Get('fScheduledAt')) { Swal.fire({ icon:'warning', title:'กรุณาเลือกวันและเวลาที่จะโพส', confirmButtonColor:'#1877f2' }); return; }
   const schedIso = _scheduledIso();
@@ -1079,7 +1292,7 @@ async function submitJob() {
   const escHtml = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
   const ok = await Swal.fire({
     icon:'question', title:'ยืนยันสร้างงานโพส?',
-    html:`ในนาม <b>${escHtml(postAsPage)}</b><br>${sel.length} กลุ่ม${_media.length ? ' · ' + _media.length + ' ไฟล์' : ''} · เว้น ${delay} วินาที<br>${whenText}`,
+    html:`ในนาม <b>${escHtml(postAsPage)}</b><br>แบบ <b>${{ text:'ข้อความ', link:'ข้อความ + ลิงก์', share:'แชร์ลิงก์' }[_postMode]}</b> · ${sel.length} กลุ่ม${(_postMode === 'text' && _media.length) ? ' · ' + _media.length + ' ไฟล์' : ''} · เว้น ${delay} วินาที<br>${whenText}`,
     showCancelButton:true, confirmButtonText:'สร้างงาน', cancelButtonText:'ยกเลิก', confirmButtonColor:'#1877f2',
   });
   if (!ok.isConfirmed) return;
@@ -1093,7 +1306,7 @@ async function submitJob() {
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
         message:msg, groups:sel, delaySeconds:delay, postAsPage: postAsPage || null,
-        images: _media.map(m => m.url),
+        images: _postMode === 'text' ? _media.map(m => m.url) : [],
         scheduledAt: schedIso,
       }),
     });

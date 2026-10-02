@@ -134,6 +134,9 @@ app.whenReady().then(async () => {
     // then keep doing so — see agentPresence.js.
     heartbeat();
     setInterval(heartbeat, HEARTBEAT_INTERVAL_MS);
+    // A Page-list refresh asked for on the web should start within seconds,
+    // not wait for the next 20s heartbeat (it's one small DB read).
+    if (jobStore.isPosterAgent()) setInterval(checkPagesRefreshRequest, 4000);
 
     // Part 9: catch up on expiry as soon as the Agent has a DB connection —
     // before the queue is ever shown or polled, regardless of whether
