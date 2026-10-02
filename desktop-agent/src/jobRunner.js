@@ -245,7 +245,7 @@ async function processJob(job) {
         const results = job.groups.map(g => ({ groupId:g.groupId, groupName:g.groupName, status:'failed', error:err, timestamp:new Date().toISOString(), postUrl:null }));
         await _store.updateJob(id, { status: STATUS.FAILED, results });
         _emit?.('jobs:updated', { ...job, _id:id, status: STATUS.FAILED, results });
-        _store.notifyWeb?.(id, 'finished');
+        notifyOwner(id, 'finished');
         return;
     }
 
@@ -269,7 +269,7 @@ async function processJob(job) {
         await sleep(LOCK_RETRY_MS);
     }
     log('🔓 ได้คิวแล้ว เริ่มโพส');
-    _store.notifyWeb?.(id, 'started'); // owner's SmartBoss notice — not awaited
+    notifyOwner(id, 'started'); // owner's SmartBoss notice — not awaited
 
     // Renew on a fixed timer, not once per group — a per-group renew still
     // goes stale if delaySeconds (user-configurable) or a single group's
@@ -412,10 +412,22 @@ async function processJob(job) {
             .catch(e => log(`❌ กู้คืนประวัติไม่สำเร็จ: ${e.message}`));
     }
     _emit?.('jobs:updated', { ...job, _id:id, status, results, ...pageData });
-    _store.notifyWeb?.(id, 'finished');
+    notifyOwner(id, 'finished');
     if (interrupted) log(`⏸ ถูกหยุดกลางคัน: โพสสำเร็จ ${ok}/${job.groups.length} กลุ่ม — กลุ่มที่เหลือบันทึกว่า "ไม่ได้โพส"`);
     else log(`✅ เสร็จ: ${ok}/${job.groups.length} สำเร็จ`);
     log('─────────────────────────────');
+}
+
+// Tells the web (→ the job owner's SmartBoss bell) and logs what happened, so
+// a notice that didn't go out is visible here instead of failing silently.
+function notifyOwner(id, event) {
+    if (!_store.notifyWeb) return;
+    Promise.resolve(_store.notifyWeb(id, event)).then(r => {
+        const what = event === 'started' ? 'เริ่มโพส' : 'โพสเสร็จ';
+        if (r && r.ok && r.sent) log(`📨 แจ้ง SmartBoss ของเจ้าของงาน (${what}) แล้ว`);
+        else if (r && r.ok) log(`📨 ไม่ได้แจ้ง SmartBoss (${what}): ${({ 'not-linked': 'บัญชีผู้สั่งยังไม่ผูก SmartBoss', 'no-owner': 'งานไม่มีผู้สั่ง', already: 'แจ้งไปแล้ว', disabled: 'ยังไม่ได้ตั้งค่า', 'smartboss-unreachable': 'ติดต่อ SmartBoss ไม่ได้' })[r.reason] || r.reason}`);
+        else log(`⚠️ แจ้ง SmartBoss (${what}) ไม่สำเร็จ: ${(r && r.error) || 'ติดต่อเว็บ Multi Post ไม่ได้'} — เว็บจะส่งให้ภายหลัง`);
+    }).catch(() => {});
 }
 
 function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }

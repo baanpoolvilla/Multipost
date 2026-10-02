@@ -49,11 +49,39 @@ let _agentId      = null;
 // seen as offline soon after it stops.
 const HEARTBEAT_INTERVAL_MS = 20 * 1000;
 let _authWaiting = false;
+
+// The git commit this Agent was started from (read once from the checkout's
+// .git), reported in the heartbeat so anyone can see on the web whether the
+// posting machine has been updated.
+let _codeVersion;
+function codeVersion() {
+    if (_codeVersion !== undefined) return _codeVersion;
+    _codeVersion = null;
+    try {
+        const fs = require('fs'), path = require('path');
+        const gitDir = path.join(__dirname, '..', '.git');
+        const head = fs.readFileSync(path.join(gitDir, 'HEAD'), 'utf8').trim();
+        let sha = head;
+        if (head.startsWith('ref: ')) {
+            const ref = head.slice(5);
+            const loose = path.join(gitDir, ref);
+            if (fs.existsSync(loose)) sha = fs.readFileSync(loose, 'utf8').trim();
+            else {
+                const packed = fs.readFileSync(path.join(gitDir, 'packed-refs'), 'utf8');
+                const line = packed.split(/\r?\n/).find(l => l.endsWith(' ' + ref));
+                sha = line ? line.split(' ')[0] : null;
+            }
+        }
+        _codeVersion = sha ? sha.slice(0, 7) : null;
+    } catch {}
+    return _codeVersion;
+}
 function heartbeat() {
     agentPresence.heartbeat(_agentId, _currentStaff?.id, _currentStaff?.displayName, jobStore.isPosterAgent(), {
         fbReady: !!accountStore.getActive(),
         authWaiting: _authWaiting,
         running: jobRunner.isRunning(),
+        version: codeVersion(),
     }).catch(() => {});
     checkPagesRefreshRequest();
 }

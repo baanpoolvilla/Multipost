@@ -18,6 +18,7 @@ const presenceSchema = new mongoose.Schema({
     fbReady:     { type: Boolean, default: false }, // a Facebook account is signed in
     authWaiting: { type: Boolean, default: false }, // Facebook is asking to approve a login
     running:     { type: Boolean, default: false }, // auto-posting is switched on
+    version:     { type: String, default: null },   // git commit the Agent runs (see main.js codeVersion)
     pages:       { type: [String], default: [] },   // Pages this account can post as
     identity:    { type: String, default: null },   // who the account currently acts as (no switch needed)
     pagesUpdatedAt:          { type: Date, default: null },
@@ -36,6 +37,7 @@ async function heartbeat(agentId, staffId, staffName, isPoster = false, health =
     const Model = getModel();
     const set = { staffId: staffId || null, staffName: staffName || null, isPoster: !!isPoster, lastSeenAt: new Date() };
     for (const k of ['fbReady', 'authWaiting', 'running']) if (k in health) set[k] = !!health[k];
+    if (health.version) set.version = String(health.version).slice(0, 40);
     await Model.findOneAndUpdate({ agentId }, { $set: set }, { upsert: true });
 }
 
@@ -79,6 +81,7 @@ async function getPosterStatus() {
         pages: doc.pages || [],
         identity: doc.identity || null,
         pagesUpdatedAt: doc.pagesUpdatedAt || null,
+        version: doc.version || null,
         pagesRefreshPending: !!doc.pagesRefreshRequestedAt && (!doc.pagesUpdatedAt || doc.pagesRefreshRequestedAt > doc.pagesUpdatedAt),
     };
 }

@@ -1427,6 +1427,8 @@ function renderPosterStatus(d) {
   }).join('');
   const nextHtml = next.length ? `<div class="jq-live-next"><b>คิวถัดไป:</b> ${next.map((n, i) => `<span class="jq-live-chip">${i + 1}. ${_escB(n.owner)} · ${n.total} กลุ่ม</span>`).join('')}${q.waiting > next.length ? ` <span class="jq-live-more">+${q.waiting - next.length} งาน</span>` : ''}</div>` : '';
   const counts = [`กำลังโพส ${q.running}`, `รอคิว ${q.waiting}`, q.scheduled ? `ตั้งเวลาไว้ ${q.scheduled}` : ''].filter(Boolean).join(' · ');
+  // Which code the posting machine runs — to check it was updated after a change.
+  const verHtml = _poster && _poster.online ? `<span class="jq-live-stamp" title="เวอร์ชันโค้ดของเครื่องโพสหลัก"> · เครื่องโพส ${_escB(_poster.version || 'เวอร์ชันเก่า')}</span>` : '';
 
   const f = d && d.failures;
   const wrongPageHtml = f && f.wrongPage ? `<div class="card" style="background:#fde8e8;border-color:#f5b5b5;color:#842029;padding:.6rem 1.1rem;font-size:.82rem;margin-top:.5rem">
@@ -1442,7 +1444,7 @@ function renderPosterStatus(d) {
     <div class="jq-live-top">
       <i class="fa-solid ${icon}" style="font-size:1.05rem"></i>
       <div style="flex:1;min-width:180px"><div style="font-weight:700;font-size:.9rem">${title}</div><div style="font-size:.78rem;opacity:.9">${body}</div></div>
-      <div class="jq-live-counts">${counts}<span class="jq-live-stamp" id="jqLiveStamp"></span></div>
+      <div class="jq-live-counts">${counts}<span class="jq-live-stamp" id="jqLiveStamp"></span>${verHtml}</div>
     </div>
     ${curHtml}${nextHtml}
   </div>${failHtml}`;

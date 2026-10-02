@@ -210,7 +210,10 @@ async function notifyWeb(jobId, event) {
             _agentLink = { at: Date.now(), doc: await mongoose.connection.db.collection('agentlink').findOne({ _id: 'link' }) };
         }
         const link = _agentLink.doc;
-        if (!link || !link.webBaseUrl || !link.eventSecret) return false;
+        if (!link || !link.webBaseUrl || !link.eventSecret) {
+            _agentLink.at = 0; // not published yet — look again next time instead of caching the gap
+            return { ok: false, error: 'ยังไม่รู้ที่อยู่เว็บ (เปิดหน้าคิวโพสกลุ่มบนเว็บสักครั้ง)' };
+        }
         const ctl = new AbortController();
         const timer = setTimeout(() => ctl.abort(), 8000);
         try {
@@ -220,9 +223,11 @@ async function notifyWeb(jobId, event) {
                 body: JSON.stringify({ jobId: String(jobId), event }),
                 signal: ctl.signal,
             });
-            return r.ok;
+            const body = await r.json().catch(() => ({}));
+            if (r.status === 401) _agentLink.at = 0; // secret may have changed — re-read next time
+            return r.ok ? body : { ok: false, error: `HTTP ${r.status}` };
         } finally { clearTimeout(timer); }
-    } catch { return false; }
+    } catch (e) { return { ok: false, error: e.message }; }
 }
 
 async function saveProgress(id, results) {
