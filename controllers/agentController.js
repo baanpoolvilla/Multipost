@@ -352,7 +352,20 @@ exports.posterStatus = async (req, res) => {
             queue: { waiting: due.length, running: current.length, scheduled },
             current,
             next: due.slice(0, 5).map(brief),
-            jobs: jobs.map(j => ({ id: String(j._id), status: j.status, done: (j.results || []).length, ok: (j.results || []).filter(r => r.status === 'success').length, total: (j.groups || []).length })),
+            me: { id: req.staffId || null, role: req.staffRole || 'staff' },
+            jobs: jobs.map(j => {
+                const results = j.results || [];
+                const failed = results.filter(r => r.status === 'failed');
+                return {
+                    id: String(j._id), status: j.status, total: (j.groups || []).length,
+                    done: results.length, ok: results.length - failed.length, failed: failed.length,
+                    wrongPage: failed.filter(r => /ตัวตนที่จะโพสไม่ใช่|สลับเป็นเพจ/.test(r.error || '')).length,
+                    error: failed.length ? (failed[0].error || null) : null,
+                    ownerId: j.staffId ? String(j.staffId) : null, owner: owner(j),
+                    label: jobLabel(j.message), postAsPage: j.postAsPage || null,
+                    updatedAt: j.updatedAt || j.lastAttemptAt || null,
+                };
+            }),
             failures: { count: jobsWithFailures.length, groups: failedGroups.length, wrongPage, lastError },
         });
     } catch (e) {
