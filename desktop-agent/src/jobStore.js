@@ -197,6 +197,34 @@ async function expireOverdueJobs(graceMs, opts) {
     catch { return 0; }
 }
 
+// Tells the web app a job started / finished so it can notify the owner in
+// SmartBoss. The web publishes its address and a shared secret in the
+// `agentlink` collection (services/agentLink.js) — this machine's only
+// configuration is the database URL. Best-effort: the web also sweeps for
+// missed events, and posting never waits on this.
+let _agentLink = { at: 0, doc: null };
+async function notifyWeb(jobId, event) {
+    try {
+        await connect();
+        if (Date.now() - _agentLink.at > 10 * 60 * 1000) {
+            _agentLink = { at: Date.now(), doc: await mongoose.connection.db.collection('agentlink').findOne({ _id: 'link' }) };
+        }
+        const link = _agentLink.doc;
+        if (!link || !link.webBaseUrl || !link.eventSecret) return false;
+        const ctl = new AbortController();
+        const timer = setTimeout(() => ctl.abort(), 8000);
+        try {
+            const r = await fetch(`${link.webBaseUrl}/api/agent/job-event`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-agent-secret': link.eventSecret },
+                body: JSON.stringify({ jobId: String(jobId), event }),
+                signal: ctl.signal,
+            });
+            return r.ok;
+        } finally { clearTimeout(timer); }
+    } catch { return false; }
+}
+
 async function saveProgress(id, results) {
     try { await connect(); await scheduler().SaveProgress(id, results); } catch {}
 }
@@ -418,6 +446,6 @@ module.exports = {
     connect, isDbConnected, setDataPath, setAgentId, setStaffId, listStaff, getAllGroups, getRecentPosts,
     isPosterAgent, createJob, getJobs, getPendingJobs, claimNextJob, updateJob, deleteJob, deleteAllJobs, restoreDeletedJob, claimNextFbDeletion, updateFbDeletion, finishFbDeletion,
     getCompletedJobs, getQueueSnapshot, getDbUsage, rescheduleJob, expireOverdueJobs, migrateLegacyStatuses,
-    saveProgress, recoverInterrupted,
+    saveProgress, recoverInterrupted, notifyWeb,
     retryJob, cancelJob, listExpiredJobs,
 };

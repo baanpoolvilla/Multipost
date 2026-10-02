@@ -22,6 +22,9 @@ const PUBLIC_PATHS = [
     '/download/agent',
     '/api/agent-version',
     '/api/agent/source',
+    // Posting machine reporting job events — verified by the shared secret in
+    // the `agentlink` collection, see controllers/agentController.js jobEvent
+    '/api/agent/job-event',
     // SmartBoss single sign-on — verified by its own signed token, see
     // controllers/ssoController.js
     '/sso',

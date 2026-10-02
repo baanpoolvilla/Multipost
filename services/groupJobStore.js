@@ -27,6 +27,8 @@ const groupJobSchema = new mongoose.Schema({
     claimedBy:      { type: String, default: null },
     postAsPage:     { type: String, default: null }, // post as this Facebook Page (name), null = personal profile
     dueAt:          { type: Date, default: null },
+    // { started, finished } — SmartBoss notices already sent to the owner (services/jobNotice.js)
+    sbNotified:     { type: mongoose.Schema.Types.Mixed, default: undefined },
     staffId:        { type: String, default: null },
     images:       { type: [String], default: [] },
     results:      [{
@@ -67,7 +69,7 @@ async function list() {
 async function statusFeed() {
     await connect();
     return GroupJob.find().sort({ _id: -1 }).limit(100)
-        .select('status message staffId postAsPage scheduledAt dueAt updatedAt lastAttemptAt createdAt groups.groupId results.status results.error results.groupName')
+        .select('status message staffId postAsPage scheduledAt dueAt updatedAt lastAttemptAt createdAt groups.groupId results.status results.error results.groupName sbNotified')
         .lean();
 }
 

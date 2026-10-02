@@ -305,6 +305,51 @@ function jobLabel(message) {
     return text.replace(/\s+/g, ' ').slice(0, 60);
 }
 
+// ── SmartBoss notices to the job's owner (started / finished / failed) ──
+const jobNotice = require('../services/jobNotice');
+const agentLink = require('../services/agentLink');
+
+// Lets the posting machine find this web app (see services/agentLink.js).
+function publishWebAddress(req) {
+    const host = req.headers?.['x-forwarded-host'] || req.headers?.host;
+    if (!host || /^(localhost|127\.|\[::1\])/.test(host)) return;
+    const proto = req.headers['x-forwarded-proto'] || 'https';
+    agentLink.ensure(`${proto}://${host}`).catch(() => {});
+}
+
+// The posting machine reports job events here as they happen. No browser
+// session — it proves itself with the secret published in `agentlink`.
+exports.jobEvent = async (req, res) => {
+    try {
+        if (!(await agentLink.verify(req.headers['x-agent-secret']))) return res.status(401).json({ ok: false });
+        const { jobId, event } = req.body || {};
+        if (!jobId || !jobNotice.EVENTS.includes(event)) return res.status(400).json({ ok: false });
+        res.json({ ok: true, ...(await jobNotice.send(jobId, event)) });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+};
+
+// Safety net for a missed event (posting machine couldn't reach the web):
+// while anyone has the site open, recent jobs still owed a notice get one.
+// Bounded so a status poll stays fast, and limited to the last 30 minutes so
+// jobs from before this feature are never announced after the fact.
+const NOTICE_SWEEP_WINDOW_MS = 30 * 60 * 1000;
+async function sweepJobNotices(jobs, now) {
+    try {
+        const recent = j => now - new Date(j.updatedAt || j.lastAttemptAt || 0).getTime() < NOTICE_SWEEP_WINDOW_MS;
+        const owed = [];
+        for (const j of jobs) {
+            if (!j.staffId || !recent(j)) continue;
+            const n = j.sbNotified || {};
+            if (j.status === STATUS.RUNNING && !n.started) owed.push([j._id, 'started']);
+            else if ((j.status === STATUS.SUCCESS || j.status === STATUS.FAILED) && !n.finished) owed.push([j._id, 'finished']);
+            if (owed.length >= 2) break;
+        }
+        for (const [id, event] of owed) await jobNotice.send(id, event);
+    } catch {}
+}
+
 // Main posting machine health, what it is posting right now (whose job, how
 // far along), who is next, and recent failures — one cheap call for the banner.
 exports.posterStatus = async (req, res) => {
@@ -315,6 +360,8 @@ exports.posterStatus = async (req, res) => {
             staffNameMap(),
         ]);
         const now = Date.now();
+        publishWebAddress(req);
+        await sweepJobNotices(jobs, now);
         const owner = j => (j.staffId && names[String(j.staffId)]) || 'ไม่ระบุผู้สั่ง';
         const brief = j => ({
             id: String(j._id), owner: owner(j), label: jobLabel(j.message), postAsPage: j.postAsPage || null,

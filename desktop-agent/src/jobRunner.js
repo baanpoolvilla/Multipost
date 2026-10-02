@@ -255,6 +255,7 @@ async function processJob(job) {
         await sleep(LOCK_RETRY_MS);
     }
     log('🔓 ได้คิวแล้ว เริ่มโพส');
+    _store.notifyWeb?.(id, 'started'); // owner's SmartBoss notice — not awaited
 
     // Renew on a fixed timer, not once per group — a per-group renew still
     // goes stale if delaySeconds (user-configurable) or a single group's
@@ -358,6 +359,7 @@ async function processJob(job) {
             .catch(e => log(`❌ กู้คืนประวัติไม่สำเร็จ: ${e.message}`));
     }
     _emit?.('jobs:updated', { ...job, _id:id, status, results, ...pageData });
+    _store.notifyWeb?.(id, 'finished');
     if (interrupted) log(`⏸ ถูกหยุดกลางคัน: โพสสำเร็จ ${ok}/${job.groups.length} กลุ่ม — กลุ่มที่เหลือบันทึกว่า "ไม่ได้โพส"`);
     else log(`✅ เสร็จ: ${ok}/${job.groups.length} สำเร็จ`);
     log('─────────────────────────────');
