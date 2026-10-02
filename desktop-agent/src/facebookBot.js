@@ -567,6 +567,26 @@ async function switchBackOnPage(page, onLog, currentPageName = null) {
 }
 
 // ── Try to switch identity inside the group composer dialog ──────
+// Text of the identity area at the top of the create-post dialog (name next
+// to the avatar, plus avatar alt/aria-labels) — who the post would go out as.
+async function _dialogIdentityText(page) {
+    return page.evaluate(() => {
+        const dialogs = [...document.querySelectorAll('[role="dialog"]')].filter(d => d.querySelector('[contenteditable="true"]'));
+        const dialog = dialogs[dialogs.length - 1];
+        if (!dialog) return '';
+        const top = dialog.getBoundingClientRect().y;
+        const parts = [];
+        for (const el of dialog.querySelectorAll('span, strong, h2, h3, a, img, image, [aria-label]')) {
+            const r = el.getBoundingClientRect();
+            if (r.height === 0 || r.y < top || r.y > top + 170) continue;
+            if (el.matches('[contenteditable], [contenteditable] *')) continue;
+            const t = el.getAttribute('aria-label') || el.getAttribute('alt') || (el.children.length ? '' : el.textContent);
+            if (t && t.trim()) parts.push(t.trim());
+        }
+        return parts.join(' | ');
+    }).catch(() => '');
+}
+
 async function _tryDialogIdentitySwitch(page, pageName) {
     try {
         // Step 1: click the profile/identity area in dialog top (opens switcher popup)
@@ -591,20 +611,23 @@ async function _tryDialogIdentitySwitch(page, pageName) {
         // Step 2: wait for switcher popup to appear
         await page.waitForTimeout(2500);
 
-        // Step 3: try Playwright locator — more reliable than evaluate for dynamic popups
-        const lower = pageName.toLowerCase();
-        // Scan all visible popup/menu/list containers for the page name
+        // Step 3: try Playwright locator — more reliable than evaluate for dynamic popups.
+        // Prefer an item whose name IS the page (exact, ignoring spacing/emoji)
+        // over one that merely contains it, so a similarly named Page is never
+        // picked; read all texts first, then click by index.
+        const want = _normText(pageName);
         const allMenuItems = page.locator('[role="menu"] [role="menuitem"], [role="listbox"] [role="option"], [role="menu"] [role="button"], [role="list"] li');
         const count = await allMenuItems.count().catch(() => 0);
-        for (let i = 0; i < count; i++) {
+        const texts = [];
+        for (let i = 0; i < count; i++) texts.push((await allMenuItems.nth(i).textContent({ timeout: 500 }).catch(() => '')) || '');
+        const usable = i => !_MENU_WORDS.some(w => texts[i].toLowerCase().includes(w.toLowerCase()));
+        let idx = texts.findIndex((t, i) => usable(i) && _normText(t) === want);
+        if (idx < 0) idx = texts.findIndex((t, i) => usable(i) && _normText(t).includes(want));
+        if (idx >= 0) {
             try {
-                const item = allMenuItems.nth(i);
-                const txt = (await item.textContent({ timeout: 500 }).catch(() => '')) || '';
-                if (txt.toLowerCase().includes(lower) && !_MENU_WORDS.some(w => txt.toLowerCase().includes(w.toLowerCase()))) {
-                    await item.click({ timeout: 3000 });
-                    await page.waitForTimeout(1000);
-                    return 'locator:' + pageName;
-                }
+                await allMenuItems.nth(idx).click({ timeout: 3000 });
+                await page.waitForTimeout(1000);
+                return 'locator:' + pageName;
             } catch {}
         }
 
@@ -810,6 +833,21 @@ async function postToGroup(accountId, groupId, groupName, message, postAsPage, o
         }
 
         await page.waitForTimeout(1500);
+
+        // Last check before anything is published: the create-post dialog must
+        // show the identity that was chosen. Menus can shift between reading
+        // and clicking, so never trust that the switch above landed right.
+        if (postAsPage) {
+            const who = await _dialogIdentityText(page);
+            if (!_normText(who).includes(_normText(postAsPage))) {
+                log(`   ⛔ ผู้โพสในหน้าต่างไม่ใช่ "${postAsPage}" — ไม่กดโพส`);
+                await page.screenshot({ path: path.join(_userDataBase, `debug-identity-${groupId}.png`) }).catch(() => {});
+                await page.keyboard.press('Escape').catch(() => {});
+                if (ownPage) await page.close().catch(() => {});
+                return { ok: false, error: `ตัวตนที่จะโพสไม่ใช่ "${postAsPage}" — ยกเลิก ไม่ได้โพส (กันโพสผิดเพจ)` };
+            }
+            log(`   ✅ ยืนยันผู้โพส: ${postAsPage}`);
+        }
 
         log('📤 กด Post...');
 
