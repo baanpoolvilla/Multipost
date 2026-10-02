@@ -201,6 +201,41 @@ function createSchedulerService(Model, opts = {}) {
         return doc;
     }
 
+    // Saves per-group results while a job is still running, so if the Agent
+    // is closed mid-job we still know exactly which groups were posted.
+    async function SaveProgress(id, results) {
+        await Model.updateOne({ _id: id, status: STATUS.RUNNING }, { $set: { results, updatedAt: new Date().toISOString() } });
+    }
+
+    // Jobs left "running" by an Agent that was closed or crashed mid-post.
+    // Never re-run automatically (groups already posted would be posted
+    // twice) — mark them failed with what was saved, and list the groups that
+    // never got a turn, so a person decides what to re-post.
+    // forAgentId: this machine at startup (all its running jobs are dead);
+    // otherwise only jobs whose machine has been offline past the threshold.
+    async function RecoverInterrupted(forAgentId) {
+        const filter = { status: STATUS.RUNNING };
+        if (forAgentId) filter.claimedBy = forAgentId;
+        else {
+            const online = await agentPresence.listOnlineAgentIds().catch(() => null);
+            if (!online) return 0;
+            filter.claimedBy = { $nin: online };
+            filter.lastAttemptAt = { $lte: new Date(Date.now() - 10 * 60 * 1000).toISOString() };
+        }
+        const stuck = await Model.find(filter).lean();
+        const now = new Date().toISOString();
+        for (const job of stuck) {
+            const results = [...(job.results || [])];
+            const done = new Set(results.map(r => String(r.groupId)));
+            for (const g of job.groups || []) {
+                if (done.has(String(g.groupId))) continue;
+                results.push({ groupId: g.groupId, groupName: g.groupName, status: 'failed', error: 'ไม่ได้โพส — โปรแกรมโพสถูกปิดระหว่างทำงาน', timestamp: now, postUrl: null });
+            }
+            await Model.updateOne({ _id: job._id, status: STATUS.RUNNING }, { $set: { status: STATUS.FAILED, results, updatedAt: now } });
+        }
+        return stuck.length;
+    }
+
     // A job deleted WHILE it was running keeps posting (the runner never
     // learns of the deletion), and its final status write then finds no row.
     // Re-insert it with the real outcome so a post that really happened is
@@ -285,8 +320,10 @@ function createSchedulerService(Model, opts = {}) {
     // is just queued behind others (one post at a time), not missed — so the
     // routine sweep must not expire it. graceMs === 0 is the startup catch-up
     // for jobs that really were missed while offline, so that still runs.
-    async function expireOverdueJobs(graceMs = DEFAULT_GRACE_MS) {
-        if (graceMs !== 0) {
+    // opts.force: run even while the posting machine is online (its own
+    // startup catch-up). opts.immediateStaleMs overrides STALE_IMMEDIATE_MS.
+    async function expireOverdueJobs(graceMs = DEFAULT_GRACE_MS, opts = {}) {
+        if (graceMs !== 0 && !opts.force) {
             const poster = await agentPresence.findOnlinePosterAgentId().catch(() => null);
             if (poster) return 0;
         }
@@ -299,16 +336,19 @@ function createSchedulerService(Model, opts = {}) {
             { $set: { status: STATUS.EXPIRED, expiredAt: now, updatedAt: now } },
         );
 
-        // 2. Immediate jobs (scheduledAt: null) stale past STALE_IMMEDIATE_MS
-        const staleCutoffDate = new Date(Date.now() - STALE_IMMEDIATE_MS);
+        // 2. Immediate jobs (scheduledAt: null) stale past STALE_IMMEDIATE_MS.
+        // Age is measured from dueAt (reset by Retry / Post now) when present,
+        // otherwise a re-queued old job would expire again on the next sweep.
+        const staleCutoffDate = new Date(Date.now() - (opts.immediateStaleMs || STALE_IMMEDIATE_MS));
         const staleCutoffStr  = staleCutoffDate.toISOString();
         const res2 = await Model.updateMany(
             {
                 status: STATUS.PENDING,
                 scheduledAt: null,
                 $or: [
-                    { createdAt: { $type: 'date',   $lte: staleCutoffDate } },
-                    { createdAt: { $type: 'string', $lte: staleCutoffStr  } },
+                    { dueAt: { $type: 'date', $lte: staleCutoffDate } },
+                    { dueAt: null, createdAt: { $type: 'date',   $lte: staleCutoffDate } },
+                    { dueAt: null, createdAt: { $type: 'string', $lte: staleCutoffStr  } },
                 ],
             },
             { $set: { status: STATUS.EXPIRED, expiredAt: now, updatedAt: now } },
@@ -395,7 +435,7 @@ function createSchedulerService(Model, opts = {}) {
     }
 
     return {
-        ValidateJob, CreateJob, UpdateJob, DeleteJob, IsLiveRunning, RecordDeletion, RequestFbDeletion, RestoreDeletedJob, ExecuteJob, ExpireJob, RetryJob, CancelJob,
+        ValidateJob, CreateJob, UpdateJob, DeleteJob, IsLiveRunning, RecordDeletion, RequestFbDeletion, SaveProgress, RecoverInterrupted, RestoreDeletedJob, ExecuteJob, ExpireJob, RetryJob, CancelJob,
         expireOverdueJobs, getDueJobs, claimNextDueJob, listExpired, migrateLegacyStatuses,
     };
 }

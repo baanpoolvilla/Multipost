@@ -192,8 +192,18 @@ async function getJobs() {
 // Run BEFORE every queue poll: flips any pending job overdue past the
 // grace window to 'expired' so it can never be auto-posted late.
 // Pass graceMs=0 at startup to expire ALL scheduled-but-overdue jobs.
-async function expireOverdueJobs(graceMs) {
-    try { await connect(); return await scheduler().expireOverdueJobs(graceMs); }
+async function expireOverdueJobs(graceMs, opts) {
+    try { await connect(); return await scheduler().expireOverdueJobs(graceMs, opts); }
+    catch { return 0; }
+}
+
+async function saveProgress(id, results) {
+    try { await connect(); await scheduler().SaveProgress(id, results); } catch {}
+}
+
+// forAgentId = this machine at startup; omit to sweep machines gone offline.
+async function recoverInterrupted(forAgentId) {
+    try { await connect(); return await scheduler().RecoverInterrupted(forAgentId); }
     catch { return 0; }
 }
 
@@ -408,5 +418,6 @@ module.exports = {
     connect, isDbConnected, setDataPath, setAgentId, setStaffId, listStaff, getAllGroups, getRecentPosts,
     isPosterAgent, createJob, getJobs, getPendingJobs, claimNextJob, updateJob, deleteJob, deleteAllJobs, restoreDeletedJob, claimNextFbDeletion, updateFbDeletion, finishFbDeletion,
     getCompletedJobs, getQueueSnapshot, getDbUsage, rescheduleJob, expireOverdueJobs, migrateLegacyStatuses,
+    saveProgress, recoverInterrupted,
     retryJob, cancelJob, listExpiredJobs,
 };

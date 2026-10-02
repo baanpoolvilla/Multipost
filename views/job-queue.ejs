@@ -121,109 +121,117 @@
     <% } else { %>
 
     <!-- Create Job Form -->
-    <div class="card" id="createForm">
-      <div class="card-title"><i class="fa-solid fa-plus"></i> สร้างงานโพสลงกลุ่ม
-        <button type="button" class="btn-link-sm" style="margin-left:auto" onclick="openTemplatePicker()"><i class="fa-solid fa-file-lines"></i> ใช้เทมเพลต</button>
+    <div class="card jq-compose" id="createForm">
+      <div class="jq-compose-head">
+        <div class="jq-compose-title"><i class="fa-solid fa-pen-to-square"></i> สร้างโพสลงกลุ่ม</div>
+        <div class="jq-compose-sub">สั่งที่นี่ เครื่องโพสหลักจะโพสให้ตามลำดับคิว ไม่ต้องเปิด Agent</div>
       </div>
 
-      <div class="jq-form-grid">
-        <!-- Left: message + media + page -->
-        <div>
-          <label class="form-label" for="fMsg">ข้อความ <span style="color:#fa5252">*</span></label>
-          <textarea id="fMsg" rows="6" placeholder="พิมพ์ข้อความที่ต้องการโพสต์..." style="width:100%"></textarea>
+      <!-- 1. Post as -->
+      <section class="jq-sec">
+        <div class="jq-sec-hd">
+          <span class="jq-step">1</span> โพสในนาม <span class="jq-req">*</span>
+          <button type="button" id="btnRefreshPages" class="jq-link" onclick="refreshPages()" title="ให้เครื่องโพสหลักดึงรายชื่อเพจใหม่จาก Facebook"><i class="fa-solid fa-rotate"></i> อัปเดตรายชื่อ</button>
+        </div>
+        <input type="hidden" id="fPage" value="">
+        <div id="fPageChips" class="jq-chips" role="radiogroup" aria-label="โพสในนาม"></div>
+        <div id="fPageHint" class="jq-hint"></div>
+      </section>
 
-          <label class="form-label" style="margin-top:.6rem">รูปภาพ / วิดีโอ (ไม่บังคับ)</label>
+      <!-- 2. Message + media -->
+      <section class="jq-sec">
+        <div class="jq-sec-hd">
+          <span class="jq-step">2</span> ข้อความ <span class="jq-req">*</span>
+          <button type="button" class="jq-link" onclick="openTemplatePicker()"><i class="fa-solid fa-file-lines"></i> ใช้เทมเพลต</button>
+        </div>
+        <div class="jq-editor">
+          <textarea id="fMsg" rows="6" placeholder="พิมพ์ข้อความที่ต้องการโพส..." oninput="updateSummary()"></textarea>
           <div id="fMediaRow" class="jq-media-row">
             <label class="jq-media-add" title="เพิ่มรูปหรือวิดีโอ">
-              <i class="fa-solid fa-photo-film"></i><span>เพิ่มไฟล์</span>
+              <i class="fa-solid fa-photo-film"></i><span>รูป / วิดีโอ</span>
               <input type="file" id="fFiles" accept="image/*,video/mp4,video/quicktime,video/webm" multiple style="display:none" onchange="onPickFiles(this.files); this.value=''">
             </label>
           </div>
+          <div class="jq-editor-foot"><span id="fMsgCount">0</span> ตัวอักษร</div>
+        </div>
+      </section>
 
-          <label class="form-label" style="margin-top:.6rem" for="fPage">โพสในนาม <span style="color:#fa5252">*</span></label>
-          <div style="display:flex;gap:.4rem;align-items:center">
-            <select id="fPage" style="flex:1;min-width:0">
-              <option value="">— เลือกว่าจะโพสในนามใคร —</option>
-            </select>
-            <button type="button" id="btnRefreshPages" class="btn-link-sm" style="white-space:nowrap" onclick="refreshPages()" title="ให้เครื่องโพสหลักดึงรายชื่อเพจใหม่จาก Facebook">
-              <i class="fa-solid fa-rotate"></i> อัปเดตรายชื่อ
+      <!-- 3. Groups -->
+      <section class="jq-sec">
+        <div class="jq-sec-hd">
+          <span class="jq-step">3</span> เลือกกลุ่ม <span class="jq-req">*</span>
+          <span id="selCount" class="jq-count-pill">ยังไม่ได้เลือก</span>
+          <span style="margin-left:auto;display:flex;gap:.6rem">
+            <button type="button" class="jq-link" onclick="selAll()">เลือกทั้งหมด</button>
+            <button type="button" class="jq-link" onclick="selNone()">ล้าง</button>
+          </span>
+        </div>
+        <div class="jq-search">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="search" id="fGroupSearch" placeholder="ค้นหากลุ่ม..." oninput="filterGroups(this.value)" autocomplete="off">
+        </div>
+        <div class="jq-group-box" id="fGroupBox">
+          <% jqCats.forEach((cat, ci) => { %>
+          <div class="jq-cat-hd" id="jqCatHd_<%= ci %>">
+            <label class="jq-cat-label" onclick="event.stopPropagation()">
+              <input type="checkbox" id="catcb_<%= ci %>" onchange="toggleCatAll(<%= ci %>, this.checked)">
+              <i class="fa-solid fa-location-dot" style="color:<%- (catColorMap && catColorMap[cat]) || '#1877f2' %>"></i>
+              <span class="jq-cat-name"><%= cat %></span>
+              <span class="jq-cat-count" id="catcount_<%= ci %>">0/<%= jqCatMap[cat].length %></span>
+            </label>
+            <button type="button" class="jq-cat-toggle" onclick="toggleJqCat(<%= ci %>)" title="ยุบ/ขยาย" aria-label="ยุบ/ขยาย <%= cat %>">
+              <i class="fa-solid fa-chevron-down" id="jqChev_<%= ci %>" style="transform:rotate(-90deg)"></i>
             </button>
           </div>
-          <div id="fPageHint" style="font-size:.75rem;color:var(--text-secondary);margin-top:.25rem"></div>
-        </div>
-        <!-- Right: groups by category with master checkbox -->
-        <div>
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem">
-            <label class="form-label" style="margin-bottom:0">กลุ่ม <span style="color:#fa5252">*</span>
-              <span id="selCount" style="font-size:.75rem;color:#1877f2;font-weight:700;margin-left:.4rem;text-transform:none;letter-spacing:0"></span>
+          <div id="jqCatBody_<%= ci %>" style="display:none">
+            <% jqCatMap[cat].forEach(g => { %>
+            <label class="jq-group-row" id="glabel_<%= g._idx %>" data-name="<%= (g.groupName || '').toLowerCase() %>">
+              <input type="checkbox" id="gc_<%= g._idx %>" value="<%= g._idx %>" data-cat="<%= ci %>" onchange="onGroupCbChange(<%= ci %>)">
+              <span class="jq-group-name"><%= g.groupName %></span>
             </label>
-            <span>
-              <button class="btn-link-sm" onclick="selAll()">ทั้งหมด</button>
-              <button class="btn-link-sm" onclick="selNone()">ยกเลิก</button>
-            </span>
-          </div>
-          <div style="border:1.5px solid var(--border-color);border-radius:10px;max-height:260px;overflow-y:auto">
-            <% jqCats.forEach((cat, ci) => { %>
-
-            <!-- ── Category row (master checkbox + collapse) ── -->
-            <div class="jq-cat-hd" id="jqCatHd_<%= ci %>">
-              <label style="display:flex;align-items:center;gap:.5rem;flex:1;cursor:pointer;min-width:0" onclick="event.stopPropagation()">
-                <input type="checkbox" id="catcb_<%= ci %>"
-                       style="accent-color:#1877f2;width:15px;height:15px;cursor:pointer;flex-shrink:0"
-                       onchange="toggleCatAll(<%= ci %>, this.checked)" checked>
-                <i class="fa-solid fa-location-dot" style="color:<%- (catColorMap && catColorMap[cat]) || '#1877f2' %>;font-size:.78rem;flex-shrink:0"></i>
-                <span style="font-weight:700;font-size:.85rem;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><%= cat %></span>
-                <span style="font-size:.74rem;color:var(--text-secondary);white-space:nowrap;margin-right:.2rem"><%= jqCatMap[cat].length %> กลุ่ม</span>
-              </label>
-              <button style="background:none;border:none;cursor:pointer;color:#aaa;padding:.15rem .3rem;flex-shrink:0"
-                      onclick="toggleJqCat(<%= ci %>)" title="ยุบ/ขยาย">
-                <i class="fa-solid fa-chevron-down" id="jqChev_<%= ci %>" style="font-size:.74rem;transition:transform .2s"></i>
-              </button>
-            </div>
-
-            <!-- ── Group checkboxes in this category ── -->
-            <div id="jqCatBody_<%= ci %>">
-              <% jqCatMap[cat].forEach(g => { %>
-              <label class="jq-group-row" id="glabel_<%= g._idx %>">
-                <span class="jq-indent"></span>
-                <input type="checkbox" id="gc_<%= g._idx %>" value="<%= g._idx %>" data-cat="<%= ci %>"
-                       style="accent-color:#1877f2;flex-shrink:0" checked
-                       onchange="onGroupCbChange(<%= ci %>)">
-                <span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.87rem"><%= g.groupName %></span>
-              </label>
-              <% }); %>
-            </div>
-
             <% }); %>
           </div>
+          <% }); %>
+          <div id="fGroupEmpty" class="jq-hint" style="display:none;padding:.8rem;text-align:center">ไม่พบกลุ่มที่ค้นหา</div>
         </div>
-      </div>
+      </section>
 
-      <div style="display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:.75rem">
-        <div>
-          <label class="form-label" for="fDelay">เว้นระหว่างกลุ่ม (วินาที)</label>
-          <input type="number" id="fDelay" value="30" min="10" max="120" style="width:90px">
-        </div>
-        <div>
-          <label class="form-label">ตั้งเวลาโพส (ไม่บังคับ)</label>
-          <div class="dt24-wrap">
-            <input type="date" lang="en-GB" id="fScheduledAt_d">
-            <input type="number" id="fScheduledAt_h" min="0" max="23" placeholder="ชม.">
-            <span>:</span>
-            <input type="number" id="fScheduledAt_m" min="0" max="59" placeholder="นาที">
-            <button type="button" onclick="dt24Set('fScheduledAt','')"
-              style="background:#f0f2f5;border:none;border-radius:7px;padding:.4rem .6rem;font-size:.78rem;cursor:pointer;color:#65676b" title="ล้าง">
-              <i class="fa-solid fa-xmark"></i>
-            </button>
+      <!-- 4. When + spacing -->
+      <section class="jq-sec jq-sec-last">
+        <div class="jq-sec-hd"><span class="jq-step">4</span> เวลาโพส</div>
+        <div class="jq-when">
+          <div class="jq-seg" role="radiogroup" aria-label="เวลาโพส">
+            <button type="button" id="whenNow" class="active" onclick="setWhen('now')"><i class="fa-solid fa-bolt"></i> โพสทันที</button>
+            <button type="button" id="whenLater" onclick="setWhen('later')"><i class="fa-regular fa-clock"></i> ตั้งเวลา</button>
+          </div>
+          <div id="whenPicker" class="jq-when-picker" style="display:none">
+            <div class="dt24-wrap">
+              <input type="date" lang="en-GB" id="fScheduledAt_d" onchange="updateSummary()">
+              <input type="number" id="fScheduledAt_h" min="0" max="23" placeholder="ชม." oninput="updateSummary()">
+              <span>:</span>
+              <input type="number" id="fScheduledAt_m" min="0" max="59" placeholder="นาที" oninput="updateSummary()">
+            </div>
+            <div class="jq-quick">
+              <button type="button" onclick="dtQuick('fScheduledAt',60); updateSummary()">+1 ชม.</button>
+              <button type="button" onclick="dtQuick('fScheduledAt',180); updateSummary()">+3 ชม.</button>
+              <button type="button" onclick="setTomorrow(9); updateSummary()">พรุ่งนี้ 09:00</button>
+              <button type="button" onclick="setTomorrow(18); updateSummary()">พรุ่งนี้ 18:00</button>
+            </div>
+          </div>
+          <div class="jq-delay">
+            <label for="fDelay">เว้นระหว่างกลุ่ม</label>
+            <input type="number" id="fDelay" value="30" min="10" max="120" oninput="updateSummary()"> วินาที
+            <span class="jq-hint" style="margin:0">(แนะนำ 30–60)</span>
           </div>
         </div>
-      </div>
+      </section>
 
-      <div style="display:flex;gap:.5rem">
-        <button id="btnSubmitJob" class="btn-post" style="font-size:.85rem;padding:.45rem 1rem" onclick="submitJob()">
+      <!-- Summary + submit -->
+      <div class="jq-submit-bar">
+        <div id="fSummary" class="jq-summary">เลือกเพจ ใส่ข้อความ และเลือกกลุ่ม</div>
+        <button id="btnSubmitJob" class="btn-post jq-submit" onclick="submitJob()">
           <i class="fa-solid fa-paper-plane"></i> เพิ่มลงคิว
         </button>
-        <button class="btn-back" onclick="toggleForm()">ยกเลิก</button>
       </div>
     </div>
 
@@ -340,20 +348,87 @@
 .badge-green  { background:#d1e7dd; color:#0a3622 }
 .badge-red    { background:#f8d7da; color:#842029 }
 
-/* Create-job form */
-.jq-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:.75rem }
-@media (max-width: 760px) { .jq-form-grid { grid-template-columns:1fr } }
-.jq-media-row { display:flex; flex-wrap:wrap; gap:.45rem }
-.jq-media-add { width:84px; height:84px; border:1.5px dashed var(--border-color); border-radius:10px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.25rem; cursor:pointer; color:#1877f2; font-size:.75rem; font-weight:600 }
-.jq-media-add:hover { background:#f0f6ff }
-.jq-media-add i { font-size:1.2rem }
-.jq-thumb { position:relative; width:84px; height:84px; border-radius:10px; overflow:hidden; background:#f0f2f5; border:1px solid var(--border-color) }
+/* The site stylesheet never defines these, so every var() below (and the
+   older rules on this page) resolved to nothing — no borders, default text. */
+:root { --border-color:#dddfe2; --text-primary:#1c1e21; --text-secondary:#65676b }
+
+/* Create-job composer */
+.jq-compose { padding:0; overflow:hidden }
+.jq-compose-head { padding:1rem 1.25rem .85rem; border-bottom:1px solid var(--border-color); background:linear-gradient(180deg,#f7faff,#fff) }
+.jq-compose-title { font-weight:700; font-size:1.05rem; color:var(--text-primary); display:flex; align-items:center; gap:.5rem }
+.jq-compose-title i { color:#1877f2 }
+.jq-compose-sub { font-size:.8rem; color:var(--text-secondary); margin-top:.15rem }
+.jq-sec { padding:.95rem 1.25rem; border-bottom:1px solid var(--border-color) }
+.jq-sec-last { border-bottom:none }
+.jq-sec-hd { display:flex; align-items:center; gap:.45rem; font-weight:700; font-size:.9rem; color:var(--text-primary); margin-bottom:.6rem; flex-wrap:wrap }
+.jq-step { width:22px; height:22px; border-radius:50%; background:#e7f0fd; color:#1877f2; font-size:.75rem; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0 }
+.jq-req { color:#fa5252 }
+.jq-link { margin-left:auto; background:none; border:none; color:#1877f2; font-size:.8rem; font-weight:600; cursor:pointer; font-family:inherit; padding:.15rem .3rem; border-radius:6px }
+.jq-sec-hd span .jq-link { margin-left:0 }
+.jq-link:hover { background:#f0f6ff }
+.jq-link:disabled { opacity:.5; cursor:default }
+.jq-link:focus-visible, .jq-chip:focus-visible, .jq-seg button:focus-visible, .jq-quick button:focus-visible { outline:2px solid #1877f2; outline-offset:2px }
+.jq-hint { font-size:.76rem; color:var(--text-secondary); margin-top:.4rem }
+.jq-chips { display:flex; flex-wrap:wrap; gap:.45rem }
+.jq-chip { border:1.5px solid var(--border-color); background:#fff; color:var(--text-primary); border-radius:999px; padding:.36rem .85rem .36rem .4rem; font-size:.82rem; font-family:inherit; cursor:pointer; display:inline-flex; align-items:center; gap:.4rem; max-width:100%; text-align:left; transition:background .12s,border-color .12s }
+.jq-chip:hover { border-color:#9ec5fb; background:#f5f9ff }
+.jq-chip-av { width:22px; height:22px; border-radius:50%; background:#e4e6ea; color:#444; font-size:.7rem; font-weight:700; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0 }
+.jq-chip.active { background:#1877f2; border-color:#1877f2; color:#fff; font-weight:600 }
+.jq-chip.active .jq-chip-av { background:rgba(255,255,255,.25); color:#fff }
+.jq-chip-empty { font-size:.82rem; color:var(--text-secondary); padding:.3rem 0 }
+.jq-editor { border:1.5px solid var(--border-color); border-radius:12px; overflow:hidden; transition:border-color .12s }
+.jq-editor:focus-within { border-color:#1877f2 }
+.jq-editor textarea { width:100%; border:none; outline:none; resize:vertical; min-height:130px; padding:.8rem .9rem; font-size:.95rem; line-height:1.6; font-family:inherit; display:block; box-sizing:border-box }
+.jq-editor .jq-media-row { padding:.2rem .9rem .75rem }
+.jq-editor-foot { font-size:.72rem; color:var(--text-secondary); text-align:right; padding:.35rem .9rem; border-top:1px solid var(--border-color); background:#fafbfc; font-variant-numeric:tabular-nums }
+.jq-media-row { display:flex; flex-wrap:wrap; gap:.5rem }
+.jq-media-add { width:88px; height:88px; border:1.5px dashed #b3d4f9; border-radius:10px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.3rem; cursor:pointer; color:#1877f2; font-size:.74rem; font-weight:600; background:#f7faff }
+.jq-media-add:hover { background:#eaf3ff }
+.jq-media-add i { font-size:1.25rem }
+.jq-thumb { position:relative; width:88px; height:88px; border-radius:10px; overflow:hidden; background:#f0f2f5; border:1px solid var(--border-color) }
 .jq-thumb img, .jq-thumb video { width:100%; height:100%; object-fit:cover; display:block }
-.jq-thumb .jq-thumb-x { position:absolute; top:3px; right:3px; width:22px; height:22px; border:none; border-radius:50%; background:rgba(0,0,0,.6); color:#fff; cursor:pointer; font-size:.75rem; line-height:22px; padding:0 }
-.jq-thumb .jq-thumb-state { position:absolute; inset:auto 0 0 0; background:rgba(0,0,0,.55); color:#fff; font-size:.68rem; text-align:center; padding:.1rem 0 }
-.jq-thumb.err { border-color:#fa5252 }
+.jq-thumb .jq-thumb-x { position:absolute; top:4px; right:4px; width:22px; height:22px; border:none; border-radius:50%; background:rgba(0,0,0,.6); color:#fff; cursor:pointer; font-size:.72rem; line-height:22px; padding:0 }
+.jq-thumb .jq-thumb-state { position:absolute; inset:auto 0 0 0; background:rgba(0,0,0,.6); color:#fff; font-size:.66rem; text-align:center; padding:.12rem 0 }
+.jq-thumb.err { border:2px solid #fa5252 }
+.jq-count-pill { font-size:.74rem; font-weight:700; background:#f0f2f5; color:var(--text-secondary); border-radius:999px; padding:.12rem .55rem }
+.jq-count-pill.on { background:#e7f0fd; color:#1877f2 }
+.jq-search { position:relative; margin-bottom:.5rem }
+.jq-search i { position:absolute; left:.75rem; top:50%; transform:translateY(-50%); color:#8a8d91; font-size:.8rem }
+.jq-search input { width:100%; box-sizing:border-box; padding:.5rem .75rem .5rem 2.1rem; border:1.5px solid var(--border-color); border-radius:10px; font-family:inherit; font-size:.86rem; outline:none }
+.jq-search input:focus { border-color:#1877f2 }
+.jq-group-box { border:1.5px solid var(--border-color); border-radius:12px; max-height:340px; overflow-y:auto }
+.jq-cat-label { display:flex; align-items:center; gap:.5rem; flex:1; cursor:pointer; min-width:0 }
+.jq-cat-label input, .jq-group-row input { accent-color:#1877f2; width:16px; height:16px; cursor:pointer; flex-shrink:0 }
+.jq-cat-label i { font-size:.78rem; flex-shrink:0 }
+.jq-cat-name { font-weight:700; font-size:.86rem; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.jq-cat-count { font-size:.74rem; color:var(--text-secondary); white-space:nowrap; font-variant-numeric:tabular-nums }
+.jq-cat-toggle { background:none; border:none; cursor:pointer; color:#8a8d91; padding:.25rem .45rem; flex-shrink:0; border-radius:6px }
+.jq-cat-toggle:hover { background:#e4e6ea }
+.jq-cat-toggle i { font-size:.75rem; transition:transform .2s }
+.jq-group-name { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:.86rem }
+.jq-when { display:flex; flex-direction:column; gap:.7rem }
+.jq-seg { display:inline-flex; background:#f0f2f5; border-radius:10px; padding:3px; align-self:flex-start }
+.jq-seg button { border:none; background:none; padding:.42rem .95rem; border-radius:8px; font-family:inherit; font-size:.84rem; font-weight:600; color:var(--text-secondary); cursor:pointer; display:inline-flex; align-items:center; gap:.4rem }
+.jq-seg button.active { background:#fff; color:#1877f2; box-shadow:0 1px 3px rgba(0,0,0,.12) }
+.jq-when-picker { display:flex; flex-direction:column; gap:.5rem }
+.jq-quick { display:flex; flex-wrap:wrap; gap:.35rem }
+.jq-quick button { background:#f0f2f5; border:none; border-radius:999px; padding:.3rem .75rem; font-size:.78rem; font-family:inherit; cursor:pointer; color:#333 }
+.jq-quick button:hover { background:#e4e6ea }
+.jq-delay { display:flex; align-items:center; gap:.45rem; font-size:.84rem; color:var(--text-primary); flex-wrap:wrap }
+.jq-delay label { font-weight:600 }
+.jq-delay input { width:72px; padding:.35rem .5rem; border:1.5px solid var(--border-color); border-radius:8px; font-family:inherit; text-align:center }
+.jq-submit-bar { position:sticky; bottom:0; display:flex; align-items:center; gap:.9rem; padding:.85rem 1.25rem; background:#fff; border-top:1px solid var(--border-color); box-shadow:0 -4px 12px rgba(0,0,0,.04); flex-wrap:wrap; z-index:2 }
+.jq-summary { flex:1; min-width:200px; font-size:.84rem; color:var(--text-secondary); line-height:1.5 }
+.jq-summary b { color:var(--text-primary) }
+.jq-summary .warn { color:#c62828 }
+.jq-submit { font-size:.92rem !important; padding:.6rem 1.4rem !important; border-radius:10px !important }
+.jq-submit:disabled { opacity:.6; cursor:default }
 .jq-tpl-item { display:block; width:100%; text-align:left; background:#fff; border:1px solid var(--border-color); border-radius:8px; padding:.5rem .65rem; margin-bottom:.4rem; cursor:pointer; font-family:inherit }
 .jq-tpl-item:hover { background:#f0f6ff; border-color:#b3d4f9 }
+@media (max-width: 640px) {
+  .jq-sec, .jq-compose-head, .jq-submit-bar { padding-left:.85rem; padding-right:.85rem }
+  .jq-submit { width:100% }
+}
 
 /* Job Queue - group picker */
 .jq-cat-hd {
@@ -363,8 +438,8 @@
   position:sticky;top:0;z-index:1
 }
 .jq-group-row {
-  display:flex;align-items:center;gap:.45rem;
-  padding:.35rem .65rem .35rem 0;
+  display:flex;align-items:center;gap:.55rem;
+  padding:.45rem .75rem .45rem 2.35rem;
   cursor:pointer;border-bottom:1px solid var(--border-color);
   transition:background .1s
 }
@@ -601,15 +676,100 @@ async function bulkRescheduleJobs() {
 
 function toggleForm() {
   const f = document.getElementById('createForm');
-  f.style.display = f.style.display === '' ? 'none' : '';
+  if (!f) return;
+  f.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  setTimeout(() => document.getElementById('fMsg')?.focus({ preventScroll: true }), 400);
 }
 
-/* ── Selection counter ── */
+/* ── Selection counter (also per category) ── */
 function updateSelCount() {
   const total = document.querySelectorAll('[id^="gc_"]').length;
   const checked = document.querySelectorAll('[id^="gc_"]:checked').length;
   const el = document.getElementById('selCount');
-  if (el) el.textContent = checked > 0 ? `(เลือก ${checked}/${total})` : '';
+  if (el) {
+    el.textContent = checked > 0 ? `เลือก ${checked}/${total} กลุ่ม` : 'ยังไม่ได้เลือก';
+    el.classList.toggle('on', checked > 0);
+  }
+  Object.keys(_catIdxMap).forEach(ci => {
+    const idx = _catIdxMap[ci] || [];
+    const n = idx.filter(i => document.getElementById(`gc_${i}`)?.checked).length;
+    const c = document.getElementById(`catcount_${ci}`);
+    if (c) c.textContent = `${n}/${idx.length}`;
+  });
+  updateSummary();
+}
+
+/* ── Group search: show matching groups, open their categories ── */
+function filterGroups(q) {
+  const term = (q || '').trim().toLowerCase();
+  let anyShown = false;
+  Object.keys(_catIdxMap).forEach(ci => {
+    let shown = 0;
+    (_catIdxMap[ci] || []).forEach(i => {
+      const row = document.getElementById(`glabel_${i}`);
+      if (!row) return;
+      const hit = !term || (row.dataset.name || '').includes(term);
+      row.style.display = hit ? '' : 'none';
+      if (hit) shown++;
+    });
+    const hd = document.getElementById(`jqCatHd_${ci}`);
+    const body = document.getElementById(`jqCatBody_${ci}`);
+    const chev = document.getElementById(`jqChev_${ci}`);
+    if (hd) hd.style.display = shown ? '' : 'none';
+    // Searching opens every category with a hit; clearing folds them all back.
+    if (body) body.style.display = term && shown ? '' : 'none';
+    if (chev) chev.style.transform = term && shown ? '' : 'rotate(-90deg)';
+    if (shown) anyShown = true;
+  });
+  const empty = document.getElementById('fGroupEmpty');
+  if (empty) empty.style.display = anyShown ? 'none' : '';
+}
+
+/* ── When to post ── */
+let _whenMode = 'now';
+function setWhen(mode) {
+  _whenMode = mode;
+  document.getElementById('whenNow')?.classList.toggle('active', mode === 'now');
+  document.getElementById('whenLater')?.classList.toggle('active', mode === 'later');
+  const picker = document.getElementById('whenPicker');
+  if (picker) picker.style.display = mode === 'later' ? '' : 'none';
+  if (mode === 'later' && !document.getElementById('fScheduledAt_d')?.value) dtQuick('fScheduledAt', 60);
+  updateSummary();
+}
+function setTomorrow(hour) {
+  const bkk = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
+  bkk.setDate(bkk.getDate() + 1);
+  const pad = n => String(n).padStart(2, '0');
+  dt24Set('fScheduledAt', `${bkk.getFullYear()}-${pad(bkk.getMonth() + 1)}-${pad(bkk.getDate())}T${pad(hour)}:00`);
+}
+function _scheduledIso() {
+  if (_whenMode !== 'later') return null;
+  const v = dt24Get('fScheduledAt');
+  return v ? new Date(v.slice(0, 16) + ':00+07:00').toISOString() : null;
+}
+
+/* ── Live summary above the submit button ── */
+function updateSummary() {
+  const el = document.getElementById('fSummary');
+  if (!el) return;
+  const msgEl = document.getElementById('fMsg');
+  const cnt = document.getElementById('fMsgCount');
+  if (cnt && msgEl) cnt.textContent = msgEl.value.length;
+  const page = document.getElementById('fPage')?.value || '';
+  const groups = document.querySelectorAll('[id^="gc_"]:checked').length;
+  const hasMsg = !!(msgEl && msgEl.value.trim());
+  const sched = _scheduledIso();
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+  const parts = [
+    page ? `ในนาม <b>${esc(page)}</b>` : '<span class="warn">ยังไม่ได้เลือกเพจ</span>',
+    groups ? `<b>${groups}</b> กลุ่ม` : '<span class="warn">ยังไม่ได้เลือกกลุ่ม</span>',
+    hasMsg ? '' : '<span class="warn">ยังไม่มีข้อความ</span>',
+    _media.length ? `${_media.length} ไฟล์` : '',
+    _whenMode === 'later'
+      ? (sched ? `โพส <b>${new Date(sched).toLocaleString('th-TH',{timeZone:'Asia/Bangkok',dateStyle:'medium',timeStyle:'short'})}</b>` : '<span class="warn">ยังไม่ได้ตั้งเวลา</span>')
+      : 'โพสทันทีตามลำดับคิว',
+  ].filter(Boolean);
+  el.innerHTML = parts.join(' · ');
 }
 
 /* ── Global select/deselect ── */
@@ -665,17 +825,18 @@ function toggleJqCat(ci) {
   if (chev) chev.style.transform = hidden ? '' : 'rotate(-90deg)';
 }
 
-/* ── Init on page load ── */
-(function init() {
+/* ── Init on page load (called at the end of the script, once every
+   variable it reads — _media, _whenMode — has been declared) ── */
+function initComposer() {
   Object.keys(_catIdxMap).forEach(ci => syncCatCb(parseInt(ci)));
   updateSelCount();
-})();
+}
 
 /* ── Media: uploaded straight to storage from the browser ──
    Each item: { id, kind:'image'|'video', preview, url|null, state:'uploading'|'ok'|'err' } */
 let _media = [];
 let _mediaSeq = 0;
-const MAX_IMAGE_MB = 4, MAX_VIDEO_MB = 1024;
+const MAX_IMAGE_MB = 25, MAX_VIDEO_MB = 1024;
 
 async function _uploadToStorage(file) {
   const ext = (file.name.match(/\.[^.]+$/) || [''])[0].toLowerCase();
@@ -741,6 +902,7 @@ function renderMedia() {
     box.appendChild(x);
     row.insertBefore(box, add);
   });
+  updateSummary();
 }
 
 /* ── Templates ── */
@@ -763,7 +925,12 @@ async function openTemplatePicker() {
     didOpen: (popup) => popup.querySelectorAll('.jq-tpl-item').forEach(b => b.addEventListener('click', () => { picked = list[+b.dataset.i]; Swal.close(); })),
   });
   if (!picked) return;
-  document.getElementById('fMsg').value = picked.message || '';
+  const msgEl = document.getElementById('fMsg');
+  if (msgEl.value.trim() && msgEl.value !== picked.message) {
+    const r = await Swal.fire({ icon:'question', title:'แทนที่ข้อความเดิม?', text:'ข้อความและไฟล์ที่ใส่ไว้จะถูกแทนด้วยเทมเพลตนี้', showCancelButton:true, confirmButtonText:'แทนที่', cancelButtonText:'ยกเลิก', confirmButtonColor:'#1877f2' });
+    if (!r.isConfirmed) return;
+  }
+  msgEl.value = picked.message || '';
   _media = [];
   (picked.images || []).forEach(addExistingMedia);
   renderMedia();
@@ -822,21 +989,48 @@ async function refreshPosterStatus() {
 // Every identity is an explicit choice (sent as postAsPage): the account's
 // "current" identity changes after posting as another Page, so "post as it
 // is" would land on whichever Page it happened to be left on.
+let _pageNamesKey = '';
 function fillPageOptions() {
-  const sel = document.getElementById('fPage');
+  const input = document.getElementById('fPage');
+  const box = document.getElementById('fPageChips');
   const hint = document.getElementById('fPageHint');
-  if (!sel) return;
-  const current = sel.value;
+  if (!input || !box) return;
   const identity = _poster && _poster.identity;
   const names = [...new Set([identity, ...((_poster && _poster.pages) || [])].filter(Boolean))];
-  sel.querySelectorAll('option[data-page]').forEach(o => o.remove());
-  names.forEach(name => {
-    const o = document.createElement('option');
-    o.value = name; o.dataset.page = '1';
-    o.textContent = name === identity ? `${name} (ตัวตนปัจจุบันของบัญชี)` : name;
-    sel.appendChild(o);
-  });
-  if (current && names.includes(current)) sel.value = current;
+  if (input.value && !names.includes(input.value)) input.value = '';
+  // Rebuild only when the list changed, so a 20s status refresh never
+  // re-renders the chips under the user's cursor.
+  const key = names.join('\n') + '|' + input.value;
+  if (key !== _pageNamesKey) {
+    _pageNamesKey = key;
+    box.textContent = '';
+    if (!names.length) {
+      const e = document.createElement('div');
+      e.className = 'jq-chip-empty';
+      e.textContent = 'ยังไม่มีรายชื่อเพจ';
+      box.appendChild(e);
+    }
+    names.forEach(name => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'jq-chip' + (input.value === name ? ' active' : '');
+      b.setAttribute('role', 'radio');
+      b.setAttribute('aria-checked', input.value === name ? 'true' : 'false');
+      const av = document.createElement('span');
+      av.className = 'jq-chip-av';
+      av.textContent = (name.match(/[A-Za-zก-๙0-9]/) || ['?'])[0].toUpperCase();
+      const label = document.createElement('span');
+      label.textContent = name;
+      b.append(av, label);
+      b.addEventListener('click', () => {
+        input.value = name;
+        _pageNamesKey = '';
+        fillPageOptions();
+        updateSummary();
+      });
+      box.appendChild(b);
+    });
+  }
   if (!hint) return;
   if (_poster && _poster.pagesRefreshPending) hint.textContent = '⏳ กำลังรอเครื่องโพสหลักอัปเดตรายชื่อ (จะทำเมื่อว่างจากการโพส)…';
   else if (!names.length) hint.textContent = 'ยังไม่มีรายชื่อ — กด "อัปเดตรายชื่อ"';
@@ -862,28 +1056,30 @@ async function refreshPages() {
 async function submitJob() {
   const msg     = document.getElementById('fMsg').value.trim();
   const delay   = parseInt(document.getElementById('fDelay').value) || 30;
-  const schedAt = dt24Get('fScheduledAt');
   const sel     = _groups.filter((_,i)=>document.getElementById(`gc_${i}`)?.checked);
   const postAsPage = document.getElementById('fPage')?.value || '';
 
+  if (!postAsPage){ Swal.fire({ icon:'warning', title:'กรุณาเลือกว่าจะโพสในนามใคร', confirmButtonColor:'#1877f2' }); return; }
   if (!msg)       { Swal.fire({ icon:'warning', title:'กรุณากรอกข้อความ', confirmButtonColor:'#1877f2' }); return; }
   if (!sel.length){ Swal.fire({ icon:'warning', title:'กรุณาเลือกกลุ่ม', confirmButtonColor:'#1877f2' }); return; }
-  if (!postAsPage){ Swal.fire({ icon:'warning', title:'กรุณาเลือกว่าจะโพสในนามใคร', confirmButtonColor:'#1877f2' }); return; }
+  if (_whenMode === 'later' && !dt24Get('fScheduledAt')) { Swal.fire({ icon:'warning', title:'กรุณาเลือกวันและเวลาที่จะโพส', confirmButtonColor:'#1877f2' }); return; }
+  const schedIso = _scheduledIso();
   if (_media.some(m => m.state === 'uploading')) { Swal.fire({ icon:'info', title:'รอให้อัปโหลดไฟล์เสร็จก่อน', confirmButtonColor:'#1877f2' }); return; }
   if (_media.some(m => m.state === 'err')) { Swal.fire({ icon:'warning', title:'มีไฟล์ที่อัปโหลดไม่สำเร็จ', text:'กด ✕ เอาไฟล์นั้นออก แล้วเพิ่มใหม่', confirmButtonColor:'#1877f2' }); return; }
   if (delay < 10 || delay > 120) { Swal.fire({ icon:'warning', title:'เว้นระหว่างกลุ่มต้องอยู่ระหว่าง 10–120 วินาที', confirmButtonColor:'#1877f2' }); return; }
 
-  if (schedAt && new Date(schedAt.slice(0,16) + ':00+07:00') <= new Date()) {
+  if (schedIso && new Date(schedIso) <= new Date()) {
     Swal.fire({ icon:'warning', title:'กรุณาเลือกเวลาในอนาคต', confirmButtonColor:'#1877f2' });
     return;
   }
 
-  const whenText = schedAt
-    ? `โพสเวลา ${new Date(schedAt.slice(0,16) + ':00+07:00').toLocaleString('th-TH',{timeZone:'Asia/Bangkok',dateStyle:'short',timeStyle:'short'})}`
+  const whenText = schedIso
+    ? `โพสเวลา ${new Date(schedIso).toLocaleString('th-TH',{timeZone:'Asia/Bangkok',dateStyle:'medium',timeStyle:'short'})}`
     : 'โพสทันทีตามลำดับคิว';
+  const escHtml = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
   const ok = await Swal.fire({
     icon:'question', title:'ยืนยันสร้างงานโพส?',
-    html:`${sel.length} กลุ่ม · ในนาม <b>${postAsPage.replace(/[<>&]/g,'')}</b>${_media.length ? ' · ' + _media.length + ' ไฟล์' : ''}<br>${whenText}`,
+    html:`ในนาม <b>${escHtml(postAsPage)}</b><br>${sel.length} กลุ่ม${_media.length ? ' · ' + _media.length + ' ไฟล์' : ''} · เว้น ${delay} วินาที<br>${whenText}`,
     showCancelButton:true, confirmButtonText:'สร้างงาน', cancelButtonText:'ยกเลิก', confirmButtonColor:'#1877f2',
   });
   if (!ok.isConfirmed) return;
@@ -898,12 +1094,12 @@ async function submitJob() {
       body: JSON.stringify({
         message:msg, groups:sel, delaySeconds:delay, postAsPage: postAsPage || null,
         images: _media.map(m => m.url),
-        scheduledAt: schedAt ? new Date(schedAt.slice(0,16) + ':00+07:00').toISOString() : null,
+        scheduledAt: schedIso,
       }),
     });
     const d = await r.json();
     if (!d.ok) throw new Error(d.error||'เกิดข้อผิดพลาด');
-    await Swal.fire({ icon:'success', title:'สร้างงานแล้ว', text: schedAt ? whenText : 'งานเข้าคิวแล้ว เครื่องโพสหลักจะโพสให้ตามลำดับ', timer:2200, showConfirmButton:false });
+    await Swal.fire({ icon:'success', title:'สร้างงานแล้ว', text: schedIso ? whenText : 'งานเข้าคิวแล้ว เครื่องโพสหลักจะโพสให้ตามลำดับ', timer:2200, showConfirmButton:false });
     location.reload();
   } catch(e) {
     if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> เพิ่มลงคิว'; }
@@ -973,8 +1169,28 @@ async function deleteJob(id) {
   }
 }
 
+/* ── Keep each job row's status current without a page reload ── */
+const _JOB_ICON = { pending:'⏳', running:'🔄', success:'✅', failed:'❌', expired:'⏰', cancelled:'🚫' };
+const _JOB_TH   = { pending:'รอ', running:'กำลังโพส', success:'เสร็จ', failed:'ล้มเหลว', expired:'หมดเวลา', cancelled:'ยกเลิก' };
+const _JOB_CLS  = { pending:'badge-yellow', running:'badge-blue', success:'badge-green', failed:'badge-red', expired:'badge-red', cancelled:'badge-red' };
+async function refreshJobStatuses() {
+  let jobs;
+  try { jobs = await (await fetch('/api/agent/jobs')).json(); } catch { return; }
+  if (!Array.isArray(jobs)) return;
+  jobs.forEach(j => {
+    const row = document.getElementById(`job_${j._id}`);
+    if (!row || row.dataset.status === j.status) return;
+    row.dataset.status = j.status;
+    const icon = row.querySelector('span');
+    if (icon) icon.textContent = _JOB_ICON[j.status] || '❓';
+    const badge = row.querySelector('.badge');
+    if (badge) { badge.className = 'badge ' + (_JOB_CLS[j.status] || ''); badge.textContent = _JOB_TH[j.status] || j.status; badge.style.flexShrink = '0'; }
+  });
+}
+
+if (typeof initComposer === 'function' && document.getElementById('createForm')) initComposer();
 refreshPosterStatus();
-setInterval(refreshPosterStatus, 20000);
+setInterval(() => { refreshPosterStatus(); refreshJobStatuses(); }, 20000);
 </script>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">

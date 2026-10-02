@@ -25,6 +25,8 @@ async function runWhenIdle(fn) {
 const EXPIRE_SWEEP_INTERVAL_MS = 30 * 1000; // don't hit the DB on every 3s poll tick
 const LOCK_RETRY_MS = 2000;
 const LOCK_RENEW_INTERVAL_MS = 60 * 1000; // well under postingLock's LOCK_STALE_MS (5 min)
+const POSTER_STARTUP_GRACE_MS = 2 * 60 * 60 * 1000;  // scheduled jobs overdue longer than this are expired
+const POSTER_STARTUP_STALE_MS = 12 * 60 * 60 * 1000; // immediate jobs waiting longer than this are expired
 
 function init(store, bot, accounts, emit, agentId) {
     _store    = store;
@@ -49,9 +51,22 @@ async function start() {
     // sequential jobs survive while a previous job is being processed.
     try {
         await _store.migrateLegacyStatuses?.();
-        // grace 0 = jobs missed while this machine was off are expired, not
-        // posted late. Jobs still inside the normal grace window are kept.
-        const expired = await _store.expireOverdueJobs(0);
+        // Nothing of ours is in flight (fresh launch, or a stop that already
+        // finished): anything still marked running/locked by this machine was
+        // left behind by a close or crash — release it now instead of
+        // waiting out the 5-minute stale-lock timeout.
+        if (!_busy) {
+            await postingLock.release(_agentId).catch(() => {});
+            const recovered = await _store.recoverInterrupted?.(_agentId);
+            if (recovered) log(`⚠️ พบงานที่ค้างจากการปิดโปรแกรมระหว่างโพส ${recovered} งาน — บันทึกเป็นล้มเหลว (ไม่โพสซ้ำอัตโนมัติ)`);
+        }
+        // Jobs missed while this machine was off are expired rather than
+        // posted late. The always-on posting machine is only off for restarts
+        // or outages, so it tolerates a short gap (a quick restart must not
+        // expire the queue it is about to work through).
+        const expired = _store.isPosterAgent?.()
+            ? await _store.expireOverdueJobs(POSTER_STARTUP_GRACE_MS, { force: true, immediateStaleMs: POSTER_STARTUP_STALE_MS })
+            : await _store.expireOverdueJobs(0);
         if (expired) log(`⏱ พบงานหมดเวลา ${expired} รายการ — ย้ายไปสถานะ "หมดเวลา" (ไม่โพสอัตโนมัติ)`);
         _lastExpireSweep = Date.now();
     } catch (e) { log(`⚠️ ตรวจสอบงานหมดเวลาไม่สำเร็จ: ${e.message}`); }
@@ -84,6 +99,8 @@ async function poll() {
             _lastExpireSweep = Date.now();
             const expired = await _store.expireOverdueJobs();
             if (expired) log(`⏱ พบงานหมดเวลา ${expired} รายการ — ย้ายไปสถานะ "หมดเวลา" (ไม่โพสอัตโนมัติ)`);
+            // Jobs another machine left "running" when it went offline.
+            if (_store.isPosterAgent?.()) await _store.recoverInterrupted?.();
         }
         // Without a signed-in Facebook account every job would just fail, so
         // leave them queued (for this machine once signed in, or another one).
@@ -279,6 +296,7 @@ async function processJob(job) {
 
             const res = await _bot.postToGroup(acc.id, g.groupId, g.groupName, job.message, job.postAsPage||null, (m)=>log(`   ${m}`), sharedPage, sharedPageId, tempImagePaths);
             results.push({ groupId:g.groupId, groupName:g.groupName, status:res.ok?'success':'failed', error:res.error||null, timestamp:new Date().toISOString(), postUrl:res.postUrl||null });
+            await _store.saveProgress?.(id, results);
 
             if (res.ok) { ok++; log(`   ✅ สำเร็จ`); _emit?.('jobs:progress', { groupName:g.groupName, status:'success' }); }
             else        { log(`   ❌ ${res.error}`); _emit?.('jobs:progress', { groupName:g.groupName, status:'failed', error:res.error }); }
@@ -325,6 +343,12 @@ async function processJob(job) {
     // of silently looking complete. (Not reverted to PENDING and re-run
     // automatically: the groups already posted above would be posted again
     // on a full retry, since there's no per-group resume — a human decides.)
+    if (interrupted) {
+        const attempted = new Set(results.map(r => String(r.groupId)));
+        for (const g of job.groups) {
+            if (!attempted.has(String(g.groupId))) results.push({ groupId:g.groupId, groupName:g.groupName, status:'failed', error:'ไม่ได้โพส — ระบบโพสถูกหยุดกลางคัน', timestamp:new Date().toISOString(), postUrl:null });
+        }
+    }
     const status = interrupted ? STATUS.FAILED : (ok>0 ? STATUS.SUCCESS : STATUS.FAILED);
     const pageData = sharedPageId ? { pageId: sharedPageId, pageName: job.postAsPage || null } : {};
     const saved = await _store.updateJob(id, { status, results, ...pageData });
@@ -334,7 +358,7 @@ async function processJob(job) {
             .catch(e => log(`❌ กู้คืนประวัติไม่สำเร็จ: ${e.message}`));
     }
     _emit?.('jobs:updated', { ...job, _id:id, status, results, ...pageData });
-    if (interrupted) log(`⏸ ถูกหยุดกลางคัน: โพสไปแล้ว ${results.length}/${job.groups.length} กลุ่ม (สำเร็จ ${ok}) — เหลือ ${job.groups.length - results.length} กลุ่มที่ยังไม่ได้ทำ`);
+    if (interrupted) log(`⏸ ถูกหยุดกลางคัน: โพสสำเร็จ ${ok}/${job.groups.length} กลุ่ม — กลุ่มที่เหลือบันทึกว่า "ไม่ได้โพส"`);
     else log(`✅ เสร็จ: ${ok}/${job.groups.length} สำเร็จ`);
     log('─────────────────────────────');
 }
