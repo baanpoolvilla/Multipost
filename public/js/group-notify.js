@@ -8,6 +8,12 @@
 (function () {
     if (window.PosterFeed) return;
 
+    // Inside SmartBoss our top bar is hidden (navbar-user.js): SmartBoss has its
+    // own bell and profile, and rings the owner for their jobs. Pop-ups still
+    // show here; there is just no bell list.
+    var FRAMED = false;
+    try { FRAMED = window.top !== window.self; } catch (e) { FRAMED = true; }
+
     var LS_SEEN = 'mp_notify_last_seen_v1';
     var LS_LOG  = 'mp_notify_log_v1';
     var subs = [];
@@ -181,7 +187,10 @@
         while (all.length > 5) all[0].remove();
     }
 
+    function unreadCount() { return lsGet(LS_LOG, []).filter(function (x) { return !x.read; }).length; }
+
     function renderBell() {
+        if (FRAMED) return;
         var host = document.querySelector('.navbar-right');
         if (!host) return;
         var btn = document.getElementById('mpBell');
@@ -192,16 +201,17 @@
             var badge = el('span', 'mp-bell-badge'); badge.id = 'mpBellBadge'; btn.appendChild(badge);
             btn.addEventListener('click', function (e) { e.stopPropagation(); togglePanel(); });
             host.insertBefore(btn, host.firstChild);
-            document.addEventListener('click', function (e) {
-                var panel = document.getElementById('mpBellPanel');
-                if (panel && !panel.contains(e.target)) panel.remove();
-            });
         }
-        var unread = lsGet(LS_LOG, []).filter(function (x) { return !x.read; }).length;
+        var unread = unreadCount();
         var b = document.getElementById('mpBellBadge');
         b.textContent = unread > 9 ? '9+' : String(unread);
         b.style.display = unread ? '' : 'none';
     }
+
+    document.addEventListener('click', function (e) {
+        var panel = document.getElementById('mpBellPanel');
+        if (panel && !panel.contains(e.target) && !(e.target.closest && e.target.closest('#mpBell'))) panel.remove();
+    });
 
     function togglePanel() {
         var old = document.getElementById('mpBellPanel');
@@ -277,6 +287,8 @@
         'a.mp-bell-row:hover{background:#f7f8fa}',
         '.mp-bell-row>i{margin-top:3px;color:#1877f2}.mp-bell-row.mp-ok>i{color:#2e7d32}.mp-bell-row.mp-warn>i{color:#e08600}.mp-bell-row.mp-error>i{color:#c62828}',
         '.mp-bell-time{font-size:.7rem;color:#8a8d91;margin-top:3px}',
+        'html.mp-embedded #mpToastStack{top:10px}',
+        'html.mp-embedded .mp-bell-panel{top:8px;max-height:80vh}',
         '@keyframes mpIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}',
         '@media (prefers-reduced-motion:reduce){.mp-toast{animation:none}}',
     ].join('\n');
