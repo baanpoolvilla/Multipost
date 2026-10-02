@@ -107,9 +107,13 @@ async function connect() {
 }
 
 function scheduler() {
-    if (!_scheduler) _scheduler = createSchedulerService(Job, { sourceType: 'agent', agentId: _agentId });
+    if (!_scheduler) _scheduler = createSchedulerService(Job, { sourceType: 'agent', agentId: _agentId, isPoster: isPosterAgent() });
     return _scheduler;
 }
+
+// POSTING_AGENT=true in this machine's .env marks it the always-on main
+// posting machine (see agentPresence.findOnlinePosterAgentId).
+function isPosterAgent() { return process.env.POSTING_AGENT === 'true'; }
 
 function isDbConnected() { return _dbOk && mongoose.connection.readyState === 1; }
 
@@ -274,9 +278,13 @@ async function claimNextFbDeletion() {
     try {
         await connect();
         const col = Job.db.collection('fbdeletions');
+        if (!isPosterAgent()) {
+            const poster = await agentPresence.findOnlinePosterAgentId().catch(() => null);
+            if (poster && poster !== _agentId) return null;
+        }
         const online = await agentPresence.listOnlineAgentIds().catch(() => null);
-        const routing = [{ agentId: null }, { agentId: _agentId }];
-        if (online) routing.push({ agentId: { $nin: online } });
+        const routing = isPosterAgent() ? [{}] : [{ agentId: null }, { agentId: _agentId }];
+        if (online && !isPosterAgent()) routing.push({ agentId: { $nin: online } });
         const now = new Date();
         const r = await col.findOneAndUpdate(
             {
@@ -397,7 +405,7 @@ function _s(j) { return j ? { ...j, _id: j._id?.toString?.()??j._id } : j; }
 
 module.exports = {
     connect, isDbConnected, setDataPath, setAgentId, setStaffId, listStaff, getAllGroups, getRecentPosts,
-    createJob, getJobs, getPendingJobs, claimNextJob, updateJob, deleteJob, deleteAllJobs, restoreDeletedJob, claimNextFbDeletion, updateFbDeletion, finishFbDeletion,
+    isPosterAgent, createJob, getJobs, getPendingJobs, claimNextJob, updateJob, deleteJob, deleteAllJobs, restoreDeletedJob, claimNextFbDeletion, updateFbDeletion, finishFbDeletion,
     getCompletedJobs, getQueueSnapshot, getDbUsage, rescheduleJob, expireOverdueJobs, migrateLegacyStatuses,
     retryJob, cancelJob, listExpiredJobs,
 };

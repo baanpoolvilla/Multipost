@@ -21,13 +21,25 @@ function getModel() {
 
 const ONLINE_THRESHOLD_MS = 60 * 1000; // heartbeat runs well under this — see main.js
 
-async function heartbeat(agentId, staffId, staffName) {
+async function heartbeat(agentId, staffId, staffName, isPoster = false) {
     const Model = getModel();
     await Model.findOneAndUpdate(
         { agentId },
-        { $set: { staffId: staffId || null, staffName: staffName || null, lastSeenAt: new Date() } },
-        { upsert: true },
+        { $set: { staffId: staffId || null, staffName: staffName || null, isPoster: !!isPoster, lastSeenAt: new Date() } },
+        { upsert: true, strict: false },
     );
+}
+
+// The always-on "main posting machine" (POSTING_AGENT=true in its .env), if
+// it is online right now. While it is, it posts every job and other machines
+// stand by; if it goes offline they fall back to posting as before.
+async function findOnlinePosterAgentId() {
+    const cutoff = new Date(Date.now() - ONLINE_THRESHOLD_MS);
+    const doc = await getModel().collection.findOne(
+        { isPoster: true, lastSeenAt: { $gte: cutoff } },
+        { sort: { lastSeenAt: -1 }, projection: { agentId: 1 } },
+    );
+    return doc ? doc.agentId : null;
 }
 
 // Returns the agentId of whichever machine is currently "signed in" as this
@@ -67,4 +79,4 @@ async function staffNameByAgentId() {
     return map;
 }
 
-module.exports = { heartbeat, findOnlineAgentForStaff, listOnlineAgentIds, staffNameByAgentId, ONLINE_THRESHOLD_MS, REASSIGN_THRESHOLD_MS };
+module.exports = { heartbeat, findOnlinePosterAgentId, findOnlineAgentForStaff, listOnlineAgentIds, staffNameByAgentId, ONLINE_THRESHOLD_MS, REASSIGN_THRESHOLD_MS };

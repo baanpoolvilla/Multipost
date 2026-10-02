@@ -49,7 +49,7 @@ let _agentId      = null;
 // seen as offline soon after it stops.
 const HEARTBEAT_INTERVAL_MS = 20 * 1000;
 function heartbeat() {
-    agentPresence.heartbeat(_agentId, _currentStaff?.id, _currentStaff?.displayName).catch(() => {});
+    agentPresence.heartbeat(_agentId, _currentStaff?.id, _currentStaff?.displayName, jobStore.isPosterAgent()).catch(() => {});
 }
 
 // ── Window ─────────────────────────────────────────────────────
@@ -76,6 +76,12 @@ app.whenReady().then(async () => {
     // Init stores
     accountStore.init(userDataDir);
     facebookBot.init(userDataDir);
+    facebookBot.onAuthNeeded(() => {
+        if (Notification.isSupported()) new Notification({
+            title: 'Facebook ขอยืนยันตัวตน',
+            body: 'กรุณากดอนุมัติการเข้าสู่ระบบบนมือถือ — การโพสหยุดรออยู่ (สูงสุด 10 นาที)',
+        }).show();
+    });
     // jobTemplateStore now uses MongoDB — no local init needed
     _agentId = getOrCreateAgentId(userDataDir);
     jobStore.setAgentId(_agentId);
@@ -116,6 +122,14 @@ app.whenReady().then(async () => {
     }, _agentId);
 
     createWindow();
+
+    // The main posting machine runs unattended 24/7: start posting right
+    // away and relaunch after a Windows restart/login.
+    if (jobStore.isPosterAgent()) {
+        if (app.isPackaged) app.setLoginItemSettings({ openAtLogin: true });
+        else app.setLoginItemSettings({ openAtLogin: true, path: process.execPath, args: [app.getAppPath()] });
+        jobRunner.start();
+    }
 });
 
 app.on('window-all-closed', async () => {

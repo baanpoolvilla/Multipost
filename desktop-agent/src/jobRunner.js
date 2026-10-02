@@ -119,7 +119,7 @@ async function processFbDeletion(req) {
             await _store.updateFbDeletion(req._id, { targets });
 
             // Session expired: every remaining post would fail the same way.
-            if (res.error && res.error.startsWith('Session หมดอายุ')) {
+            if (res.authRequired) {
                 targets.forEach(x => { if (x.status === 'pending') { x.status = 'failed'; x.error = res.error; } });
                 break;
             }
@@ -246,6 +246,16 @@ async function processJob(job) {
 
             if (res.ok) { ok++; log(`   ✅ สำเร็จ`); _emit?.('jobs:progress', { groupName:g.groupName, status:'success' }); }
             else        { log(`   ❌ ${res.error}`); _emit?.('jobs:progress', { groupName:g.groupName, status:'failed', error:res.error }); }
+
+            // Not signed in: every remaining group would fail the same way,
+            // so record them with the reason and stop instead of grinding through.
+            if (res.authRequired) {
+                for (const rest of job.groups.slice(i + 1)) {
+                    results.push({ groupId:rest.groupId, groupName:rest.groupName, status:'failed', error:res.error, timestamp:new Date().toISOString(), postUrl:null });
+                }
+                log(`⛔ หยุดงาน: ${res.error}`);
+                break;
+            }
 
             if (i < job.groups.length-1 && job.delaySeconds>0 && _running) {
                 log(`   ⏳ รอ ${job.delaySeconds}s...`);

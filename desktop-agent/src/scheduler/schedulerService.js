@@ -29,6 +29,7 @@ function serialize(doc) {
 function createSchedulerService(Model, opts = {}) {
     const sourceType = opts.sourceType || 'web';
     const agentId    = opts.agentId    || null;
+    const isPoster   = !!opts.isPoster;
 
     function ValidateJob(data) {
         const errors = [];
@@ -334,7 +335,13 @@ function createSchedulerService(Model, opts = {}) {
                 { $or: [{ scheduledAt: null }, { scheduledAt: { $lte: now } }] },
             ],
         };
-        if (agentId) {
+        // Main posting machine takes every due job regardless of pins; every
+        // other machine stands by while it is online.
+        if (agentId && !isPoster) {
+            const poster = await agentPresence.findOnlinePosterAgentId().catch(() => null);
+            if (poster && poster !== agentId) return null;
+        }
+        if (agentId && !isPoster) {
             // null (not []) on failure: an empty array would make every
             // OTHER agent's pin look stale via $nin, letting this machine
             // grab jobs pinned to a still-online colleague just because the

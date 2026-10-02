@@ -618,6 +618,31 @@ async function _tryDialogIdentitySwitch(page, pageName) {
     } catch { return null; }
 }
 
+// Facebook can bounce any page to a security check (approve-on-phone 2FA,
+// checkpoint) even with a valid session. Waits for the user to approve, then
+// reopens retryUrl. Returns null when usable, or an error message to stop on.
+const AUTH_REQUIRED_PREFIX = 'Facebook ขอยืนยันตัวตน';
+async function _ensureAuthed(page, retryUrl, log) {
+    const url = page.url();
+    if (url.includes('/login')) return 'Session หมดอายุ — Login ใหม่';
+    if (!_is2FA(url)) return null;
+
+    _onAuthNeeded?.();
+    const ok = await _wait2FA(page, log);
+    if (!ok) return `${AUTH_REQUIRED_PREFIX} — ไม่ได้อนุมัติภายใน 10 นาที กรุณาอนุมัติบนมือถือแล้วสั่งโพสใหม่`;
+    if (page.url().includes('/login')) return 'Session หมดอายุ — Login ใหม่';
+
+    log('✅ ยืนยันตัวตนแล้ว ทำต่อ...');
+    await page.goto(retryUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+    await page.waitForTimeout(2000);
+    if (_is2FA(page.url()) || page.url().includes('/login')) return `${AUTH_REQUIRED_PREFIX} — ยืนยันแล้วแต่ยังเข้าไม่ได้ กรุณา Login ใหม่`;
+    return null;
+}
+
+let _onAuthNeeded = null;
+function onAuthNeeded(cb) { _onAuthNeeded = cb; }
+
 // ── Post to group ─────────────────────────────────────────────
 // sharedPage: if provided, use this already-switched page (don't open a new one, don't close it)
 // pageId: if provided, append ?profile_id=PAGE_ID to group URL to force Page context
@@ -637,14 +662,15 @@ async function postToGroup(accountId, groupId, groupName, message, postAsPage, o
             waitUntil: 'domcontentloaded', timeout: 30000,
         });
 
-        if (page.url().includes('/login')) {
-            await page.close();
-            return { ok: false, error: 'Session หมดอายุ — Login ใหม่' };
-        }
-
         // Wait for page to fully load
         await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
         await page.waitForTimeout(2000);
+
+        const authErr = await _ensureAuthed(page, groupUrl, log);
+        if (authErr) {
+            if (ownPage) await page.close().catch(() => {});
+            return { ok: false, error: authErr, authRequired: true };
+        }
 
         // Dismiss setup/onboarding panel (the "ตั้งค่ากลุ่ม" side panel)
         try { await page.keyboard.press('Escape'); await page.waitForTimeout(300); } catch {}
@@ -862,9 +888,10 @@ async function deletePostByUrl(accountId, postUrl, expectMessage, onLog) {
         const ctx = await _getContext(accountId);
         page = await ctx.newPage();
         await page.goto(postUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-        if (page.url().includes('/login')) return { ok: false, status: 'failed', error: 'Session หมดอายุ — Login ใหม่' };
         await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
         await page.waitForTimeout(2500);
+        const authErr = await _ensureAuthed(page, postUrl, log);
+        if (authErr) return { ok: false, status: 'failed', error: authErr, authRequired: true };
 
         const article = page.locator('[role="article"]').first();
         if (!(await article.count())) {
@@ -923,4 +950,4 @@ async function closeAll() {
     for (const id of Object.keys(_contexts)) await closeContext(id);
 }
 
-module.exports = { init, loginAccount, postToGroup, deletePostByUrl, getAccountPages, openSwitchedPage, switchBackOnPage, closeContext, closeAll };
+module.exports = { init, onAuthNeeded, loginAccount, postToGroup, deletePostByUrl, getAccountPages, openSwitchedPage, switchBackOnPage, closeContext, closeAll };
