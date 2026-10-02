@@ -12,6 +12,16 @@ let _running = false;
 let _timer   = null;
 let _lastExpireSweep = 0;
 let _warnedNoAccount = false;
+let _busy = false; // a job, a Facebook deletion, or runWhenIdle() is using the browser
+
+// Runs fn only if the browser isn't in use, and keeps the queue from starting
+// a job until it finishes. Returns false if busy (caller retries later).
+async function runWhenIdle(fn) {
+    if (_busy) return false;
+    _busy = true;
+    try { await fn(); } finally { _busy = false; }
+    return true;
+}
 const EXPIRE_SWEEP_INTERVAL_MS = 30 * 1000; // don't hit the DB on every 3s poll tick
 const LOCK_RETRY_MS = 2000;
 const LOCK_RENEW_INTERVAL_MS = 60 * 1000; // well under postingLock's LOCK_STALE_MS (5 min)
@@ -83,12 +93,16 @@ async function poll() {
             return;
         }
         _warnedNoAccount = false;
-        const job = await _store.claimNextJob();
-        if (job) await processJob(job);
-        else {
-            const del = await _store.claimNextFbDeletion?.();
-            if (del) await processFbDeletion(del);
-        }
+        if (_busy) { scheduleNext(); return; }
+        _busy = true;
+        try {
+            const job = await _store.claimNextJob();
+            if (job) await processJob(job);
+            else {
+                const del = await _store.claimNextFbDeletion?.();
+                if (del) await processFbDeletion(del);
+            }
+        } finally { _busy = false; }
     } catch(e) { log(`❌ Runner error: ${e.message}`); }
     scheduleNext();
 }
@@ -327,4 +341,4 @@ async function processJob(job) {
 
 function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
 
-module.exports = { init, start, stop, isRunning };
+module.exports = { init, start, stop, isRunning, runWhenIdle };

@@ -296,10 +296,23 @@ exports.posterStatus = async (req, res) => {
         const now = Date.now();
         const waiting = jobs.filter(j => j.status === STATUS.PENDING && (!j.scheduledAt || new Date(j.scheduledAt).getTime() <= now)).length;
         const running = jobs.filter(j => j.status === STATUS.RUNNING).length;
-        res.json({ ok: true, poster, queue: { waiting, running } });
+        // Failed jobs in the last 24h, so a problem shows up on the web
+        // without anyone having to look at the posting machine.
+        const dayAgo = now - 24 * 3600 * 1000;
+        const failed = jobs.filter(j => j.status === STATUS.FAILED && new Date(j.updatedAt || j.lastAttemptAt || j.createdAt).getTime() >= dayAgo);
+        const lastError = failed.length ? ((failed[0].results || []).find(r => r.error)?.error || null) : null;
+        res.json({ ok: true, poster, queue: { waiting, running }, failures: { count: failed.length, lastError } });
     } catch (e) {
         res.status(500).json({ ok: false, error: e.message });
     }
+};
+
+// Asks the main posting machine to re-read its Page list (picked up on its
+// next heartbeat, as soon as it isn't posting).
+exports.requestPagesRefresh = async (req, res) => {
+    const ok = await agentPresence.requestPagesRefresh().catch(() => false);
+    if (!ok) return res.status(404).json({ ok: false, error: 'ยังไม่มีเครื่องโพสหลัก' });
+    res.json({ ok: true });
 };
 
 // ── Job API ────────────────────────────────────────────────────

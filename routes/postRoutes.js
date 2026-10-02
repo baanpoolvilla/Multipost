@@ -248,6 +248,7 @@ router.post('/api/agent/refresh-group-analytics', agentCtrl.refreshGroupAnalytic
 
 // Job Queue API
 router.get('/api/agent/poster-status',          agentCtrl.posterStatus);
+router.post('/api/agent/poster/refresh-pages',  agentCtrl.requestPagesRefresh);
 router.get('/api/agent/jobs',                   agentCtrl.listJobs);
 router.post('/api/agent/jobs',                  agentCtrl.createJob);
 router.delete('/api/agent/jobs/:id',            agentCtrl.deleteJob);

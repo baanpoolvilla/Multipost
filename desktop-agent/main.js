@@ -55,13 +55,28 @@ function heartbeat() {
         authWaiting: _authWaiting,
         running: jobRunner.isRunning(),
     }).catch(() => {});
+    checkPagesRefreshRequest();
 }
 
-// The web's "post as Page" picker lists the main posting machine's Pages.
+// The web's "post as" picker lists the main posting machine's Pages. Runs only
+// while no post is in progress so it never fights a job for the browser.
 async function publishPages(accountId) {
-    if (!jobStore.isPosterAgent()) return;
-    const pages = await facebookBot.getAccountPages(accountId).catch(() => []);
-    if (pages.length) await agentPresence.savePages(_agentId, pages).catch(() => {});
+    if (!jobStore.isPosterAgent() || !accountId) return false;
+    return jobRunner.runWhenIdle(async () => {
+        const pages = await facebookBot.getAccountPages(accountId).catch(() => []);
+        if (pages.length) await agentPresence.savePages(_agentId, pages).catch(() => {});
+    });
+}
+
+// The web's "อัปเดตรายชื่อเพจ" button sets a request flag in the DB.
+let _pagesRefreshing = false;
+async function checkPagesRefreshRequest() {
+    if (_pagesRefreshing || !jobStore.isPosterAgent()) return;
+    const acc = accountStore.getActive();
+    if (!acc) return;
+    if (!(await agentPresence.pagesRefreshPending(_agentId).catch(() => false))) return;
+    _pagesRefreshing = true;
+    try { await publishPages(acc.id); } finally { _pagesRefreshing = false; }
 }
 
 // ── Window ─────────────────────────────────────────────────────

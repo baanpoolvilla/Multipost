@@ -19,6 +19,9 @@ const presenceSchema = new mongoose.Schema({
     authWaiting: { type: Boolean, default: false }, // Facebook is asking to approve a login
     running:     { type: Boolean, default: false }, // auto-posting is switched on
     pages:       { type: [String], default: [] },   // Pages this account can post as
+    identity:    { type: String, default: null },   // who the account currently acts as (no switch needed)
+    pagesUpdatedAt:          { type: Date, default: null },
+    pagesRefreshRequestedAt: { type: Date, default: null }, // set from the web, picked up by the posting machine
     lastSeenAt: { type: Date, default: Date.now },
 }, { versionKey: false });
 
@@ -36,9 +39,25 @@ async function heartbeat(agentId, staffId, staffName, isPoster = false, health =
     await Model.findOneAndUpdate({ agentId }, { $set: set }, { upsert: true });
 }
 
+// pages from facebookBot.getAccountPages: the isPersonal entry is the identity
+// the account is acting as right now (posting "as it is" needs no switch).
 async function savePages(agentId, pages) {
-    const names = (pages || []).filter(p => p && p.name && !p.isPersonal).map(p => String(p.name));
-    await getModel().findOneAndUpdate({ agentId }, { $set: { pages: names } }, { upsert: true });
+    const list = (pages || []).filter(p => p && p.name);
+    const identity = list.find(p => p.isPersonal)?.name || null;
+    const names = [...new Set(list.filter(p => !p.isPersonal).map(p => String(p.name)))];
+    await getModel().findOneAndUpdate({ agentId }, { $set: { pages: names, identity, pagesUpdatedAt: new Date() } }, { upsert: true });
+}
+
+async function requestPagesRefresh() {
+    const r = await getModel().findOneAndUpdate({ isPoster: true }, { $set: { pagesRefreshRequestedAt: new Date() } }, { sort: { lastSeenAt: -1 } });
+    return !!r;
+}
+
+// true when the web asked for a fresh Page list after the last one was saved.
+async function pagesRefreshPending(agentId) {
+    const d = await getModel().findOne({ agentId }).select('pagesRefreshRequestedAt pagesUpdatedAt').lean();
+    if (!d?.pagesRefreshRequestedAt) return false;
+    return !d.pagesUpdatedAt || d.pagesRefreshRequestedAt > d.pagesUpdatedAt;
 }
 
 // What the web shows about the main posting machine. null = none configured.
@@ -54,6 +73,9 @@ async function getPosterStatus() {
         authWaiting: online && !!doc.authWaiting,
         running: online && !!doc.running,
         pages: doc.pages || [],
+        identity: doc.identity || null,
+        pagesUpdatedAt: doc.pagesUpdatedAt || null,
+        pagesRefreshPending: !!doc.pagesRefreshRequestedAt && (!doc.pagesUpdatedAt || doc.pagesRefreshRequestedAt > doc.pagesUpdatedAt),
     };
 }
 
@@ -104,4 +126,4 @@ async function staffNameByAgentId() {
     return map;
 }
 
-module.exports = { heartbeat, savePages, getPosterStatus, findOnlinePosterAgentId, findOnlineAgentForStaff, listOnlineAgentIds, staffNameByAgentId, ONLINE_THRESHOLD_MS, REASSIGN_THRESHOLD_MS };
+module.exports = { heartbeat, savePages, requestPagesRefresh, pagesRefreshPending, getPosterStatus, findOnlinePosterAgentId, findOnlineAgentForStaff, listOnlineAgentIds, staffNameByAgentId, ONLINE_THRESHOLD_MS, REASSIGN_THRESHOLD_MS };
