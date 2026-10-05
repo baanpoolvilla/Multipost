@@ -23,6 +23,18 @@ function label(message) {
     return text.replace(/\s+/g, ' ').slice(0, 70);
 }
 
+// Why groups failed, most common first: [[reason, how many groups], …]. The
+// debug-file note the posting machine adds ("(debug-123.png บันทึกแล้ว)") is
+// dropped so the same problem in different groups counts as one reason.
+function failureReasons(results) {
+    const counts = new Map();
+    results.filter(r => r.status === 'failed').forEach(r => {
+        const why = String(r.error || '').replace(/\s*\([^)]*\)/g, '').replace(/\s+/g, ' ').trim().slice(0, 70) || 'ไม่ทราบสาเหตุ';
+        counts.set(why, (counts.get(why) || 0) + 1);
+    });
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]);
+}
+
 function compose(job, event) {
     const total = (job.groups || []).length;
     const name = `"${label(job.message)}"`;
@@ -32,15 +44,21 @@ function compose(job, event) {
     }
     const results = job.results || [];
     const ok = results.filter(r => r.status === 'success').length;
+    // The owner should learn from the bell alone that something went wrong
+    // and why, without opening the report: the two commonest reasons, counted.
+    const reasons = failureReasons(results);
+    const why = reasons.slice(0, 2).map(([reason, n]) => `${reason} (${n} กลุ่ม)`).join(', ') + (reasons.length > 2 ? ' และสาเหตุอื่น' : '');
     if (ok === 0) {
-        const reason = (results.find(r => r.error) || {}).error;
-        return { title: 'โพสไม่สำเร็จ — ไม่มีกลุ่มไหนโพสได้', body: `${name}${reason ? ` — ${reason}` : ''}` };
+        return { title: 'โพสไม่สำเร็จ — ไม่มีกลุ่มไหนโพสได้', body: `${name}${why ? ` — ${why}` : ''}` };
     }
     const failed = total - ok;
-    return {
-        title: `โพสเสร็จแล้ว ${ok}/${total} กลุ่ม`,
-        body: `${name}${page}${failed > 0 ? ` · ไม่สำเร็จ ${failed} กลุ่ม` : ''}`,
-    };
+    if (failed > 0) {
+        return {
+            title: `โพสเสร็จ ${ok}/${total} กลุ่ม — ไม่สำเร็จ ${failed} กลุ่ม`,
+            body: `${name}${page}${why ? ` · สาเหตุ: ${why}` : ''}`,
+        };
+    }
+    return { title: `โพสเสร็จแล้ว ${ok}/${total} กลุ่ม`, body: `${name}${page}` };
 }
 
 async function postToSmartboss(smartbossUserId, { title, body, key }) {
