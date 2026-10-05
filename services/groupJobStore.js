@@ -168,6 +168,85 @@ async function listHistory() {
     } catch(e) { return []; }
 }
 
+// ── Light reads for the two pages that used listHistory() whole ──────
+// A finished job is mostly its per-group rows (group name twice, a 300-char
+// Facebook link, timestamps): 2.5 MB for 95 jobs. These ask the database for
+// just what each page shows.
+const historyBase = () => [
+    { $match: { status: { $in: [STATUS.SUCCESS, STATUS.FAILED, 'done'] } } },
+    { $sort: { _id: -1 } },
+    { $limit: 300 },
+];
+const orEmpty = field => ({ $ifNull: [field, []] });
+const resultOk = { $eq: ['$$this.status', 'success'] };
+
+// ประวัติโพสกลุ่ม: every job with its groups and each group's outcome, but as
+// ids + statuses; the names come once, from a groupId → name lookup, instead
+// of being repeated on every row of every job.
+async function listHistoryCompact() {
+    try {
+        await connect();
+        const [jobs, names] = await Promise.all([
+            GroupJob.aggregate([...historyBase(), { $project: {
+                message: 1, status: 1, staffId: 1, scheduledAt: 1, lastAttemptAt: 1, createdAt: 1, images: 1,
+                g:  { $map: { input: orEmpty('$groups'),  in: { $ifNull: ['$$this.groupId', null] } } },
+                ri: { $map: { input: orEmpty('$results'), in: { $ifNull: ['$$this.groupId', null] } } },
+                rs: { $map: { input: orEmpty('$results'), in: { $ifNull: ['$$this.status', null] } } },
+                fbPostCount: { $size: { $filter: { input: orEmpty('$results'), cond: { $and: [
+                    resultOk, { $not: [{ $in: [{ $ifNull: ['$$this.postUrl', null] }, [null, '']] }] },
+                ] } } } },
+            } }]),
+            GroupJob.aggregate([...historyBase(),
+                { $project: { e: { $concatArrays: [orEmpty('$results'), orEmpty('$groups')] } } },
+                { $unwind: '$e' },
+                { $group: { _id: '$e.groupId', name: { $first: '$e.groupName' } } },
+            ]),
+        ]);
+        const nameOf = new Map(names.map(n => [n._id, n.name]));
+        return jobs.map(({ g, ri, rs, ...job }) => ({
+            ...job,
+            groups:  g.map(id => ({ groupId: id, groupName: nameOf.get(id) })),
+            results: ri.map((id, i) => ({ groupId: id, groupName: nameOf.get(id), status: rs[i] })),
+        }));
+    } catch(e) { return []; }
+}
+
+// ภาพรวม (กลุ่ม): totals per group, the dates for the 7-day chart and the ten
+// newest jobs — all counted in the database.
+async function overviewData() {
+    try {
+        await connect();
+        // '' counts as missing, like `a || b` did when this was done in JS
+        const present = field => ({ $let: { vars: { v: { $ifNull: [field, ''] } }, in: { $cond: [{ $eq: ['$$v', ''] }, null, '$$v'] } } });
+        const sumOf = field => ({ $sum: { $ifNull: [field, 0] } });
+        const [groupStats, dates, recentJobs] = await Promise.all([
+            GroupJob.aggregate([...historyBase(),
+                { $project: { results: 1 } },
+                { $unwind: '$results' },
+                { $group: {
+                    _id:     { $ifNull: [present('$results.groupId'), present('$results.groupName'), 'ไม่ทราบ'] },
+                    groupId: { $first: present('$results.groupId') },
+                    name:    { $first: { $ifNull: [present('$results.groupName'), present('$results.groupId'), 'ไม่ทราบ'] } },
+                    success: { $sum: { $cond: [{ $eq: ['$results.status', 'success'] }, 1, 0] } },
+                    fail:    { $sum: { $cond: [{ $eq: ['$results.status', 'success'] }, 0, 1] } },
+                    likes:    sumOf('$results.analytics.likes'),
+                    comments: sumOf('$results.analytics.comments'),
+                    shares:   sumOf('$results.analytics.shares'),
+                    reach:    sumOf('$results.analytics.reach'),
+                } },
+            ]),
+            GroupJob.aggregate([...historyBase(), { $project: { _id: 0, lastAttemptAt: 1, createdAt: 1 } }]),
+            GroupJob.aggregate([...historyBase(), { $limit: 10 }, { $project: {
+                message: 1, status: 1, lastAttemptAt: 1, createdAt: 1,
+                groupCount:   { $size: orEmpty('$groups') },
+                successCount: { $size: { $filter: { input: orEmpty('$results'), cond: resultOk } } },
+                failCount:    { $size: { $filter: { input: orEmpty('$results'), cond: { $eq: ['$$this.status', 'failed'] } } } },
+            } }]),
+        ]);
+        return { groupStats, dates, recentJobs };
+    } catch(e) { return { groupStats: [], dates: [], recentJobs: [] }; }
+}
+
 // Every status (pending/running/success/failed/expired/cancelled), no
 // completed-only filter — for a specific person's full activity record
 // (controllers/staffController.js showUserActivityDetail), where the whole
@@ -263,7 +342,7 @@ async function updateResultAnalytics(jobId, resultIndex, analytics) {
 }
 
 module.exports = {
-    list, listForQueue, statusFeed, create, remove, listHistory, listAll, deleteHistory, getById, statsByDateRange,
+    list, listForQueue, statusFeed, create, remove, listHistory, listHistoryCompact, overviewData, listAll, deleteHistory, getById, statsByDateRange,
     updateOne, listScheduled, updateResultAnalytics, listExpired, expireOverdueJobs,
     migrateLegacyStatuses, retryJob, cancelJob,
 };

@@ -269,7 +269,7 @@
              title="ดูรายงาน">
             <i class="fa-solid fa-chart-bar"></i> รายงาน
           </a>
-          <% const fbPostCount = (job.results || []).filter(r => r.status === 'success' && r.postUrl).length; %>
+          <% const fbPostCount = job.fbPostCount || 0; %>
           <button class="icon-btn danger" title="ลบ (รวมโพสบน Facebook)" onclick="deleteJob('<%= job._id %>', this, <%= fbPostCount %>)">
             <i class="fa-solid fa-trash"></i>
           </button>

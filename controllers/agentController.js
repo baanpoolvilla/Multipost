@@ -10,53 +10,33 @@ const imageStore     = require('../services/imageStore');
 // ── Group Overview Dashboard ───────────────────────────────────
 exports.showGroupOverview = async (req, res) => {
     try {
-        const [jobs, groups] = await Promise.all([groupJobStore.listHistory(), groupStore.list()]);
-
-        const totalJobs    = jobs.length;
-        const totalSuccess = jobs.reduce((s, j) => s + (j.results||[]).filter(r=>r.status==='success').length, 0);
-        const totalFail    = jobs.reduce((s, j) => s + (j.results||[]).filter(r=>r.status==='failed').length, 0);
-        const successRate  = (totalSuccess + totalFail) > 0 ? Math.round(totalSuccess/(totalSuccess+totalFail)*100) : 0;
+        // Per-group totals are counted in the database (groupJobStore.overviewData)
+        // rather than by loading every job's per-group rows here.
+        const [{ groupStats, dates, recentJobs: newest }, groups] = await Promise.all([groupJobStore.overviewData(), groupStore.list()]);
 
         // groupId → privacy map
         const privacyMap = {};
         groups.forEach(g => { privacyMap[g.groupId] = g.privacy || null; });
 
+        // All groups sorted by activity — include analytics totals + privacy
+        const allGroupStats = groupStats
+            .map(({ _id, ...g }) => ({ ...g, privacy: privacyMap[g.groupId] || null }))
+            .sort((a,b) => (b.success+b.fail)-(a.success+a.fail) || String(a.name).localeCompare(String(b.name)));
+        const topGroups = allGroupStats.slice(0,5);
+
+        const totalJobs    = dates.length;
+        const totalSuccess = allGroupStats.reduce((s,g)=>s+g.success,0);
+        const totalFail    = allGroupStats.reduce((s,g)=>s+g.fail,0);
+        const successRate  = (totalSuccess + totalFail) > 0 ? Math.round(totalSuccess/(totalSuccess+totalFail)*100) : 0;
+
         // Privacy breakdown stats
         const privacyStats = { public: { success:0, fail:0 }, private: { success:0, fail:0 }, paid: { success:0, fail:0 } };
-        jobs.forEach(j => {
-            (j.results||[]).forEach(r => {
-                const pv = privacyMap[r.groupId] || null;
-                if (pv === 'public' || pv === 'private' || pv === 'paid') {
-                    if (r.status === 'success') privacyStats[pv].success++;
-                    else privacyStats[pv].fail++;
-                }
-            });
+        allGroupStats.forEach(g => {
+            if (g.privacy === 'public' || g.privacy === 'private' || g.privacy === 'paid') {
+                privacyStats[g.privacy].success += g.success;
+                privacyStats[g.privacy].fail    += g.fail;
+            }
         });
-
-        // All groups sorted by activity — include analytics totals + privacy
-        const grpCounts = {};
-        jobs.forEach(j => {
-            (j.results||[]).forEach(r => {
-                const key = r.groupId || r.groupName || 'ไม่ทราบ';
-                if (!grpCounts[key]) grpCounts[key] = {
-                    groupId: r.groupId || null,
-                    name: r.groupName || r.groupId || 'ไม่ทราบ',
-                    privacy: privacyMap[r.groupId] || null,
-                    success: 0, fail: 0, likes: 0, comments: 0, shares: 0, reach: 0,
-                };
-                if (r.status === 'success') grpCounts[key].success++;
-                else grpCounts[key].fail++;
-                if (r.analytics) {
-                    grpCounts[key].likes    += r.analytics.likes    || 0;
-                    grpCounts[key].comments += r.analytics.comments || 0;
-                    grpCounts[key].shares   += r.analytics.shares   || 0;
-                    grpCounts[key].reach    += r.analytics.reach    || 0;
-                }
-            });
-        });
-        const allGroupStats = Object.values(grpCounts)
-            .sort((a,b) => (b.success+b.fail)-(a.success+a.fail));
-        const topGroups = allGroupStats.slice(0,5);
 
         // Analytics totals
         const totalLikes    = allGroupStats.reduce((s,g)=>s+g.likes,0);
@@ -70,18 +50,13 @@ exports.showGroupOverview = async (req, res) => {
             const d = new Date(new Date().toLocaleString('en-US', { timeZone:'Asia/Bangkok' }));
             d.setDate(d.getDate() - i);
             labels.push(d.toLocaleDateString('th-TH', { month:'short', day:'numeric' }));
-            chartData.push(jobs.filter(j => {
+            chartData.push(dates.filter(j => {
                 const jd = new Date(new Date(j.lastAttemptAt || j.createdAt).toLocaleString('en-US', { timeZone:'Asia/Bangkok' }));
                 return jd.getFullYear()===d.getFullYear() && jd.getMonth()===d.getMonth() && jd.getDate()===d.getDate();
             }).length);
         }
 
-        const recentJobs = jobs.slice(0, 10).map(j => ({
-            ...j, _id: String(j._id),
-            successCount: (j.results||[]).filter(r=>r.status==='success').length,
-            failCount:    (j.results||[]).filter(r=>r.status==='failed').length,
-            groupCount:   (j.groups||[]).length,
-        }));
+        const recentJobs = newest.map(j => ({ ...j, _id: String(j._id) }));
 
         res.render('group-overview', {
             totalJobs, totalSuccess, totalFail, successRate, topGroups, allGroupStats,
@@ -610,7 +585,7 @@ exports.cancelJob = async (req, res) => {
 exports.showGroupHistory = async (req, res) => {
     const staffStore = require('../services/staffStore');
     const [jobs, groups, dbCategories, staffList] = await Promise.all([
-        groupJobStore.listHistory(),
+        groupJobStore.listHistoryCompact(),
         groupStore.list(),
         categoryStore.list(),
         // includeDeleted: a job's staffName should still resolve here even if
