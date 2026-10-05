@@ -833,19 +833,20 @@ async function postToGroup(accountId, groupId, groupName, message, postAsPage, o
             const url  = message.slice(sep + 3).trim();
 
             log('🔗 สร้าง Link Preview...');
+            // The typed link is about to be replaced by the text, so Facebook's
+            // link card is the only place the link survives. Count what the
+            // dialog shows for this site before typing, so the card can be
+            // recognised as something new.
+            const cardsBefore = await _linkCardCount(page, url);
             await page.keyboard.type(url, { delay: 15 });
-            // The typed URL is about to be replaced by the text, so the card
-            // is the only place the link survives. Facebook can take a while
-            // to build it (short links that redirect, e.g. vt.tiktok.com) or
-            // not build one at all — wait for it to really be there, and if it
-            // never comes keep the link in the text instead of losing it.
-            const hasPreview = await _waitLinkPreview(page, url);
-            if (hasPreview) {
-                log('   ✅ การ์ดลิงก์ขึ้นแล้ว');
-                await page.waitForTimeout(1500);
-            } else {
-                log('   ⚠️ Facebook ไม่สร้างการ์ดลิงก์ให้ — จะใส่ลิงก์ไว้ท้ายข้อความแทน');
-            }
+            await page.keyboard.press('Space'); // a link is picked up once it is finished off
+            // Facebook can take a while to build the card (short links that
+            // redirect, e.g. vt.tiktok.com) or not build one at all — wait for
+            // it to really be there instead of a fixed pause.
+            const preview = await _waitLinkPreview(page, url, cardsBefore);
+            const hasPreview = !!preview;
+            log(hasPreview ? '   ✅ การ์ดลิงก์ขึ้นแล้ว' : '   ⚠️ Facebook ไม่สร้างการ์ดลิงก์ให้ — จะใส่ลิงก์ไว้ท้ายข้อความแทน');
+            let linkInText = false;
             if (hasPreview) {
                 // Ctrl+A selects only text content — preview card (attachment node) stays
                 await page.keyboard.press('Control+a');
@@ -866,8 +867,23 @@ async function postToGroup(accountId, groupId, groupName, message, postAsPage, o
                 await page.keyboard.press('Enter');
                 await page.keyboard.press('Enter');
                 await page.keyboard.type(url, { delay: 15 });
+                linkInText = true;
+            } else {
+                linkInText = true; // no card and no text: the URL already typed stays as the post
             }
-            // (no card and no text: the URL already typed stays as the post)
+            // The card must still be there once the text is in: if it went
+            // away with the typed link, or the text's own links took its
+            // place, the post would go out without the link.
+            if (!linkInText) {
+                await page.waitForTimeout(1500);
+                // `preview` says how the card was recognised; look for it the same way.
+                if ((await _linkCardCount(page, url))[preview] <= cardsBefore[preview]) {
+                    log('   ⚠️ การ์ดลิงก์หายไปหลังพิมพ์ข้อความ — ใส่ลิงก์ไว้ท้ายข้อความแทน');
+                    await page.keyboard.press('Control+End');
+                    if (text) { await page.keyboard.press('Enter'); await page.keyboard.press('Enter'); }
+                    await page.keyboard.type(url, { delay: 15 });
+                }
+            }
         } else {
             await page.keyboard.type(message, { delay: 30 });
         }
@@ -946,34 +962,49 @@ async function postToGroup(accountId, groupId, groupName, message, postAsPage, o
     } catch(e) { return { ok: false, error: e.message }; }
 }
 
-// Waits until the open create-post dialog shows a link card for `url`, i.e.
-// something outside the text box that names the link's site, or the card's
-// remove (x) button. Returns false if none appears in time.
-async function _waitLinkPreview(page, url, timeoutMs = 20000) {
+// Counts, in the open create-post dialog and outside the text box:
+//   site   – things that point at `url`'s site (a link card's title/site line)
+//   remove – link-card remove (x) buttons, whatever site the card is for
+// A link card for `url` showing up raises one or both.
+async function _linkCardCount(page, url) {
     let host = '';
     try { host = new URL(/^https?:\/\//i.test(url) ? url : 'https://' + url).hostname.toLowerCase(); } catch {}
     const domain = host.split('.').slice(-2).join('.');
-    const deadline = Date.now() + timeoutMs;
-    while (Date.now() < deadline) {
-        const found = await page.evaluate(({ domain }) => {
-            const dialogs = [...document.querySelectorAll('[role="dialog"]')];
-            const dlg = dialogs[dialogs.length - 1];
-            if (!dlg) return false;
-            const boxes = [...dlg.querySelectorAll('[contenteditable="true"]')];
-            const outside = el => !boxes.some(b => b.contains(el));
-            const removeBtn = /ลบตัวอย่างลิงก์|ลบไฟล์แนบ|Remove link preview|Remove post attachment|Remove attachment/i;
-            if ([...dlg.querySelectorAll('[aria-label]')].some(el => outside(el) && removeBtn.test(el.getAttribute('aria-label')))) return true;
-            if (!domain) return false;
-            return [...dlg.querySelectorAll('a[href], [role="link"]')].some(el => {
-                if (!outside(el)) return false;
-                const t = ((el.getAttribute('href') || '') + ' ' + (el.innerText || '') + ' ' + (el.getAttribute('aria-label') || '')).toLowerCase();
-                return t.includes(domain);
-            });
-        }, { domain }).catch(() => false);
-        if (found) return true;
+    return page.evaluate(({ domain }) => {
+        const dialogs = [...document.querySelectorAll('[role="dialog"]')];
+        const dlg = dialogs[dialogs.length - 1];
+        if (!dlg) return { site: 0, remove: 0 };
+        const boxes = [...dlg.querySelectorAll('[contenteditable="true"]')];
+        const outside = el => !boxes.some(b => b.contains(el));
+        const removeBtn = /ลบตัวอย่างลิงก์|ลบไฟล์แนบ|Remove link preview|Remove post attachment|Remove attachment/i;
+        const remove = [...dlg.querySelectorAll('[aria-label]')].filter(el => outside(el) && removeBtn.test(el.getAttribute('aria-label'))).length;
+        const site = !domain ? 0 : [...dlg.querySelectorAll('a[href], [role="link"]')].filter(el => {
+            if (!outside(el)) return false;
+            const t = ((el.getAttribute('href') || '') + ' ' + (el.innerText || '') + ' ' + (el.getAttribute('aria-label') || '')).toLowerCase();
+            return t.includes(domain);
+        }).length;
+        return { site, remove };
+    }, { domain }).catch(() => ({ site: 0, remove: 0 }));
+}
+
+// Waits for a link card for `url` to appear (see _linkCardCount). Never
+// returns sooner than the pause this replaced, so a card that is still
+// loading its picture is not cut short. Returns how it was recognised —
+// 'site' (it names the link's site) or 'remove' (only its x button was found)
+// — or null if none appears in time.
+async function _waitLinkPreview(page, url, countBefore, { minMs = 5000, timeoutMs = 20000 } = {}) {
+    const start = Date.now();
+    let seen = null;
+    while (Date.now() - start < timeoutMs) {
+        if (seen !== 'site') {
+            const now = await _linkCardCount(page, url);
+            if (now.site > countBefore.site) seen = 'site';
+            else if (now.remove > countBefore.remove) seen = 'remove';
+        }
+        if (seen && Date.now() - start >= minMs) return seen;
         await page.waitForTimeout(500);
     }
-    return false;
+    return seen;
 }
 
 // ── Delete a post we made ─────────────────────────────────────
