@@ -276,7 +276,7 @@ exports.showJobQueue = async (req, res) => {
     await groupJobStore.expireOverdueJobs().catch(() => {});
     const staffStore = require('../services/staffStore');
     const [groups, jobs, dbCategories, staffList] = await Promise.all([
-        groupStore.list(), groupJobStore.list(), categoryStore.list(),
+        groupStore.list(), groupJobStore.listForQueue(), categoryStore.list(),
         staffStore.list({ includeDeleted: true }).catch(() => []),
     ]);
     const catColorMap = { 'ทั่วไป': '#868e96' };
@@ -365,21 +365,19 @@ exports.posterStatus = async (req, res) => {
         const owner = j => (j.staffId && names[String(j.staffId)]) || 'ไม่ระบุผู้สั่ง';
         const brief = j => ({
             id: String(j._id), owner: owner(j), label: jobLabel(j.message), postAsPage: j.postAsPage || null,
-            total: (j.groups || []).length,
+            total: j.total,
         });
 
-        const current = jobs.filter(j => j.status === STATUS.RUNNING).map(j => {
-            const results = j.results || [];
-            const last = results[results.length - 1];
-            return {
-                ...brief(j),
-                done: results.length,
-                ok: results.filter(r => r.status === 'success').length,
-                failed: results.filter(r => r.status === 'failed').length,
-                lastGroup: last ? last.groupName : null,
-                startedAt: j.lastAttemptAt || null,
-            };
-        });
+        // statusFeed() already reduced each job's per-group results to
+        // total / done / lastGroup / failedResults.
+        const current = jobs.filter(j => j.status === STATUS.RUNNING).map(j => ({
+            ...brief(j),
+            done: j.done,
+            ok: j.done - j.failedResults.length,
+            failed: j.failedResults.length,
+            lastGroup: j.lastGroup || null,
+            startedAt: j.lastAttemptAt || null,
+        }));
         const dueTime = j => new Date(j.dueAt || j.scheduledAt || j.createdAt).getTime();
         const due = jobs.filter(j => j.status === STATUS.PENDING && (!j.scheduledAt || new Date(j.scheduledAt).getTime() <= now))
             .sort((a, b) => dueTime(a) - dueTime(b));
@@ -389,10 +387,10 @@ exports.posterStatus = async (req, res) => {
         // skipped others (e.g. wrong Page shown) is still "success" overall.
         const dayAgo = now - 24 * 3600 * 1000;
         const recent = jobs.filter(j => new Date(j.updatedAt || j.lastAttemptAt || j.createdAt).getTime() >= dayAgo);
-        const failedGroups = recent.flatMap(j => (j.results || []).filter(r => r.status === 'failed'));
-        const jobsWithFailures = recent.filter(j => j.status === STATUS.FAILED || (j.results || []).some(r => r.status === 'failed'));
+        const failedGroups = recent.flatMap(j => j.failedResults);
+        const jobsWithFailures = recent.filter(j => j.status === STATUS.FAILED || j.failedResults.length > 0);
         const wrongPage = failedGroups.filter(r => /ตัวตนที่จะโพสไม่ใช่|สลับเป็นเพจ/.test(r.error || '')).length;
-        const lastError = jobsWithFailures.length ? ((jobsWithFailures[0].results || []).find(r => r.error)?.error || null) : null;
+        const lastError = jobsWithFailures.length ? (jobsWithFailures[0].failedResults.find(r => r.error)?.error || null) : null;
 
         res.json({
             ok: true, poster, serverTime: new Date().toISOString(),
@@ -401,11 +399,10 @@ exports.posterStatus = async (req, res) => {
             next: due.slice(0, 5).map(brief),
             me: { id: req.staffId || null, role: req.staffRole || 'staff' },
             jobs: jobs.map(j => {
-                const results = j.results || [];
-                const failed = results.filter(r => r.status === 'failed');
+                const failed = j.failedResults;
                 return {
-                    id: String(j._id), status: j.status, total: (j.groups || []).length,
-                    done: results.length, ok: results.length - failed.length, failed: failed.length,
+                    id: String(j._id), status: j.status, total: j.total,
+                    done: j.done, ok: j.done - failed.length, failed: failed.length,
                     wrongPage: failed.filter(r => /ตัวตนที่จะโพสไม่ใช่|สลับเป็นเพจ/.test(r.error || '')).length,
                     error: failed.length ? (failed[0].error || null) : null,
                     ownerId: j.staffId ? String(j.staffId) : null, owner: owner(j),

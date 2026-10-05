@@ -64,18 +64,80 @@ async function list() {
     } catch(e) { return []; }
 }
 
-// Same 100 jobs, only the fields the live status banner needs — it is polled
-// every few seconds, so it must not ship full result rows and attachments.
+// Rows of the queue page: it shows how many groups and how many succeeded,
+// never the per-group rows themselves — those are most of a job's size.
+async function listForQueue() {
+    try {
+        await connect();
+        return await GroupJob.aggregate([
+            { $sort: { _id: -1 } },
+            { $limit: 100 },
+            { $project: {
+                message: 1, status: 1, staffId: 1, postAsPage: 1, images: 1, delaySeconds: 1, createdAt: 1, scheduledAt: 1,
+                groupCount: { $size: { $ifNull: ['$groups', []] } },
+                okCount: { $size: { $filter: { input: { $ifNull: ['$results', []] }, cond: { $eq: ['$$this.status', 'success'] } } } },
+            } },
+        ]);
+    } catch(e) { return []; }
+}
+
+// What the live status banner needs, polled every few seconds by every open
+// tab: jobs still waiting or posting, plus the ones that changed in the last
+// few days (so "finished while you were away" can still be announced), with
+// the per-group results boiled down to counts and the failed ones' errors.
+// It used to be the newest 100 jobs with every per-group result — 800 KB per
+// poll, which alone used up the database's weekly transfer allowance.
+// Kept for a moment so several tabs polling together share one query; writes
+// made here drop it at once, the posting machine's show up within the TTL.
+const FEED_RECENT_MS = 3 * 24 * 60 * 60 * 1000;
+const FEED_TTL_MS = 3000;
+let _feed = null; // { at, jobs }
+let _feedInflight = null;
+
+function invalidateFeed() { _feed = null; }
+
 async function statusFeed() {
-    await connect();
-    return GroupJob.find().sort({ _id: -1 }).limit(100)
-        .select('status message staffId postAsPage scheduledAt dueAt updatedAt lastAttemptAt createdAt groups.groupId results.status results.error results.groupName sbNotified')
-        .lean();
+    if (_feed && Date.now() - _feed.at < FEED_TTL_MS) return _feed.jobs;
+    if (_feedInflight) return _feedInflight;
+    _feedInflight = (async () => {
+        try {
+            await connect();
+            const since = new Date(Date.now() - FEED_RECENT_MS);
+            const sinceIso = since.toISOString();
+            const results = { $ifNull: ['$results', []] };
+            const jobs = await GroupJob.aggregate([
+                { $match: { $or: [
+                    { status: { $in: [STATUS.PENDING, STATUS.RUNNING] } },
+                    { updatedAt: { $gte: sinceIso } },
+                    { lastAttemptAt: { $gte: sinceIso } },
+                    { createdAt: { $gte: since } },
+                ] } },
+                { $sort: { _id: -1 } },
+                { $limit: 100 },
+                { $project: {
+                    status: 1, message: 1, staffId: 1, postAsPage: 1, scheduledAt: 1, dueAt: 1,
+                    updatedAt: 1, lastAttemptAt: 1, createdAt: 1, sbNotified: 1,
+                    total: { $size: { $ifNull: ['$groups', []] } },
+                    done: { $size: results },
+                    lastGroup: { $last: '$results.groupName' },
+                    failedResults: { $map: {
+                        input: { $filter: { input: results, cond: { $eq: ['$$this.status', 'failed'] } } },
+                        in: { error: '$$this.error' },
+                    } },
+                } },
+            ]);
+            _feed = { at: Date.now(), jobs };
+            return jobs;
+        } finally {
+            _feedInflight = null;
+        }
+    })();
+    return _feedInflight;
 }
 
 async function create(data) {
     await connect();
-    return scheduler().CreateJob(data);
+    try { return await scheduler().CreateJob(data); } finally { invalidateFeed(); }
 }
 
 async function remove(id, actor) {
@@ -85,7 +147,7 @@ async function remove(id, actor) {
     } catch (e) {
         if (e.code === 'JOB_RUNNING') throw e;
         return null;
-    }
+    } finally { invalidateFeed(); }
 }
 
 async function getById(id) {
@@ -127,7 +189,7 @@ async function deleteHistory(id, actor) {
     } catch (e) {
         if (e.code === 'JOB_RUNNING') throw e;
         return null;
-    }
+    } finally { invalidateFeed(); }
 }
 
 async function statsByDateRange(fromDate, toDate) {
@@ -153,6 +215,7 @@ async function updateOne(id, data) {
         await connect();
         return await scheduler().UpdateJob(id, data);
     } catch { return null; }
+    finally { invalidateFeed(); }
 }
 
 async function listScheduled() {
@@ -182,12 +245,12 @@ async function migrateLegacyStatuses() {
 
 async function retryJob(id) {
     await connect();
-    return scheduler().RetryJob(id);
+    try { return await scheduler().RetryJob(id); } finally { invalidateFeed(); }
 }
 
 async function cancelJob(id) {
     await connect();
-    return scheduler().CancelJob(id);
+    try { return await scheduler().CancelJob(id); } finally { invalidateFeed(); }
 }
 
 // Update analytics for a specific result item inside a job
@@ -200,7 +263,7 @@ async function updateResultAnalytics(jobId, resultIndex, analytics) {
 }
 
 module.exports = {
-    list, statusFeed, create, remove, listHistory, listAll, deleteHistory, getById, statsByDateRange,
+    list, listForQueue, statusFeed, create, remove, listHistory, listAll, deleteHistory, getById, statsByDateRange,
     updateOne, listScheduled, updateResultAnalytics, listExpired, expireOverdueJobs,
     migrateLegacyStatuses, retryJob, cancelJob,
 };

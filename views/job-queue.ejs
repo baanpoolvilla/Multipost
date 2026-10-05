@@ -348,13 +348,13 @@
             <i class="fa-solid fa-user" style="font-size:.68rem"></i> <strong><%= (j.staffId && staffNameMap[String(j.staffId)]) || 'ไม่ระบุผู้สั่ง' %></strong> ·
             <% if (j.postAsPage) { %><i class="fa-solid fa-flag" style="font-size:.68rem"></i> <%= j.postAsPage %> · <% } %>
             <% if ((j.images||[]).length) { %><i class="fa-solid fa-image" style="font-size:.68rem"></i> <%= j.images.length %> · <% } %>
-            <%= (j.groups||[]).length %> กลุ่ม · เว้น <%= j.delaySeconds %>s ·
+            <%= j.groupCount %> กลุ่ม · เว้น <%= j.delaySeconds %>s ·
             <%= new Date(j.createdAt).toLocaleString('th-TH',{timeZone:'Asia/Bangkok',hour12:false,dateStyle:'short',timeStyle:'short'}) %>
             <% if (j.scheduledAt) { %>
             · <span style="color:#856404;font-weight:600"><i class="fa-solid fa-clock" style="font-size:.7rem"></i> โพส <%= new Date(j.scheduledAt).toLocaleString('th-TH',{timeZone:'Asia/Bangkok',hour12:false,dateStyle:'short',timeStyle:'short'}) %></span>
             <% } %>
             <% if (j.status==='success'||j.status==='failed') { %>
-            · <strong><%= (j.results||[]).filter(r=>r.status==='success').length %>/<%= (j.groups||[]).length %></strong> สำเร็จ
+            · <strong><%= j.okCount %>/<%= j.groupCount %></strong> สำเร็จ
             <% } %>
             <span class="jq-row-prog"></span>
           </div>
