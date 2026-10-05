@@ -834,18 +834,40 @@ async function postToGroup(accountId, groupId, groupName, message, postAsPage, o
 
             log('🔗 สร้าง Link Preview...');
             await page.keyboard.type(url, { delay: 15 });
-            await page.waitForTimeout(5000); // wait for Facebook to load link preview card
-            // Ctrl+A selects only text content — preview card (attachment node) stays
-            await page.keyboard.press('Control+a');
-            await page.waitForTimeout(400);
-            if (text) {
-                log('⌨️ พิมพ์ข้อความ...');
-                // Typing replaces the selection (URL) — preview card remains as attachment
-                await page.keyboard.type(text, { delay: 25 });
+            // The typed URL is about to be replaced by the text, so the card
+            // is the only place the link survives. Facebook can take a while
+            // to build it (short links that redirect, e.g. vt.tiktok.com) or
+            // not build one at all — wait for it to really be there, and if it
+            // never comes keep the link in the text instead of losing it.
+            const hasPreview = await _waitLinkPreview(page, url);
+            if (hasPreview) {
+                log('   ✅ การ์ดลิงก์ขึ้นแล้ว');
+                await page.waitForTimeout(1500);
             } else {
-                // No text — delete selected URL, preview card stays
-                await page.keyboard.press('Delete');
+                log('   ⚠️ Facebook ไม่สร้างการ์ดลิงก์ให้ — จะใส่ลิงก์ไว้ท้ายข้อความแทน');
             }
+            if (hasPreview) {
+                // Ctrl+A selects only text content — preview card (attachment node) stays
+                await page.keyboard.press('Control+a');
+                await page.waitForTimeout(400);
+                if (text) {
+                    log('⌨️ พิมพ์ข้อความ...');
+                    // Typing replaces the selection (URL) — preview card remains as attachment
+                    await page.keyboard.type(text, { delay: 25 });
+                } else {
+                    // No text — delete selected URL, preview card stays
+                    await page.keyboard.press('Delete');
+                }
+            } else if (text) {
+                log('⌨️ พิมพ์ข้อความ...');
+                await page.keyboard.press('Control+a');
+                await page.waitForTimeout(400);
+                await page.keyboard.type(text, { delay: 25 });
+                await page.keyboard.press('Enter');
+                await page.keyboard.press('Enter');
+                await page.keyboard.type(url, { delay: 15 });
+            }
+            // (no card and no text: the URL already typed stays as the post)
         } else {
             await page.keyboard.type(message, { delay: 30 });
         }
@@ -922,6 +944,36 @@ async function postToGroup(accountId, groupId, groupName, message, postAsPage, o
         if (ownPage) await page.close();
         return { ok: true, postUrl };
     } catch(e) { return { ok: false, error: e.message }; }
+}
+
+// Waits until the open create-post dialog shows a link card for `url`, i.e.
+// something outside the text box that names the link's site, or the card's
+// remove (x) button. Returns false if none appears in time.
+async function _waitLinkPreview(page, url, timeoutMs = 20000) {
+    let host = '';
+    try { host = new URL(/^https?:\/\//i.test(url) ? url : 'https://' + url).hostname.toLowerCase(); } catch {}
+    const domain = host.split('.').slice(-2).join('.');
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+        const found = await page.evaluate(({ domain }) => {
+            const dialogs = [...document.querySelectorAll('[role="dialog"]')];
+            const dlg = dialogs[dialogs.length - 1];
+            if (!dlg) return false;
+            const boxes = [...dlg.querySelectorAll('[contenteditable="true"]')];
+            const outside = el => !boxes.some(b => b.contains(el));
+            const removeBtn = /ลบตัวอย่างลิงก์|ลบไฟล์แนบ|Remove link preview|Remove post attachment|Remove attachment/i;
+            if ([...dlg.querySelectorAll('[aria-label]')].some(el => outside(el) && removeBtn.test(el.getAttribute('aria-label')))) return true;
+            if (!domain) return false;
+            return [...dlg.querySelectorAll('a[href], [role="link"]')].some(el => {
+                if (!outside(el)) return false;
+                const t = ((el.getAttribute('href') || '') + ' ' + (el.innerText || '') + ' ' + (el.getAttribute('aria-label') || '')).toLowerCase();
+                return t.includes(domain);
+            });
+        }, { domain }).catch(() => false);
+        if (found) return true;
+        await page.waitForTimeout(500);
+    }
+    return false;
 }
 
 // ── Delete a post we made ─────────────────────────────────────
