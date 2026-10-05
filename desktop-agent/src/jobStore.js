@@ -189,6 +189,25 @@ async function getJobs() {
     } catch { return fLoad().reverse().slice(0,100); }
 }
 
+// The window re-checks the queue every few seconds. Asking for the id and
+// status only, then loading just the jobs that changed (getJobsByIds), keeps
+// that check to a few KB — the full list is every job's per-group results,
+// megabytes each time.
+async function getJobStates() {
+    try {
+        await connect();
+        return (await Job.find().sort({ _id:-1 }).limit(100).select('status').lean()).map(_s);
+    } catch { return fLoad().reverse().slice(0,100).map(j => ({ _id: j._id, status: j.status })); }
+}
+
+async function getJobsByIds(ids) {
+    if (!Array.isArray(ids) || !ids.length) return [];
+    try {
+        await connect();
+        return (await Job.find({ _id: { $in: ids } }).sort({ _id:-1 }).lean()).map(_s);
+    } catch { return fLoad().reverse().filter(j => ids.includes(j._id)); }
+}
+
 // Run BEFORE every queue poll: flips any pending job overdue past the
 // grace window to 'expired' so it can never be auto-posted late.
 // Pass graceMs=0 at startup to expire ALL scheduled-but-overdue jobs.
@@ -449,7 +468,7 @@ function _s(j) { return j ? { ...j, _id: j._id?.toString?.()??j._id } : j; }
 
 module.exports = {
     connect, isDbConnected, setDataPath, setAgentId, setStaffId, listStaff, getAllGroups, getRecentPosts,
-    isPosterAgent, createJob, getJobs, getPendingJobs, claimNextJob, updateJob, deleteJob, deleteAllJobs, restoreDeletedJob, claimNextFbDeletion, updateFbDeletion, finishFbDeletion,
+    isPosterAgent, createJob, getJobs, getJobStates, getJobsByIds, getPendingJobs, claimNextJob, updateJob, deleteJob, deleteAllJobs, restoreDeletedJob, claimNextFbDeletion, updateFbDeletion, finishFbDeletion,
     getCompletedJobs, getQueueSnapshot, getDbUsage, rescheduleJob, expireOverdueJobs, migrateLegacyStatuses,
     saveProgress, recoverInterrupted, notifyWeb,
     retryJob, cancelJob, listExpiredJobs,

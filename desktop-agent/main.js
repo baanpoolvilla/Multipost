@@ -266,6 +266,8 @@ ipcMain.handle('accounts:logout', (_, id) => {
 
 // ── IPC: Jobs ──────────────────────────────────────────────────
 ipcMain.handle('jobs:list',         ()            => jobStore.getJobs());
+ipcMain.handle('jobs:states',       ()            => jobStore.getJobStates());
+ipcMain.handle('jobs:by-ids',       (_, ids)      => jobStore.getJobsByIds(ids));
 ipcMain.handle('jobs:create',       (_, data)     => jobStore.createJob(data));
 ipcMain.handle('jobs:delete',       (_, id, opts) => jobStore.deleteJob(id, { fbDelete: !!opts?.fbDelete }));
 ipcMain.handle('jobs:delete-all',   ()            => jobStore.deleteAllJobs());

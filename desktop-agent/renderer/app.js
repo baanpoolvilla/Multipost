@@ -34,8 +34,14 @@ window.addEventListener('DOMContentLoaded', async () => {
         if (_jobRefreshing) return;
         _jobRefreshing = true;
         try {
-            const fresh = await agent.listJobs();
-            const freshIds = new Set(fresh.map(j => j._id));
+            // Statuses first; full rows only for jobs that are new or changed.
+            const states = await agent.listJobStates();
+            const freshIds = new Set(states.map(j => j._id));
+            const need = states.filter(st => {
+                const cur = _jobs.find(x => x._id === st._id);
+                return !cur || cur.status !== st.status;
+            }).map(st => st._id);
+            const fresh = need.length ? await agent.getJobsByIds(need) : [];
             let changed = false;
             // Update/add jobs from server
             fresh.forEach(j => {
@@ -60,7 +66,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         if (_grpRefreshing) return;
         _grpRefreshing = true;
         try { await refreshGroupsSilent(); } catch {} finally { _grpRefreshing = false; }
-    }, 12000);
+    }, 60000); // the whole group list each time — once a minute is plenty
 });
 
 // ── Tab navigation ────────────────────────────────────────────
