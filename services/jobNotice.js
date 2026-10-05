@@ -35,12 +35,31 @@ function failureReasons(results) {
     return [...counts.entries()].sort((a, b) => b[1] - a[1]);
 }
 
+// Which round this is, in Bangkok time: the time it was scheduled for, or
+// for a "post now" job the time it was ordered. The date is added when it is
+// not today. e.g. "รอบ 14:00" / "รอบ 3 ต.ค. 14:00"
+function round(job) {
+    const at = new Date(job.scheduledAt || job.createdAt || job.lastAttemptAt || Date.now());
+    if (isNaN(at)) return '';
+    const tz = 'Asia/Bangkok';
+    const day = d => d.toLocaleDateString('en-CA', { timeZone: tz });
+    const time = at.toLocaleTimeString('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false });
+    const date = day(at) === day(new Date()) ? '' : at.toLocaleDateString('th-TH', { timeZone: tz, day: 'numeric', month: 'short' }) + ' ';
+    return `รอบ ${date}${time}`;
+}
+
+// The bell may show the title only, so the title alone must say which job
+// this is — the round, the Page and the start of the message — not just
+// "your job started".
 function compose(job, event) {
     const total = (job.groups || []).length;
+    const short = label(job.message).slice(0, 28);
+    const which = [round(job), job.postAsPage ? `เพจ ${job.postAsPage}` : '', `"${short}${label(job.message).length > 28 ? '…' : ''}"`]
+        .filter(Boolean).join(' · ');
     const name = `"${label(job.message)}"`;
     const page = job.postAsPage ? ` · ในนาม ${job.postAsPage}` : '';
     if (event === 'started') {
-        return { title: 'เริ่มโพสงานของคุณแล้ว', body: `${name} · ${total} กลุ่ม${page}` };
+        return { title: `เริ่มโพสแล้ว ${total} กลุ่ม · ${which}`, body: `${name} · ${total} กลุ่ม${page}` };
     }
     const results = job.results || [];
     const ok = results.filter(r => r.status === 'success').length;
@@ -49,16 +68,16 @@ function compose(job, event) {
     const reasons = failureReasons(results);
     const why = reasons.slice(0, 2).map(([reason, n]) => `${reason} (${n} กลุ่ม)`).join(', ') + (reasons.length > 2 ? ' และสาเหตุอื่น' : '');
     if (ok === 0) {
-        return { title: 'โพสไม่สำเร็จ — ไม่มีกลุ่มไหนโพสได้', body: `${name}${why ? ` — ${why}` : ''}` };
+        return { title: `โพสไม่สำเร็จ 0/${total} กลุ่ม · ${which}`, body: `${name}${why ? ` — ${why}` : ''}` };
     }
     const failed = total - ok;
     if (failed > 0) {
         return {
-            title: `โพสเสร็จ ${ok}/${total} กลุ่ม — ไม่สำเร็จ ${failed} กลุ่ม`,
+            title: `โพสเสร็จ ${ok}/${total} กลุ่ม (ไม่สำเร็จ ${failed}) · ${which}`,
             body: `${name}${page}${why ? ` · สาเหตุ: ${why}` : ''}`,
         };
     }
-    return { title: `โพสเสร็จแล้ว ${ok}/${total} กลุ่ม`, body: `${name}${page}` };
+    return { title: `โพสเสร็จแล้ว ${ok}/${total} กลุ่ม · ${which}`, body: `${name}${page}` };
 }
 
 async function postToSmartboss(smartbossUserId, { title, body, key }) {
