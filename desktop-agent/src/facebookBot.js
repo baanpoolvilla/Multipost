@@ -826,6 +826,9 @@ async function postToGroup(accountId, groupId, groupName, message, postAsPage, o
             }
         }
 
+        // Set by the link branch below: the link, and whether its card is (still) showing.
+        let linkUrl = null, linkCardShowing = async () => false;
+
         // Support "text|||url" or "|||url" (text-only preview, no link shown)
         if (message.includes('|||')) {
             const sep  = message.indexOf('|||');
@@ -845,6 +848,9 @@ async function postToGroup(accountId, groupId, groupName, message, postAsPage, o
             // it to really be there instead of a fixed pause.
             const preview = await _waitLinkPreview(page, url, cardsBefore);
             const hasPreview = !!preview;
+            linkUrl = url;
+            // `preview` says how the card was recognised; look for it the same way.
+            linkCardShowing = async () => !!preview && (await _linkCardCount(page, url))[preview] > cardsBefore[preview];
             log(hasPreview ? '   ✅ การ์ดลิงก์ขึ้นแล้ว' : '   ⚠️ Facebook ไม่สร้างการ์ดลิงก์ให้ — จะใส่ลิงก์ไว้ท้ายข้อความแทน');
             let linkInText = false;
             if (hasPreview) {
@@ -876,8 +882,7 @@ async function postToGroup(accountId, groupId, groupName, message, postAsPage, o
             // place, the post would go out without the link.
             if (!linkInText) {
                 await page.waitForTimeout(1500);
-                // `preview` says how the card was recognised; look for it the same way.
-                if ((await _linkCardCount(page, url))[preview] <= cardsBefore[preview]) {
+                if (!(await linkCardShowing())) {
                     log('   ⚠️ การ์ดลิงก์หายไปหลังพิมพ์ข้อความ — ใส่ลิงก์ไว้ท้ายข้อความแทน');
                     await page.keyboard.press('Control+End');
                     if (text) { await page.keyboard.press('Enter'); await page.keyboard.press('Enter'); }
@@ -889,6 +894,32 @@ async function postToGroup(accountId, groupId, groupName, message, postAsPage, o
         }
 
         await page.waitForTimeout(1500);
+
+        // What goes out must be the text that was asked for. Facebook's editor
+        // has been seen to drop what was typed so far (the top of a post went
+        // missing) — so read the box back, type it once more if it is short,
+        // and if it still is not right do not post at all.
+        const wantText = message.includes('|||') ? message.slice(0, message.indexOf('|||')).trim() : message;
+        if (await _textIncomplete(page, wantText)) {
+            log('   ⚠️ ข้อความในช่องโพสไม่ครบ — พิมพ์ใหม่อีกครั้ง');
+            await page.keyboard.press('Control+a');
+            await page.waitForTimeout(400);
+            await page.keyboard.type(wantText, { delay: 30 });
+            if (linkUrl && !(await linkCardShowing())) {
+                await page.keyboard.press('Enter');
+                await page.keyboard.press('Enter');
+                await page.keyboard.type(linkUrl, { delay: 15 });
+            }
+            await page.waitForTimeout(1500);
+            if (await _textIncomplete(page, wantText)) {
+                log('   ⛔ ข้อความในช่องโพสยังไม่ครบ — ไม่กดโพส');
+                await page.screenshot({ path: path.join(_userDataBase, `debug-text-${_fileSafe(groupId)}.png`) }).catch(() => {});
+                await page.keyboard.press('Escape').catch(() => {});
+                if (ownPage) await page.close().catch(() => {});
+                return { ok: false, error: 'ข้อความในช่องโพสไม่ครบตามที่สั่ง — ยกเลิก ไม่ได้โพส (กันโพสข้อความขาด)' };
+            }
+            log('   ✅ ข้อความครบแล้ว');
+        }
 
         // Last check before anything is published: the create-post dialog must
         // show the identity that was chosen. Menus can shift between reading
@@ -960,6 +991,25 @@ async function postToGroup(accountId, groupId, groupName, message, postAsPage, o
         if (ownPage) await page.close();
         return { ok: true, postUrl };
     } catch(e) { return { ok: false, error: e.message }; }
+}
+
+// True when the create-post box clearly does not hold `want`: its start is
+// missing, or a good part of it is. Compared on letters and digits only, so
+// emoji, spacing and line breaks — which Facebook renders its own way — and a
+// name turned into a tag do not count as a difference. If the box cannot be
+// found at all this says false: not being able to check must not stop posting.
+async function _textIncomplete(page, want) {
+    const w = _normText(want);
+    if (w.length < 20) return false;
+    const raw = await page.evaluate(() => {
+        const boxes = [...document.querySelectorAll('[role="dialog"] [contenteditable="true"]')];
+        if (!boxes.length) return null;
+        return boxes.map(b => b.innerText || '').sort((a, b) => b.length - a.length)[0];
+    }).catch(() => null);
+    if (raw === null) return false;
+    const got = _normText(raw);
+    if (got.includes(w)) return false;
+    return !(got.includes(w.slice(0, 30)) && got.length >= w.length * 0.9);
 }
 
 // Counts, in the open create-post dialog and outside the text box:
