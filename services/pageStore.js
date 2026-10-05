@@ -160,4 +160,49 @@ async function toggleGroup(pageId, groupId, enabled) {
     }
 }
 
-module.exports = { load, add, update, remove, saveAll, syncGroups, addGroup, removeGroup, toggleGroup };
+// ── Sidebar list ("เพจของคุณ"), rendered on every page ──────────────
+// Only the name and a group count are shown, so fetch just those (not the
+// access tokens and full group lists) and keep the answer for a minute:
+// a full Page.find() on every click was one of the reasons navigation felt
+// slow. Writes made through this module drop the cache at once; changes made
+// elsewhere (Desktop Agent, another server instance) show up within the TTL.
+const SIDEBAR_TTL_MS = 60 * 1000;
+let sidebarCache = null; // { at, pages }
+let sidebarInflight = null;
+
+function invalidateSidebar() { sidebarCache = null; }
+
+async function loadSidebar() {
+    if (sidebarCache && Date.now() - sidebarCache.at < SIDEBAR_TTL_MS) return sidebarCache.pages;
+    if (sidebarInflight) return sidebarInflight;
+    sidebarInflight = (async () => {
+        try {
+            await connect();
+            const pages = await Page.find({ enabled: { $ne: false } })
+                .select('pageId pageName enabled groups.groupId').lean();
+            sidebarCache = { at: Date.now(), pages };
+            return pages;
+        } catch {
+            return fLoad().filter(p => p.enabled !== false);
+        } finally {
+            sidebarInflight = null;
+        }
+    })();
+    return sidebarInflight;
+}
+
+const invalidating = fn => async (...args) => {
+    try { return await fn(...args); } finally { invalidateSidebar(); }
+};
+
+module.exports = {
+    load, loadSidebar,
+    add:         invalidating(add),
+    update:      invalidating(update),
+    remove:      invalidating(remove),
+    saveAll:     invalidating(saveAll),
+    syncGroups:  invalidating(syncGroups),
+    addGroup:    invalidating(addGroup),
+    removeGroup: invalidating(removeGroup),
+    toggleGroup: invalidating(toggleGroup),
+};

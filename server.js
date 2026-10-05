@@ -32,10 +32,9 @@ app.use(async (req, res, next) => {
         res.locals.sidebarPages = [];
         return next();
     }
-    try {
-        const all = await pageStore.load();
-        res.locals.sidebarPages = all.filter(p => p.enabled !== false);
-    } catch { res.locals.sidebarPages = []; }
+    // auth.js already started this lookup alongside its own account check.
+    try { res.locals.sidebarPages = await (req.sidebarPagesPromise || pageStore.loadSidebar()); }
+    catch { res.locals.sidebarPages = []; }
     next();
 });
 

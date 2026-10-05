@@ -33,6 +33,10 @@ const schema = new mongoose.Schema({
     selectedPageIds: { type: [String], default: null },
     staffId:         { type: String, default: null },
 }, { versionKey: false });
+// Every list here is "newest first", and the scheduler looks posts up by
+// status + due time — without these Mongo sorts/scans the whole collection.
+schema.index({ createdAt: -1 });
+schema.index({ status: 1, scheduledAt: 1 });
 const Post = mongoose.models.Post || mongoose.model('Post', schema);
 
 async function load() {
@@ -41,6 +45,25 @@ async function load() {
         const posts = await Post.find().sort({ createdAt: -1 }).lean();
         return posts.map(p => ({ ...p, id: p._id }));
     } catch { return fLoad(); }
+}
+
+// The compose pages only show the latest few posts and what is still waiting
+// to go out — load() there pulled the entire history on every visit.
+async function loadRecent(limit = 5) {
+    try {
+        await connect();
+        const posts = await Post.find().sort({ createdAt: -1 }).limit(limit).lean();
+        return posts.map(p => ({ ...p, id: p._id }));
+    } catch { return fLoad().slice(0, limit); }
+}
+
+async function listPending() {
+    try {
+        await connect();
+        const posts = await Post.find({ status: STATUS.PENDING }).sort({ createdAt: -1 })
+            .select('message scheduledAt').lean();
+        return posts.map(p => ({ ...p, id: p._id }));
+    } catch { return fLoad().filter(p => p.status === STATUS.PENDING); }
 }
 
 async function create(data) {
@@ -148,4 +171,4 @@ async function updateOne(id, data) {
     }
 }
 
-module.exports = { load, create, getById, remove, saveAll, getDueScheduled, updateOne, expireOverdueScheduled, migrateLegacyStatuses };
+module.exports = { load, loadRecent, listPending, create, getById, remove, saveAll, getDueScheduled, updateOne, expireOverdueScheduled, migrateLegacyStatuses };

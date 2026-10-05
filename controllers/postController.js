@@ -7,14 +7,26 @@ const templateStore = require('../services/templateStore');
 const groupJobStore = require('../services/groupJobStore');
 const { STATUS }    = require('../desktop-agent/src/scheduler/statuses');
 
+// Shared by the two compose pages (Dashboard, ตั้งเวลาโพส). The page list does
+// not depend on the expiry sweep, so it loads alongside it; the post queries
+// wait for the sweep so nothing overdue is still shown as pending.
+async function composePageData() {
+    const pagesPromise = pageStore.load();
+    await postStore.expireOverdueScheduled().catch(() => {});
+    const [allPages, recentPosts, pending] = await Promise.all([
+        pagesPromise, postStore.loadRecent(5), postStore.listPending(),
+    ]);
+    return {
+        pages:         allPages.filter(p => p.enabled !== false),
+        disabledPages: allPages.filter(p => p.enabled === false),
+        recentPosts,
+        scheduledPosts: pending.map(p => ({ id: p.id, msg: p.message, at: p.scheduledAt })),
+    };
+}
+
 // ── Dashboard ──────────────────────────────────
 exports.showDashboard = async (req, res) => {
-    await postStore.expireOverdueScheduled().catch(() => {});
-    const [allPages, posts] = await Promise.all([pageStore.load(), postStore.load()]);
-    const pages         = allPages.filter(p => p.enabled !== false);
-    const disabledPages = allPages.filter(p => p.enabled === false);
-    const scheduledPosts = posts.filter(p => p.status === STATUS.PENDING).map(p => ({ id: p.id, msg: p.message, at: p.scheduledAt }));
-    res.render('dashboard', { pages, disabledPages, recentPosts: posts.slice(0, 5), scheduledPosts });
+    res.render('dashboard', await composePageData());
 };
 
 // ── Send post ──────────────────────────────────
@@ -312,12 +324,7 @@ exports.showHistory = async (req, res) => {
 };
 
 exports.showSchedulePost = async (req, res) => {
-    await postStore.expireOverdueScheduled().catch(() => {});
-    const [allPages, posts] = await Promise.all([pageStore.load(), postStore.load()]);
-    const pages         = allPages.filter(p => p.enabled !== false);
-    const disabledPages = allPages.filter(p => p.enabled === false);
-    const scheduledPosts = posts.filter(p => p.status === STATUS.PENDING).map(p => ({ id: p.id, msg: p.message, at: p.scheduledAt }));
-    res.render('schedule-post', { pages, disabledPages, recentPosts: posts.slice(0, 5), scheduledPosts });
+    res.render('schedule-post', await composePageData());
 };
 
 // ── Page Summary Page ─────────────────────────────────────────

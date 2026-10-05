@@ -53,6 +53,19 @@ function unauthorized(req, res) {
     return res.redirect('/login');
 }
 
+// "Is there an admin yet?" was a DB count on every request from a non-admin.
+// Only the answer "yes" is remembered (5 min): the last admin can't be removed
+// (staffController refuses), so "yes" doesn't go stale in a way that matters,
+// while "no" is always re-checked so the bootstrap window closes immediately.
+const ADMIN_EXISTS_TTL_MS = 5 * 60 * 1000;
+let adminSeenAt = 0;
+async function adminExists() {
+    if (Date.now() - adminSeenAt < ADMIN_EXISTS_TTL_MS) return true;
+    const exists = (await staffStore.countAdmins()) > 0;
+    if (exists) adminSeenAt = Date.now();
+    return exists;
+}
+
 module.exports = async function auth(req, res, next) {
     if (isPublic(req.path)) return next();
 
@@ -80,6 +93,12 @@ module.exports = async function auth(req, res, next) {
     // unreachable" — only the former should clear the cookie. Treating both
     // the same would mean a brief Mongo blip logs out every active session
     // on their very next request instead of just degrading gracefully.
+    // A page render also needs the sidebar's page list (server.js). Start it
+    // now so it runs alongside the account check instead of after it.
+    if (req.method === 'GET' && !req.path.startsWith('/api/')) {
+        req.sidebarPagesPromise = require('../services/pageStore').loadSidebar().catch(() => []);
+    }
+
     let staff;
     let dbUnavailable = false;
     try {
@@ -107,7 +126,7 @@ module.exports = async function auth(req, res, next) {
     // could ever promote the first admin after this deploys.
     let canManageStaff = req.staffRole === 'admin';
     if (!canManageStaff) {
-        try { canManageStaff = (await staffStore.countAdmins()) === 0; } catch { canManageStaff = false; }
+        try { canManageStaff = !(await adminExists()); } catch { canManageStaff = false; }
     }
     req.canManageStaff = canManageStaff;
 
