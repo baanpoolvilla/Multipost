@@ -250,15 +250,17 @@ exports.bulkRenameCategory = async (req, res) => {
 exports.showJobQueue = async (req, res) => {
     await groupJobStore.expireOverdueJobs().catch(() => {});
     const staffStore = require('../services/staffStore');
-    const [groups, jobs, dbCategories, staffList] = await Promise.all([
-        groupStore.list(), groupJobStore.listForQueue(), categoryStore.list(),
+    // ?all=1 is the "ดูทั้งหมด" link under the list; normally only the first page loads.
+    const showingAll = req.query.all === '1';
+    const [groups, { jobs, total: jobTotal }, dbCategories, staffList] = await Promise.all([
+        groupStore.list(), groupJobStore.listForQueue({ all: showingAll }), categoryStore.list(),
         staffStore.list({ includeDeleted: true }).catch(() => []),
     ]);
     const catColorMap = { 'ทั่วไป': '#868e96' };
     dbCategories.forEach(c => { catColorMap[c.name] = c.color || '#1877f2'; });
     const staffNameMap = {};
     staffList.forEach(s => { staffNameMap[String(s._id)] = s.displayName; });
-    res.render('job-queue', { jobs, groups, catColorMap, staffNameMap });
+    res.render('job-queue', { jobs, jobTotal, showingAll, groups, catColorMap, staffNameMap });
 };
 
 // Staff names change rarely; the banner polls every few seconds.
@@ -582,19 +584,33 @@ exports.cancelJob = async (req, res) => {
 };
 
 // ── Group History page ─────────────────────────────────────────
+// The page carries the first few cards only; the rest arrive through the
+// two endpoints below (see views/group-history.ejs).
+function historyCardRows(jobs, names) {
+    return jobs.map(j => {
+        const results = j.results || [];
+        return {
+            ...j,
+            _id: String(j._id),
+            successCount: results.filter(r => r.status === 'success').length,
+            failCount:    results.filter(r => r.status === 'failed').length,
+            staffName: (j.staffId && names[String(j.staffId)]) || null,
+        };
+    });
+}
+
 exports.showGroupHistory = async (req, res) => {
-    const staffStore = require('../services/staffStore');
-    const [jobs, groups, dbCategories, staffList] = await Promise.all([
-        groupJobStore.listHistoryCompact(),
+    // staffNameMap() includes deleted accounts: a job's staffName should still
+    // resolve here even if that account was later deleted -- this is a
+    // per-record history list (like the audit log), not a "who's active" summary.
+    const [summary, jobs, nameOf, groups, dbCategories, names] = await Promise.all([
+        groupJobStore.historySummary(),
+        groupJobStore.historyCards(),
+        groupJobStore.historyGroupNames().catch(() => new Map()),
         groupStore.list(),
         categoryStore.list(),
-        // includeDeleted: a job's staffName should still resolve here even if
-        // that account was later deleted -- this is a per-record history
-        // list (like the audit log), not a "who's active" summary.
-        staffStore.list({ includeDeleted: true }).catch(() => []),
+        staffNameMap(),
     ]);
-    const staffNameMap = {};
-    staffList.forEach(s => { staffNameMap[String(s._id)] = s.displayName; });
 
     // groupId → categories map for category-based filtering on client
     const groupCatMap = {};
@@ -609,19 +625,43 @@ exports.showGroupHistory = async (req, res) => {
     groups.forEach(g => (g.categories || ['ทั่วไป']).forEach(c => catSet.add(c)));
     const allCats = ['ทั่วไป', ...[...catSet].filter(c => c !== 'ทั่วไป').sort()];
 
-    // Enrich jobs with successCount/failCount
-    const enriched = jobs.map(j => {
-        const results = j.results || [];
-        return {
-            ...j,
-            _id: String(j._id),
-            successCount: results.filter(r => r.status === 'success').length,
-            failCount:    results.filter(r => r.status === 'failed').length,
-            staffName: (j.staffId && staffNameMap[String(j.staffId)]) || null,
-        };
-    });
+    // Filter dropdowns list what actually appears in the history
+    const groupNames = {};
+    nameOf.forEach((name, id) => { if (id && name) groupNames[id] = name; });
+    const staffSeen = new Map();
+    summary.staffIds.forEach(id => staffSeen.set(id || '__unassigned__', (id && names[String(id)]) || 'ไม่ระบุตัวตน'));
+    const staffOptions = [...staffSeen.entries()].sort((a, b) => a[1].localeCompare(b[1], 'th'));
 
-    res.render('group-history', { jobs: enriched, groupCatMap, groupPrivacyMap, allCats });
+    const { staffIds, ...total } = summary;
+    res.render('group-history', {
+        jobs: historyCardRows(jobs, names), total, pageSize: groupJobStore.HISTORY_PAGE,
+        groupNames, staffOptions, groupCatMap, groupPrivacyMap, allCats,
+    });
+};
+
+// More cards: the next page (?skip=) or specific jobs (?ids=a,b,c — what the
+// filters matched). Answers with the cards' HTML.
+exports.groupHistoryCards = async (req, res) => {
+    try {
+        const ids = String(req.query.ids || '').split(',').filter(Boolean).slice(0, groupJobStore.HISTORY_PAGE * 2);
+        const skip = parseInt(req.query.skip, 10) || 0;
+        const [jobs, names] = await Promise.all([
+            groupJobStore.historyCards(ids.length ? { ids } : { skip }),
+            staffNameMap(),
+        ]);
+        res.render('partials/group-history-cards', { jobs: historyCardRows(jobs, names) });
+    } catch (e) {
+        res.status(500).send('');
+    }
+};
+
+// Light rows of every finished job for the page's filters (?q= message search).
+exports.groupHistoryIndex = async (req, res) => {
+    try {
+        res.json({ ok: true, jobs: await groupJobStore.historyIndex(String(req.query.q || '').slice(0, 200)) });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
 };
 
 exports.deleteGroupHistoryJob = async (req, res) => {

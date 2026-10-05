@@ -23,13 +23,24 @@ function _norm(g) {
     return g;
 }
 
+// Nearly every group page needs the whole list, so it is kept for half a
+// minute instead of being read again on each click. Changes made from the web
+// drop it at once; groups the posting machine adds show up within the TTL.
+const LIST_TTL_MS = 30 * 1000;
+let _listCache = null; // { at, groups }
+function invalidateList() { _listCache = null; }
+// Callers get their own copies — some views add fields to the rows.
+const copyList = groups => groups.map(g => ({ ...g, categories: [...g.categories] }));
+
 async function list() {
+    if (_listCache && Date.now() - _listCache.at < LIST_TTL_MS) return copyList(_listCache.groups);
     try {
         await connect();
         // Migration: fix any groups that don't have 'ทั่วไป' in their categories array
         await Group.updateMany({ categories: { $ne: 'ทั่วไป' } }, { $addToSet: { categories: 'ทั่วไป' } });
-        const groups = await Group.find().sort({ groupName: 1 }).lean();
-        return groups.map(_norm);
+        const groups = (await Group.find().sort({ groupName: 1 }).lean()).map(_norm);
+        _listCache = { at: Date.now(), groups };
+        return copyList(groups);
     } catch { return []; }
 }
 
@@ -117,4 +128,18 @@ async function setPrivacy(id, privacy) {
     } catch(e) { return { error: e.message }; }
 }
 
-module.exports = { list, add, addToCategory, removeFromCategory, moveCategory, remove, bulkRenameCategory, bulkRemoveCategory, setPrivacy };
+const invalidating = fn => async (...args) => {
+    try { return await fn(...args); } finally { invalidateList(); }
+};
+
+module.exports = {
+    list,
+    add:                 invalidating(add),
+    addToCategory:       invalidating(addToCategory),
+    removeFromCategory:  invalidating(removeFromCategory),
+    moveCategory:        invalidating(moveCategory),
+    remove:              invalidating(remove),
+    bulkRenameCategory:  invalidating(bulkRenameCategory),
+    bulkRemoveCategory:  invalidating(bulkRemoveCategory),
+    setPrivacy:          invalidating(setPrivacy),
+};

@@ -75,11 +75,11 @@
       <div class="card-title">
         <i class="fa-solid fa-clock-rotate-left"></i>
         ประวัติโพสลงกลุ่ม
-        <span id="historyCount" style="background:#e4e6ea;padding:.15rem .55rem;border-radius:999px;font-size:.8rem;margin-left:.4rem"><%= jobs.length %></span>
+        <span id="historyCount" style="background:#e4e6ea;padding:.15rem .55rem;border-radius:999px;font-size:.8rem;margin-left:.4rem"><%= total.jobs %></span>
       </div>
     </div>
 
-    <% if (jobs.length > 0) { %>
+    <% if (total.jobs > 0) { %>
     <!-- Filter bar -->
     <div class="card" style="padding:.85rem 1.25rem">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
@@ -204,12 +204,12 @@
 
       <div id="hFilterInfo" style="display:none;margin-top:.6rem;padding-top:.5rem;border-top:1px solid #f0f2f5;font-size:.79rem;color:#8a8d91">
         <i class="fa-solid fa-circle-info" style="color:#1877f2;margin-right:.3rem"></i>
-        แสดง <strong id="hShown" style="color:#1877f2">0</strong> จาก <strong><%= jobs.length %></strong> รายการ
+        แสดง <strong id="hShown" style="color:#1877f2">0</strong> จาก <strong><%= total.jobs %></strong> รายการ
       </div>
     </div>
     <% } %>
 
-    <% if (jobs.length === 0) { %>
+    <% if (total.jobs === 0) { %>
     <div class="card empty-state">
       <i class="fa-regular fa-face-meh-blank"></i>
       <h3>ยังไม่มีประวัติการโพสกลุ่ม</h3>
@@ -222,151 +222,17 @@
 
     <div id="hGTimelineView" class="card" style="display:none;padding:1rem 1.25rem;overflow-x:auto"></div>
 
-    <% const colors = ['purple','green','orange','blue','red']; %>
-    <% jobs.forEach(job => { %>
-    <%
-      const allOk   = job.successCount > 0 && job.failCount === 0;
-      const allFail = job.successCount === 0 && job.failCount > 0;
-    %>
-    <div class="card history-card" id="card-<%= job._id %>">
-
-      <!-- Card header -->
-      <div class="fb-post-header">
-        <div class="avatar avatar-<%= allOk ? 'green' : allFail ? 'red' : 'blue' %>">
-          <i class="fa-solid fa-robot"></i>
-        </div>
-        <div style="flex:1">
-          <div class="fb-post-author">
-            <%= job.staffName || 'ไม่ระบุตัวตน' %>
-            <span style="background:<%= allOk ? '#d1e7dd' : allFail ? '#f8d7da' : '#fff3cd' %>;color:<%= allOk ? '#0a3622' : allFail ? '#842029' : '#856404' %>;border-radius:999px;font-size:.7rem;padding:.1rem .5rem;font-weight:700;margin-left:.35rem">
-              <i class="fa-solid fa-<%= allOk ? 'check' : allFail ? 'xmark' : 'triangle-exclamation' %>" style="font-size:.65rem"></i>
-              <%= allOk ? 'สำเร็จทั้งหมด' : allFail ? 'ล้มเหลวทั้งหมด' : 'สำเร็จบางส่วน' %>
-            </span>
-          </div>
-          <div class="fb-post-time">
-            <i class="fa-solid fa-robot"></i> Desktop Agent
-            &nbsp;·&nbsp;
-            <i class="fa-solid fa-clock"></i>
-            <%
-              // Show the time it actually posted, not when the job was
-              // queued/scheduled -- lastAttemptAt is stamped the moment the
-              // job leaves 'pending' and starts running, so for a job that
-              // sat scheduled for days this is the only timestamp that
-              // answers "when did this really go out", matching what the
-              // success/fail badge above is reporting on.
-              const postedAt = job.lastAttemptAt || job.createdAt;
-            %>
-            <%= new Date(postedAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', dateStyle:'short', timeStyle:'short', hour12:false }) %>
-            &nbsp;·&nbsp;
-            <i class="fa-solid fa-users" style="color:#1877f2"></i>
-            <%= (job.groups || []).length %> กลุ่ม
-          </div>
-        </div>
-        <div class="history-actions">
-          <a href="/group-result/<%= job._id %>"
-             style="display:inline-flex;align-items:center;gap:.28rem;background:#e7f0fd;color:#1877f2;border:none;border-radius:7px;padding:.28rem .65rem;font-size:.78rem;font-weight:700;text-decoration:none;transition:background .15s"
-             onmouseover="this.style.background='#cfe2ff'" onmouseout="this.style.background='#e7f0fd'"
-             title="ดูรายงาน">
-            <i class="fa-solid fa-chart-bar"></i> รายงาน
-          </a>
-          <% const fbPostCount = job.fbPostCount || 0; %>
-          <button class="icon-btn danger" title="ลบ (รวมโพสบน Facebook)" onclick="deleteJob('<%= job._id %>', this, <%= fbPostCount %>)">
-            <i class="fa-solid fa-trash"></i>
-          </button>
-        </div>
-      </div>
-
-      <!-- Message -->
-      <div class="history-message">
-        <% const msg = job.message || ''; %>
-        <% if (msg.length > 200) { %>
-          <span class="msg-short"><%= msg.slice(0, 200) %>...<button class="read-more-btn" onclick="toggleMsg(this)"> อ่านเพิ่มเติม</button></span>
-          <span class="msg-full" style="display:none"><%= msg %><button class="read-more-btn" onclick="toggleMsg(this)"> ย่อ</button></span>
-        <% } else { %>
-          <%= msg %>
-        <% } %>
-      </div>
-
-      <!-- Images (skip localpath:: entries — local files) -->
-      <% const webImages = (job.images || []).filter(img => img && !img.startsWith('localpath::') && !img.startsWith('/') && !/^[A-Za-z]:[\\\/]/.test(img)); %>
-      <% if (webImages.length > 0) { %>
-      <div class="post-img-grid post-img-<%= Math.min(webImages.length, 4) %>">
-        <% webImages.slice(0, 4).forEach((img, i) => { %>
-        <% const imgSrc = img.startsWith('http') ? img : '/uploads/' + img; %>
-        <% const isVid  = /\.(mp4|mov|avi|webm)$/i.test(img); %>
-        <div class="post-img-item <%= (i === 3 && webImages.length > 4) ? 'has-more' : '' %>"
-             onclick="<%= isVid ? `viewVideo('${imgSrc}')` : `viewImage('${imgSrc}')` %>">
-          <% if (isVid) { %>
-          <video src="<%= imgSrc %>" class="vid-thumb" style="width:100%;height:100%;object-fit:cover" muted playsinline preload="metadata"
-                 onerror="this.closest('.post-img-item').style.display='none'"></video>
-          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none">
-            <div style="width:36px;height:36px;background:rgba(0,0,0,.55);border-radius:50%;display:flex;align-items:center;justify-content:center">
-              <svg width="14" height="16" viewBox="0 0 14 16" fill="white"><polygon points="2,1 13,8 2,15"/></svg>
-            </div>
-          </div>
-          <% } else { %>
-          <img src="<%= imgSrc %>" alt="รูปภาพ" loading="lazy"
-               onerror="this.closest('.post-img-item').style.display='none'">
-          <% } %>
-          <% if (i === 3 && webImages.length > 4) { %>
-          <div class="img-more-overlay">+<%= webImages.length - 4 %></div>
-          <% } %>
-        </div>
-        <% }); %>
-      </div>
-      <% } %>
-      <% const localFiles = (job.images || []).filter(img => img && img.startsWith('localpath::')); %>
-      <% if (localFiles.length > 0) { %>
-      <div style="font-size:.78rem;color:#8a8d91;margin:.4rem 0 .2rem;display:flex;align-items:center;gap:.35rem">
-        <i class="fa-solid fa-folder" style="color:#bbb"></i>
-        ไฟล์ในเครื่อง <%= localFiles.length %> ไฟล์ (แสดงได้เฉพาะบนเครื่อง Agent)
-      </div>
-      <% } %>
-
-      <!-- Footer: group result badges -->
-      <div class="history-footer">
-        <div class="history-pages" style="flex:1">
-          <% const MAX_B = 8; %>
-          <% (job.results || []).slice(0, MAX_B).forEach((r, i) => { %>
-          <span class="mini-page-badge <%= r.status === 'success' ? 'success' : 'fail' %>">
-            <div class="avatar avatar-<%= colors[i%5] %>" style="width:18px;height:18px;font-size:.6rem">
-              <%= (r.groupName||'?').slice(0,1) %>
-            </div>
-            <%= r.groupName %>
-            <i class="fa-solid fa-<%= r.status === 'success' ? 'check' : 'xmark' %>"></i>
-          </span>
-          <% }); %>
-          <% if ((job.results||[]).length > MAX_B) { %>
-          <button class="mini-more-btn" onclick="toggleMoreBadges(this, '<%= job._id %>')">
-            + <%= (job.results||[]).length - MAX_B %> กลุ่ม
-          </button>
-          <span class="mini-more-group" id="mb-<%= job._id %>" style="display:none;flex-wrap:wrap;gap:.25rem">
-            <% (job.results||[]).slice(MAX_B).forEach((r, i) => { %>
-            <span class="mini-page-badge <%= r.status === 'success' ? 'success' : 'fail' %>">
-              <div class="avatar avatar-<%= colors[(i+MAX_B)%5] %>" style="width:18px;height:18px;font-size:.6rem">
-                <%= (r.groupName||'?').slice(0,1) %>
-              </div>
-              <%= r.groupName %>
-              <i class="fa-solid fa-<%= r.status === 'success' ? 'check' : 'xmark' %>"></i>
-            </span>
-            <% }); %>
-          </span>
-          <% } %>
-        </div>
-        <div class="history-summary">
-          <span class="pill pill-success" style="font-size:.75rem;padding:.2rem .6rem">
-            <i class="fa-solid fa-check"></i> <%= job.successCount %>
-          </span>
-          <% if (job.failCount > 0) { %>
-          <span class="pill pill-fail" style="font-size:.75rem;padding:.2rem .6rem">
-            <i class="fa-solid fa-xmark"></i> <%= job.failCount %>
-          </span>
-          <% } %>
-        </div>
-      </div>
-
+    <%# Only the first page of jobs is rendered here; "เพิ่มเติม" and the filters fetch the rest (see the script below). %>
+    <div id="hCardsAll">
+    <%- include('partials/group-history-cards', { jobs }) %>
     </div>
-    <% }); %>
+    <div id="hCardsFiltered" style="display:none"></div>
+    <div id="hMoreRow" style="display:none;text-align:center;padding:.4rem 0 1rem">
+      <button id="hMoreBtn" onclick="loadMoreHistory()"
+        style="background:#fff;border:1.5px solid #e4e6eb;border-radius:9px;padding:.55rem 1.4rem;font-size:.88rem;cursor:pointer;font-family:inherit;color:#1877f2;font-weight:700">
+        <i class="fa-solid fa-angles-down"></i> เพิ่มเติม (อีก <span id="hMoreLeft">0</span> รายการ)
+      </button>
+    </div>
 
   </main>
 
@@ -376,10 +242,10 @@
         <span><i class="fa-solid fa-chart-simple"></i> สถิติรวม</span>
       </div>
       <%
-        const totalJobs    = jobs.length;
-        const totalSuccess = jobs.reduce((s, j) => s + j.successCount, 0);
-        const totalFail    = jobs.reduce((s, j) => s + j.failCount, 0);
-        const totalGroups  = jobs.reduce((s, j) => s + (j.groups||[]).length, 0);
+        const totalJobs    = total.jobs;
+        const totalSuccess = total.success;
+        const totalFail    = total.fail;
+        const totalGroups  = total.groups;
       %>
       <div class="stats-row"><span>จำนวน Job</span><span class="stats-val blue" id="statJobs"><%= totalJobs %></span></div>
       <div class="stats-row"><span>กลุ่มทั้งหมด</span><span class="stats-val blue" id="statGroups"><%= totalGroups %></span></div>
@@ -406,26 +272,24 @@
   const _groupCatMap     = <%- JSON.stringify(groupCatMap) %>;
   const _groupPrivacyMap = <%- JSON.stringify(groupPrivacyMap) %>;
 
-  const _hJobs = <%- JSON.stringify(jobs.map(j => ({
-    id:          String(j._id),
-    msg:         j.message || '',
-    at:          j.lastAttemptAt || j.createdAt,
-    status:      j.status || 'pending',
-    scheduledAt: j.scheduledAt || null,
-    success:     j.successCount || 0,
-    fail:        j.failCount || 0,
-    groups:      (j.groups || []).map(g => ({ id: g.groupId, name: g.groupName })),
-    staffId:     j.staffId || null,
-    staffName:   j.staffName || 'ไม่ระบุตัวตน',
-  }))) %>;
+  // Only the first page of cards is in the page. The rest come on demand:
+  // more cards with "เพิ่มเติม", and — the first time a filter is used — a
+  // light index of every job (ids, counts, dates) that the filters run on.
+  const H_PAGE       = <%= pageSize %>;
+  const _hTotal      = <%- JSON.stringify(total) %>;        // every finished job: { jobs, groups, success, fail }
+  const _hGroupNames = <%- JSON.stringify(groupNames) %>;   // groupId → name
+  let _hJobs = null, _hIndexQ = null;   // the index, and the search text it was loaded for
+  let _hMatched = null;                 // job ids matching the filters (null = no filter)
+  let _hShownFiltered = 0;              // how many of _hMatched are on the page
+  let _hLoaded = <%= jobs.length %>;    // unfiltered cards on the page
+  let _hSeq = 0, _hTimer = null;
+  let _ghTimelineOn = false;
 
   // Populate group select
   (function() {
     const sel = document.getElementById('hGroup');
     if (!sel) return;
-    const names = new Set();
-    _hJobs.forEach(j => j.groups.forEach(g => names.add(g.name)));
-    [...names].sort().forEach(n => {
+    [...new Set(Object.values(_hGroupNames))].sort().forEach(n => {
       const o = document.createElement('option');
       o.value = o.textContent = n;
       sel.appendChild(o);
@@ -436,16 +300,81 @@
   (function() {
     const sel = document.getElementById('hStaff');
     if (!sel) return;
-    const seen = new Map();
-    _hJobs.forEach(j => seen.set(j.staffId || '__unassigned__', j.staffName));
-    [...seen.entries()].sort((a,b) => a[1].localeCompare(b[1], 'th')).forEach(([id, name]) => {
+    (<%- JSON.stringify(staffOptions) %>).forEach(([id, name]) => {
       const o = document.createElement('option');
       o.value = id; o.textContent = name;
       sel.appendChild(o);
     });
   })();
 
+  async function hFetchCards(params) {
+    const r = await fetch('/api/agent/history/cards?' + params);
+    if (!r.ok) throw new Error('cards');
+    return r.text();
+  }
+
+  // Adds fetched cards to a list, skipping any already in it. Returns how many came back.
+  function hAppend(boxId, html) {
+    const box = document.getElementById(boxId);
+    const tpl = document.createElement('template');
+    tpl.innerHTML = html;
+    const cards = [...tpl.content.querySelectorAll('.history-card')];
+    cards.forEach(c => { if (box.querySelector('[id="' + c.id + '"]')) c.remove(); });
+    box.appendChild(tpl.content);
+    initVidThumbs(box);
+    return cards.length;
+  }
+
+  async function hEnsureIndex(q) {
+    if (_hJobs && _hIndexQ === q) return;
+    const d = await (await fetch('/api/agent/history/index?q=' + encodeURIComponent(q))).json();
+    if (!d.ok) throw new Error('index');
+    _hJobs = d.jobs; _hIndexQ = q;
+  }
+
+  function hUpdateMore() {
+    const row = document.getElementById('hMoreRow');
+    if (!row) return;
+    const left = _hMatched ? _hMatched.length - _hShownFiltered : _hTotal.jobs - _hLoaded;
+    row.style.display = (left > 0 && !_ghTimelineOn) ? '' : 'none';
+    document.getElementById('hMoreLeft').textContent = left;
+  }
+
+  async function loadMoreHistory() {
+    const btn = document.getElementById('hMoreBtn');
+    if (btn.disabled) return;
+    btn.disabled = true;
+    const seq = _hSeq;
+    try {
+      if (_hMatched) {
+        const ids = _hMatched.slice(_hShownFiltered, _hShownFiltered + H_PAGE);
+        const html = await hFetchCards('ids=' + ids.join(','));
+        if (seq !== _hSeq) return;
+        hAppend('hCardsFiltered', html);
+        _hShownFiltered += ids.length;
+      } else {
+        const html = await hFetchCards('skip=' + _hLoaded);
+        if (seq !== _hSeq) return;
+        const got = hAppend('hCardsAll', html);
+        _hLoaded += got;
+        if (!got) _hTotal.jobs = _hLoaded;   // nothing further back
+      }
+    } catch {
+      Swal.fire({ icon: 'error', title: 'โหลดเพิ่มไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง', confirmButtonColor: '#1877f2' });
+    } finally {
+      btn.disabled = false;
+      hUpdateMore();
+    }
+  }
+
+  // Inputs call this on every change; the work waits a moment so typing in
+  // the search box does not fire a request per keystroke.
   function applyFilters() {
+    clearTimeout(_hTimer);
+    _hTimer = setTimeout(runFilters, 250);
+  }
+
+  async function runFilters() {
     const q        = (document.getElementById('hSearch')?.value || '').toLowerCase().trim();
     const st       = document.getElementById('hStatus')?.value   || '';
     const grp      = document.getElementById('hGroup')?.value    || '';
@@ -476,32 +405,47 @@
     const timeOnlyFrom = !fromVal && timeFrom ? timeFrom : null;
     const timeOnlyTo   = !toVal   && timeTo   ? timeTo   : null;
 
-    let shown = 0, sumSuccess = 0, sumFail = 0, sumGroups = 0;
+    const hasFilter = !!(q || st || grp || cat || priv || staff || fromVal || toVal || timeFrom || timeTo);
+    const seq = ++_hSeq;
+    const boxAll = document.getElementById('hCardsAll');
+    const boxFlt = document.getElementById('hCardsFiltered');
+
+    if (!hasFilter) {
+      _hMatched = null; _hShownFiltered = 0;
+      boxFlt.innerHTML = ''; boxFlt.style.display = 'none';
+      boxAll.style.display = _ghTimelineOn ? 'none' : '';
+      hShowStats(false, _hTotal.jobs, _hTotal.groups, _hTotal.success, _hTotal.fail);
+      hUpdateMore();
+      return;
+    }
+
+    // The message search runs on the server (the index has no message text);
+    // everything else is checked here.
+    try { await hEnsureIndex(q); }
+    catch {
+      if (seq === _hSeq) Swal.fire({ icon: 'error', title: 'กรองไม่สำเร็จ', text: 'โหลดข้อมูลไม่ได้ กรุณาลองใหม่อีกครั้ง', confirmButtonColor: '#1877f2' });
+      return;
+    }
+    if (seq !== _hSeq) return;
+
+    const matched = [];
+    let sumSuccess = 0, sumFail = 0, sumGroups = 0;
     _hJobs.forEach(j => {
-      const card = document.getElementById('card-' + j.id);
-      if (!card) return;
       let ok = true;
 
-      if (q  && !j.msg.toLowerCase().includes(q))    ok = false;
       if (st === 'success' && j.fail > 0)             ok = false;
       if (st === 'partial' && j.fail === 0)           ok = false;
 
       // Group filter
-      if (grp && !j.groups.some(g => g.name === grp)) ok = false;
+      if (grp && !j.g.some(id => _hGroupNames[id] === grp)) ok = false;
 
       // Category filter — cross-reference groupCatMap
-      if (cat) {
-        const groupsInCat = j.groups.filter(g => {
-          const cats = _groupCatMap[g.id] || ['ทั่วไป'];
-          return cats.includes(cat);
-        });
-        if (groupsInCat.length === 0) ok = false;
-      }
+      if (cat && !j.g.some(id => (_groupCatMap[id] || ['ทั่วไป']).includes(cat))) ok = false;
 
       // Privacy filter
       if (priv) {
-        const match = j.groups.some(g => {
-          const p = _groupPrivacyMap[g.id] || null;
+        const match = j.g.some(id => {
+          const p = _groupPrivacyMap[id] || null;
           return priv === '__unset__' ? !p : p === priv;
         });
         if (!match) ok = false;
@@ -523,24 +467,43 @@
         if (postTime > timeOnlyTo) ok = false;
       }
 
-      card.style.display = ok ? '' : 'none';
-      if (ok) { shown++; sumSuccess += j.success; sumFail += j.fail; sumGroups += j.groups.length; }
+      if (ok) { matched.push(j.id); sumSuccess += j.success; sumFail += j.fail; sumGroups += j.g.length; }
     });
 
-    const hasFilter = q || st || grp || cat || priv || staff || fromVal || toVal || timeFrom || timeTo;
+    _hMatched = matched; _hShownFiltered = 0;
+    boxAll.style.display = 'none';
+    boxFlt.style.display = _ghTimelineOn ? 'none' : '';
+    boxFlt.innerHTML = matched.length ? '' : '<div class="card" style="text-align:center;color:#8a8d91;padding:1.5rem;font-size:.9rem">ไม่พบรายการที่ตรงกับตัวกรอง</div>';
+    hShowStats(true, matched.length, sumGroups, sumSuccess, sumFail);
+    hUpdateMore();
+    if (!matched.length) return;
+
+    const first = matched.slice(0, H_PAGE);
+    try {
+      const html = await hFetchCards('ids=' + first.join(','));
+      if (seq !== _hSeq) return;
+      hAppend('hCardsFiltered', html);
+      _hShownFiltered = first.length;
+    } catch {
+      if (seq === _hSeq) boxFlt.innerHTML = '<div class="card" style="text-align:center;color:#c62828;padding:1.5rem;font-size:.9rem">โหลดรายการไม่สำเร็จ กรุณาลองใหม่อีกครั้ง</div>';
+    }
+    hUpdateMore();
+  }
+
+  function hShowStats(hasFilter, jobs, groups, success, fail) {
     const info = document.getElementById('hFilterInfo');
     if (info) {
       info.style.display = hasFilter ? 'block' : 'none';
       const el = document.getElementById('hShown');
-      if (el) el.textContent = shown;
+      if (el) el.textContent = jobs;
     }
     const cnt = document.getElementById('historyCount');
-    if (cnt) cnt.textContent = hasFilter ? shown : _hJobs.length;
+    if (cnt) cnt.textContent = jobs;
     // Update right-panel stats dynamically
-    const sJ = document.getElementById('statJobs');   if (sJ) sJ.textContent = shown;
-    const sG = document.getElementById('statGroups'); if (sG) sG.textContent = hasFilter ? sumGroups : <%- jobs.reduce((s,j)=>s+(j.groups||[]).length,0) %>;
-    const sS = document.getElementById('statSuccess');if (sS) sS.textContent = hasFilter ? sumSuccess : <%- jobs.reduce((s,j)=>s+j.successCount,0) %>;
-    const sF = document.getElementById('statFail');   if (sF) sF.textContent = hasFilter ? sumFail : <%- jobs.reduce((s,j)=>s+j.failCount,0) %>;
+    const sJ = document.getElementById('statJobs');   if (sJ) sJ.textContent = jobs;
+    const sG = document.getElementById('statGroups'); if (sG) sG.textContent = groups;
+    const sS = document.getElementById('statSuccess');if (sS) sS.textContent = success;
+    const sF = document.getElementById('statFail');   if (sF) sF.textContent = fail;
     const btnClear = document.getElementById('btnClearFilter');
     if (btnClear) {
       btnClear.style.opacity      = hasFilter ? '1' : '.35';
@@ -618,11 +581,13 @@
       const res  = await fetch(`/api/agent/history/${id}`, { method: 'DELETE' });
       const data = await res.json();
       if (data.success) {
-        const card = document.getElementById(`card-${id}`);
-        card.style.transition = 'opacity .3s, transform .3s';
-        card.style.opacity = '0';
-        card.style.transform = 'translateX(30px)';
-        setTimeout(() => { card.remove(); updateCount(); }, 320);
+        const cards = document.querySelectorAll('[id="card-' + id + '"]');
+        cards.forEach(card => {
+          card.style.transition = 'opacity .3s, transform .3s';
+          card.style.opacity = '0';
+          card.style.transform = 'translateX(30px)';
+        });
+        setTimeout(() => { updateCount(id, cards); }, 320);
         Swal.fire({ icon: 'success', title: 'ลบแล้ว', timer: 1200, showConfirmButton: false });
       } else {
         Swal.fire({ icon: 'error', title: 'ลบไม่สำเร็จ', text: data.error || '', confirmButtonColor: '#1877f2' });
@@ -632,15 +597,27 @@
     }
   }
 
-  function updateCount() {
-    const cards = document.querySelectorAll('.history-card');
+  // After a delete: take the job out of everything the page is tracking.
+  function updateCount(id, cards) {
+    cards.forEach(card => {
+      if (card.closest('#hCardsAll')) _hLoaded--;
+      if (card.closest('#hCardsFiltered')) _hShownFiltered--;
+      card.remove();
+    });
+    _hTotal.jobs = Math.max(0, _hTotal.jobs - 1);
+    if (_hJobs) _hJobs = _hJobs.filter(j => j.id !== id);
+    if (_hMatched) _hMatched = _hMatched.filter(x => x !== id);
     const badge = document.getElementById('historyCount');
-    if (badge) badge.textContent = cards.length;
-    if (cards.length === 0) location.reload();
+    if (badge) badge.textContent = _hMatched ? _hMatched.length : _hTotal.jobs;
+    if (_hTotal.jobs === 0) return location.reload();
+    hUpdateMore();
   }
 
   // Try canvas thumbnail capture for videos (falls back to play-icon overlay on CORS block)
-  document.querySelectorAll('video.vid-thumb').forEach(v => {
+  function initVidThumbs(root) {
+  root.querySelectorAll('video.vid-thumb').forEach(v => {
+    if (v.dataset.thumbInit) return;
+    v.dataset.thumbInit = '1';
     let done = false;
     v.onloadedmetadata = () => { v.currentTime = 0.5; };
     v.onseeked = () => {
@@ -659,6 +636,9 @@
     };
     v.load();
   });
+  }
+  initVidThumbs(document);
+  hUpdateMore();
 
 async function showGroupSummaryModal() {
   const _ghIs  = 'width:100%;padding:.38rem .55rem;border:1.5px solid #e4e6eb;border-radius:8px;font-size:.85rem;font-family:inherit;color:#333;outline:none;box-sizing:border-box';
@@ -737,26 +717,28 @@ async function showGroupSummaryModal() {
   } catch { Swal.fire({ icon:'error', title:'เกิดข้อผิดพลาด', text:'ไม่สามารถโหลดข้อมูลได้' }); }
 }
 
-let _ghTimelineOn = false;
-function toggleGroupTimeline() {
+async function toggleGroupTimeline() {
   _ghTimelineOn = !_ghTimelineOn;
   const view = document.getElementById('hGTimelineView');
   const btn  = document.getElementById('btnGroupTimeline');
-  document.querySelectorAll('.history-card').forEach(c => { c.style.display = _ghTimelineOn ? 'none' : ''; });
   if (_ghTimelineOn) {
+    document.getElementById('hCardsAll').style.display = 'none';
+    document.getElementById('hCardsFiltered').style.display = 'none';
+    hUpdateMore();
+    btn.style.background = '#856404'; btn.style.color = '#fff';
+    if (!_hJobs) { try { await hEnsureIndex(''); } catch {} }
     renderGroupTimeline();
     view.style.display = '';
-    btn.style.background = '#856404'; btn.style.color = '#fff';
   } else {
     view.style.display = 'none';
     btn.style.background = '#fff3cd'; btn.style.color = '#856404';
-    applyFilters();
+    runFilters();
   }
 }
 
 function renderGroupTimeline() {
   const view = document.getElementById('hGTimelineView');
-  const items = _hJobs.filter(j => j.status === 'pending' && j.scheduledAt);
+  const items = (_hJobs || []).filter(j => j.status === 'pending' && j.scheduledAt);
   if (!items.length) {
     view.innerHTML = '<div style="text-align:center;padding:2rem;color:#8a8d91">ไม่มีงานแชร์ที่ตั้งเวลาไว้</div>';
     return;
@@ -777,8 +759,8 @@ function renderGroupTimeline() {
       const top     = ((t.getHours() + t.getMinutes() / 60) / 24 * 100).toFixed(2);
       const overdue = t < now;
       const time    = t.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false });
-      const grpTxt  = (j.groups || []).map(g => g.name).join(', ').slice(0, 30);
-      const msg     = (j.msg || '').slice(0, 25).replace(/'/g, '&#39;');
+      const grpTxt  = (j.g || []).map(id => _hGroupNames[id] || '').join(', ').slice(0, 30);
+      const msg     = '';
       return `<div title="${time} — ${msg}\n${grpTxt}"
         style="position:absolute;left:4px;right:4px;top:${top}%;background:${overdue ? '#fde8e8' : '#f0fdf4'};color:${overdue ? '#c62828' : '#2e7d32'};border:1px solid ${overdue ? '#f5b5b5' : '#86efac'};border-radius:5px;padding:.15rem .35rem;font-size:.68rem;font-weight:600;cursor:default;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;z-index:1">
         ${overdue ? '⚠️' : '⏰'} ${time} ${msg}</div>`;

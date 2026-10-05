@@ -1,0 +1,145 @@
+<%# One job of ประวัติโพสกลุ่ม. Rendered in the page for the first cards and by
+    /api/agent/history/cards for the ones loaded later. %>
+<% const colors = ['purple','green','orange','blue','red']; %>
+    <%
+      const allOk   = job.successCount > 0 && job.failCount === 0;
+      const allFail = job.successCount === 0 && job.failCount > 0;
+    %>
+    <div class="card history-card" id="card-<%= job._id %>">
+
+      <!-- Card header -->
+      <div class="fb-post-header">
+        <div class="avatar avatar-<%= allOk ? 'green' : allFail ? 'red' : 'blue' %>">
+          <i class="fa-solid fa-robot"></i>
+        </div>
+        <div style="flex:1">
+          <div class="fb-post-author">
+            <%= job.staffName || 'ไม่ระบุตัวตน' %>
+            <span style="background:<%= allOk ? '#d1e7dd' : allFail ? '#f8d7da' : '#fff3cd' %>;color:<%= allOk ? '#0a3622' : allFail ? '#842029' : '#856404' %>;border-radius:999px;font-size:.7rem;padding:.1rem .5rem;font-weight:700;margin-left:.35rem">
+              <i class="fa-solid fa-<%= allOk ? 'check' : allFail ? 'xmark' : 'triangle-exclamation' %>" style="font-size:.65rem"></i>
+              <%= allOk ? 'สำเร็จทั้งหมด' : allFail ? 'ล้มเหลวทั้งหมด' : 'สำเร็จบางส่วน' %>
+            </span>
+          </div>
+          <div class="fb-post-time">
+            <i class="fa-solid fa-robot"></i> Desktop Agent
+            &nbsp;·&nbsp;
+            <i class="fa-solid fa-clock"></i>
+            <%
+              // Show the time it actually posted, not when the job was
+              // queued/scheduled -- lastAttemptAt is stamped the moment the
+              // job leaves 'pending' and starts running, so for a job that
+              // sat scheduled for days this is the only timestamp that
+              // answers "when did this really go out", matching what the
+              // success/fail badge above is reporting on.
+              const postedAt = job.lastAttemptAt || job.createdAt;
+            %>
+            <%= new Date(postedAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', dateStyle:'short', timeStyle:'short', hour12:false }) %>
+            &nbsp;·&nbsp;
+            <i class="fa-solid fa-users" style="color:#1877f2"></i>
+            <%= (job.groups || []).length %> กลุ่ม
+          </div>
+        </div>
+        <div class="history-actions">
+          <a href="/group-result/<%= job._id %>"
+             style="display:inline-flex;align-items:center;gap:.28rem;background:#e7f0fd;color:#1877f2;border:none;border-radius:7px;padding:.28rem .65rem;font-size:.78rem;font-weight:700;text-decoration:none;transition:background .15s"
+             onmouseover="this.style.background='#cfe2ff'" onmouseout="this.style.background='#e7f0fd'"
+             title="ดูรายงาน">
+            <i class="fa-solid fa-chart-bar"></i> รายงาน
+          </a>
+          <% const fbPostCount = job.fbPostCount || 0; %>
+          <button class="icon-btn danger" title="ลบ (รวมโพสบน Facebook)" onclick="deleteJob('<%= job._id %>', this, <%= fbPostCount %>)">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Message -->
+      <div class="history-message">
+        <% const msg = job.message || ''; %>
+        <% if (msg.length > 200) { %>
+          <span class="msg-short"><%= msg.slice(0, 200) %>...<button class="read-more-btn" onclick="toggleMsg(this)"> อ่านเพิ่มเติม</button></span>
+          <span class="msg-full" style="display:none"><%= msg %><button class="read-more-btn" onclick="toggleMsg(this)"> ย่อ</button></span>
+        <% } else { %>
+          <%= msg %>
+        <% } %>
+      </div>
+
+      <!-- Images (skip localpath:: entries — local files) -->
+      <% const webImages = (job.images || []).filter(img => img && !img.startsWith('localpath::') && !img.startsWith('/') && !/^[A-Za-z]:[\\\/]/.test(img)); %>
+      <% if (webImages.length > 0) { %>
+      <div class="post-img-grid post-img-<%= Math.min(webImages.length, 4) %>">
+        <% webImages.slice(0, 4).forEach((img, i) => { %>
+        <% const imgSrc = img.startsWith('http') ? img : '/uploads/' + img; %>
+        <% const isVid  = /\.(mp4|mov|avi|webm)$/i.test(img); %>
+        <div class="post-img-item <%= (i === 3 && webImages.length > 4) ? 'has-more' : '' %>"
+             onclick="<%= isVid ? `viewVideo('${imgSrc}')` : `viewImage('${imgSrc}')` %>">
+          <% if (isVid) { %>
+          <video src="<%= imgSrc %>" class="vid-thumb" style="width:100%;height:100%;object-fit:cover" muted playsinline preload="metadata"
+                 onerror="this.closest('.post-img-item').style.display='none'"></video>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none">
+            <div style="width:36px;height:36px;background:rgba(0,0,0,.55);border-radius:50%;display:flex;align-items:center;justify-content:center">
+              <svg width="14" height="16" viewBox="0 0 14 16" fill="white"><polygon points="2,1 13,8 2,15"/></svg>
+            </div>
+          </div>
+          <% } else { %>
+          <img src="<%= imgSrc %>" alt="รูปภาพ" loading="lazy"
+               onerror="this.closest('.post-img-item').style.display='none'">
+          <% } %>
+          <% if (i === 3 && webImages.length > 4) { %>
+          <div class="img-more-overlay">+<%= webImages.length - 4 %></div>
+          <% } %>
+        </div>
+        <% }); %>
+      </div>
+      <% } %>
+      <% const localFiles = (job.images || []).filter(img => img && img.startsWith('localpath::')); %>
+      <% if (localFiles.length > 0) { %>
+      <div style="font-size:.78rem;color:#8a8d91;margin:.4rem 0 .2rem;display:flex;align-items:center;gap:.35rem">
+        <i class="fa-solid fa-folder" style="color:#bbb"></i>
+        ไฟล์ในเครื่อง <%= localFiles.length %> ไฟล์ (แสดงได้เฉพาะบนเครื่อง Agent)
+      </div>
+      <% } %>
+
+      <!-- Footer: group result badges -->
+      <div class="history-footer">
+        <div class="history-pages" style="flex:1">
+          <% const MAX_B = 8; %>
+          <% (job.results || []).slice(0, MAX_B).forEach((r, i) => { %>
+          <span class="mini-page-badge <%= r.status === 'success' ? 'success' : 'fail' %>">
+            <div class="avatar avatar-<%= colors[i%5] %>" style="width:18px;height:18px;font-size:.6rem">
+              <%= (r.groupName||'?').slice(0,1) %>
+            </div>
+            <%= r.groupName %>
+            <i class="fa-solid fa-<%= r.status === 'success' ? 'check' : 'xmark' %>"></i>
+          </span>
+          <% }); %>
+          <% if ((job.results||[]).length > MAX_B) { %>
+          <button class="mini-more-btn" onclick="toggleMoreBadges(this, '<%= job._id %>')">
+            + <%= (job.results||[]).length - MAX_B %> กลุ่ม
+          </button>
+          <span class="mini-more-group" id="mb-<%= job._id %>" style="display:none;flex-wrap:wrap;gap:.25rem">
+            <% (job.results||[]).slice(MAX_B).forEach((r, i) => { %>
+            <span class="mini-page-badge <%= r.status === 'success' ? 'success' : 'fail' %>">
+              <div class="avatar avatar-<%= colors[(i+MAX_B)%5] %>" style="width:18px;height:18px;font-size:.6rem">
+                <%= (r.groupName||'?').slice(0,1) %>
+              </div>
+              <%= r.groupName %>
+              <i class="fa-solid fa-<%= r.status === 'success' ? 'check' : 'xmark' %>"></i>
+            </span>
+            <% }); %>
+          </span>
+          <% } %>
+        </div>
+        <div class="history-summary">
+          <span class="pill pill-success" style="font-size:.75rem;padding:.2rem .6rem">
+            <i class="fa-solid fa-check"></i> <%= job.successCount %>
+          </span>
+          <% if (job.failCount > 0) { %>
+          <span class="pill pill-fail" style="font-size:.75rem;padding:.2rem .6rem">
+            <i class="fa-solid fa-xmark"></i> <%= job.failCount %>
+          </span>
+          <% } %>
+        </div>
+      </div>
+
+    </div>

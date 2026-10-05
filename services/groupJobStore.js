@@ -66,19 +66,30 @@ async function list() {
 
 // Rows of the queue page: it shows how many groups and how many succeeded,
 // never the per-group rows themselves — those are most of a job's size.
-async function listForQueue() {
+// Unless `all` is asked for, only the newest QUEUE_PAGE of the last 100 jobs
+// come back, plus any older one still waiting or posting (those must always be
+// on the page: the schedule filter, calendar and live status work on them).
+const QUEUE_PAGE = 20;
+async function listForQueue({ all = false } = {}) {
     try {
         await connect();
-        return await GroupJob.aggregate([
-            { $sort: { _id: -1 } },
-            { $limit: 100 },
-            { $project: {
-                message: 1, status: 1, staffId: 1, postAsPage: 1, images: 1, delaySeconds: 1, createdAt: 1, scheduledAt: 1,
-                groupCount: { $size: { $ifNull: ['$groups', []] } },
-                okCount: { $size: { $filter: { input: { $ifNull: ['$results', []] }, cond: { $eq: ['$$this.status', 'success'] } } } },
-            } },
+        const newest100 = [{ $sort: { _id: -1 } }, { $limit: 100 }];
+        const row = { $project: {
+            message: 1, status: 1, staffId: 1, postAsPage: 1, images: 1, delaySeconds: 1, createdAt: 1, scheduledAt: 1,
+            groupCount: { $size: { $ifNull: ['$groups', []] } },
+            okCount: { $size: { $filter: { input: { $ifNull: ['$results', []] }, cond: { $eq: ['$$this.status', 'success'] } } } },
+        } };
+        if (all) {
+            const jobs = await GroupJob.aggregate([...newest100, row]);
+            return { jobs, total: jobs.length };
+        }
+        const [first, olderActive, count] = await Promise.all([
+            GroupJob.aggregate([...newest100, { $limit: QUEUE_PAGE }, row]),
+            GroupJob.aggregate([...newest100, { $skip: QUEUE_PAGE }, { $match: { status: { $in: [STATUS.PENDING, STATUS.RUNNING] } } }, row]),
+            GroupJob.aggregate([...newest100, { $count: 'n' }]),
         ]);
-    } catch(e) { return []; }
+        return { jobs: [...first, ...olderActive], total: count[0]?.n || 0 };
+    } catch(e) { return { jobs: [], total: 0 }; }
 }
 
 // What the live status banner needs, polled every few seconds by every open
@@ -180,29 +191,66 @@ const historyBase = () => [
 const orEmpty = field => ({ $ifNull: [field, []] });
 const resultOk = { $eq: ['$$this.status', 'success'] };
 
-// ประวัติโพสกลุ่ม: every job with its groups and each group's outcome, but as
-// ids + statuses; the names come once, from a groupId → name lookup, instead
-// of being repeated on every row of every job.
-async function listHistoryCompact() {
+// ── ประวัติโพสกลุ่ม ──
+// The page shows HISTORY_PAGE cards and loads more on request, so it never
+// reads every job's per-group rows at once. Four small reads back it:
+//   historySummary     totals over every finished job (the stats panel)
+//   historyGroupNames  groupId → name, once, instead of on every row
+//   historyCards       full cards for one page, or for specific job ids
+//   historyIndex       ids + counts + dates of every job, for the filters
+const HISTORY_PAGE = 10;
+
+async function historySummary() {
+    const empty = { jobs: 0, groups: 0, success: 0, fail: 0, staffIds: [] };
     try {
         await connect();
-        const [jobs, names] = await Promise.all([
-            GroupJob.aggregate([...historyBase(), { $project: {
-                message: 1, status: 1, staffId: 1, scheduledAt: 1, lastAttemptAt: 1, createdAt: 1, images: 1,
-                g:  { $map: { input: orEmpty('$groups'),  in: { $ifNull: ['$$this.groupId', null] } } },
-                ri: { $map: { input: orEmpty('$results'), in: { $ifNull: ['$$this.groupId', null] } } },
-                rs: { $map: { input: orEmpty('$results'), in: { $ifNull: ['$$this.status', null] } } },
-                fbPostCount: { $size: { $filter: { input: orEmpty('$results'), cond: { $and: [
-                    resultOk, { $not: [{ $in: [{ $ifNull: ['$$this.postUrl', null] }, [null, '']] }] },
-                ] } } } },
-            } }]),
-            GroupJob.aggregate([...historyBase(),
-                { $project: { e: { $concatArrays: [orEmpty('$results'), orEmpty('$groups')] } } },
-                { $unwind: '$e' },
-                { $group: { _id: '$e.groupId', name: { $first: '$e.groupName' } } },
-            ]),
-        ]);
-        const nameOf = new Map(names.map(n => [n._id, n.name]));
+        const [t] = await GroupJob.aggregate([...historyBase(), { $group: {
+            _id: null,
+            jobs:    { $sum: 1 },
+            groups:  { $sum: { $size: orEmpty('$groups') } },
+            success: { $sum: { $size: { $filter: { input: orEmpty('$results'), cond: resultOk } } } },
+            fail:    { $sum: { $size: { $filter: { input: orEmpty('$results'), cond: { $eq: ['$$this.status', 'failed'] } } } } },
+            staffIds: { $addToSet: { $ifNull: ['$staffId', null] } },
+        } }]);
+        if (!t) return empty;
+        const { _id, ...summary } = t;
+        return summary;
+    } catch(e) { return empty; }
+}
+
+const NAMES_TTL_MS = 60 * 1000;
+let _historyNames = null; // { at, map }
+async function historyGroupNames({ fresh = false } = {}) {
+    if (!fresh && _historyNames && Date.now() - _historyNames.at < NAMES_TTL_MS) return _historyNames.map;
+    await connect();
+    const names = await GroupJob.aggregate([...historyBase(),
+        { $project: { e: { $concatArrays: [orEmpty('$results'), orEmpty('$groups')] } } },
+        { $unwind: '$e' },
+        { $group: { _id: '$e.groupId', name: { $first: '$e.groupName' } } },
+    ]);
+    const map = new Map(names.map(n => [n._id, n.name]));
+    _historyNames = { at: Date.now(), map };
+    return map;
+}
+
+async function historyCards({ skip = 0, limit = HISTORY_PAGE, ids = null } = {}) {
+    try {
+        await connect();
+        const pick = ids
+            ? [{ $match: { _id: { $in: ids.filter(id => mongoose.isValidObjectId(id)).map(id => new mongoose.Types.ObjectId(String(id))) } } }]
+            : [{ $skip: Math.max(0, skip) }, { $limit: limit }];
+        const jobs = await GroupJob.aggregate([...historyBase(), ...pick, { $project: {
+            message: 1, status: 1, staffId: 1, scheduledAt: 1, lastAttemptAt: 1, createdAt: 1, images: 1,
+            g:  { $map: { input: orEmpty('$groups'),  in: { $ifNull: ['$$this.groupId', null] } } },
+            ri: { $map: { input: orEmpty('$results'), in: { $ifNull: ['$$this.groupId', null] } } },
+            rs: { $map: { input: orEmpty('$results'), in: { $ifNull: ['$$this.status', null] } } },
+            fbPostCount: { $size: { $filter: { input: orEmpty('$results'), cond: { $and: [
+                resultOk, { $not: [{ $in: [{ $ifNull: ['$$this.postUrl', null] }, [null, '']] }] },
+            ] } } } },
+        } }]);
+        let nameOf = await historyGroupNames();
+        // a job newer than the remembered names may use a group not in them yet
+        if (jobs.some(j => [...j.g, ...j.ri].some(id => !nameOf.has(id)))) nameOf = await historyGroupNames({ fresh: true });
         return jobs.map(({ g, ri, rs, ...job }) => ({
             ...job,
             groups:  g.map(id => ({ groupId: id, groupName: nameOf.get(id) })),
@@ -211,9 +259,33 @@ async function listHistoryCompact() {
     } catch(e) { return []; }
 }
 
+// `search` is matched against the message here (it is the one filter that
+// needs the text); every other filter runs in the browser on these rows.
+async function historyIndex(search = '') {
+    try {
+        await connect();
+        const text = String(search || '').trim();
+        const byText = text ? [{ $match: { message: { $regex: text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' } } }] : [];
+        const jobs = await GroupJob.aggregate([...historyBase(), ...byText, { $project: {
+            status: 1, staffId: 1, scheduledAt: 1, lastAttemptAt: 1, createdAt: 1,
+            g:       { $map: { input: orEmpty('$groups'), in: { $ifNull: ['$$this.groupId', null] } } },
+            success: { $size: { $filter: { input: orEmpty('$results'), cond: resultOk } } },
+            fail:    { $size: { $filter: { input: orEmpty('$results'), cond: { $eq: ['$$this.status', 'failed'] } } } },
+        } }]);
+        return jobs.map(j => ({
+            id: String(j._id), at: j.lastAttemptAt || j.createdAt, status: j.status || 'pending',
+            scheduledAt: j.scheduledAt || null, success: j.success, fail: j.fail, g: j.g, staffId: j.staffId || null,
+        }));
+    } catch(e) { return []; }
+}
+
 // ภาพรวม (กลุ่ม): totals per group, the dates for the 7-day chart and the ten
-// newest jobs — all counted in the database.
+// newest jobs — all counted in the database, and kept for a minute (a summary
+// of finished jobs does not need to be to-the-second).
+const OVERVIEW_TTL_MS = 60 * 1000;
+let _overview = null; // { at, data }
 async function overviewData() {
+    if (_overview && Date.now() - _overview.at < OVERVIEW_TTL_MS) return _overview.data;
     try {
         await connect();
         // '' counts as missing, like `a || b` did when this was done in JS
@@ -243,7 +315,8 @@ async function overviewData() {
                 failCount:    { $size: { $filter: { input: orEmpty('$results'), cond: { $eq: ['$$this.status', 'failed'] } } } },
             } }]),
         ]);
-        return { groupStats, dates, recentJobs };
+        _overview = { at: Date.now(), data: { groupStats, dates, recentJobs } };
+        return _overview.data;
     } catch(e) { return { groupStats: [], dates: [], recentJobs: [] }; }
 }
 
@@ -268,7 +341,7 @@ async function deleteHistory(id, actor) {
     } catch (e) {
         if (e.code === 'JOB_RUNNING') throw e;
         return null;
-    } finally { invalidateFeed(); }
+    } finally { invalidateFeed(); _overview = null; _historyNames = null; }
 }
 
 async function statsByDateRange(fromDate, toDate) {
@@ -342,7 +415,7 @@ async function updateResultAnalytics(jobId, resultIndex, analytics) {
 }
 
 module.exports = {
-    list, listForQueue, statusFeed, create, remove, listHistory, listHistoryCompact, overviewData, listAll, deleteHistory, getById, statsByDateRange,
+    list, listForQueue, statusFeed, create, remove, listHistory, HISTORY_PAGE, historySummary, historyGroupNames, historyCards, historyIndex, overviewData, listAll, deleteHistory, getById, statsByDateRange,
     updateOne, listScheduled, updateResultAnalytics, listExpired, expireOverdueJobs,
     migrateLegacyStatuses, retryJob, cancelJob,
 };

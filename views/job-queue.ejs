@@ -287,7 +287,7 @@
     <!-- Jobs list -->
     <div class="card">
       <div class="card-title">
-        <i class="fa-solid fa-clock-rotate-left"></i> รายการ Jobs <span class="jq-jobcount" id="jobCount"><%= jobs.length %></span>
+        <i class="fa-solid fa-clock-rotate-left"></i> รายการ Jobs <span class="jq-jobcount" id="jobCount"><%= jobTotal %></span>
         <% const schedCount = jobs.filter(j => j.status==='pending' && j.scheduledAt).length; %>
         <button id="btnSchedFilter" onclick="toggleSchedFilter()"
           style="margin-left:.6rem;background:#fff3cd;border:1px solid #ffe08a;border-radius:7px;padding:.18rem .55rem;font-size:.78rem;font-weight:600;color:#856404;cursor:pointer;font-family:inherit">
@@ -380,6 +380,13 @@
         <button onclick="showMoreJobs()" style="background:#f0f2f5;border:none;border-radius:8px;padding:.45rem 1.1rem;font-size:.85rem;cursor:pointer;font-family:inherit;color:#1877f2;font-weight:600">
           เพิ่มเติม (<%= jobs.length-20 %> รายการ)
         </button>
+      </div>
+      <% } %>
+      <% if (!showingAll && jobTotal > jobs.length) { %>
+      <div style="padding:.65rem;text-align:center">
+        <a href="/job-queue?all=1" style="display:inline-block;background:#f0f2f5;border-radius:8px;padding:.45rem 1.1rem;font-size:.85rem;font-family:inherit;color:#1877f2;font-weight:600;text-decoration:none">
+          ดูทั้งหมด (<%= jobTotal %> รายการ)
+        </a>
       </div>
       <% } %>
       <% } %>
