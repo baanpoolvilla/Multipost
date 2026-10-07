@@ -17,7 +17,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
     "try { " ^
     "  $r = Invoke-RestMethod -Uri \"$webUrl/api/agent-version\" -TimeoutSec 5; " ^
     "  $local = (Get-Content 'package.json' -Raw | ConvertFrom-Json).version; " ^
-    "  if ($r.version -ne $local) { " ^
+    "  if ([version]$r.version -gt [version]$local) { " ^
     "    Write-Host \"Updating from $local to $($r.version)...\"; " ^
     "    Invoke-WebRequest -Uri \"$webUrl/api/agent/source\" -OutFile '_update.zip' -TimeoutSec 60; " ^
     "    Add-Type -Assembly System.IO.Compression.FileSystem; " ^

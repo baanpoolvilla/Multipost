@@ -217,7 +217,7 @@ async function getAccountPages(accountId) {
                 // Scan the full profile selector modal/dialog
                 const fromViewAll = await fb.evaluate(({ mw, nm }) => {
                     const res = []; const seen = new Set();
-                    const isNotif = (name) => name.includes(':') || nm.some(w => name.includes(w));
+                    const isNotif = (name) => name.includes(':') || nm.some(w => name.includes(w)) || /^\d+\s*(วินาที|นาที|ชั่วโมง|ชม\.?|วัน|สัปดาห์|เดือน|ปี|sec|min|hr|hour|day|week|month|year|[smhdwy])\S*$/i.test(name.trim());
                     // Target the specific "เลือกโปรไฟล์" / "Select profile" modal first
                     let targetContainer = [...document.querySelectorAll('[role="dialog"],[role="listbox"]')]
                         .find(el => el.textContent?.includes('เลือกโปรไฟล์') || el.textContent?.includes('Select profile') || el.textContent?.includes('Choose a profile'));
@@ -251,7 +251,7 @@ async function getAccountPages(accountId) {
             // Fallback: scan the partial dropdown (no "View all" button found)
             const fromSwitcher = await fb.evaluate(({ mw, nm }) => {
                 const res = []; const seen = new Set();
-                const isNotif = (name) => name.includes(':') || nm.some(w => name.includes(w));
+                const isNotif = (name) => name.includes(':') || nm.some(w => name.includes(w)) || /^\d+\s*(วินาที|นาที|ชั่วโมง|ชม\.?|วัน|สัปดาห์|เดือน|ปี|sec|min|hr|hour|day|week|month|year|[smhdwy])\S*$/i.test(name.trim());
                 const W = window.innerWidth;
                 const containers = [...document.querySelectorAll('[role="menu"],[role="dialog"],[role="list"],[role="listbox"]')]
                     .filter(c => {
@@ -412,26 +412,12 @@ async function _navPickIdentity(page, pickName, menuWords) {
     }, { name: pickName, mw: menuWords });
 }
 
-// The element showing exactly `text` on screen right now, or null. Prefers
-// one inside a menu / dialog (the profile switcher) over the page behind it.
-async function _visibleText(page, text) {
-    const scopes = [page.locator('[role="dialog"],[role="menu"],[role="listbox"]'), page];
-    for (const scope of scopes) {
-        const loc = scope.getByText(text, { exact: true });
-        const n = Math.min(await loc.count().catch(() => 0), 20);
-        for (let i = 0; i < n; i++) {
-            const el = loc.nth(i);
-            if (await el.isVisible().catch(() => false)) return el;
-        }
-    }
-    return null;
-}
-
 // Presses the switcher's "see all profiles" control. Returns its label, or null.
-const _ALL_PROFILES = /^(ดูโปรไฟล์ทั้งหมด|ดูโปรไฟล์และเพจทั้งหมด|ดูเพจและโปรไฟล์ทั้งหมด|ดูทั้งหมด|See all profiles|See all Pages and profiles|See all profiles and Pages|See all)$/i;
+const _ALL_PROFILES = /^(ดูโปรไฟล์ทั้งหมด|ดูโปรไฟล์และเพจทั้งหมด|ดูเพจและโปรไฟล์ทั้งหมด|See all profiles|View all profiles|See all Pages and profiles|See all profiles and Pages)$/i;
 async function _openAllProfiles(page) {
-    const scope = page.locator('[role="dialog"],[role="menu"],[role="listbox"]');
-    const byText = scope.getByText(_ALL_PROFILES);
+    // The wording is specific enough to look for anywhere on the page — the
+    // menu it sits in does not reliably carry a role to scope by.
+    const byText = page.getByText(_ALL_PROFILES);
     const n = Math.min(await byText.count().catch(() => 0), 10);
     for (let i = 0; i < n; i++) {
         const el = byText.nth(i);
@@ -442,39 +428,74 @@ async function _openAllProfiles(page) {
     // Some layouts carry the wording only as the button's aria-label.
     return page.evaluate(src => {
         const re = new RegExp(src, 'i');
-        for (const root of document.querySelectorAll('[role="dialog"],[role="menu"],[role="listbox"]')) {
-            for (const el of root.querySelectorAll('[aria-label]')) {
-                const label = el.getAttribute('aria-label') || '';
-                const box = el.getBoundingClientRect();
-                if (re.test(label) && box.width > 0 && box.height > 0) { el.click(); return label; }
-            }
+        for (const el of document.querySelectorAll('[aria-label]')) {
+            const label = el.getAttribute('aria-label') || '';
+            const box = el.getBoundingClientRect();
+            if (re.test(label) && box.width > 0 && box.height > 0) { el.click(); return label; }
         }
         return null;
     }, _ALL_PROFILES.source).catch(() => null);
 }
 
-// What the open switcher shows, for the log when a Page cannot be found in it.
+// Clicks `name` in the open profile list: the copy that is actually on
+// screen, inside the list — not a hidden one (notifications keep the names of
+// Pages in the page, unseen) and not a post by that Page in the feed behind.
+async function _clickProfileInList(page, name) {
+    for (const scope of [page.locator('[role="dialog"]'), page.locator('[role="menu"],[role="listbox"],[role="list"]')]) {
+        const loc = scope.getByText(name, { exact: true });
+        const n = Math.min(await loc.count().catch(() => 0), 20);
+        for (let i = 0; i < n; i++) {
+            const el = loc.nth(i);
+            if (!(await el.isVisible().catch(() => false))) continue;
+            await el.click({ timeout: 3000 });
+            return true;
+        }
+    }
+    const handle = await page.evaluateHandle(wanted => {
+        const shown = el => {
+            const box = el.getBoundingClientRect();
+            const st = getComputedStyle(el);
+            return box.width > 0 && box.height > 0 && st.visibility !== 'hidden' && st.display !== 'none';
+        };
+        return [...document.querySelectorAll('span,b,strong,div')].find(el =>
+            el.childElementCount === 0 && (el.textContent || '').trim() === wanted &&
+            !el.closest('[role="main"],[role="feed"],[role="article"]') && shown(el)) || null;
+    }, name);
+    const el = handle.asElement();
+    if (!el) return false;
+    await el.click({ timeout: 3000 });
+    return true;
+}
+
+// What the switcher shows, for the log when a Page cannot be found in it:
+// the buttons of any open dialog/menu, else those on the right of the screen.
 async function _menuTexts(page) {
     return page.evaluate(() => {
+        const text = el => ((el.innerText || el.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim()).slice(0, 40);
+        const sel = '[role="button"],[role="menuitem"],[role="option"],[role="listitem"],a';
         const out = [];
-        for (const root of document.querySelectorAll('[role="dialog"],[role="menu"],[role="listbox"]')) {
-            for (const el of root.querySelectorAll('[role="button"],[role="menuitem"],[role="option"],[role="listitem"],a')) {
-                const box = el.getBoundingClientRect();
-                if (!box.width || !box.height) continue;
-                const t = ((el.innerText || el.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim()).slice(0, 40);
-                if (t && !out.includes(t)) out.push(t);
-                if (out.length >= 20) return out;
-            }
-        }
+        const take = els => { for (const el of els) {
+            const box = el.getBoundingClientRect();
+            if (!box.width || !box.height) continue;
+            const t = text(el);
+            if (t && !out.includes(t)) out.push(t);
+            if (out.length >= 25) break;
+        } };
+        for (const root of document.querySelectorAll('[role="dialog"],[role="menu"],[role="listbox"]')) take(root.querySelectorAll(sel));
+        if (!out.length) take([...document.querySelectorAll(sel)].filter(el => el.getBoundingClientRect().x > window.innerWidth * 0.5 && !el.closest('[role="main"],[role="feed"],[role="article"]')));
         return out;
     }).catch(() => []);
 }
+
+// Printed at the start of every profile switch, so a pasted log shows which
+// revision of this file the posting machine is really running.
+const BOT_REV = '2.1.6';
 
 // ── Open a page and switch to Page identity on it ────────────────
 // Returns { page, pageId } — pageId is used to navigate group as the Page
 async function openSwitchedPage(accountId, pageName, onLog) {
     const log = m => onLog?.(m);
-    log(`🔄 สลับโปรไฟล์เป็น "${pageName}"...`);
+    log(`🔄 สลับโปรไฟล์เป็น "${pageName}"... (bot ${BOT_REV})`);
     try {
         const ctx  = await _getContext(accountId);
         const page = await ctx.newPage();
@@ -489,21 +510,6 @@ async function openSwitchedPage(accountId, pageName, onLog) {
             return { page, pageId: null, personalName: null };
         }
         await page.waitForTimeout(1500);
-
-        // The menu shows only the profiles used most recently; the others are
-        // in the page but hidden until "ดูโปรไฟล์ทั้งหมด" is pressed. A Page
-        // that has not been posted as for a while is one of those.
-        if (!(await _visibleText(page, pageName))) {
-            log(`   ℹ️ ยังไม่เห็น "${pageName}" ในเมนู — เปิดรายการโปรไฟล์ทั้งหมด`);
-            const opened = await _openAllProfiles(page);
-            log(`   ${opened ? `✅ กด "${opened}"` : '⚠️ ไม่พบปุ่มดูโปรไฟล์ทั้งหมด'}`);
-            if (opened) {
-                for (let i = 0; i < 10 && !(await _visibleText(page, pageName)); i++) await page.waitForTimeout(500);
-            }
-            if (!(await _visibleText(page, pageName))) {
-                log(`   🔍 ที่เห็นในเมนู: ${(await _menuTexts(page)).join(' | ') || '(ว่าง)'}`);
-            }
-        }
 
         // Use Playwright native click (fires real mouse events, not JS click)
         let clicked = false;
@@ -521,16 +527,23 @@ async function openSwitchedPage(accountId, pageName, onLog) {
         } catch(e) { log(`   ⚠️ role click err: ${e.message}`); }
 
         if (!clicked) {
-            // The name itself, wherever it is actually showing (the first
-            // match in the page can be a hidden copy).
-            try {
-                const shown = await _visibleText(page, pageName);
-                if (shown) {
-                    await shown.click({ timeout: 3000 });
-                    clicked = true;
-                    log(`   ✅ text click: ${pageName}`);
-                }
-            } catch(e) { log(`   ⚠️ text click err: ${e.message.split('\n')[0]}`); }
+            // Not in the menu's short list. Facebook shows only the two or
+            // three profiles used most recently there (while acting as one
+            // Page, the other Pages are usually not among them); the rest are
+            // behind "ดูโปรไฟล์ทั้งหมด", which opens the full "เลือกโปรไฟล์" list.
+            log(`   ℹ️ "${pageName}" ไม่อยู่ในรายการสั้นของเมนู — กดดูโปรไฟล์ทั้งหมด`);
+            const opened = await _openAllProfiles(page);
+            log(`   ${opened ? `✅ กด "${opened}"` : '⚠️ ไม่พบปุ่มดูโปรไฟล์ทั้งหมด'}`);
+            if (opened) {
+                try {
+                    for (let i = 0; i < 12 && !clicked; i++) {
+                        await page.waitForTimeout(500);
+                        clicked = await _clickProfileInList(page, pageName);
+                    }
+                } catch(e) { log(`   ⚠️ list click err: ${e.message.split('\n')[0]}`); }
+                if (clicked) log(`   ✅ list click: ${pageName}`);
+            }
+            if (!clicked) log(`   🔍 ที่เห็นบนจอ: ${(await _menuTexts(page)).join(' | ') || '(ว่าง)'}`);
         }
 
         if (!clicked) {
