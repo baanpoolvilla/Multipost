@@ -287,32 +287,27 @@ async function processJob(job) {
         // Open ONE page and switch identity on it — reuse same page for all groups
         log(`ℹ️ postAsPage: ${job.postAsPage || '(ไม่ได้เลือก — โพสเป็น user)'}`);
         let switchFailed = false;
-        // Which Page a group's composer posts as is decided by ?profile_id= on
-        // the group link, and it wants the Page's own id — the one the web has
-        // from "จัดการเพจ". With that id the composer comes up as the right
-        // Page whatever profile the browser is acting as at the time (picking
-        // a Page in Facebook's menu often only opens that Page and leaves the
-        // profile unchanged; the id the browser reports afterwards is then
-        // the *other* profile's, and the composer came up as that one). So
-        // the web's id is used whenever there is one, and the browser's only
-        // for a Page the web does not know.
+        // The composer in a group posts as whoever the browser is acting as, so
+        // the profile really has to be switched first (openSwitchedPage checks
+        // that it was). ?profile_id= on the group link does not override it:
+        // with Brittany's id there and the browser still on Tuscany, the dialog
+        // came up as Tuscany. The id is still sent, and the web's own id for
+        // the Page ("จัดการเพจ") is the one known to work once switched.
         const knownPages = job.postAsPage ? ((await _store.getKnownPages?.().catch(() => [])) || []) : [];
         const expectedPageId = knownPages.find(p => p.pageName === job.postAsPage)?.pageId || null;
         if (job.postAsPage) {
             const result = await _bot.openSwitchedPage(acc.id, job.postAsPage, (m) => log(`   ${m}`));
-            if (expectedPageId && result?.page) {
+            if (result?.switched) {
                 sharedPage   = result.page;
-                sharedPageId = expectedPageId;
-                log(`   🆔 เปิดกลุ่มด้วยรหัสเพจจากเว็บ: ${expectedPageId}${result.switched ? '' : ' (สลับโปรไฟล์ในเมนูไม่ได้ — ใช้รหัสเพจแทน)'}`);
-            } else if (result?.switched) {
-                sharedPage   = result.page;
-                sharedPageId = result.pageId || null;
+                sharedPageId = expectedPageId || result.pageId || null;
             } else {
                 // Never fall through and post as the personal profile when the
                 // job asked for a Page — fail it so the owner can retry.
                 switchFailed = true;
                 await result?.page?.close().catch(() => {});
-                const err = `สลับเป็นเพจ "${job.postAsPage}" ไม่ได้ — ไม่ได้โพส (เพื่อไม่ให้โพสผิดตัวตน)`;
+                const err = result?.actingAs
+                    ? `สลับเป็นเพจ "${job.postAsPage}" ไม่ได้ (Facebook ยังใช้งานในนาม "${result.actingAs}") — ไม่ได้โพส (เพื่อไม่ให้โพสผิดตัวตน)`
+                    : `สลับเป็นเพจ "${job.postAsPage}" ไม่ได้ — ไม่ได้โพส (เพื่อไม่ให้โพสผิดตัวตน)`;
                 log(`⛔ ${err}`);
                 for (const g of job.groups) results.push({ groupId:g.groupId, groupName:g.groupName, status:'failed', error:err, timestamp:new Date().toISOString(), postUrl:null });
             }
@@ -346,7 +341,7 @@ async function processJob(job) {
                 if (job.postAsPage) {
                     await sharedPage?.close().catch(() => {});
                     const again = await _bot.openSwitchedPage(acc.id, job.postAsPage, (m) => log(`   ${m}`));
-                    if (!again?.page || (!again.switched && !expectedPageId)) {
+                    if (!again?.switched) {
                         await again?.page?.close().catch(() => {});
                         sharedPage = null;
                         const err = `เปิดหน้าต่างใหม่แล้วสลับเป็นเพจ "${job.postAsPage}" ไม่ได้ — หยุดงาน (เพื่อไม่ให้โพสผิดตัวตน)`;

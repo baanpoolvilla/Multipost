@@ -442,9 +442,12 @@ async function _openAllProfiles(page) {
 
 // Clicks `name` in the open profile list: the copy that is actually on
 // screen, inside the list — not a hidden one (notifications keep the names of
-// Pages in the page, unseen) and not a post by that Page in the feed behind.
-async function _clickProfileInList(page, name) {
-    for (const scope of [page.locator('[role="dialog"]'), page.locator('[role="menu"],[role="listbox"],[role="list"]')]) {
+// Pages in the page, unseen), and not the same name elsewhere on the page (a
+// shortcut in the left column, a post in the feed): those only open the Page.
+// anywhere: also accept a copy outside any dialog/menu, but never one in the
+// page's own columns — for a list that carries no role at all.
+async function _clickProfileInList(page, name, { anywhere = false } = {}) {
+    for (const scope of [page.locator('[role="dialog"]'), page.locator('[role="menu"],[role="listbox"]')]) {
         const loc = scope.getByText(name, { exact: true });
         const n = Math.min(await loc.count().catch(() => 0), 20);
         for (let i = 0; i < n; i++) {
@@ -454,15 +457,17 @@ async function _clickProfileInList(page, name) {
             return true;
         }
     }
+    if (!anywhere) return false;
     const handle = await page.evaluateHandle(wanted => {
         const shown = el => {
             const box = el.getBoundingClientRect();
             const st = getComputedStyle(el);
             return box.width > 0 && box.height > 0 && st.visibility !== 'hidden' && st.display !== 'none';
         };
+        const pageColumns = '[role="main"],[role="feed"],[role="article"],[role="navigation"],[role="complementary"],[role="banner"]';
         return [...document.querySelectorAll('span,b,strong,div')].find(el =>
             el.childElementCount === 0 && (el.textContent || '').trim() === wanted &&
-            !el.closest('[role="main"],[role="feed"],[role="article"]') && shown(el)) || null;
+            !el.closest(pageColumns) && shown(el)) || null;
     }, name);
     const el = handle.asElement();
     if (!el) return false;
@@ -492,7 +497,7 @@ async function _menuTexts(page) {
 
 // Printed at the start of every profile switch, so a pasted log shows which
 // revision of this file the posting machine is really running.
-const BOT_REV = '2.1.10';
+const BOT_REV = '2.1.11';
 
 // ── Open a page and switch to Page identity on it ────────────────
 // Returns { page, pageId } — pageId is used to navigate group as the Page
@@ -502,8 +507,41 @@ async function openSwitchedPage(accountId, pageName, onLog) {
     try {
         const ctx  = await _getContext(accountId);
         const page = await ctx.newPage();
-        await page.goto('https://www.facebook.com/', { waitUntil: 'domcontentloaded', timeout: 15000 });
-        await page.waitForTimeout(2000);
+        const HOME = 'https://www.facebook.com/';
+        const goHome = async () => {
+            await page.goto(HOME, { waitUntil: 'domcontentloaded', timeout: 15000 });
+            await page.waitForTimeout(2500);
+        };
+        const want = _normText(pageName);
+        const isTarget = who => !!who.name && _normText(who.name).includes(want);
+
+        await goHome();
+        let acting = await _actingProfile(page, ctx);
+        log(`   👤 ตอนนี้ Facebook ใช้งานในนาม: ${acting.name || '(อ่านชื่อไม่ได้)'}${acting.id ? ` [${acting.id}]` : ''}`);
+        if (isTarget(acting)) {
+            log(`✅ ใช้งานในนาม ${pageName} อยู่แล้ว`);
+            return { page, pageId: acting.id || null, switched: true };
+        }
+
+        // Acting as some other Page: its menu offers only a couple of
+        // profiles, and picking a Page there has been seen to merely open
+        // that Page. Go back to the main profile first — from there the menu
+        // lists the Pages to switch to.
+        if (acting.id) {
+            log('   ↩️ กำลังใช้งานในนามเพจอื่น — กลับไปบัญชีหลักก่อน');
+            const reopened = await _navOpenSwitcher(page);
+            if (reopened && !reopened.startsWith('__notfound__')) {
+                await page.waitForTimeout(1500);
+                const back = await _pickOtherProfile(page, acting.name || pageName);
+                log(`   switched to: ${back || 'unknown'}`);
+                try { await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 6000 }); } catch {}
+            }
+            await goHome();
+            acting = await _actingProfile(page, ctx);
+            log(`   👤 ตอนนี้: ${acting.name || '(อ่านชื่อไม่ได้)'}${acting.id ? ` [${acting.id}]` : ' (บัญชีหลัก)'}`);
+            if (isTarget(acting)) return { page, pageId: acting.id || null, switched: true };
+        }
+        const before = acting;
 
         // Open account menu
         const btnFound = await _navOpenSwitcher(page);
@@ -514,26 +552,31 @@ async function openSwitchedPage(accountId, pageName, onLog) {
         }
         await page.waitForTimeout(1500);
 
-        // Use Playwright native click (fires real mouse events, not JS click)
+        // Click the Page inside the account menu itself. The same name is
+        // also elsewhere on the page — a shortcut in the left column, a
+        // hidden copy in the notifications — and clicking those only opens
+        // the Page without changing profile.
         let clicked = false;
-        try {
-            // Prefer clicking the menuitem/button ancestor that CONTAINS the text
-            // getByText finds the deepest span which is often "not visible" to Playwright
-            const roleLoc = page.locator('[role="menuitem"],[role="option"],[role="button"],li')
-                .filter({ hasText: new RegExp(`^${pageName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`) })
-                .first();
-            if (await roleLoc.count() > 0) {
-                await roleLoc.click({ timeout: 3000 });
-                clicked = true;
-                log(`   ✅ role click: ${pageName}`);
-            }
-        } catch(e) { log(`   ⚠️ role click err: ${e.message}`); }
+        const inMenu = await _markAccountMenu(page);
+        if (inMenu) {
+            try {
+                const rows = page.locator('[data-mp-acct-menu]').getByText(pageName, { exact: true });
+                const n = Math.min(await rows.count().catch(() => 0), 10);
+                for (let i = 0; i < n && !clicked; i++) {
+                    if (!(await rows.nth(i).isVisible().catch(() => false))) continue;
+                    await rows.nth(i).click({ timeout: 3000 });
+                    clicked = true;
+                    log(`   ✅ menu click: ${pageName}`);
+                }
+            } catch(e) { log(`   ⚠️ menu click err: ${e.message.split('\n')[0]}`); }
+        } else {
+            log('   ⚠️ หาเมนูบัญชีบนจอไม่เจอ');
+        }
 
         if (!clicked) {
-            // Not in the menu's short list. Facebook shows only the two or
-            // three profiles used most recently there (while acting as one
-            // Page, the other Pages are usually not among them); the rest are
-            // behind "ดูโปรไฟล์ทั้งหมด", which opens the full "เลือกโปรไฟล์" list.
+            // Not in the menu's short list — Facebook shows only the two or
+            // three profiles used most recently there. The rest are behind
+            // "ดูโปรไฟล์ทั้งหมด", which opens the full "เลือกโปรไฟล์" list.
             log(`   ℹ️ "${pageName}" ไม่อยู่ในรายการสั้นของเมนู — กดดูโปรไฟล์ทั้งหมด`);
             const opened = await _openAllProfiles(page);
             log(`   ${opened ? `✅ กด "${opened}"` : '⚠️ ไม่พบปุ่มดูโปรไฟล์ทั้งหมด'}`);
@@ -543,22 +586,11 @@ async function openSwitchedPage(accountId, pageName, onLog) {
                         await page.waitForTimeout(500);
                         clicked = await _clickProfileInList(page, pageName);
                     }
+                    if (!clicked) clicked = await _clickProfileInList(page, pageName, { anywhere: true });
                 } catch(e) { log(`   ⚠️ list click err: ${e.message.split('\n')[0]}`); }
                 if (clicked) log(`   ✅ list click: ${pageName}`);
             }
             if (!clicked) log(`   🔍 ที่เห็นบนจอ: ${(await _menuTexts(page)).join(' | ') || '(ว่าง)'}`);
-        }
-
-        if (!clicked) {
-            // Fallback: force-click the text locator (bypasses visibility check)
-            try {
-                const loc = page.getByText(pageName, { exact: true }).first();
-                if (await loc.count() > 0) {
-                    await loc.click({ timeout: 3000, force: true });
-                    clicked = true;
-                    log(`   ✅ force click: ${pageName}`);
-                }
-            } catch(e) { log(`   ⚠️ force click err: ${e.message}`); }
         }
 
         if (!clicked) {
@@ -573,58 +605,133 @@ async function openSwitchedPage(accountId, pageName, onLog) {
         // Wait for navigation to wherever Facebook takes us after clicking the Page
         try { await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 8000 }); } catch {}
         await page.waitForTimeout(2000);
-        const landedUrl = page.url();
-        log(`   🔍 landed: ${landedUrl.slice(0, 80)}`);
+        log(`   🔍 landed: ${page.url().slice(0, 80)}`);
 
-        // Which profile is this session acting as now? Facebook keeps that in
-        // the i_user cookie, and it is the id that ?profile_id= on a group
-        // link has to carry — a different Page's id there makes the composer
-        // post as that other Page.
-        let pageId = null;
-        try {
-            const acting = (await ctx.cookies('https://www.facebook.com')).find(c => c.name === 'i_user')?.value;
-            if (acting && /^\d{5,20}$/.test(acting)) { pageId = acting; log(`   🔍 pageId (โปรไฟล์ที่ใช้งานอยู่): ${pageId}`); }
-        } catch {}
+        // A click is not a switch. Ask Facebook who it is acting as now, and
+        // only call it switched if that is the Page that was asked for.
+        const confirm = async () => {
+            await goHome();
+            const now = await _actingProfile(page, ctx);
+            log(`   👤 หลังสลับ: ${now.name || '(อ่านชื่อไม่ได้)'}${now.id ? ` [${now.id}]` : ''}`);
+            // Name unreadable (layout change): accept a changed profile id —
+            // the create-post dialog is still checked before anything is posted.
+            const ok = isTarget(now) || (!now.name && !!now.id && now.id !== before.id);
+            return { ok, now };
+        };
+        let check = await confirm();
 
-        // Otherwise from the URL (numeric id or entity_id in URL)
-        const idMatch = pageId ? null : (landedUrl.match(/\/(\d{10,20})\/?/) || landedUrl.match(/[?&]id=(\d{10,20})/));
-        if (idMatch) { pageId = idMatch[1]; log(`   🔍 pageId: ${pageId}`); }
-
-        // Also try og:url / page meta for numeric ID
-        if (!pageId) {
-            pageId = await page.evaluate(() => {
-                const og = document.querySelector('meta[property="al:android:url"]')?.content
-                        || document.querySelector('meta[property="fb:page_id"]')?.content;
-                if (og) { const m = og.match(/\d{10,20}/); return m ? m[0] : null; }
-                // (Not "any link with page_id=" on the page: that can be a link
-                // to another of the account's Pages — a Brittany job once got
-                // Tuscany's id this way and the composer came up as Tuscany.)
-                return null;
-            }).catch(()=>null);
-            if (pageId) log(`   🔍 pageId (meta): ${pageId}`);
-        }
-
-        // Try to click "Use Facebook as [Page]" button if present
-        const switchTerms = ['use facebook as','สลับเป็น','ใช้ facebook','switch to','switch profile'];
-        for (const term of switchTerms) {
+        if (!check.ok) {
+            // On the Page's own page Facebook offers a "สลับ" button to start
+            // acting as it — try that once.
             try {
-                const btn = page.getByText(term, { exact: false }).first();
-                if (await btn.count() > 0) {
-                    await btn.click({ timeout: 2000 });
-                    log(`   ✅ switch btn: "${term}"`);
-                    try { await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 5000 }); } catch {}
-                    await page.waitForTimeout(1500);
-                    break;
+                const btn = page.getByRole('button', { name: /^(สลับ|สลับเลย|สลับโปรไฟล์|Switch|Switch now|Switch profile)$/ }).first();
+                if (await btn.count() > 0 && await btn.isVisible().catch(() => false)) {
+                    await btn.click({ timeout: 3000 });
+                    log('   ✅ กดปุ่ม "สลับ" บนหน้าเพจ');
+                    try { await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 6000 }); } catch {}
+                    check = await confirm();
                 }
             } catch {}
         }
 
-        log(`✅ สลับเป็น: ${pageName}${pageId ? ` (id:${pageId})` : ''}`);
-        return { page, pageId, switched: true };
+        if (!check.ok) {
+            log(`⛔ กดแล้วแต่ Facebook ยังไม่ได้ใช้งานในนาม "${pageName}" (ตอนนี้: ${check.now.name || 'ไม่ทราบ'})`);
+            return { page, pageId: null, actingAs: check.now.name || null };
+        }
+
+        log(`✅ สลับเป็น: ${pageName}${check.now.id ? ` (id:${check.now.id})` : ''}`);
+        return { page, pageId: check.now.id || null, switched: true };
     } catch(e) {
         log(`❌ openSwitchedPage: ${e.message}`);
         return { page: null, pageId: null };
     }
+}
+
+// Who Facebook is acting as right now. id: the i_user cookie, which is only
+// there while acting as a profile other than the account's main one. name:
+// read off the home page's "คุณคิดอะไรอยู่ <name>" box (call this on the home page).
+async function _actingProfile(page, ctx) {
+    let id = null;
+    try {
+        const v = (await ctx.cookies('https://www.facebook.com')).find(c => c.name === 'i_user')?.value;
+        if (v && /^\d{5,20}$/.test(v)) id = v;
+    } catch {}
+    const name = await page.evaluate(() => {
+        const re = /^(?:คุณคิดอะไรอยู่|What's on your mind|What’s on your mind)[\s,]*(.*?)\??$/;
+        for (const el of document.querySelectorAll('span, div[role="button"], [aria-label]')) {
+            if (el.children.length > 1) continue;
+            const box = el.getBoundingClientRect();
+            if (!box.width || !box.height) continue;
+            const m = ((el.textContent || '').trim() || (el.getAttribute('aria-label') || '').trim()).match(re);
+            if (m && m[1].trim()) return m[1].trim();
+        }
+        return null;
+    }).catch(() => null);
+    return { id, name };
+}
+
+// Tags the open account menu (the panel with the profiles, settings and
+// "ออกจากระบบ") so it can be searched on its own. It carries no role to find
+// it by, so it is located from its log-out row. False if it is not on screen.
+async function _markAccountMenu(page) {
+    return page.evaluate(() => {
+        document.querySelectorAll('[data-mp-acct-menu]').forEach(el => el.removeAttribute('data-mp-acct-menu'));
+        const shown = el => { const b = el.getBoundingClientRect(); return b.width > 0 && b.height > 0; };
+        const leaf = [...document.querySelectorAll('span')].find(el =>
+            el.childElementCount === 0 && /^(ออกจากระบบ|Log out|Log Out)$/.test((el.textContent || '').trim()) && shown(el));
+        if (!leaf) return false;
+        let best = null;
+        for (let n = leaf.parentElement, i = 0; n && i < 30; n = n.parentElement, i++) {
+            const b = n.getBoundingClientRect();
+            if (b.width > window.innerWidth * 0.6) break;      // grown into the page itself
+            if (b.width >= 250) best = n;
+            if (/ดูโปรไฟล์ทั้งหมด|See all profiles/.test(n.innerText || '')) break;   // now includes the profile list
+        }
+        if (!best) return false;
+        best.setAttribute('data-mp-acct-menu', '1');
+        return true;
+    }).catch(() => false);
+}
+
+// In the open account menu, clicks the first profile that is not skipName
+// (the profile in use). Returns the name clicked, or null.
+async function _pickOtherProfile(page, skipName) {
+    try {
+        const handle = await page.evaluateHandle(({ skipName, mw }) => {
+            function getCleanText(el) {
+                const spans = [...el.querySelectorAll('span')].map(s=>(s.textContent||'').trim()).filter(Boolean);
+                spans.sort((a,b)=>a.length-b.length);
+                return spans[0]||(el.textContent||'').trim();
+            }
+            const shown = el => { const b = el.getBoundingClientRect(); return b.width > 0 && b.height > 0; };
+            const skipLower = skipName ? skipName.toLowerCase() : null;
+            const containers = [...document.querySelectorAll('[role="menu"],[role="dialog"],[role="list"],[role="listbox"]')].filter(shown);
+            containers.reverse();
+            for (const c of containers) {
+                const items = [...c.querySelectorAll('[role="menuitem"],[role="option"],[role="listitem"],li,[role="button"]')]
+                    .filter(i => {
+                        if (!shown(i)) return false;
+                        const t = getCleanText(i);
+                        return t && t.length >= 2 && t.length <= 80
+                            && !mw.some(w => t.toLowerCase().includes(w.toLowerCase()));
+                    });
+                if (!items.length) continue;
+                // Skip the current page, pick the first OTHER item
+                const target = skipLower
+                    ? items.find(i => !getCleanText(i).toLowerCase().includes(skipLower))
+                    : items[0];
+                if (target) { target.setAttribute('data-mp-picked', getCleanText(target)); return target; }
+            }
+            return null;
+        }, { skipName, mw: _MENU_WORDS });
+        const el = handle.asElement();
+        if (!el) return null;
+        const label = await el.getAttribute('data-mp-picked');
+        // a real click in the middle of the row, as a person would — a
+        // scripted click on a wrapper element does not reach the row's button
+        await el.click({ timeout: 3000 });
+        return label;
+    } catch { return null; }
 }
 
 // ── Switch back to personal on an existing page, then close it ────
@@ -638,31 +745,7 @@ async function switchBackOnPage(page, onLog, currentPageName = null) {
         if (btnFound && !btnFound.startsWith('__notfound__')) {
             await page.waitForTimeout(1500);
             // Pick the first item that does NOT match the current Page name
-            const switched = await page.evaluate(({ skipName, mw }) => {
-                function getCleanText(el) {
-                    const spans = [...el.querySelectorAll('span')].map(s=>(s.textContent||'').trim()).filter(Boolean);
-                    spans.sort((a,b)=>a.length-b.length);
-                    return spans[0]||(el.textContent||'').trim();
-                }
-                const skipLower = skipName ? skipName.toLowerCase() : null;
-                const containers = [...document.querySelectorAll('[role="menu"],[role="dialog"],[role="list"],[role="listbox"]')];
-                containers.reverse();
-                for (const c of containers) {
-                    const items = [...c.querySelectorAll('[role="menuitem"],[role="option"],[role="listitem"],li,[role="button"]')]
-                        .filter(i => {
-                            const t = getCleanText(i);
-                            return t && t.length >= 2 && t.length <= 80
-                                && !mw.some(w => t.toLowerCase().includes(w.toLowerCase()));
-                        });
-                    if (!items.length) continue;
-                    // Skip the current page, pick the first OTHER item
-                    const target = skipLower
-                        ? items.find(i => !getCleanText(i).toLowerCase().includes(skipLower))
-                        : items[0];
-                    if (target) { target.click(); return getCleanText(target); }
-                }
-                return null;
-            }, { skipName: currentPageName, mw: _MENU_WORDS });
+            const switched = await _pickOtherProfile(page, currentPageName);
             log(`   switched to: ${switched || 'unknown'}`);
             try { await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 6000 }); } catch {}
             await page.waitForTimeout(1500);
