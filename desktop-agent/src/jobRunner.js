@@ -287,27 +287,32 @@ async function processJob(job) {
         // Open ONE page and switch identity on it — reuse same page for all groups
         log(`ℹ️ postAsPage: ${job.postAsPage || '(ไม่ได้เลือก — โพสเป็น user)'}`);
         let switchFailed = false;
-        // If the id the browser reports after switching belongs to another
-        // Page we know, the switch did not take — stop here rather than open
-        // every group as that other Page and have each one refused.
+        // Which Page a group's composer posts as is decided by ?profile_id= on
+        // the group link, and it wants the Page's own id — the one the web has
+        // from "จัดการเพจ". With that id the composer comes up as the right
+        // Page whatever profile the browser is acting as at the time (picking
+        // a Page in Facebook's menu often only opens that Page and leaves the
+        // profile unchanged; the id the browser reports afterwards is then
+        // the *other* profile's, and the composer came up as that one). So
+        // the web's id is used whenever there is one, and the browser's only
+        // for a Page the web does not know.
         const knownPages = job.postAsPage ? ((await _store.getKnownPages?.().catch(() => [])) || []) : [];
         const expectedPageId = knownPages.find(p => p.pageName === job.postAsPage)?.pageId || null;
-        const otherPageOf = r => (r?.pageId && knownPages.find(p => p.pageId === String(r.pageId) && p.pageName !== job.postAsPage)?.pageName) || null;
-        let wrongPage = null;
         if (job.postAsPage) {
             const result = await _bot.openSwitchedPage(acc.id, job.postAsPage, (m) => log(`   ${m}`));
-            wrongPage = result?.switched ? otherPageOf(result) : null;
-            if (result?.switched && !wrongPage) {
+            if (expectedPageId && result?.page) {
                 sharedPage   = result.page;
-                sharedPageId = result.pageId || expectedPageId || null;
+                sharedPageId = expectedPageId;
+                log(`   🆔 เปิดกลุ่มด้วยรหัสเพจจากเว็บ: ${expectedPageId}${result.switched ? '' : ' (สลับโปรไฟล์ในเมนูไม่ได้ — ใช้รหัสเพจแทน)'}`);
+            } else if (result?.switched) {
+                sharedPage   = result.page;
+                sharedPageId = result.pageId || null;
             } else {
                 // Never fall through and post as the personal profile when the
                 // job asked for a Page — fail it so the owner can retry.
                 switchFailed = true;
                 await result?.page?.close().catch(() => {});
-                const err = wrongPage
-                    ? `สลับแล้วแต่ Facebook ยังใช้งานในนาม "${wrongPage}" ไม่ใช่ "${job.postAsPage}" — ไม่ได้โพส (กันโพสผิดเพจ)`
-                    : `สลับเป็นเพจ "${job.postAsPage}" ไม่ได้ — ไม่ได้โพส (เพื่อไม่ให้โพสผิดตัวตน)`;
+                const err = `สลับเป็นเพจ "${job.postAsPage}" ไม่ได้ — ไม่ได้โพส (เพื่อไม่ให้โพสผิดตัวตน)`;
                 log(`⛔ ${err}`);
                 for (const g of job.groups) results.push({ groupId:g.groupId, groupName:g.groupName, status:'failed', error:err, timestamp:new Date().toISOString(), postUrl:null });
             }
@@ -341,7 +346,7 @@ async function processJob(job) {
                 if (job.postAsPage) {
                     await sharedPage?.close().catch(() => {});
                     const again = await _bot.openSwitchedPage(acc.id, job.postAsPage, (m) => log(`   ${m}`));
-                    if (!again?.switched || otherPageOf(again)) {
+                    if (!again?.page || (!again.switched && !expectedPageId)) {
                         await again?.page?.close().catch(() => {});
                         sharedPage = null;
                         const err = `เปิดหน้าต่างใหม่แล้วสลับเป็นเพจ "${job.postAsPage}" ไม่ได้ — หยุดงาน (เพื่อไม่ให้โพสผิดตัวตน)`;
@@ -351,7 +356,7 @@ async function processJob(job) {
                         break;
                     }
                     sharedPage   = again.page;
-                    sharedPageId = again.pageId || expectedPageId || null;
+                    sharedPageId = expectedPageId || again.pageId || null;
                 }
                 retryingGroup = i;
                 i--;

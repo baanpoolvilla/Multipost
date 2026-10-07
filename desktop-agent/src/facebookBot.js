@@ -492,7 +492,7 @@ async function _menuTexts(page) {
 
 // Printed at the start of every profile switch, so a pasted log shows which
 // revision of this file the posting machine is really running.
-const BOT_REV = '2.1.9';
+const BOT_REV = '2.1.10';
 
 // ── Open a page and switch to Page identity on it ────────────────
 // Returns { page, pageId } — pageId is used to navigate group as the Page
