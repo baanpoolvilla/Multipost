@@ -328,7 +328,10 @@ async function getAccountPages(accountId) {
 // ── Navbar profile switcher (shared by switchIdentity / getAccountPages) ──
 const _MENU_WORDS = ['การตั้งค่า','ความเป็นส่วนตัว','ความช่วยเหลือ','รายงาน','การแสดงผล',
                      'ออกจากระบบ','เพิ่มเติม','Settings','Privacy','Help','Support',
-                     'Report','Display','Log out','Logout','More','Accessibility'];
+                     'Report','Display','Log out','Logout','More','Accessibility',
+                     // not profiles either: the feedback row (its shortest text is its shortcut,
+                     // 'CTRL B') and the see-all button — switching back once clicked the former
+                     'แสดงความเห็น','Give feedback','CTRL','ดูโปรไฟล์ทั้งหมด','See all profiles'];
 
 async function _navOpenSwitcher(page) {
     return page.evaluate(() => {
@@ -489,7 +492,7 @@ async function _menuTexts(page) {
 
 // Printed at the start of every profile switch, so a pasted log shows which
 // revision of this file the posting machine is really running.
-const BOT_REV = '2.1.6';
+const BOT_REV = '2.1.7';
 
 // ── Open a page and switch to Page identity on it ────────────────
 // Returns { page, pageId } — pageId is used to navigate group as the Page
@@ -686,6 +689,27 @@ async function _dialogIdentityText(page) {
     }).catch(() => '');
 }
 
+// If the create-post dialog is showing its "เพิ่มกลุ่ม" group picker instead of
+// the text box, goes back to the composer. Returns true when it had to.
+async function _leaveGroupPicker(page) {
+    try {
+        const inPicker = await page.evaluate(() => {
+            const dialogs = [...document.querySelectorAll('[role="dialog"]')];
+            const shown = el => { const b = el.getBoundingClientRect(); return b.width > 0 && b.height > 0; };
+            const hasBox = dialogs.some(d => [...d.querySelectorAll('[contenteditable="true"]')].some(shown));
+            if (hasBox) return false;
+            const picker = dialogs.find(d => /เลือกกลุ่ม|ค้นหากลุ่ม|Select groups?|Search groups?/i.test(d.textContent || ''));
+            if (!picker) return false;
+            const back = [...picker.querySelectorAll('[aria-label]')].find(el => /^(ย้อนกลับ|กลับ|Back)$/i.test(el.getAttribute('aria-label') || '') && shown(el));
+            if (!back) return false;
+            back.click();
+            return true;
+        });
+        if (inPicker) await page.waitForTimeout(1500);
+        return inPicker;
+    } catch { return false; }
+}
+
 async function _tryDialogIdentitySwitch(page, pageName) {
     try {
         // Step 1: click the profile/identity area in dialog top (opens switcher popup)
@@ -693,10 +717,15 @@ async function _tryDialogIdentitySwitch(page, pageName) {
             const dialog = document.querySelector('[role="dialog"]');
             if (!dialog) return null;
             const dRect = dialog.getBoundingClientRect();
+            // Not the identity switcher: who can see the post, "+ เพิ่มกลุ่ม"
+            // (opens a picker for posting to several groups) and close/back.
+            const notIdentity = /เพิ่มกลุ่ม|add groups?|กลุ่มสาธารณะ|กลุ่มส่วนตัว|public group|private group|^สาธารณะ$|^public$|ปิด|close|ย้อนกลับ|back/i;
+            const label = btn => ((btn.textContent || '') + ' ' + (btn.getAttribute('aria-label') || '')).trim();
             const topBtns = [...dialog.querySelectorAll('[role="button"]')].filter(btn => {
                 const br = btn.getBoundingClientRect();
                 return br.width > 40 && br.height > 20
-                    && br.y > dRect.y && br.y < dRect.y + 130;
+                    && br.y > dRect.y && br.y < dRect.y + 130
+                    && !notIdentity.test(label(btn));
             });
             if (!topBtns.length) return null;
             const candidate = topBtns.find(b => b.querySelector('img,image,[role="img"]'))
@@ -911,17 +940,27 @@ async function postToGroup(accountId, groupId, groupName, message, postAsPage, o
         }
 
         // If postAsPage, try to switch identity inside the dialog (before typing)
+        // The profile was already switched before the group was opened, so the
+        // dialog normally names the Page already — then leave its controls
+        // alone: the buttons under the name are "กลุ่มสาธารณะ" and "+ เพิ่มกลุ่ม",
+        // and pressing the latter swaps the composer for a group picker.
         if (postAsPage) {
-            log(`   🏢 สลับ identity ใน dialog → "${postAsPage}"...`);
-            const ds = await _tryDialogIdentitySwitch(page, postAsPage);
-            log(`   dialog switch: ${ds || 'ไม่มีตัวเลือก — โพสเป็น user ปกติ'}`);
-            if (ds) {
-                // Re-find textbox after identity switch (dialog may have re-rendered)
-                let newTb = null;
-                for (const s of tbSels) {
-                    try { newTb = await page.waitForSelector(s, { timeout: 4000, state:'visible' }); if (newTb) break; } catch {}
+            if (_normText(await _dialogIdentityText(page)).includes(_normText(postAsPage))) {
+                log(`   ✅ หน้าต่างโพสเป็น "${postAsPage}" อยู่แล้ว — ไม่ต้องสลับ`);
+            } else {
+                log(`   🏢 สลับ identity ใน dialog → "${postAsPage}"...`);
+                const ds = await _tryDialogIdentitySwitch(page, postAsPage);
+                log(`   dialog switch: ${ds || 'ไม่มีตัวเลือก — โพสเป็น user ปกติ'}`);
+                const left = await _leaveGroupPicker(page);
+                if (left) log('   ↩️ ปิดหน้า "เพิ่มกลุ่ม" ที่เปิดขึ้นมา กลับไปที่ช่องเขียนโพส');
+                if (ds || left) {
+                    // Re-find textbox after identity switch (dialog may have re-rendered)
+                    let newTb = null;
+                    for (const s of tbSels) {
+                        try { newTb = await page.waitForSelector(s, { timeout: 4000, state:'visible' }); if (newTb) break; } catch {}
+                    }
+                    if (newTb) { textbox = newTb; await textbox.click(); await page.waitForTimeout(500); }
                 }
-                if (newTb) { textbox = newTb; await textbox.click(); await page.waitForTimeout(500); }
             }
         }
 
