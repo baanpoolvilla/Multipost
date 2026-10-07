@@ -412,6 +412,64 @@ async function _navPickIdentity(page, pickName, menuWords) {
     }, { name: pickName, mw: menuWords });
 }
 
+// The element showing exactly `text` on screen right now, or null. Prefers
+// one inside a menu / dialog (the profile switcher) over the page behind it.
+async function _visibleText(page, text) {
+    const scopes = [page.locator('[role="dialog"],[role="menu"],[role="listbox"]'), page];
+    for (const scope of scopes) {
+        const loc = scope.getByText(text, { exact: true });
+        const n = Math.min(await loc.count().catch(() => 0), 20);
+        for (let i = 0; i < n; i++) {
+            const el = loc.nth(i);
+            if (await el.isVisible().catch(() => false)) return el;
+        }
+    }
+    return null;
+}
+
+// Presses the switcher's "see all profiles" control. Returns its label, or null.
+const _ALL_PROFILES = /^(ดูโปรไฟล์ทั้งหมด|ดูโปรไฟล์และเพจทั้งหมด|ดูเพจและโปรไฟล์ทั้งหมด|ดูทั้งหมด|See all profiles|See all Pages and profiles|See all profiles and Pages|See all)$/i;
+async function _openAllProfiles(page) {
+    const scope = page.locator('[role="dialog"],[role="menu"],[role="listbox"]');
+    const byText = scope.getByText(_ALL_PROFILES);
+    const n = Math.min(await byText.count().catch(() => 0), 10);
+    for (let i = 0; i < n; i++) {
+        const el = byText.nth(i);
+        if (!(await el.isVisible().catch(() => false))) continue;
+        const label = ((await el.innerText().catch(() => '')) || '').trim();
+        try { await el.click({ timeout: 3000 }); return label || 'ดูโปรไฟล์ทั้งหมด'; } catch {}
+    }
+    // Some layouts carry the wording only as the button's aria-label.
+    return page.evaluate(src => {
+        const re = new RegExp(src, 'i');
+        for (const root of document.querySelectorAll('[role="dialog"],[role="menu"],[role="listbox"]')) {
+            for (const el of root.querySelectorAll('[aria-label]')) {
+                const label = el.getAttribute('aria-label') || '';
+                const box = el.getBoundingClientRect();
+                if (re.test(label) && box.width > 0 && box.height > 0) { el.click(); return label; }
+            }
+        }
+        return null;
+    }, _ALL_PROFILES.source).catch(() => null);
+}
+
+// What the open switcher shows, for the log when a Page cannot be found in it.
+async function _menuTexts(page) {
+    return page.evaluate(() => {
+        const out = [];
+        for (const root of document.querySelectorAll('[role="dialog"],[role="menu"],[role="listbox"]')) {
+            for (const el of root.querySelectorAll('[role="button"],[role="menuitem"],[role="option"],[role="listitem"],a')) {
+                const box = el.getBoundingClientRect();
+                if (!box.width || !box.height) continue;
+                const t = ((el.innerText || el.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim()).slice(0, 40);
+                if (t && !out.includes(t)) out.push(t);
+                if (out.length >= 20) return out;
+            }
+        }
+        return out;
+    }).catch(() => []);
+}
+
 // ── Open a page and switch to Page identity on it ────────────────
 // Returns { page, pageId } — pageId is used to navigate group as the Page
 async function openSwitchedPage(accountId, pageName, onLog) {
@@ -432,6 +490,21 @@ async function openSwitchedPage(accountId, pageName, onLog) {
         }
         await page.waitForTimeout(1500);
 
+        // The menu shows only the profiles used most recently; the others are
+        // in the page but hidden until "ดูโปรไฟล์ทั้งหมด" is pressed. A Page
+        // that has not been posted as for a while is one of those.
+        if (!(await _visibleText(page, pageName))) {
+            log(`   ℹ️ ยังไม่เห็น "${pageName}" ในเมนู — เปิดรายการโปรไฟล์ทั้งหมด`);
+            const opened = await _openAllProfiles(page);
+            log(`   ${opened ? `✅ กด "${opened}"` : '⚠️ ไม่พบปุ่มดูโปรไฟล์ทั้งหมด'}`);
+            if (opened) {
+                for (let i = 0; i < 10 && !(await _visibleText(page, pageName)); i++) await page.waitForTimeout(500);
+            }
+            if (!(await _visibleText(page, pageName))) {
+                log(`   🔍 ที่เห็นในเมนู: ${(await _menuTexts(page)).join(' | ') || '(ว่าง)'}`);
+            }
+        }
+
         // Use Playwright native click (fires real mouse events, not JS click)
         let clicked = false;
         try {
@@ -446,6 +519,19 @@ async function openSwitchedPage(accountId, pageName, onLog) {
                 log(`   ✅ role click: ${pageName}`);
             }
         } catch(e) { log(`   ⚠️ role click err: ${e.message}`); }
+
+        if (!clicked) {
+            // The name itself, wherever it is actually showing (the first
+            // match in the page can be a hidden copy).
+            try {
+                const shown = await _visibleText(page, pageName);
+                if (shown) {
+                    await shown.click({ timeout: 3000 });
+                    clicked = true;
+                    log(`   ✅ text click: ${pageName}`);
+                }
+            } catch(e) { log(`   ⚠️ text click err: ${e.message.split('\n')[0]}`); }
+        }
 
         if (!clicked) {
             // Fallback: force-click the text locator (bypasses visibility check)
