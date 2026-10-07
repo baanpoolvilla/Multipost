@@ -83,7 +83,7 @@ function heartbeat() {
         running: jobRunner.isRunning(),
         version: codeVersion(),
     }).catch(() => {});
-    checkPagesRefreshRequest();
+    checkPagesRefreshRequest().then(autoRefreshPages).catch(() => {});
 }
 
 // The web's "post as" picker lists the main posting machine's Pages. Runs only
@@ -108,6 +108,23 @@ async function checkPagesRefreshRequest() {
     if (!(await agentPresence.pagesRefreshPending(_agentId).catch(() => false))) return;
     _pagesRefreshing = true;
     try { await publishPages(acc.id); } finally { _pagesRefreshing = false; }
+}
+
+// Without anyone pressing the button: the list is also re-read a couple of
+// minutes after the Agent starts and every few hours after that, so a Page
+// added or renamed on Facebook shows up on the web by itself. Like the
+// button, it waits for the browser to be free and tries again if it is not.
+const PAGES_AUTO_REFRESH_MS = 6 * 60 * 60 * 1000;
+let _pagesAutoAt = Date.now() - PAGES_AUTO_REFRESH_MS + 2 * 60 * 1000;
+async function autoRefreshPages() {
+    if (_pagesRefreshing || !jobStore.isPosterAgent()) return;
+    if (Date.now() - _pagesAutoAt < PAGES_AUTO_REFRESH_MS) return;
+    const acc = accountStore.getActive();
+    if (!acc) return;
+    _pagesRefreshing = true;
+    try {
+        if (await publishPages(acc.id) !== false) _pagesAutoAt = Date.now();
+    } finally { _pagesRefreshing = false; }
 }
 
 // ── Window ─────────────────────────────────────────────────────
