@@ -182,6 +182,15 @@ async function createJob(data) {
     }
 }
 
+// The Pages set up on the web ("จัดการเพจ"), with their Facebook ids — used to
+// check which Page the browser really ended up acting as.
+async function getKnownPages() {
+    try {
+        await connect();
+        return (await Page.find().select('pageId pageName').lean()).map(p => ({ pageId: String(p.pageId), pageName: p.pageName }));
+    } catch { return []; }
+}
+
 async function getJobs() {
     try {
         await connect();
@@ -468,7 +477,7 @@ function _s(j) { return j ? { ...j, _id: j._id?.toString?.()??j._id } : j; }
 
 module.exports = {
     connect, isDbConnected, setDataPath, setAgentId, setStaffId, listStaff, getAllGroups, getRecentPosts,
-    isPosterAgent, createJob, getJobs, getJobStates, getJobsByIds, getPendingJobs, claimNextJob, updateJob, deleteJob, deleteAllJobs, restoreDeletedJob, claimNextFbDeletion, updateFbDeletion, finishFbDeletion,
+    isPosterAgent, createJob, getKnownPages, getJobs, getJobStates, getJobsByIds, getPendingJobs, claimNextJob, updateJob, deleteJob, deleteAllJobs, restoreDeletedJob, claimNextFbDeletion, updateFbDeletion, finishFbDeletion,
     getCompletedJobs, getQueueSnapshot, getDbUsage, rescheduleJob, expireOverdueJobs, migrateLegacyStatuses,
     saveProgress, recoverInterrupted, notifyWeb,
     retryJob, cancelJob, listExpiredJobs,

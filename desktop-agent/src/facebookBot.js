@@ -492,7 +492,7 @@ async function _menuTexts(page) {
 
 // Printed at the start of every profile switch, so a pasted log shows which
 // revision of this file the posting machine is really running.
-const BOT_REV = '2.1.8';
+const BOT_REV = '2.1.9';
 
 // ── Open a page and switch to Page identity on it ────────────────
 // Returns { page, pageId } — pageId is used to navigate group as the Page
@@ -576,9 +576,18 @@ async function openSwitchedPage(accountId, pageName, onLog) {
         const landedUrl = page.url();
         log(`   🔍 landed: ${landedUrl.slice(0, 80)}`);
 
-        // Extract Page ID from the URL (numeric id or entity_id in URL)
+        // Which profile is this session acting as now? Facebook keeps that in
+        // the i_user cookie, and it is the id that ?profile_id= on a group
+        // link has to carry — a different Page's id there makes the composer
+        // post as that other Page.
         let pageId = null;
-        const idMatch = landedUrl.match(/\/(\d{10,20})\/?/) || landedUrl.match(/[?&]id=(\d{10,20})/);
+        try {
+            const acting = (await ctx.cookies('https://www.facebook.com')).find(c => c.name === 'i_user')?.value;
+            if (acting && /^\d{5,20}$/.test(acting)) { pageId = acting; log(`   🔍 pageId (โปรไฟล์ที่ใช้งานอยู่): ${pageId}`); }
+        } catch {}
+
+        // Otherwise from the URL (numeric id or entity_id in URL)
+        const idMatch = pageId ? null : (landedUrl.match(/\/(\d{10,20})\/?/) || landedUrl.match(/[?&]id=(\d{10,20})/));
         if (idMatch) { pageId = idMatch[1]; log(`   🔍 pageId: ${pageId}`); }
 
         // Also try og:url / page meta for numeric ID
@@ -587,11 +596,9 @@ async function openSwitchedPage(accountId, pageName, onLog) {
                 const og = document.querySelector('meta[property="al:android:url"]')?.content
                         || document.querySelector('meta[property="fb:page_id"]')?.content;
                 if (og) { const m = og.match(/\d{10,20}/); return m ? m[0] : null; }
-                // Check URL params in any link that has page_id
-                for (const a of document.querySelectorAll('a[href*="page_id="]')) {
-                    const m = (a.href||'').match(/page_id=(\d+)/);
-                    if (m) return m[1];
-                }
+                // (Not "any link with page_id=" on the page: that can be a link
+                // to another of the account's Pages — a Brittany job once got
+                // Tuscany's id this way and the composer came up as Tuscany.)
                 return null;
             }).catch(()=>null);
             if (pageId) log(`   🔍 pageId (meta): ${pageId}`);

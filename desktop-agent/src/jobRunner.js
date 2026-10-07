@@ -287,17 +287,27 @@ async function processJob(job) {
         // Open ONE page and switch identity on it — reuse same page for all groups
         log(`ℹ️ postAsPage: ${job.postAsPage || '(ไม่ได้เลือก — โพสเป็น user)'}`);
         let switchFailed = false;
+        // If the id the browser reports after switching belongs to another
+        // Page we know, the switch did not take — stop here rather than open
+        // every group as that other Page and have each one refused.
+        const knownPages = job.postAsPage ? ((await _store.getKnownPages?.().catch(() => [])) || []) : [];
+        const expectedPageId = knownPages.find(p => p.pageName === job.postAsPage)?.pageId || null;
+        const otherPageOf = r => (r?.pageId && knownPages.find(p => p.pageId === String(r.pageId) && p.pageName !== job.postAsPage)?.pageName) || null;
+        let wrongPage = null;
         if (job.postAsPage) {
             const result = await _bot.openSwitchedPage(acc.id, job.postAsPage, (m) => log(`   ${m}`));
-            if (result?.switched) {
+            wrongPage = result?.switched ? otherPageOf(result) : null;
+            if (result?.switched && !wrongPage) {
                 sharedPage   = result.page;
-                sharedPageId = result.pageId || null;
+                sharedPageId = result.pageId || expectedPageId || null;
             } else {
                 // Never fall through and post as the personal profile when the
                 // job asked for a Page — fail it so the owner can retry.
                 switchFailed = true;
                 await result?.page?.close().catch(() => {});
-                const err = `สลับเป็นเพจ "${job.postAsPage}" ไม่ได้ — ไม่ได้โพส (เพื่อไม่ให้โพสผิดตัวตน)`;
+                const err = wrongPage
+                    ? `สลับแล้วแต่ Facebook ยังใช้งานในนาม "${wrongPage}" ไม่ใช่ "${job.postAsPage}" — ไม่ได้โพส (กันโพสผิดเพจ)`
+                    : `สลับเป็นเพจ "${job.postAsPage}" ไม่ได้ — ไม่ได้โพส (เพื่อไม่ให้โพสผิดตัวตน)`;
                 log(`⛔ ${err}`);
                 for (const g of job.groups) results.push({ groupId:g.groupId, groupName:g.groupName, status:'failed', error:err, timestamp:new Date().toISOString(), postUrl:null });
             }
@@ -331,7 +341,7 @@ async function processJob(job) {
                 if (job.postAsPage) {
                     await sharedPage?.close().catch(() => {});
                     const again = await _bot.openSwitchedPage(acc.id, job.postAsPage, (m) => log(`   ${m}`));
-                    if (!again?.switched) {
+                    if (!again?.switched || otherPageOf(again)) {
                         await again?.page?.close().catch(() => {});
                         sharedPage = null;
                         const err = `เปิดหน้าต่างใหม่แล้วสลับเป็นเพจ "${job.postAsPage}" ไม่ได้ — หยุดงาน (เพื่อไม่ให้โพสผิดตัวตน)`;
@@ -341,7 +351,7 @@ async function processJob(job) {
                         break;
                     }
                     sharedPage   = again.page;
-                    sharedPageId = again.pageId || null;
+                    sharedPageId = again.pageId || expectedPageId || null;
                 }
                 retryingGroup = i;
                 i--;
