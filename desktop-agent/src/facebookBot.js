@@ -222,10 +222,12 @@ async function getAccountPages(accountId) {
                 // Scan the full profile selector modal/dialog
                 const fromViewAll = await fb.evaluate(({ mw, nm }) => {
                     const res = []; const seen = new Set();
-                    const isNotif = (name) => name.includes(':') || nm.some(w => name.includes(w)) || /^\d+\s*(วินาที|นาที|ชั่วโมง|ชม\.?|วัน|สัปดาห์|เดือน|ปี|sec|min|hr|hour|day|week|month|year|[smhdwy])\S*$/i.test(name.trim());
-                    // Target the specific "เลือกโปรไฟล์" / "Select profile" modal first
+                    const isNotif = (name) => name.includes(':') || nm.some(w => name.includes(w)) || /^\d+\s*(?:วินาที|นาที|ชั่วโมง|ชม\.?|วัน|สัปดาห์|เดือน|ปี|(?:sec|min|hr|hour|day|week|month|year)s?|[smhdwy])(?:$|[\s·•])/i.test(name.trim()); // "6 วัน" alone or "6 วัน·<name>" (a recent-activity row)
+                    // Target the full profile list modal first ("โปรไฟล์และเพจของคุณ" now,
+                    // "เลือกโปรไฟล์" before) — else every list on screen gets scanned
+                    const titles = ['โปรไฟล์และเพจของคุณ', 'เลือกโปรไฟล์', 'Your profiles and Pages', 'Select profile', 'Choose a profile'];
                     let targetContainer = [...document.querySelectorAll('[role="dialog"],[role="listbox"]')]
-                        .find(el => el.textContent?.includes('เลือกโปรไฟล์') || el.textContent?.includes('Select profile') || el.textContent?.includes('Choose a profile'));
+                        .find(el => titles.some(t => el.textContent?.includes(t)));
                     const containers = targetContainer
                         ? [targetContainer]
                         : [...document.querySelectorAll('[role="dialog"],[role="list"],[role="listbox"],[role="menu"]')];
@@ -256,7 +258,7 @@ async function getAccountPages(accountId) {
             // Fallback: scan the partial dropdown (no "View all" button found)
             const fromSwitcher = await fb.evaluate(({ mw, nm }) => {
                 const res = []; const seen = new Set();
-                const isNotif = (name) => name.includes(':') || nm.some(w => name.includes(w)) || /^\d+\s*(วินาที|นาที|ชั่วโมง|ชม\.?|วัน|สัปดาห์|เดือน|ปี|sec|min|hr|hour|day|week|month|year|[smhdwy])\S*$/i.test(name.trim());
+                const isNotif = (name) => name.includes(':') || nm.some(w => name.includes(w)) || /^\d+\s*(?:วินาที|นาที|ชั่วโมง|ชม\.?|วัน|สัปดาห์|เดือน|ปี|(?:sec|min|hr|hour|day|week|month|year)s?|[smhdwy])(?:$|[\s·•])/i.test(name.trim()); // "6 วัน" alone or "6 วัน·<name>" (a recent-activity row)
                 const W = window.innerWidth;
                 const containers = [...document.querySelectorAll('[role="menu"],[role="dialog"],[role="list"],[role="listbox"]')]
                     .filter(c => {
@@ -514,7 +516,7 @@ async function _menuTexts(page) {
 
 // Printed at the start of every profile switch, so a pasted log shows which
 // revision of this file the posting machine is really running.
-const BOT_REV = '2.1.13';
+const BOT_REV = '2.1.14';
 
 // ── Open a page and switch to Page identity on it ────────────────
 // Returns { page, pageId } — pageId is used to navigate group as the Page
