@@ -516,7 +516,7 @@ async function _menuTexts(page) {
 
 // Printed at the start of every profile switch, so a pasted log shows which
 // revision of this file the posting machine is really running.
-const BOT_REV = '2.1.14';
+const BOT_REV = '2.1.15';
 
 // ── Open a page and switch to Page identity on it ────────────────
 // Returns { page, pageId } — pageId is used to navigate group as the Page
@@ -959,6 +959,16 @@ async function _typeMention(page, name, log, delay) {
     // A list left open would take the next Enter in the text as "pick this".
     const open = await page.$('[role="listbox"] [role="option"]').catch(() => null);
     if (open) await page.keyboard.press('Escape').catch(() => {});
+    // Plain name, not "@name": step back over the name (the caret moves by
+    // grapheme, so Thai vowels/tone marks count with their letter), delete
+    // the "@", return to the end — the text is typed in order, so that is
+    // where typing continues. A miscount is caught by the text check later.
+    try {
+        const steps = [...new Intl.Segmenter('th', { granularity: 'grapheme' }).segment(name)].length;
+        for (let i = 0; i < steps; i++) await page.keyboard.press('ArrowLeft');
+        await page.keyboard.press('Backspace');
+        await page.keyboard.press('Control+End');
+    } catch {}
     return false;
 }
 
