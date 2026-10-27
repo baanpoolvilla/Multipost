@@ -1552,9 +1552,16 @@ async function refreshPages() {
         Swal.fire({ toast:true, position:'top-end', icon:'success', title:`อัปเดตรายชื่อแล้ว (${n} รายการ)`, showConfirmButton:false, timer:2500 });
         return;
       }
-      if (hint) hint.textContent = (_poster && _poster.running && !_poster.pagesRefreshPending)
-        ? '⏳ กำลังดึงรายชื่อจาก Facebook…'
-        : '⏳ เครื่องโพสหลักกำลังโพสอยู่ — จะดึงรายชื่อให้ทันทีที่โพสงานนี้เสร็จ';
+      // The request was answered (no longer pending) but no new list was saved:
+      // the Agent opened Facebook and read no Pages. Say so instead of
+      // "fetching…" until the deadline.
+      if (_poster && !_poster.pagesRefreshPending) {
+        if (hint) hint.textContent = '⚠️ เครื่องโพสหลักอ่านรายชื่อเพจจาก Facebook ไม่ได้ — ใช้รายชื่อเดิมไปก่อน';
+        Swal.fire({ icon:'warning', title:'ดึงรายชื่อเพจไม่ได้', confirmButtonColor:'#1877f2',
+          html:'เครื่องโพสหลักเปิด Facebook แล้วแต่ไม่พบรายชื่อเพจ<br>ตรวจที่หน้าต่าง Agent ว่า Facebook ยัง login อยู่<br><span style="color:#65676b;font-size:.85rem">รายชื่อเดิมยังใช้โพสได้ตามปกติ</span>' });
+        return;
+      }
+      if (hint) hint.textContent = '⏳ เครื่องโพสหลักกำลังโพสอยู่ — จะดึงรายชื่อให้ทันทีที่โพสงานนี้เสร็จ';
     }
     if (hint) hint.textContent = '⏳ เครื่องโพสหลักยังไม่ว่าง (กำลังโพสงานอยู่) — รายชื่อจะอัปเดตเองเมื่อโพสเสร็จ';
   } catch (e) {
