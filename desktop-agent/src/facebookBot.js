@@ -909,7 +909,66 @@ function isClosedError(msg) { return /Target page, context or browser has been c
 // sharedPage: if provided, use this already-switched page (don't open a new one, don't close it)
 // pageId: if provided, append ?profile_id=PAGE_ID to group URL to force Page context
 // images: array of absolute file paths to attach as photos
-async function postToGroup(accountId, groupId, groupName, message, postAsPage, onLog, sharedPage = null, pageId = null, images = []) {
+// "@ชื่อเพจ" in a message → a real tag. Typing the text in one go leaves the
+// name as plain text, so for each known name type "@" and the name word by
+// word until Facebook's mention list offers that Page, then click it. If it
+// never does, the name stays as plain text and the post still goes out.
+async function _typeWithMentions(page, text, mentionNames, log, delay = 30) {
+    const names = [...new Set((mentionNames || []).filter(Boolean))].sort((a, b) => b.length - a.length);
+    if (!names.length || !text.includes('@')) return page.keyboard.type(text, { delay });
+    let rest = text;
+    while (rest) {
+        let at = -1, name = null;
+        for (const n of names) {
+            const i = rest.indexOf('@' + n);
+            if (i !== -1 && (at === -1 || i < at)) { at = i; name = n; }
+        }
+        if (at === -1) { await page.keyboard.type(rest, { delay }); break; }
+        if (at > 0) await page.keyboard.type(rest.slice(0, at), { delay });
+        await _typeMention(page, name, log, delay);
+        rest = rest.slice(at + 1 + name.length);
+    }
+}
+
+async function _typeMention(page, name, log, delay) {
+    await page.keyboard.type('@', { delay });
+    for (const word of name.split(/(?<=\s)/)) {
+        await page.keyboard.type(word, { delay });
+        if (await _pickMentionOption(page, name)) { log?.(`🏷️ แท็ก @${name} แล้ว`); return true; }
+    }
+    log?.(`⚠️ แท็ก @${name} ไม่ได้ (Facebook ไม่แสดงเพจนี้ในรายการ) — ใส่เป็นข้อความแทน`);
+    // A list left open would take the next Enter in the text as "pick this".
+    const open = await page.$('[role="listbox"] [role="option"]').catch(() => null);
+    if (open) await page.keyboard.press('Escape').catch(() => {});
+    return false;
+}
+
+// Clicks the option in Facebook's open mention list that is this Page — the
+// shortest match, so "Pool Villa" doesn't land on "Pool Villa พัทยา".
+async function _pickMentionOption(page, name, timeout = 1500) {
+    const want = _normText(name);
+    const end = Date.now() + timeout;
+    while (Date.now() < end) {
+        const found = await page.evaluate((want) => {
+            const norm = s => String(s || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+            const opts = [...document.querySelectorAll('[role="listbox"] [role="option"]')].filter(o => o.offsetParent !== null);
+            opts.forEach(o => o.removeAttribute('data-mp-mention'));
+            let best = null;
+            for (const o of opts) {
+                const t = norm(o.innerText);
+                if (t.includes(want) && (!best || t.length < norm(best.innerText).length)) best = o;
+            }
+            if (!best) return false;
+            best.setAttribute('data-mp-mention', '1');
+            return true;
+        }, want).catch(() => false);
+        if (found) return !!(await page.click('[data-mp-mention="1"]', { timeout: 3000 }).then(() => true).catch(() => false));
+        await page.waitForTimeout(300);
+    }
+    return false;
+}
+
+async function postToGroup(accountId, groupId, groupName, message, postAsPage, onLog, sharedPage = null, pageId = null, images = [], mentionNames = []) {
     const log = m => onLog?.(m);
     try {
         const ctx  = await _getContext(accountId);
@@ -1088,7 +1147,7 @@ async function postToGroup(accountId, groupId, groupName, message, postAsPage, o
                 if (text) {
                     log('⌨️ พิมพ์ข้อความ...');
                     // Typing replaces the selection (URL) — preview card remains as attachment
-                    await page.keyboard.type(text, { delay: 25 });
+                    await _typeWithMentions(page, text, mentionNames, log, 25);
                 } else {
                     // No text — delete selected URL, preview card stays
                     await page.keyboard.press('Delete');
@@ -1097,7 +1156,7 @@ async function postToGroup(accountId, groupId, groupName, message, postAsPage, o
                 log('⌨️ พิมพ์ข้อความ...');
                 await page.keyboard.press('Control+a');
                 await page.waitForTimeout(400);
-                await page.keyboard.type(text, { delay: 25 });
+                await _typeWithMentions(page, text, mentionNames, log, 25);
                 await page.keyboard.press('Enter');
                 await page.keyboard.press('Enter');
                 await page.keyboard.type(url, { delay: 15 });
@@ -1118,7 +1177,7 @@ async function postToGroup(accountId, groupId, groupName, message, postAsPage, o
                 }
             }
         } else {
-            await page.keyboard.type(message, { delay: 30 });
+            await _typeWithMentions(page, message, mentionNames, log);
         }
 
         await page.waitForTimeout(1500);
@@ -1132,7 +1191,7 @@ async function postToGroup(accountId, groupId, groupName, message, postAsPage, o
             log('   ⚠️ ข้อความในช่องโพสไม่ครบ — พิมพ์ใหม่อีกครั้ง');
             await page.keyboard.press('Control+a');
             await page.waitForTimeout(400);
-            await page.keyboard.type(wantText, { delay: 30 });
+            await _typeWithMentions(page, wantText, mentionNames, log);
             if (linkUrl && !(await linkCardShowing())) {
                 await page.keyboard.press('Enter');
                 await page.keyboard.press('Enter');

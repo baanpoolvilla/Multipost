@@ -11,6 +11,7 @@
   <script src="/js/auth-guard.js"></script>
   <script src="/js/group-notify.js"></script>
   <script src="/js/navbar-user.js"></script>
+  <script src="/js/mention-picker.js"></script>
 </head>
 <body>
 
@@ -1369,6 +1370,9 @@ async function saveAsTemplate() {
 
 /* ── Live status: posting machine health, what is posting now, who is next ── */
 let _poster = null;
+// "@" in the message lists the Pages the posting account has on Facebook;
+// the Agent turns "@ชื่อเพจ" into a real tag while typing the post.
+attachMentionPicker(document.getElementById('fMsg'), () => [_poster && _poster.identity, ...((_poster && _poster.pages) || [])]);
 let _lastStatusAt = 0;
 const _escB = s => String(s || '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
 

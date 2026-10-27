@@ -1,6 +1,7 @@
 const fs          = require('fs');
 const imgStore    = require('./agentImageStore');
 const postingLock = require('./postingLock');
+const agentPresence = require('./agentPresence');
 const { STATUS }  = require('./scheduler/statuses');
 
 let _store   = null;
@@ -293,7 +294,14 @@ async function processJob(job) {
         // with Brittany's id there and the browser still on Tuscany, the dialog
         // came up as Tuscany. The id is still sent, and the web's own id for
         // the Page ("จัดการเพจ") is the one known to work once switched.
-        const knownPages = job.postAsPage ? ((await _store.getKnownPages?.().catch(() => [])) || []) : [];
+        const wantsMention = String(job.message || '').includes('@');
+        const knownPages = (job.postAsPage || wantsMention) ? ((await _store.getKnownPages?.().catch(() => [])) || []) : [];
+        // Names a "@ชื่อเพจ" in the message may tag: the Pages on the web, and
+        // the ones the posting account can act as (Facebook's own spelling).
+        const poster = wantsMention ? await agentPresence.getPosterStatus().catch(() => null) : null;
+        const mentionNames = wantsMention
+            ? [...knownPages.map(p => p.pageName), poster?.identity, ...(poster?.pages || [])].filter(Boolean)
+            : [];
         const expectedPageId = knownPages.find(p => p.pageName === job.postAsPage)?.pageId || null;
         if (job.postAsPage) {
             const result = await _bot.openSwitchedPage(acc.id, job.postAsPage, (m) => log(`   ${m}`));
@@ -326,7 +334,7 @@ async function processJob(job) {
             log(`➡️ [${i+1}/${job.groups.length}] ${g.groupName}`);
             _emit?.('jobs:progress', { groupName:g.groupName, status:'posting', current:i+1, total:job.groups.length });
 
-            const res = await _bot.postToGroup(acc.id, g.groupId, g.groupName, job.message, job.postAsPage||null, (m)=>log(`   ${m}`), sharedPage, sharedPageId, tempImagePaths);
+            const res = await _bot.postToGroup(acc.id, g.groupId, g.groupName, job.message, job.postAsPage||null, (m)=>log(`   ${m}`), sharedPage, sharedPageId, tempImagePaths, mentionNames);
 
             if (!res.ok && _bot.isClosedError?.(res.error) && retryingGroup !== i) {
                 if (reopened >= MAX_REOPEN) {

@@ -103,8 +103,20 @@ async function fbPost(pageId, accessToken, message, mediaFiles) {
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+// "@ชื่อเพจ" (inserted by the composer's @ picker) → "@[pageId]", Graph API's
+// page-mention syntax, so Facebook renders it as a real tag. Longest names
+// first so a name that is a prefix of another doesn't steal its match.
+function applyPageMentions(message, pages) {
+    const named = pages.filter(p => p.pageName && p.pageId)
+        .sort((a, b) => b.pageName.length - a.pageName.length);
+    let out = message;
+    for (const p of named) out = out.split(`@${p.pageName}`).join(`@[${p.pageId}]`);
+    return out;
+}
+
 async function sendToPages(message, pageIds = null, images = [], delaySeconds = 0) {
     const all   = await pageStore.load();
+    const fbMessage = applyPageMentions(message, all);
     const pages = pageIds
         ? all.filter(p => pageIds.includes(p.pageId))
         : all.filter(p => p.enabled !== false);
@@ -115,7 +127,7 @@ async function sendToPages(message, pageIds = null, images = [], delaySeconds = 
         const timestamp = new Date().toISOString();
         try {
             if (!page.accessToken) throw new Error('ไม่มี Access Token สำหรับเพจนี้');
-            const { fbPostId, postUrl } = await fbPost(page.pageId, page.accessToken, message, images);
+            const { fbPostId, postUrl } = await fbPost(page.pageId, page.accessToken, fbMessage, images);
             results.push({
                 timestamp, pageId: page.pageId, pageName: page.pageName,
                 message, status: 'success', fbPostId, postUrl, analytics: null,

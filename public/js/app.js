@@ -34,6 +34,9 @@ if (messageEl) {
   });
 }
 
+if (typeof attachMentionPicker === 'function')
+  attachMentionPicker(messageEl, () => (typeof ALL_PAGES !== 'undefined' ? ALL_PAGES : []).map(p => p.pageName));
+
 /* Emoji */
 function insertEmoji(emoji) {
   if (!messageEl) return;
