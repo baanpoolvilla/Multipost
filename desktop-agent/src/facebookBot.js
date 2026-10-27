@@ -180,7 +180,12 @@ async function getAccountPages(accountId) {
             ];
             for (const lbl of labels) {
                 const el = document.querySelector(`[aria-label="${lbl}"], [title="${lbl}"]`);
-                if (el) { el.click(); return lbl; }
+                if (!el) continue;
+                // The label can sit on the profile picture's <svg> (no .click()).
+                const btn = el.closest('[role="button"],a,button') || el;
+                if (typeof btn.click === 'function') btn.click();
+                else btn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+                return lbl;
             }
             return null;
         });
@@ -335,19 +340,27 @@ const _MENU_WORDS = ['การตั้งค่า','ความเป็น�
 
 async function _navOpenSwitcher(page) {
     return page.evaluate(() => {
+        // The label can sit on the profile picture's <svg>, which has no
+        // .click() — press the button around it instead.
+        const press = el => {
+            const btn = el.closest('[role="button"],a,button') || el;
+            if (typeof btn.click === 'function') btn.click();
+            else btn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+        };
+
         // 1. Exact aria-label match
         const exact = ['Switch profiles','Switch Profile','สลับโปรไฟล์',
                        'Your profiles','โปรไฟล์ของคุณ','Profiles','โปรไฟล์'];
         for (const lbl of exact) {
             const el = document.querySelector(`[aria-label="${lbl}"], [title="${lbl}"]`);
-            if (el) { el.click(); return 'exact:' + lbl; }
+            if (el) { press(el); return 'exact:' + lbl; }
         }
 
         // 2. Partial / contains match
         const kws = ['switch','สลับ','profile','โปรไฟล์','your profile'];
         for (const kw of kws) {
             const el = document.querySelector(`[aria-label*="${kw}" i], [title*="${kw}" i]`);
-            if (el) { el.click(); return 'partial:' + kw; }
+            if (el) { press(el); return 'partial:' + kw; }
         }
 
         // 3. Button in top-right of page that has an <img> (profile picture)
@@ -434,7 +447,11 @@ async function _openAllProfiles(page) {
         for (const el of document.querySelectorAll('[aria-label]')) {
             const label = el.getAttribute('aria-label') || '';
             const box = el.getBoundingClientRect();
-            if (re.test(label) && box.width > 0 && box.height > 0) { el.click(); return label; }
+            if (!(re.test(label) && box.width > 0 && box.height > 0)) continue;
+            const btn = el.closest('[role="button"],a,button') || el; // an <svg> has no .click()
+            if (typeof btn.click === 'function') btn.click();
+            else btn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+            return label;
         }
         return null;
     }, _ALL_PROFILES.source).catch(() => null);
@@ -497,7 +514,7 @@ async function _menuTexts(page) {
 
 // Printed at the start of every profile switch, so a pasted log shows which
 // revision of this file the posting machine is really running.
-const BOT_REV = '2.1.11';
+const BOT_REV = '2.1.13';
 
 // ── Open a page and switch to Page identity on it ────────────────
 // Returns { page, pageId } — pageId is used to navigate group as the Page
