@@ -913,11 +913,12 @@ function _composedMessage() {
 function _loadMessage(stored) {
   const s = String(stored || '');
   const i = s.indexOf('|||');
-  if (i === -1) { document.getElementById('fMsg').value = s; document.getElementById('fLink').value = ''; setPostMode('text', true); return; }
+  if (i === -1) { document.getElementById('fMsg').value = s; document.getElementById('fLink').value = ''; setPostMode('text', true); _saveGroupDraft(); return; }
   const text = s.slice(0, i).trim(), url = s.slice(i + 3).trim();
   document.getElementById('fMsg').value = text;
   document.getElementById('fLink').value = url;
   setPostMode(text ? 'link' : 'share', true);
+  _saveGroupDraft();
 }
 
 function togglePanel(id, btn) {
@@ -1373,6 +1374,32 @@ let _poster = null;
 // "@" in the message lists the Pages the posting account has on Facebook;
 // the Agent turns "@ชื่อเพจ" into a real tag while typing the post.
 attachMentionPicker(document.getElementById('fMsg'), () => [_poster && _poster.identity, ...((_poster && _poster.pages) || [])]);
+
+/* ── Draft autosave — SmartBoss can reload this frame when its window regains
+   focus; keep the message/link so the user doesn't lose what they typed. ── */
+const _GDRAFT_KEY = 'mp_group_draft_v1';
+function _saveGroupDraft() {
+  try {
+    const msg = document.getElementById('fMsg').value, link = document.getElementById('fLink').value;
+    if (msg || link) localStorage.setItem(_GDRAFT_KEY, JSON.stringify({ mode: _postMode, msg, link, t: Date.now() }));
+    else localStorage.removeItem(_GDRAFT_KEY);
+  } catch {}
+}
+function _clearGroupDraft() { try { localStorage.removeItem(_GDRAFT_KEY); } catch {} }
+(function () {
+  const m = document.getElementById('fMsg'), l = document.getElementById('fLink');
+  if (!m || !l) return;
+  try {
+    const d = JSON.parse(localStorage.getItem(_GDRAFT_KEY) || 'null');
+    if (d && !m.value && !l.value && Date.now() - (d.t || 0) < 7 * 864e5) {
+      m.value = d.msg || ''; l.value = d.link || '';
+      if (d.mode === 'link' || d.mode === 'share') setPostMode(d.mode, true); else updateSummary();
+    }
+  } catch {}
+  m.addEventListener('input', _saveGroupDraft);
+  l.addEventListener('input', _saveGroupDraft);
+  document.querySelectorAll('.jq-mode').forEach(b => b.addEventListener('click', () => setTimeout(_saveGroupDraft, 0)));
+})();
 let _lastStatusAt = 0;
 const _escB = s => String(s || '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
 
@@ -1623,6 +1650,7 @@ async function submitJob() {
     });
     const d = await r.json();
     if (!d.ok) throw new Error(d.error||'เกิดข้อผิดพลาด');
+    _clearGroupDraft();
     await Swal.fire({ icon:'success', title:'สร้างงานแล้ว', text: schedIso ? whenText : 'งานเข้าคิวแล้ว เครื่องโพสหลักจะโพสให้ตามลำดับ', timer:2200, showConfirmButton:false });
     location.reload();
   } catch(e) {
