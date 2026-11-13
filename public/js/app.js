@@ -27,10 +27,21 @@ async function _uploadToSupabase(file) {
   return publicUrl;
 }
 
-/* Char counter */
+/* Char counter + draft autosave (survives the page being reloaded by the host app) */
+const _DRAFT_KEY = 'mp_draft_message';
+function _clearDraft() { try { localStorage.removeItem(_DRAFT_KEY); } catch {} }
 if (messageEl) {
+  try {
+    const draft = localStorage.getItem(_DRAFT_KEY);
+    if (draft && !messageEl.value) messageEl.value = draft;
+  } catch {}
+  charCountEl.textContent = messageEl.value.length;
   messageEl.addEventListener('input', () => {
     charCountEl.textContent = messageEl.value.length;
+    try {
+      if (messageEl.value) localStorage.setItem(_DRAFT_KEY, messageEl.value);
+      else localStorage.removeItem(_DRAFT_KEY);
+    } catch {}
   });
 }
 
@@ -586,6 +597,7 @@ async function submitPost() {
       return;
     }
 
+    if (data.scheduled || data.id) _clearDraft();
     if (data.scheduled) {
       const dt = new Date(data.scheduledAt).toLocaleString('th-TH', { timeZone:'Asia/Bangkok', dateStyle:'short', timeStyle:'short' });
       const r2 = await Swal.fire({
